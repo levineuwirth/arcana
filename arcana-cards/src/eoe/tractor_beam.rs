@@ -1,11 +1,11 @@
-//! Tractor Beam — `{2}{U}{U}` enchantment — Aura.
+//! Tractor Beam — `{2}{U}{U}` enchantment — Aura (Edge of Eternities).
 //! "Enchant creature or Spacecraft. When this Aura enters, tap enchanted
 //!  permanent. You control enchanted permanent. Enchanted permanent
 //!  doesn't untap during its controller's untap step."
 //!
-//! The "doesn't untap" clause is an ETB-installed `attached_dont_untap`.
-//! The control-change ("you control enchanted permanent") and the
-//! enters-tap are not expressible with the demonstrated builders — GAP'd.
+//! Control-change Aura: the ETB trigger taps the host, grants control of
+//! it, and installs `attached_dont_untap`; the leaves-battlefield trigger
+//! reverts control to the host's owner (CR 702 control-change).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -34,7 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        // NOTE: creature-or-Spacecraft widened to any permanent
+        // NOTE: creature-or-Spacecraft widened to any permanent (no disjunction filter).
         CardDefinition::new(name, chars)
             .with_enchant(TargetFilter::Permanent(ObjectFilter::permanent()))
             .with_triggered_ability(TriggeredAbilityDef {
@@ -45,22 +45,55 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfLeavesBattlefield,
+                intervening_if: None,
+                effect: ltb_revert_control,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
             }),
     )
 }
 
 fn etb_install(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: control-change aura ("you control enchanted permanent") and the
-    // enters-tap of the host are not expressible — only the don't-untap
-    // restriction is installed.
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_dont_untap(
-            trig.source,
-            Duration::WhileSourceOnBattlefield,
-        ),
+    let Some(host) = state.object_or_lki(trig.source).and_then(|o| o.attached_to) else {
+        return Vec::new();
+    };
+    vec![
+        Effect::Tap { target: host },
+        Effect::ChangeControl {
+            target: host,
+            new_controller: trig.controller,
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_dont_untap(
+                trig.source,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
+}
+
+fn ltb_revert_control(
+    state: &GameState,
+    trig: &PendingTrigger,
+    _: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(host) = state.object_or_lki(trig.source).and_then(|o| o.attached_to) else {
+        return Vec::new();
+    };
+    let Some(owner) = state.object_or_lki(host).map(|o| o.owner) else {
+        return Vec::new();
+    };
+    vec![Effect::ChangeControl {
+        target: host,
+        new_controller: owner,
     }]
 }

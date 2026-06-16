@@ -1,12 +1,14 @@
-//! Spectra Ward — `{3}{W}{W}` enchantment — Aura.
+//! Spectra Ward — `{3}{W}{W}` enchantment — Aura (Onslaught).
 //! "Enchant creature. Enchanted creature gets +2/+2 and has protection
-//! from each color. This effect doesn't remove Auras."
+//!  from each color."
 //!
-//! The +2/+2 is wired via `attached_pt`. "Protection from each color"
-//! is not in the usable keyword surface — that clause is a GAP; the
-//! pump is wired.
+//! Canonical buff + protection Aura. `with_enchant` carries the enchant
+//! target; the engine attaches on resolution (CR 303.4f). The ETB trigger
+//! installs an additive `attached_pt(+2/+2)` plus an `attached_keyword`
+//! Protection from all colors (`ProtectionQuality::AnyColor`), both
+//! following `source.attached_to` and expiring when the Aura leaves.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility, ProtectionQuality};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -39,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_install_pump,
+                effect: etb_install,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -47,18 +49,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_install_pump(
+fn etb_install(
     _state: &GameState,
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "has protection from each color" — protection not in keyword surface.
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            2,
-            2,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                2,
+                2,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Protection(ProtectionQuality::AnyColor),
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

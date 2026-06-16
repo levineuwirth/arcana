@@ -1,10 +1,11 @@
-//! Yavimaya's Embrace — `{5}{G}{U}{U}` enchantment — Aura.
+//! Yavimaya's Embrace — `{5}{G}{U}{U}` enchantment — Aura (Apocalypse).
 //! "Enchant creature. You control enchanted creature. Enchanted creature
 //!  gets +2/+2 and has trample."
 //!
-//! The +2/+2 (`attached_pt`) and trample (`attached_keyword`) grants are
-//! installed faithfully. The "You control enchanted creature" control-change
-//! clause is GAP'd (no control-change attached grant).
+//! Control-change Aura: the ETB trigger grants control of the host and
+//! installs the additive `attached_pt(+2/+2)` + `attached_keyword(Trample)`;
+//! the leaves-battlefield trigger reverts control to the host's owner
+//! (CR 702 control-change).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -43,17 +44,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfLeavesBattlefield,
+                intervening_if: None,
+                effect: ltb_revert_control,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
             }),
     )
 }
 
 fn etb_install(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: control-change clause "You control enchanted creature".
-    vec![
+    let mut effects = vec![
         Effect::InstallContinuousEffect {
             effect: ContinuousEffect::attached_pt(
                 trig.source,
@@ -69,5 +78,29 @@ fn etb_install(
                 Duration::WhileSourceOnBattlefield,
             ),
         },
-    ]
+    ];
+    if let Some(host) = state.object_or_lki(trig.source).and_then(|o| o.attached_to) {
+        effects.push(Effect::ChangeControl {
+            target: host,
+            new_controller: trig.controller,
+        });
+    }
+    effects
+}
+
+fn ltb_revert_control(
+    state: &GameState,
+    trig: &PendingTrigger,
+    _: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(host) = state.object_or_lki(trig.source).and_then(|o| o.attached_to) else {
+        return Vec::new();
+    };
+    let Some(owner) = state.object_or_lki(host).map(|o| o.owner) else {
+        return Vec::new();
+    };
+    vec![Effect::ChangeControl {
+        target: host,
+        new_controller: owner,
+    }]
 }

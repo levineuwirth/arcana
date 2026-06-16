@@ -1,30 +1,55 @@
 //! Dihada, Binder of Wills — `{1}{R}{W}{B}` Legendary Planeswalker — Dihada,
 //! starting loyalty 5.
-//! +2: Up to one target legendary creature gains vigilance, lifelink, and
-//!   indestructible until your next turn.
-//! −3: Reveal the top four cards of your library. Put any number of legendary
-//!   cards from among them into your hand and the rest into your graveyard.
-//!   Create a Treasure token for each card put into your graveyard this way.
-//! −11: Gain control of all nonland permanents until end of turn. Untap them.
-//!   They gain haste until end of turn.
-//! Dihada, Binder of Wills can be your commander.
 //!
-//! GAP: +2 uses an "until your next turn" duration and an "up to one target"
-//!   shape not expressible with the demonstrated Pump/GrantKeyword surface.
-//! GAP: −3 reveal-and-sort-by-legendary + per-card Treasure creation is a
-//!   bespoke effect not in the demonstrated Effect catalog.
-//! GAP: −11 mass control-change + untap + haste is a bespoke effect not in
-//!   the demonstrated Effect catalog.
+//! Oracle:
+//! * `+2`: Up to one target legendary creature gains vigilance, lifelink,
+//!   and indestructible until your next turn.
+//! * `−3`: Reveal the top four cards of your library. Put any number of
+//!   legendary cards from among them into your hand and the rest into your
+//!   graveyard. Create a Treasure token for each card put into your
+//!   graveyard this way.
+//! * `−11`: Gain control of all nonland permanents until end of turn. Untap
+//!   them. They gain haste until end of turn.
+//!
+//! "Dihada, Binder of Wills can be your commander." — a commander-eligibility
+//! line, not a loyalty ability; ignored.
+//!
+//! # Rules references
+//! * CR 606 — loyalty abilities; engine enforces sorcery-speed / stack-empty
+//!   / controller-only / once-per-turn / 0-loyalty SBA.
+//! * CR 113.3c — enters with loyalty counters equal to printed loyalty.
+//!
+//! # Scope
+//! * `+2` IMPLEMENTED: up-to-one target legendary creature gains three
+//!   keywords until the controller's next turn (`Duration::UntilYourNextTurn`).
+//! * `−11` IMPLEMENTED: sweeps all nonland permanents and grants each a
+//!   `ChangeControlEot` + `Untap` + haste. This faithfully grabs ALL nonland
+//!   permanents (including Dihada and the controller's own), matching oracle.
+//! * `−3` GAP'd: reveal-top-4-then-sort-by-pick into hand/graveyard with a
+//!   dynamic Treasure count (one per card binned to graveyard) has no
+//!   reveal-and-sort primitive, and the Treasure count is runtime-dependent
+//!   (`Effect::CreateCommodityToken` exists but the COUNT is unknowable here).
+//!   The `−3` cost is declared correctly; the effect body is empty.
+//!
+//! The Scryfall "Treasure" keyword is not a card keyword — it surfaces only in
+//! the `−3` text (GAP'd), so no `keywords` are emitted.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
-    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone, CardDefinition,
+    ActivatedAbilityDef, ActivationContext, ActivationCost, CardDefinition,
     CardRegistry,
 };
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
+use arcana_core::types::{
+    CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine,
+};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Dihada, Binder of Wills");
@@ -45,77 +70,140 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
     reg.register(
         CardDefinition::new(name, chars)
-            // +2: GAP (until-your-next-turn duration, up-to-one target)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "+2: Up to one target legendary creature gains vigilance, lifelink, and indestructible until your next turn.".into(),
+                text: "+2: Up to one target legendary creature gains \
+                       vigilance, lifelink, and indestructible until your \
+                       next turn."
+                    .into(),
                 cost: ActivationCost {
                     add_self_counter: Some((CounterKind::Loyalty, 2)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().with_supertypes(
+                            SupertypeSet(SupertypeSet::LEGENDARY),
+                        ),
+                    ),
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                }],
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: ActivationZone::Battlefield,
+                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: plus_two_gap,
+                effect: plus_two_grant,
             })
-            // −3: GAP (reveal-sort + per-card Treasure)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "-3: Reveal the top four cards of your library. Put any number of legendary cards from among them into your hand and the rest into your graveyard. Create a Treasure token for each card put into your graveyard this way.".into(),
+                text: "−3: Reveal the top four cards of your library. Put any \
+                       number of legendary cards from among them into your \
+                       hand and the rest into your graveyard. Create a \
+                       Treasure token for each card put into your graveyard \
+                       this way."
+                    .into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 3)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: ActivationZone::Battlefield,
+                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: minus_three_gap,
+                effect: minus_three_reveal_sort,
             })
-            // −11: GAP (mass control-change + untap + haste)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "-11: Gain control of all nonland permanents until end of turn. Untap them. They gain haste until end of turn.".into(),
+                text: "−11: Gain control of all nonland permanents until end \
+                       of turn. Untap them. They gain haste until end of turn."
+                    .into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 11)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: ActivationZone::Battlefield,
+                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: minus_eleven_gap,
+                effect: minus_eleven_mass_control,
             }),
     )
 }
 
-fn plus_two_gap(
+/// `+2: Up to one target legendary creature gains vigilance, lifelink, and
+/// indestructible until your next turn.`
+fn plus_two_grant(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // "Up to one" — no target chosen is legal; return nothing.
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    let id = *id;
+    let dur = Duration::UntilYourNextTurn(ctx.controller);
+    vec![
+        Effect::GrantKeyword {
+            target: id,
+            keyword: KeywordAbility::Vigilance,
+            duration: dur,
+        },
+        Effect::GrantKeyword {
+            target: id,
+            keyword: KeywordAbility::Lifelink,
+            duration: dur,
+        },
+        Effect::GrantKeyword {
+            target: id,
+            keyword: KeywordAbility::Indestructible,
+            duration: dur,
+        },
+    ]
+}
+
+/// `−3: Reveal the top four cards of your library. Put any number of legendary
+/// cards from among them into your hand and the rest into your graveyard.
+/// Create a Treasure token for each card put into your graveyard this way.`
+fn minus_three_reveal_sort(
     _state: &GameState,
     _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "until your next turn" duration + "up to one target" not expressible.
+    // GAP: no reveal-top-N-and-sort-by-pick primitive (cards split into hand
+    // vs graveyard by a runtime "any number" choice), and the Treasure count
+    // is the number binned to graveyard — unknowable at build time, so
+    // Effect::CreateCommodityToken can't be emitted with a fixed count.
     Vec::new()
 }
 
-fn minus_three_gap(
-    _state: &GameState,
-    _ctx: &ActivationContext,
+/// `−11: Gain control of all nonland permanents until end of turn. Untap them.
+/// They gain haste until end of turn.`
+fn minus_eleven_mass_control(
+    state: &GameState,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: reveal-and-sort-by-legendary + per-card Treasure creation not in catalog.
-    Vec::new()
-}
-
-fn minus_eleven_gap(
-    _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: mass control-change + untap + haste not in the demonstrated catalog.
-    Vec::new()
+    let ids = script::ids_matching(
+        state,
+        &ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
+        ctx.controller,
+    );
+    let mut effects = Vec::new();
+    for id in ids {
+        effects.push(Effect::ChangeControlEot {
+            target: id,
+            new_controller: ctx.controller,
+        });
+        effects.push(Effect::Untap { target: id });
+        effects.push(Effect::GrantKeyword {
+            target: id,
+            keyword: KeywordAbility::Haste,
+            duration: Duration::EndOfTurn,
+        });
+    }
+    effects
 }

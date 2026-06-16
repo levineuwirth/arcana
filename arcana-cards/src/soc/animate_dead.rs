@@ -1,15 +1,17 @@
-//! Animate Dead — `{1}{B}` enchantment — Aura.
-//! "Enchant creature card in a graveyard
-//!  When this Aura enters, … Return enchanted creature card to the
-//!  battlefield under your control and attach this Aura to it. When this Aura
-//!  leaves the battlefield, that creature's controller sacrifices it.
-//!  Enchanted creature gets -1/-0."
+//! Animate Dead — `{1}{B}` enchantment — Aura (Limited Edition Alpha).
+//! "Enchant creature card in a graveyard. When this Aura enters, if it's on
+//!  the battlefield, it loses 'enchant creature card in a graveyard' and
+//!  gains 'enchant creature put onto the battlefield with this Aura.' Return
+//!  enchanted creature card to the battlefield under your control and attach
+//!  this Aura to it. When this Aura leaves the battlefield, that creature's
+//!  controller sacrifices it. Enchanted creature gets -1/-0."
 //!
-//! Reanimation with control change and a graveyard enchant target — neither
-//! the graveyard-targeting enchant nor the return-under-your-control /
-//! leaves-battlefield-sacrifice machinery is expressible. Only the -1/-0
-//! attached_pt grant is wired (it applies once attached). The enchant target
-//! is approximated by a battlefield creature.
+//! The static -1/-0 is an ETB-installed `attached_pt` (applies once the Aura
+//! is attached to its host creature).
+//! GAP: "enchant creature card in a graveyard" + reanimation (return to
+//! battlefield + re-target the Aura) + sacrifice-on-leave — graveyard-card
+//! enchanting and battlefield-return reanimation are not expressible in the
+//! demonstrated Aura API.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -38,8 +40,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        // NOTE: "enchant creature card in a graveyard" approximated by a
-        // battlefield creature target (no graveyard-zone enchant filter).
+        // NOTE: true target is a creature card in a graveyard; approximated
+        // by an on-battlefield creature target (reanimation is GAP'd below).
         CardDefinition::new(name, chars)
             .with_enchant(TargetFilter::Creature)
             .with_triggered_ability(TriggeredAbilityDef {
@@ -54,11 +56,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_install(_state: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
-    // GAP: return-creature-card-under-your-control reanimation + leaves-the-
-    // battlefield-sacrifice — control-change/reanimation, not expressible.
-    // Only the -1/-0 buff is wired.
+fn etb_install(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "enchant creature card in a graveyard" + reanimation (return to
+    // battlefield + re-target) + sacrifice-on-leave — not expressible.
     vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(trig.source, -1, 0, Duration::WhileSourceOnBattlefield),
+        effect: ContinuousEffect::attached_pt(
+            trig.source,
+            -1,
+            0,
+            Duration::WhileSourceOnBattlefield,
+        ),
     }]
 }

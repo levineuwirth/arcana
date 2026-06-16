@@ -1,23 +1,33 @@
 //! Tasha, Unholy Archmage — `{2}{U}{B}` Legendary Planeswalker — Tasha,
-//! starting loyalty 5 — colors B, U.
+//! starting loyalty 3.
 //!
 //! Oracle text:
-//! * `+1`: Until your next turn, whenever a creature attacks you or Tasha,
-//!   Unholy Archmage, put a -1/-1 counter on that creature. — a floating
-//!   delayed triggered window keyed on combat. GAP: not expressible from the
-//!   demonstrated Effect surface.
-//! * `−2`: Target opponent puts a creature card of their choice from their
-//!   graveyard onto the battlefield under your control. — graveyard
-//!   reanimation under your control with opponent choice. GAP.
-//! * `−6`: Target opponent reveals cards from the top of their library until
-//!   three creature cards are revealed, then puts those cards onto the
-//!   battlefield under your control. — reveal-until-N steal. GAP.
-//!
-//! All three abilities are GAP'd but declared as shells with correct loyalty
-//! costs.
+//! * `+1`: Until your next turn, whenever a creature attacks you or
+//!   Tasha, Unholy Archmage, put a -1/-1 counter on that creature.
+//! * `−2`: Target opponent puts a creature card of their choice from
+//!   their graveyard onto the battlefield under your control. That
+//!   creature gains ward {2}.
+//! * `−6`: Target opponent reveals cards from the top of their library
+//!   until they reveal three creature cards. Put those cards onto the
+//!   battlefield under your control. That player puts the rest into
+//!   their graveyard.
 //!
 //! # Rules references
+//! * CR 113.3c — enters with loyalty counters equal to printed loyalty.
 //! * CR 606 — loyalty abilities.
+//!
+//! # Scope
+//! All three ability shells are declared with their correct loyalty
+//! costs, but none of the effects are expressible from the demonstrated
+//! `Effect` surface:
+//! * `+1` is a floating "until your next turn" delayed triggered
+//!   ability granted by a loyalty effect — not expressible.
+//! * `−2` reanimates from an OPPONENT's graveyard under YOUR control
+//!   and grants ward — graveyard-reanimate-under-your-control is not
+//!   expressible.
+//! * `−6` is a reveal-until-three-creatures-then-put-onto-battlefield
+//!   bespoke ultimate — not expressible.
+//! Planeswalker animation / emblems do not apply to this card.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -44,93 +54,79 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::PLANESWALKER.into(),
         subtypes,
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
-        loyalty: Some(5),
+        loyalty: Some(3),
         ..Default::default()
     };
 
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "+1: Until your next turn, whenever a creature attacks \
-                       you or Tasha, Unholy Archmage, put a -1/-1 counter on \
-                       that creature.".into(),
+                text: "+1: Until your next turn, whenever a creature \
+                       attacks you or Tasha, Unholy Archmage, put a -1/-1 \
+                       counter on that creature.".into(),
                 cost: ActivationCost {
                     add_self_counter: Some((CounterKind::Loyalty, 1)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
                 activation_zone: arcana_core::registry::ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: plus_one_window,
+                effect: plus_one,
             })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "−2: Target opponent puts a creature card of their \
-                       choice from their graveyard onto the battlefield under \
-                       your control.".into(),
+                       choice from their graveyard onto the battlefield \
+                       under your control. That creature gains ward {2}.".into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 2)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
                 activation_zone: arcana_core::registry::ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: minus_two_reanimate,
+                effect: minus_two,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "−6: Target opponent reveals cards from the top of their \
-                       library until three creature cards are revealed, then \
-                       puts those cards onto the battlefield under your \
-                       control and the rest into their graveyard.".into(),
+                text: "−6: Target opponent reveals cards from the top of \
+                       their library until they reveal three creature \
+                       cards. Put those cards onto the battlefield under \
+                       your control. That player puts the rest into their \
+                       graveyard.".into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 6)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
                 activation_zone: arcana_core::registry::ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: minus_six_reveal_steal,
+                effect: minus_six,
             }),
     )
 }
 
-/// `+1`: floating combat-triggered -1/-1 window.
-fn plus_one_window(
-    _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: floating delayed triggered window (whenever a creature attacks you
-    // or Tasha) not expressible from the demonstrated Effect surface.
+fn plus_one(_state: &GameState, _ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: granting a floating "until your next turn" delayed triggered
+    // ability from a loyalty effect is not expressible.
     Vec::new()
 }
 
-/// `−2`: opponent-choice graveyard reanimation under your control.
-fn minus_two_reanimate(
-    _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: graveyard reanimation with opponent choice + control change not
-    // expressible from the demonstrated Effect surface.
+fn minus_two(_state: &GameState, _ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: reanimating a creature from an opponent's graveyard onto the
+    // battlefield under your control + granting ward is not expressible.
     Vec::new()
 }
 
-/// `−6`: reveal-until-three-creatures steal.
-fn minus_six_reveal_steal(
-    _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: reveal-until-N-creatures then put onto battlefield under your
-    // control not expressible from the demonstrated Effect surface.
+fn minus_six(_state: &GameState, _ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: reveal-until-three-creatures then put onto battlefield under
+    // your control is a bespoke ultimate not expressible.
     Vec::new()
 }

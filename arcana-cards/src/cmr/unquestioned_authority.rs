@@ -1,9 +1,10 @@
-//! Unquestioned Authority — `{2}{W}` enchantment — Aura.
+//! Unquestioned Authority — `{2}{W}` enchantment — Aura (Judgment).
 //! "Enchant creature. When this Aura enters, draw a card. Enchanted
 //!  creature has protection from creatures."
 //!
-//! The ETB "draw a card" is fully expressible. Protection is not in the
-//! supported keyword surface and has no attached builder — GAP.
+//! The ETB trigger draws a card ("when this Aura enters, draw a card").
+//! GAP: "has protection from creatures" — no ProtectionQuality variant for
+//! "creatures" (Color / AnyColor / CreatureType(subtype) / Everything only).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -50,7 +51,8 @@ fn etb_draw(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "has protection from creatures" — Protection unsupported, no builder.
+    // GAP: "has protection from creatures" — Protection-from-creatures not
+    // expressible (no matching ProtectionQuality variant).
     vec![Effect::DrawCards {
         player: trig.controller,
         count: 1,

@@ -1,10 +1,10 @@
 //! Holy Mantle — `{2}{W}{W}` enchantment — Aura.
-//! "Enchant creature. Enchanted creature gets +2/+2 and has
-//!  protection from creatures."
+//! "Enchant creature. Enchanted creature gets +2/+2 and has protection from creatures."
 //!
-//! The +2/+2 is an ETB-installed `attached_pt`. Protection is not in
-//! the usable keyword surface (only the unit `KeywordAbility` list), so
-//! the protection-from-creatures grant is GAP'd.
+//! Buff Aura. The +2/+2 is an ETB-installed `attached_pt`. "Protection from
+//! creatures" is protection from a card TYPE — the available `ProtectionQuality`
+//! surface is Color / AnyColor / CreatureType (a single creature subtype) /
+//! Everything, none of which expresses "from creatures (the card type)" — GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -52,7 +52,8 @@ fn etb_install(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: protection from creatures not in the keyword surface.
+    // GAP: protection from creatures (a card TYPE) — ProtectionQuality has no
+    // card-type variant (only Color / AnyColor / CreatureType / Everything).
     vec![Effect::InstallContinuousEffect {
         effect: ContinuousEffect::attached_pt(
             trig.source,

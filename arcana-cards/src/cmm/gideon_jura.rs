@@ -1,24 +1,30 @@
-//! Gideon Jura — `{3}{W}{W}` Legendary Planeswalker — Gideon, starting loyalty 6.
+//! Gideon Jura — `{3}{W}{W}` Legendary Planeswalker — Gideon, starting
+//! loyalty 6.
 //!
-//! +2: During target opponent's next turn, creatures that player controls attack
-//!   Gideon Jura if able. GAP: a delayed "must attack this planeswalker" combat-
-//!   requirement over an opponent's next turn is not expressible; shell declared
-//!   at the correct +2 cost.
-//! −2: Destroy target tapped creature. Modeled with `Effect::DestroyPermanent`
-//!   over a tapped-creature target filter.
-//! 0: Until end of turn, Gideon Jura becomes a 6/6 Human Soldier creature that's
-//!   still a planeswalker. Prevent all damage that would be dealt to him this
-//!   turn. The damage prevention on Gideon is modeled (`Effect::PreventDamage`,
-//!   EndOfTurn); GAP: the "becomes a 6/6 Human Soldier creature" self-animation
-//!   (type-add + base-P/T while staying a planeswalker) is not expressible.
+//! Loyalty abilities:
+//! * `+2`: During target opponent's next turn, creatures that player
+//!   controls attack Gideon Jura if able. (The "must attack this PW
+//!   during a future turn" lure rider is not expressible from the
+//!   demonstrated Effect surface — GAP'd; shell declared with the
+//!   correct target + cost.)
+//! * `−2`: Destroy target tapped creature.
+//! * `0`: Until end of turn, Gideon Jura becomes a 6/6 Human Soldier
+//!   creature that's still a planeswalker. Prevent all damage that would
+//!   be dealt to him this turn. (PW ANIMATION — AddType(CREATURE) +
+//!   SetBasePT(6/6) + PreventDamage on self; the "Human Soldier" subtype
+//!   grant is not expressible — GAP'd.)
+//!
+//! # Rules references
+//! * CR 606 — loyalty abilities; CR 704.5i — 0-loyalty sacrifice.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
-    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
-    CardDefinition, CardRegistry,
+    ActivatedAbilityDef, ActivationContext, ActivationCost, CardDefinition,
+    CardRegistry,
 };
 use arcana_core::replacement::ReplacementDuration;
 use arcana_core::state::GameState;
@@ -44,6 +50,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
+    let tapped_creature = TargetRequirement {
+        filter: TargetFilter::Permanent(
+            ObjectFilter::creature().tapped_only(),
+        ),
+        count: TargetCount::Exactly(1),
+        controller: None,
+    };
+
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
@@ -56,32 +70,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement::target_player()],
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: ActivationZone::Battlefield,
+                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: plus_two_gap,
+                effect: plus_two_lure,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "-2: Destroy target tapped creature.".into(),
+                text: "−2: Destroy target tapped creature.".into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 2)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(ObjectFilter {
-                        types: Some(TypeLine::CREATURE.into()),
-                        tapped: Some(true),
-                        ..Default::default()
-                    }),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
+                target_requirements: vec![tapped_creature],
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: ActivationZone::Battlefield,
+                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: minus_two_destroy_tapped,
+                effect: minus_two_destroy,
             })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "0: Until end of turn, Gideon Jura becomes a 6/6 Human \
@@ -91,43 +97,58 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: ActivationZone::Battlefield,
+                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: zero_animate_prevent,
+                effect: zero_animate,
             }),
     )
 }
 
-fn plus_two_gap(
+fn plus_two_lure(
     _state: &GameState,
     _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: delayed "creatures the opponent controls attack Gideon if able" combat
-    //      requirement over the opponent's next turn is not expressible.
+    // GAP: "during target opponent's next turn, that player's creatures
+    // attack this planeswalker if able" — a future-turn forced-attack
+    // (lure) rider is not expressible from the demonstrated Effect surface.
     Vec::new()
 }
 
-fn minus_two_destroy_tapped(
+fn minus_two_destroy(
     _state: &GameState,
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else { return Vec::new(); };
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
     vec![Effect::DestroyPermanent { target: *id }]
 }
 
-fn zero_animate_prevent(
+fn zero_animate(
     _state: &GameState,
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "becomes a 6/6 Human Soldier creature that's still a planeswalker"
-    //      self-animation not expressible. The damage prevention IS modeled.
-    vec![Effect::PreventDamage {
-        target: DamageTarget::Object(ctx.source),
-        amount: None,
-        duration: ReplacementDuration::EndOfTurn,
-    }]
+    // GAP: "Human Soldier" creature-subtype grant is not expressible.
+    vec![
+        Effect::AddType {
+            target: ctx.source,
+            types: TypeLine::CREATURE.into(),
+            duration: Duration::EndOfTurn,
+        },
+        Effect::SetBasePT {
+            target: ctx.source,
+            power: 6,
+            toughness: 6,
+            duration: Duration::EndOfTurn,
+        },
+        Effect::PreventDamage {
+            target: DamageTarget::Object(ctx.source),
+            amount: None,
+            duration: ReplacementDuration::EndOfTurn,
+        },
+    ]
 }

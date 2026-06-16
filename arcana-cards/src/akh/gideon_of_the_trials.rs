@@ -1,26 +1,26 @@
-//! Gideon of the Trials — `{1}{W}{W}` Legendary Planeswalker — Gideon, starting loyalty 3.
+//! Gideon of the Trials — `{1}{W}{W}` Legendary Planeswalker — Gideon,
+//! starting loyalty 3.
 //!
 //! +1: Until your next turn, prevent all damage target permanent would deal.
-//! 0: Until end of turn, Gideon becomes a 4/4 Human Soldier creature with
-//!    indestructible that's still a planeswalker. Prevent all damage that would
-//!    be dealt to him this turn.
-//! 0: You get an emblem with "As long as you control a Gideon planeswalker, you
-//!    can't lose the game and your opponents can't win the game."
+//! 0: Until end of turn, Gideon of the Trials becomes a 4/4 Human Soldier
+//!    creature with indestructible that's still a planeswalker. Prevent all
+//!    damage that would be dealt to him this turn.
+//! 0: You get an emblem with "As long as you control a Gideon planeswalker,
+//!    you can't lose the game and your opponents can't win the game."
 //!
 //! # Scope
-//! - The `+1` (prevent-all-damage a target permanent would deal until your next
-//!   turn) is a damage-prevention replacement the demonstrated `Effect` surface
-//!   can't express — the ability shell keeps the correct `+1` cost and target,
-//!   GAP'd effect body.
-//! - The first `0` (becomes a 4/4 indestructible creature + damage prevention to
-//!   itself) is a self-animation + prevention combination not expressible here —
-//!   ability shell with `0` cost, GAP'd body.
-//! - The second `0` is the EMBLEM. Its grant is a rule-altering static
-//!   ("can't lose the game / opponents can't win") that the anthem/keyword/
-//!   filtered builders cannot express — but the emblem is still CREATED (shell
-//!   with the interned name + empty statics/abilities; GAP on the static text).
+//! - The `+1` damage-prevention rider ("prevent all damage target permanent
+//!   would deal until your next turn") is a source-filtered prevention not
+//!   cleanly expressible here; GAP'd body, correct `+1` cost + target shell.
+//! - The first `0` is the SELF-ANIMATION (now supported): Gideon becomes a 4/4
+//!   creature still a planeswalker, with indestructible, until end of turn. The
+//!   self-targeted damage-prevention shield is GAP'd; the animation IS applied.
+//! - The second `0` is the EMBLEM (created): its grant is a rule-altering static
+//!   ("can't lose / opponents can't win") the anthem/keyword/filtered builders
+//!   can't express, so the emblem shell is created with empty statics/abilities.
 
-use arcana_core::effects::{Effect, EmblemDefinition};
+use arcana_core::effects::{Effect, EmblemDefinition, KeywordAbility};
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -105,16 +105,35 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 /// `+1: Until your next turn, prevent all damage target permanent would deal.`
 fn plus_one_prevent(_state: &GameState, _ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: damage-prevention replacement effect (prevent all damage a target
-    // permanent would deal) not expressible with the demonstrated Effect surface.
+    // GAP: "prevent all damage a target permanent would deal until your next
+    // turn" is a source-filtered prevention not expressible with the
+    // demonstrated Effect surface. Correct +1 cost + target shell retained.
     Vec::new()
 }
 
-/// `0: Gideon becomes a 4/4 indestructible creature; prevent damage to him.`
-fn zero_animate(_state: &GameState, _ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: planeswalker self-animation into a 4/4 indestructible creature plus
-    // a self-targeted damage-prevention shield not expressible here.
-    Vec::new()
+/// `0: Gideon becomes a 4/4 indestructible creature, still a planeswalker.`
+fn zero_animate(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    // Self-animation (now supported): AddType is additive so the planeswalker
+    // types are kept; SetBasePT makes it a 4/4; indestructible granted. The
+    // self-targeted damage-prevention shield is GAP'd (prevention surface).
+    vec![
+        Effect::AddType {
+            target: ctx.source,
+            types: TypeLine::CREATURE.into(),
+            duration: Duration::EndOfTurn,
+        },
+        Effect::SetBasePT {
+            target: ctx.source,
+            power: 4,
+            toughness: 4,
+            duration: Duration::EndOfTurn,
+        },
+        Effect::GrantKeyword {
+            target: ctx.source,
+            keyword: KeywordAbility::Indestructible,
+            duration: Duration::EndOfTurn,
+        },
+    ]
 }
 
 /// `0: You get an emblem with "...can't lose the game / opponents can't win."`
@@ -128,9 +147,8 @@ fn zero_emblem(_state: &GameState, ctx: &ActivationContext, reg: &CardRegistry) 
         emblem: EmblemDefinition {
             name: emblem_name,
             // GAP: rule-altering static ("you can't lose the game and your
-            // opponents can't win the game" while you control a Gideon
-            // planeswalker) cannot be expressed by anthem/keyword/filtered
-            // builders. Emblem shell is still created.
+            // opponents can't win the game") cannot be expressed by the
+            // anthem/keyword/filtered builders. Emblem shell still created.
             statics: Vec::new(),
             abilities: Vec::new(),
         },

@@ -1,11 +1,12 @@
 //! Grafted Identity — `{2}{U}{U}` enchantment — Aura.
 //! "As an additional cost to cast this spell, sacrifice a creature.
-//!  Enchant creature. You control enchanted creature. Enchanted creature
-//!  gets +1/+1."
+//!  Enchant creature. You control enchanted creature. Enchanted creature gets +1/+1."
 //!
-//! The +1/+1 buff is an ETB-installed `attached_pt`. The additional
-//! sacrifice cost and the "you control enchanted creature" control-change
-//! clause have no expressible primitives here — both GAP'd.
+//! Control-change Aura. On ETB (id 1) the engine has already attached the Aura,
+//! so the host is `source.attached_to`; we `ChangeControl` it to the Aura's
+//! controller and install the +1/+1. When the Aura leaves (id 2) we revert
+//! control to the host's owner. The additional sacrifice-a-creature cast cost is
+//! outside the demonstrated aura surface — GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -25,6 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let aura = reg.interner_mut().intern("Aura");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(aura);
+    // GAP: "As an additional cost to cast this spell, sacrifice a creature."
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{U}{U}").expect("valid cost")),
@@ -34,14 +36,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        // GAP: additional cost "sacrifice a creature" — not expressible.
         CardDefinition::new(name, chars)
             .with_enchant(TargetFilter::Creature)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_install,
+                effect: etb_gain_control,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfLeavesBattlefield,
+                intervening_if: None,
+                effect: leaves_revert_control,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -49,18 +59,43 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_install(
-    _state: &GameState,
+fn etb_gain_control(
+    state: &GameState,
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "You control enchanted creature" — control-change aura.
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_pt(
-            trig.source,
-            1,
-            1,
-            Duration::WhileSourceOnBattlefield,
-        ),
+    let Some(host) = state.object_or_lki(trig.source).and_then(|o| o.attached_to) else {
+        return Vec::new();
+    };
+    vec![
+        Effect::ChangeControl {
+            target: host,
+            new_controller: trig.controller,
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_pt(
+                trig.source,
+                1,
+                1,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
+}
+
+fn leaves_revert_control(
+    state: &GameState,
+    trig: &PendingTrigger,
+    _: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(host) = state.object_or_lki(trig.source).and_then(|o| o.attached_to) else {
+        return Vec::new();
+    };
+    let Some(owner) = state.object_or_lki(host).map(|o| o.owner) else {
+        return Vec::new();
+    };
+    vec![Effect::ChangeControl {
+        target: host,
+        new_controller: owner,
     }]
 }

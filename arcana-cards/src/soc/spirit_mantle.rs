@@ -2,9 +2,10 @@
 //! "Enchant creature. Enchanted creature gets +1/+1 and has protection
 //!  from creatures."
 //!
-//! The +1/+1 is an ETB-installed `attached_pt`. Protection is not in the
-//! usable keyword surface.
-//! GAP: "has protection from creatures" — Protection not available.
+//! The +1/+1 is an ETB-installed `attached_pt`.
+//! GAP: "has protection from creatures" — no ProtectionQuality variant for
+//! "creatures" (the available qualities are Color / AnyColor /
+//! CreatureType(subtype) / Everything; "creatures" is not a single subtype).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -52,7 +53,8 @@ fn etb_install_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "has protection from creatures" — Protection not available.
+    // GAP: "has protection from creatures" — Protection-from-creatures not
+    // expressible (no matching ProtectionQuality variant).
     vec![Effect::InstallContinuousEffect {
         effect: ContinuousEffect::attached_pt(
             trig.source,

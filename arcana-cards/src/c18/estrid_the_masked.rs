@@ -1,32 +1,64 @@
-//! Estrid, the Masked — `{1}{G}{W}{U}` Legendary Planeswalker — Estrid, loyalty 5.
+//! Estrid, the Masked — `{1}{G}{W}{U}` Legendary Planeswalker — Estrid,
+//! starting loyalty 5. Colors G/U/W.
 //!
-//! +2: Untap each enchanted permanent you control.
-//! −1: Create a white Aura enchantment token named Mask attached to another
-//!   target permanent. The token has enchant permanent and umbra armor.
-//! −7: Mill seven cards. Return all non-Aura enchantment cards from your
-//!   graveyard to the battlefield, then do the same for Aura cards.
+//! Oracle text:
+//! * `+2`: Untap each enchanted permanent you control.
+//! * `−1`: Create a white Aura enchantment token named Mask attached to
+//!   another target permanent. The token has enchant permanent and umbra
+//!   armor.
+//! * `−7`: Mill seven cards. Return all non-Aura enchantment cards from
+//!   your graveyard to the battlefield, then do the same for Aura cards.
+//! * "Estrid, the Masked can be your commander." — a commander-eligibility
+//!   static (CR 903), NOT a loyalty ability; nothing to model.
+//!
+//! # Rules references
+//!
+//! * CR 113.3c — enters with loyalty counters equal to printed loyalty
+//!   (`loyalty: Some(5)`; `after_enter_battlefield` places them).
+//! * CR 606 — loyalty abilities; CR 606.3 — sorcery-speed, stack empty,
+//!   controller-only, once per turn per planeswalker (engine-enforced).
+//! * CR 704.5i — 0-loyalty state-based sacrifice (engine-enforced).
 //!
 //! # Scope
-//! GAP: the +2 "untap each enchanted permanent you control" needs an
-//!   "is-enchanted" object filter not in the demonstrated surface. Ability shell
-//!   declared, effect empty.
-//! GAP: the −1 Aura-token creation (a token with enchant-permanent + umbra
-//!   armor, created already attached to a target) isn't expressible. Ability
-//!   shell declared, effect empty.
-//! GAP: the −7 "return ALL [non-Aura then Aura] enchantments from your
-//!   graveyard" is mass reanimation; the demonstrated `Reanimate` returns a
-//!   single chosen card. Only the "Mill seven cards" half is modeled.
+//!
+//! * Scryfall lists the keyword "Mill", but that is NOT a card keyword —
+//!   it is the `−7` ability's effect. No `KeywordAbility` is emitted;
+//!   `keywords: vec![]`.
+//! * `+2` (untap each ENCHANTED permanent you control): GAP'd. An
+//!   "enchanted permanent" = a permanent with an Aura/Equipment attached
+//!   to it. `ObjectFilter` exposes no `enchanted` / `is_enchanted` /
+//!   `attached` predicate (confirmed by reading `targets.rs`), so the set
+//!   of enchanted permanents is not expressible from the demonstrated
+//!   filter surface. The `+2` loyalty cost is still declared.
+//! * `−1` (create a Mask Aura token already attached, with enchant
+//!   permanent + umbra armor): GAP'd. The demonstrated `CreateToken` /
+//!   `TokenDefinition` surface has no aura-attach-on-create and no
+//!   umbra-armor primitive. The `−1` cost AND the correct "another target
+//!   permanent" target requirement are declared.
+//! * `−7` is IMPLEMENTED: `Effect::Mill { count: 7 }` then a scripted
+//!   mass return — `Effect::Reanimate` resolves via a single PickCards
+//!   choice (one card, not all), so it is NOT faithful for "return ALL".
+//!   Instead we iterate the controller's graveyard, gather the ids of
+//!   every non-Aura enchantment card and push one
+//!   `Effect::ReturnFromGraveyardToBattlefield` per id, then do the same
+//!   for Aura enchantment cards (Aura is a subtype — interned and used via
+//!   `with_subtype_sym` / `without_subtype_sym`).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
-    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone, CardDefinition,
+    ActivatedAbilityDef, ActivationContext, ActivationCost, CardDefinition,
     CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetCount, TargetFilter, TargetRequirement, ObjectFilter};
-use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::targets::{
+    ObjectFilter, TargetCount, TargetFilter, TargetRequirement,
+};
+use arcana_core::types::{
+    CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine,
+};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Estrid, the Masked");
@@ -41,6 +73,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::PLANESWALKER.into(),
         subtypes,
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
+        // Printed starting loyalty; after_enter_battlefield places the
+        // counters (CR 113.3c).
         loyalty: Some(5),
         ..Default::default()
     };
@@ -53,16 +87,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     add_self_counter: Some((CounterKind::Loyalty, 2)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: ActivationZone::Battlefield,
+                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: plus_two_gap,
+                effect: plus_two_untap_enchanted,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "-1: Create a white Aura enchantment token named Mask attached to another target permanent. The token has enchant permanent and umbra armor.".into(),
+                text: "−1: Create a white Aura enchantment token named Mask \
+                       attached to another target permanent. The token has \
+                       enchant permanent and umbra armor."
+                    .into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 1)),
                     ..ActivationCost::default()
@@ -74,55 +111,109 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 }],
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: ActivationZone::Battlefield,
+                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: minus_one_gap,
+                effect: minus_one_mask_token,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "-7: Mill seven cards. Return all non-Aura enchantment cards from your graveyard to the battlefield, then do the same for Aura cards.".into(),
+                text: "−7: Mill seven cards. Return all non-Aura enchantment \
+                       cards from your graveyard to the battlefield, then do \
+                       the same for Aura cards."
+                    .into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 7)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: ActivationZone::Battlefield,
+                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: minus_seven_mill,
+                effect: minus_seven_mill_reanimate,
             }),
     )
 }
 
-fn plus_two_gap(
+/// `+2: Untap each enchanted permanent you control.`
+fn plus_two_untap_enchanted(
     _state: &GameState,
     _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "untap each enchanted permanent you control" needs an is-enchanted
-    // object filter not in the demonstrated surface.
+    // GAP: "enchanted permanent" (a permanent with an Aura/Equipment
+    // attached) is not expressible — ObjectFilter has no
+    // enchanted/is_enchanted/attached predicate in the demonstrated
+    // surface, so the set of enchanted permanents can't be gathered.
     Vec::new()
 }
 
-fn minus_one_gap(
+/// `−1: Create a white Aura enchantment token named Mask attached to
+/// another target permanent. The token has enchant permanent and umbra
+/// armor.`
+fn minus_one_mask_token(
     _state: &GameState,
     _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: Aura-token creation (enchant permanent + umbra armor, created
-    // already attached) isn't expressible.
+    // GAP: creating an Aura token ALREADY attached to a chosen permanent,
+    // carrying enchant-permanent and umbra-armor (a protection-style
+    // static), is not expressible by the demonstrated CreateToken /
+    // TokenDefinition surface (no aura-attach-on-create, no umbra-armor
+    // primitive). The −1 cost and the "another target permanent"
+    // requirement are still declared.
     Vec::new()
 }
 
-fn minus_seven_mill(
-    _state: &GameState,
+/// `−7: Mill seven cards. Return all non-Aura enchantment cards from your
+/// graveyard to the battlefield, then do the same for Aura cards.`
+fn minus_seven_mill_reanimate(
+    state: &GameState,
     ctx: &ActivationContext,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "return ALL [non-Aura then Aura] enchantments" is mass reanimation;
-    // the demonstrated Reanimate returns a single chosen card. Only the
-    // "Mill seven cards" half is modeled.
-    vec![Effect::Mill { player: ctx.controller, count: 7 }]
+    let mut effects: Vec<Effect> = vec![Effect::Mill {
+        player: ctx.controller,
+        count: 7,
+    }];
+
+    // "Aura" is a subtype. Resolve its already-interned symbol from the
+    // registry (catalog interns every card's subtypes at load); if it was
+    // never interned, no card carries it, so the Aura set is empty and the
+    // non-Aura set is simply "all enchantment cards".
+    let enchantment = ObjectFilter::permanent().with_types(TypeLine::ENCHANTMENT.into());
+    let (non_aura, aura_filter) = match reg.interner().lookup("Aura") {
+        Some(sym) => (
+            enchantment.clone().without_subtype_sym(sym),
+            Some(enchantment.with_subtype_sym(sym)),
+        ),
+        None => (enchantment, None),
+    };
+
+    // Non-Aura enchantment cards first.
+    let non_aura_ids: Vec<_> = state
+        .objects
+        .objects_in_zone(Zone::Graveyard(ctx.controller))
+        .filter(|o| non_aura.matches(o, state, ctx.controller))
+        .map(|o| o.id)
+        .collect();
+    for id in non_aura_ids {
+        effects.push(Effect::ReturnFromGraveyardToBattlefield { target: id });
+    }
+
+    // Then Aura cards.
+    if let Some(aura_filter) = aura_filter {
+        let aura_ids: Vec<_> = state
+            .objects
+            .objects_in_zone(Zone::Graveyard(ctx.controller))
+            .filter(|o| aura_filter.matches(o, state, ctx.controller))
+            .map(|o| o.id)
+            .collect();
+        for id in aura_ids {
+            effects.push(Effect::ReturnFromGraveyardToBattlefield { target: id });
+        }
+    }
+
+    effects
 }

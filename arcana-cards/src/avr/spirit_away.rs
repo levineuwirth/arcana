@@ -1,11 +1,11 @@
-//! Spirit Away — `{5}{U}{U}` enchantment — Aura.
-//! "Enchant creature. You control enchanted creature. Enchanted creature gets
-//!  +2/+2 and has flying."
+//! Spirit Away — `{5}{U}{U}` enchantment — Aura (Saviors of Kamigawa).
+//! "Enchant creature. You control enchanted creature. Enchanted creature
+//!  gets +2/+2 and has flying."
 //!
-//! Buff Aura: ETB-installed `attached_pt(+2/+2)` plus `attached_keyword(Flying)`
-//! following `source.attached_to`. The "You control enchanted creature"
-//! control-change clause is not expressible with the demonstrated builders and
-//! is GAP'd; the +2/+2 and flying grants are installed in full.
+//! Control-change Aura: the ETB trigger grants control of the host and
+//! installs the additive `attached_pt(+2/+2)` + `attached_keyword(Flying)`;
+//! the leaves-battlefield trigger reverts control to the host's owner
+//! (CR 702 control-change).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -40,7 +40,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_install_grants,
+                effect: etb_install,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfLeavesBattlefield,
+                intervening_if: None,
+                effect: ltb_revert_control,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -48,15 +57,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_install_grants(
-    _state: &GameState,
+fn etb_install(
+    state: &GameState,
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "You control enchanted creature" — control-change aura not
-    // expressible with the demonstrated builders. The +2/+2 and flying grants
-    // are installed below.
-    vec![
+    let mut effects = vec![
         Effect::InstallContinuousEffect {
             effect: ContinuousEffect::attached_pt(
                 trig.source,
@@ -72,5 +78,29 @@ fn etb_install_grants(
                 Duration::WhileSourceOnBattlefield,
             ),
         },
-    ]
+    ];
+    if let Some(host) = state.object_or_lki(trig.source).and_then(|o| o.attached_to) {
+        effects.push(Effect::ChangeControl {
+            target: host,
+            new_controller: trig.controller,
+        });
+    }
+    effects
+}
+
+fn ltb_revert_control(
+    state: &GameState,
+    trig: &PendingTrigger,
+    _: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(host) = state.object_or_lki(trig.source).and_then(|o| o.attached_to) else {
+        return Vec::new();
+    };
+    let Some(owner) = state.object_or_lki(host).map(|o| o.owner) else {
+        return Vec::new();
+    };
+    vec![Effect::ChangeControl {
+        target: host,
+        new_controller: owner,
+    }]
 }

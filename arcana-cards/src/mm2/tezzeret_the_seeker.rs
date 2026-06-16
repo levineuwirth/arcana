@@ -1,25 +1,41 @@
-//! Tezzeret the Seeker — `{3}{U}{U}` Legendary Planeswalker — Tezzeret.
-//! Printed starting loyalty 4 (CR 113.3c). Color blue.
+//! Tezzeret the Seeker — `{3}{U}{U}` Legendary Planeswalker — Tezzeret,
+//! starting loyalty 4.
 //!
-//! Loyalty abilities (CR 606):
-//! * `+1`: Untap up to two target artifacts. — expressible.
+//! Oracle text:
+//! * `+1`: Untap up to two target artifacts.
 //! * `−X`: Search your library for an artifact card with mana value X or
-//!   less, put it onto the battlefield, then shuffle. — OMITTED. The
-//!   `−X` dynamic loyalty cost is not expressible (`remove_self_counter`
-//!   is a fixed `u32`); per the card-class rule we omit the ability
-//!   entirely rather than mis-cost it. GAP.
-//! * `−5`: Artifacts you control become artifact creatures with base
-//!   power and toughness 5/5 until end of turn. — expressible as a
-//!   resolution-time sweep (AddType CREATURE + SetBasePT 5/5 per artifact
-//!   you control).
+//!   less, put it onto the battlefield, then shuffle. (GAP, see below.)
+//! * `−5`: Artifacts you control become artifact creatures with base power
+//!   and toughness 5/5 until end of turn.
+//!
+//! # Rules references
+//!
+//! * CR 606 — loyalty abilities; the engine enforces sorcery-speed,
+//!   stack-empty, controller-only, once-per-turn-per-PW activation and the
+//!   0-loyalty state-based sacrifice (CR 704.5i).
+//! * CR 606 dynamic-X — `−X` is modeled with `remove_loyalty_x: true`; the
+//!   engine fans out one activation per X in `1..=loyalty` and threads the
+//!   chosen X through `ctx.x_value`.
+//!
+//! # Scope
+//!
+//! * `+1` untaps up to two target artifacts (modeled fully).
+//! * `−X` uses the dynamic-X loyalty cost shell, but the EFFECT
+//!   (library-tutor-to-battlefield with a mana-value-X bound) is not
+//!   expressible from the demonstrated `Effect` surface — `Effect::Reanimate`
+//!   is graveyard/zone reanimation, not a filtered library search-to-play.
+//!   GAP'd: the effect returns an empty vec while still paying the correct
+//!   dynamic-X loyalty cost.
+//! * `−5` animates each artifact you control: AddType(CREATURE) +
+//!   SetBasePT(5,5) until end of turn, per controlled-artifact id.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
-    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
-    CardDefinition, CardRegistry,
+    ActivatedAbilityDef, ActivationContext, ActivationCost, CardDefinition,
+    CardRegistry,
 };
 use arcana_core::script;
 use arcana_core::state::GameState;
@@ -47,8 +63,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         loyalty: Some(4),
         ..Default::default()
     };
-    // GAP: the −X tutor ability is omitted (dynamic-X loyalty cost not
-    // expressible).
 
     reg.register(
         CardDefinition::new(name, chars)
@@ -60,29 +74,48 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 },
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent().with_types(TypeLine::ARTIFACT.into()),
+                        ObjectFilter::permanent()
+                            .with_types(TypeLine::ARTIFACT.into()),
                     ),
                     count: TargetCount::UpTo(2),
                     controller: None,
                 }],
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: ActivationZone::Battlefield,
+                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
                 effect: plus_one_untap,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "−5: Artifacts you control become artifact creatures with \
-                       base power and toughness 5/5 until end of turn.".into(),
+                text: "−X: Search your library for an artifact card with mana \
+                       value X or less, put it onto the battlefield, then \
+                       shuffle."
+                    .into(),
+                cost: ActivationCost {
+                    remove_loyalty_x: true,
+                    ..ActivationCost::default()
+                },
+                target_requirements: Vec::new(),
+                is_mana_ability: false,
+                is_loyalty_ability: true,
+                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                is_instant_speed: false,
+                face_gate: None,
+                effect: minus_x_tutor,
+            })
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "−5: Artifacts you control become artifact creatures \
+                       with base power and toughness 5/5 until end of turn."
+                    .into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 5)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: ActivationZone::Battlefield,
+                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
                 effect: minus_five_animate,
@@ -96,17 +129,31 @@ fn plus_one_untap(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    ctx.targets
-        .targets
-        .iter()
-        .filter_map(|c| match c {
-            TargetChoice::Object(id) => Some(Effect::Untap { target: *id }),
-            _ => None,
-        })
-        .collect()
+    let mut effects = Vec::new();
+    for target in &ctx.targets.targets {
+        if let TargetChoice::Object(id) = target {
+            effects.push(Effect::Untap { target: *id });
+        }
+    }
+    effects
 }
 
-/// `−5`: animate your artifacts as 5/5s until end of turn.
+/// `−X`: search library for an artifact of mana value X or less, put onto the
+/// battlefield, then shuffle.
+fn minus_x_tutor(
+    _state: &GameState,
+    _ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: library tutor-to-battlefield with a mana-value-X bound is not
+    // expressible from the demonstrated Effect surface. Effect::Reanimate is
+    // graveyard/zone reanimation, not a filtered library search-to-play. The
+    // dynamic-X loyalty cost is still paid via remove_loyalty_x.
+    Vec::new()
+}
+
+/// `−5`: each artifact you control becomes an artifact creature with base P/T
+/// 5/5 until end of turn.
 fn minus_five_animate(
     state: &GameState,
     ctx: &ActivationContext,

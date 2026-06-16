@@ -1,11 +1,17 @@
 //! Gideon, Ally of Zendikar — `{2}{W}{W}` Legendary Planeswalker — Gideon, starting loyalty 4.
-//! +1: Gideon becomes a 5/5 Human Soldier Ally with indestructible while still a PW + prevent all
-//!     damage to him this turn. GAP — "becomes a creature while still a planeswalker" is not
-//!     expressible in the demonstrated Effect surface.
+//!
+//! +1: Until end of turn, Gideon becomes a 5/5 Human Soldier Ally creature
+//!   with indestructible that's still a planeswalker. Prevent all damage
+//!   that would be dealt to him this turn. IMPLEMENTED via PW animation —
+//!   AddType(CREATURE) + SetBasePT(5/5) + GrantKeyword(Indestructible) +
+//!   PreventDamage(self, all, EndOfTurn). (Human/Soldier/Ally subtype
+//!   grants have no demonstrated Effect — GAP'd; rest is complete.)
 //! 0: Create a 2/2 white Knight Ally creature token. IMPLEMENTED.
-//! −4: You get an emblem with "Creatures you control get +1/+1." IMPLEMENTED (static anthem emblem).
+//! −4: You get an emblem with "Creatures you control get +1/+1."
+//!   IMPLEMENTED (static anthem emblem).
 
-use arcana_core::effects::{Effect, EmblemDefinition, TokenDefinition};
+use arcana_core::effects::{Effect, EmblemDefinition, KeywordAbility, TokenDefinition};
+use arcana_core::events::DamageTarget;
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -13,6 +19,7 @@ use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone, CardDefinition,
     CardRegistry,
 };
+use arcana_core::replacement::ReplacementDuration;
 use arcana_core::state::GameState;
 use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 
@@ -85,15 +92,37 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-/// `+1` — becomes a 5/5 creature while still a planeswalker + damage prevention.
+/// `+1` — becomes a 5/5 indestructible creature (still a planeswalker) +
+/// prevent all damage to him this turn.
 fn plus_one_becomes_creature(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "becomes a 5/5 creature while still a planeswalker" + "prevent all damage to him this
-    // turn" are not expressible from the demonstrated Effect surface (no animate-self primitive).
-    Vec::new()
+    // GAP: Human/Soldier/Ally subtype grants have no demonstrated Effect.
+    vec![
+        Effect::AddType {
+            target: ctx.source,
+            types: TypeLine::CREATURE.into(),
+            duration: Duration::EndOfTurn,
+        },
+        Effect::SetBasePT {
+            target: ctx.source,
+            power: 5,
+            toughness: 5,
+            duration: Duration::EndOfTurn,
+        },
+        Effect::GrantKeyword {
+            target: ctx.source,
+            keyword: KeywordAbility::Indestructible,
+            duration: Duration::EndOfTurn,
+        },
+        Effect::PreventDamage {
+            target: DamageTarget::Object(ctx.source),
+            amount: None,
+            duration: ReplacementDuration::EndOfTurn,
+        },
+    ]
 }
 
 /// `0` — create a 2/2 white Knight Ally creature token.

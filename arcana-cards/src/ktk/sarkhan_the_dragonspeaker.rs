@@ -1,18 +1,21 @@
 //! Sarkhan, the Dragonspeaker — `{3}{R}{R}` Legendary Planeswalker — Sarkhan, starting loyalty 4.
 //!
 //! +1: Until end of turn, Sarkhan becomes a legendary 4/4 red Dragon
-//!   creature with flying, indestructible, and haste. GAP: this
-//!   integrated self-animate ("becomes a creature" with printed P/T,
-//!   color, type, and keywords) has no single demonstrated Effect.
-//! −3: Sarkhan deals 4 damage to target creature.
+//!   creature with flying, indestructible, and haste. IMPLEMENTED via PW
+//!   animation — AddType(CREATURE) + SetBasePT(4/4) + SetColor(red) +
+//!   GrantKeyword(Flying/Indestructible/Haste), all EndOfTurn. (Dragon
+//!   subtype grant has no demonstrated Effect — GAP'd; the animation
+//!   body is otherwise complete.)
+//! −3: Sarkhan deals 4 damage to target creature. IMPLEMENTED.
 //! −6: You get an emblem with "At the beginning of your draw step, draw
 //!   two additional cards" and "At the beginning of your end step,
-//!   discard your hand." Implemented as a two-ability triggered emblem.
+//!   discard your hand." IMPLEMENTED as a two-ability triggered emblem.
 //!   ("Discard your hand" has no dynamic count; approximated as discard
 //!   7, an upper bound.)
 
-use arcana_core::effects::{DiscardChoice, Effect, EmblemDefinition};
+use arcana_core::effects::{DiscardChoice, Effect, EmblemDefinition, KeywordAbility};
 use arcana_core::events::DamageTarget;
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -97,14 +100,47 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
+/// `+1` — Sarkhan becomes a 4/4 red creature with flying, indestructible, haste.
 fn plus_one_animate(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "becomes a 4/4 red Dragon creature with flying/indestructible/haste"
-    // self-animation has no single demonstrated Effect.
-    Vec::new()
+    // GAP: the "Dragon" creature-type grant has no demonstrated Effect
+    // (no add-subtype primitive). Everything else is expressible.
+    vec![
+        Effect::AddType {
+            target: ctx.source,
+            types: TypeLine::CREATURE.into(),
+            duration: Duration::EndOfTurn,
+        },
+        Effect::SetBasePT {
+            target: ctx.source,
+            power: 4,
+            toughness: 4,
+            duration: Duration::EndOfTurn,
+        },
+        Effect::SetColor {
+            target: ctx.source,
+            colors: ColorSet::red(),
+            duration: Duration::EndOfTurn,
+        },
+        Effect::GrantKeyword {
+            target: ctx.source,
+            keyword: KeywordAbility::Flying,
+            duration: Duration::EndOfTurn,
+        },
+        Effect::GrantKeyword {
+            target: ctx.source,
+            keyword: KeywordAbility::Indestructible,
+            duration: Duration::EndOfTurn,
+        },
+        Effect::GrantKeyword {
+            target: ctx.source,
+            keyword: KeywordAbility::Haste,
+            duration: Duration::EndOfTurn,
+        },
+    ]
 }
 
 fn minus_three_damage(

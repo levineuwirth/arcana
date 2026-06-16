@@ -1,10 +1,11 @@
 //! Corrupted Conscience — `{3}{U}{U}` enchantment — Aura.
-//! "Enchant creature. You control enchanted creature. Enchanted creature has
-//!  infect."
+//! "Enchant creature. You control enchanted creature. Enchanted creature has infect."
 //!
-//! The infect grant is an ETB-installed `attached_keyword(Infect)`. The
-//! "You control enchanted creature" control-change clause has no expressible
-//! attached-control primitive — GAP that clause.
+//! Control-change Aura. On ETB (id 1) the engine has already attached the Aura,
+//! so the host is `source.attached_to`; we `ChangeControl` it to the Aura's
+//! controller and install the infect keyword. When the Aura leaves (id 2) we
+//! revert control to the host's owner. The infect grant follows the host and
+//! lapses with the Aura on the battlefield.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -39,25 +40,59 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_install,
+                effect: etb_gain_control,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfLeavesBattlefield,
+                intervening_if: None,
+                effect: leaves_revert_control,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),
-        // GAP: "You control enchanted creature" — control-change aura.
     )
 }
 
-fn etb_install(
-    _state: &GameState,
+fn etb_gain_control(
+    state: &GameState,
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_keyword(
-            trig.source,
-            KeywordAbility::Infect,
-            Duration::WhileSourceOnBattlefield,
-        ),
+    let Some(host) = state.object_or_lki(trig.source).and_then(|o| o.attached_to) else {
+        return Vec::new();
+    };
+    vec![
+        Effect::ChangeControl {
+            target: host,
+            new_controller: trig.controller,
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Infect,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
+}
+
+fn leaves_revert_control(
+    state: &GameState,
+    trig: &PendingTrigger,
+    _: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(host) = state.object_or_lki(trig.source).and_then(|o| o.attached_to) else {
+        return Vec::new();
+    };
+    let Some(owner) = state.object_or_lki(host).map(|o| o.owner) else {
+        return Vec::new();
+    };
+    vec![Effect::ChangeControl {
+        target: host,
+        new_controller: owner,
     }]
 }

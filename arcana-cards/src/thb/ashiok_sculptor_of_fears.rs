@@ -1,26 +1,38 @@
-//! Ashiok, Sculptor of Fears — `{4}{U}{B}` Legendary Planeswalker — Ashiok.
-//! Colors B, U. Starting loyalty 5 (oracle).
+//! Ashiok, Sculptor of Fears — `{4}{U}{B}` Legendary Planeswalker — Ashiok,
+//! starting loyalty 5.
 //!
 //! +2: Draw a card. Each player mills two cards.
 //! −5: Put target creature card from a graveyard onto the battlefield under
 //!     your control.
-//!     GAP: graveyard-targeting loyalty ability (no any-graveyard target
-//!     sentinel in the demonstrated surface).
 //! −11: Gain control of all creatures target opponent controls.
+//!
+//! # Scope
+//! - The `+2` draws one then mills two for each player (iterated via
+//!   script::all_players).
+//! - The `−5` reanimates a target creature card from a graveyard. Targeting a
+//!   card in a graveyard needs a concrete `Zone::Graveyard(player)` and there's
+//!   no any-graveyard target sentinel in the demonstrated surface, so this is
+//!   GAP'd (correct `−5` cost shell retained; no target requirement declared).
+//! - The `−11` gains control (permanently) of every creature the targeted
+//!   opponent controls — script the opponent's creatures, ChangeControl each.
+//!
+//! GAP: Scryfall tagged "Mill" — the mill lives inside the `+2` loyalty
+//! ability, so no card-level keyword is emitted.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
-    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
-    CardDefinition, CardRegistry,
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone, CardDefinition,
+    CardRegistry,
 };
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
-use arcana_core::types::{
-    CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine,
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
-use arcana_core::zones::Zone;
+use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Ashiok, Sculptor of Fears");
@@ -53,11 +65,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: plus_two,
+                effect: plus_two_draw_mill,
             })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "-5: Put target creature card from a graveyard onto the \
-                       battlefield under your control.".into(),
+                       battlefield under your control."
+                    .into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 5)),
                     ..ActivationCost::default()
@@ -68,65 +81,58 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: minus_five_gap,
+                effect: minus_five_reanimate,
             })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "-11: Gain control of all creatures target opponent \
-                       controls.".into(),
+                       controls."
+                    .into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 11)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Player,
+                    count: TargetCount::Exactly(1),
+                    controller: Some(ControllerConstraint::Opponent),
+                }],
                 is_mana_ability: false,
                 is_loyalty_ability: true,
                 activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: minus_eleven_steal,
+                effect: minus_eleven_gain_control,
             }),
     )
 }
 
-fn plus_two(
-    state: &GameState,
-    ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let mut effects = vec![Effect::DrawCards {
-        player: ctx.controller,
-        count: 1,
-    }];
-    for p in 0..state.num_players() {
+/// `+2: Draw a card. Each player mills two cards.`
+fn plus_two_draw_mill(state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut effects = vec![Effect::DrawCards { player: ctx.controller, count: 1 }];
+    for p in script::all_players(state) {
         effects.push(Effect::Mill { player: p, count: 2 });
     }
     effects
 }
 
-fn minus_five_gap(
-    _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: graveyard-targeting reanimation (no any-graveyard target sentinel).
+/// `−5: Put target creature card from a graveyard onto the battlefield.`
+fn minus_five_reanimate(_state: &GameState, _ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: targeting a creature card in a graveyard needs a concrete
+    // Zone::Graveyard(player) and there's no any-graveyard target sentinel in
+    // the demonstrated surface. Correct `−5` cost shell retained.
     Vec::new()
 }
 
-fn minus_eleven_steal(
-    state: &GameState,
-    ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(TargetChoice::Player(target_player)) = ctx.targets.targets.first()
-    else {
+/// `−11: Gain control of all creatures target opponent controls.`
+fn minus_eleven_gain_control(state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Player(opp)) = ctx.targets.targets.first() else {
         return Vec::new();
     };
-    state
-        .objects
-        .objects_in_zone(Zone::Battlefield)
-        .filter(|o| o.controller == *target_player && o.is_creature())
-        .map(|o| Effect::ChangeControl {
-            target: o.id,
+    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::Player(*opp));
+    script::ids_matching(state, &filter, ctx.controller)
+        .into_iter()
+        .map(|id| Effect::ChangeControl {
+            target: id,
             new_controller: ctx.controller,
         })
         .collect()

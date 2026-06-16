@@ -1,35 +1,37 @@
-//! Koth of the Hammer — `{2}{R}{R}` Legendary Planeswalker — Koth, starting
-//! loyalty 3.
+//! Koth of the Hammer — `{2}{R}{R}` Legendary Planeswalker — Koth, starting loyalty 3.
 //!
-//! +1: Untap target Mountain. It becomes a 4/4 red Elemental creature until
-//!   end of turn. It's still a land. The untap is modeled; the land-animation
-//!   ("becomes a 4/4 red Elemental until end of turn") has no expressible
-//!   primitive — partially GAP'd.
-//! −2: Add {R} for each Mountain you control. A dynamic mana amount keyed on
-//!   a board count; not expressible from the demonstrated mana surface. GAP
-//!   (correct −2 cost shell).
+//! +1: Untap target Mountain. It becomes a 4/4 red Elemental creature
+//!   until end of turn. It's still a land. IMPLEMENTED via Untap +
+//!   AddType(CREATURE) + SetBasePT(4/4) + SetColor(red), all EndOfTurn
+//!   (the land type is kept since AddType is additive). (Elemental
+//!   subtype grant has no demonstrated Effect — GAP'd.)
+//! −2: Add {R} for each Mountain you control. IMPLEMENTED via AddMana
+//!   with a resolution-time count of Mountains you control.
 //! −5: You get an emblem with "Mountains you control have '{T}: This land
-//!   deals 1 damage to any target.'" The emblem grants an ACTIVATED ability
-//!   to a filtered set — an ability-granting static the anthem/keyword/
-//!   filtered builders can't express. GAP the emblem (correct −5 cost shell).
+//!   deals 1 damage to any target.'" GAP: granting a printed activated
+//!   ability to a filtered permanent set is not expressible by the
+//!   anthem/keyword/filtered builders. Emblem shell still created.
 
-use arcana_core::effects::Effect;
-use arcana_core::mana::ManaCost;
+use arcana_core::effects::{Effect, EmblemDefinition};
+use arcana_core::layers::Duration;
+use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
-    ActivatedAbilityDef, ActivationContext, ActivationCost, CardDefinition,
-    CardRegistry,
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardRegistry,
 };
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
     ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, ManaColor, SubtypeSet, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Koth of the Hammer");
     let koth = reg.interner_mut().intern("Koth");
     let mountain = reg.interner_mut().intern("Mountain");
+    let _emblem = reg.interner_mut().intern("Koth of the Hammer emblem");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(koth);
 
@@ -44,7 +46,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    let mountain_filter = ObjectFilter::new().with_subtype_sym(mountain);
+    let mountain_target = TargetRequirement {
+        filter: TargetFilter::Permanent(ObjectFilter::permanent().with_subtype_sym(mountain)),
+        count: TargetCount::Exactly(1),
+        controller: None,
+    };
 
     reg.register(
         CardDefinition::new(name, chars)
@@ -55,43 +61,39 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     add_self_counter: Some((CounterKind::Loyalty, 1)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(mountain_filter),
-                    count: TargetCount::Exactly(1),
-                    controller: None,
-                }],
+                target_requirements: vec![mountain_target],
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: plus_one_untap_mountain,
+                effect: plus_one_animate_mountain,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "-2: Add {R} for each Mountain you control.".into(),
+                text: "−2: Add {R} for each Mountain you control.".into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 2)),
                     ..ActivationCost::default()
                 },
-                target_requirements: Vec::new(),
+                target_requirements: vec![],
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: minus_two_mana,
+                effect: minus_two_add_red,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "-5: You get an emblem with \"Mountains you control have \
+                text: "−5: You get an emblem with \"Mountains you control have \
                        '{T}: This land deals 1 damage to any target.'\"".into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 5)),
                     ..ActivationCost::default()
                 },
-                target_requirements: Vec::new(),
+                target_requirements: vec![],
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
                 effect: minus_five_emblem,
@@ -99,38 +101,73 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn plus_one_untap_mountain(
+/// `+1` — untap target Mountain; it becomes a 4/4 red Elemental (still a land).
+fn plus_one_animate_mountain(
     _state: &GameState,
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "becomes a 4/4 red Elemental creature until end of turn (still a
-    //      land)" — land-animation has no expressible primitive; the untap
-    //      is modeled.
     let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
         return Vec::new();
     };
-    vec![Effect::Untap { target: *id }]
+    let id = *id;
+    // GAP: the "Elemental" creature-type grant has no demonstrated Effect.
+    vec![
+        Effect::Untap { target: id },
+        Effect::AddType {
+            target: id,
+            types: TypeLine::CREATURE.into(),
+            duration: Duration::EndOfTurn,
+        },
+        Effect::SetBasePT {
+            target: id,
+            power: 4,
+            toughness: 4,
+            duration: Duration::EndOfTurn,
+        },
+        Effect::SetColor {
+            target: id,
+            colors: ColorSet::red(),
+            duration: Duration::EndOfTurn,
+        },
+    ]
 }
 
-fn minus_two_mana(
-    _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
+/// `−2` — add {R} for each Mountain you control.
+fn minus_two_add_red(
+    state: &GameState,
+    ctx: &ActivationContext,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "Add {R} for each Mountain you control" — a dynamic mana amount
-    //      keyed on a board count; not expressible from the demonstrated
-    //      mana surface.
-    Vec::new()
+    let mountain = reg.interner().lookup("Mountain").expect("Mountain interned");
+    let filter = ObjectFilter::permanent().with_subtype_sym(mountain);
+    let n = script::count_matching(state, &filter, ctx.controller);
+    if n == 0 {
+        return Vec::new();
+    }
+    let mana = (0..n).map(|_| ManaUnit::plain(ManaColor::Red, 0)).collect();
+    vec![Effect::AddMana { player: ctx.controller, mana }]
 }
 
+/// `−5` — emblem granting Mountains an activated damage ability.
 fn minus_five_emblem(
     _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
+    ctx: &ActivationContext,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: the emblem grants an ACTIVATED mana/damage ability to all
-    //      Mountains you control — an ability-granting static the
-    //      anthem/keyword/filtered emblem builders can't express.
-    Vec::new()
+    let emblem_name = reg
+        .interner()
+        .lookup("Koth of the Hammer emblem")
+        .expect("emblem name interned");
+    vec![Effect::CreateEmblem {
+        controller: ctx.controller,
+        emblem: EmblemDefinition {
+            name: emblem_name,
+            // GAP: "Mountains you control have '{T}: deal 1 to any target'"
+            // grants a printed activated ability to a filtered set, which
+            // the anthem/keyword/filtered builders can't express.
+            statics: Vec::new(),
+            abilities: Vec::new(),
+        },
+    }]
 }

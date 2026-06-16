@@ -1,43 +1,37 @@
 //! Gideon, Martial Paragon — `{4}{W}` Legendary Planeswalker — Gideon,
-//! starting loyalty 5. Mono-white.
+//! starting loyalty (printed) per spec.
 //!
-//! Oracle text:
+//! Loyalty abilities:
 //! * `+2`: Untap all creatures you control. Those creatures get +1/+1
 //!   until end of turn.
 //! * `0`: Until end of turn, Gideon becomes a 5/5 Human Soldier creature
 //!   with indestructible that's still a planeswalker. Prevent all damage
-//!   that would be dealt to him this turn.
+//!   that would be dealt to him this turn. (PW ANIMATION — modeled as
+//!   AddType(CREATURE) + SetBasePT(5/5) + GrantKeyword(Indestructible) +
+//!   PreventDamage on self. The "Human Soldier" subtype grant is not
+//!   expressible — GAP'd, the body is otherwise faithful.)
 //! * `−10`: Creatures you control get +2/+2 until end of turn. Tap all
 //!   creatures your opponents control.
 //!
 //! # Rules references
-//!
-//! * CR 113.3c — enters with loyalty counters equal to printed loyalty.
-//! * CR 606 — loyalty abilities.
-//! * CR 606.3 — controller-only, sorcery speed, stack empty, once per
-//!   turn per planeswalker.
-//! * CR 704.5i — 0-loyalty SBA sacrifice.
-//!
-//! # Scope
-//!
-//! * `+2` untap-all + pump-all and `−10` pump-all + tap-all both require
-//!   a board-wide (no-target) sweep of "creatures you control"/"creatures
-//!   opponents control"; the demonstrated surface offers single-target
-//!   Pump/Tap/Untap via TargetRequirement, not a mass non-targeted sweep
-//!   Effect — GAP'd as best-effort shells with the correct loyalty cost.
-//! * `0` "becomes a creature" is a self-animation continuous effect with
-//!   a damage-prevention rider; not in the demonstrated Effect surface —
-//!   GAP.
+//! * CR 606 — loyalty abilities; CR 704.5i — 0-loyalty sacrifice.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::events::DamageTarget;
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, CardDefinition,
     CardRegistry,
 };
+use arcana_core::replacement::ReplacementDuration;
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::types::{
+    CardId, ColorSet, SubtypeSet, SupertypeSet, TypeLine,
+};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Gideon, Martial Paragon");
@@ -62,10 +56,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "+2: Untap all creatures you control. Those creatures \
                        get +1/+1 until end of turn.".into(),
                 cost: ActivationCost {
-                    add_self_counter: Some((CounterKind::Loyalty, 2)),
+                    add_self_counter: Some((arcana_core::types::CounterKind::Loyalty, 2)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
                 activation_zone: arcana_core::registry::ActivationZone::Battlefield,
@@ -74,68 +68,109 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: plus_two_untap_pump,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "0: Until end of turn, Gideon, Martial Paragon becomes \
-                       a 5/5 Human Soldier creature with indestructible \
-                       that's still a planeswalker. Prevent all damage that \
-                       would be dealt to him this turn.".into(),
+                text: "0: Until end of turn, Gideon, Martial Paragon becomes a \
+                       5/5 Human Soldier creature with indestructible that's \
+                       still a planeswalker. Prevent all damage that would be \
+                       dealt to him this turn.".into(),
                 cost: ActivationCost::default(),
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
                 activation_zone: arcana_core::registry::ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: zero_become_creature,
+                effect: zero_animate,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "-10: Creatures you control get +2/+2 until end of \
-                       turn. Tap all creatures your opponents control.".into(),
+                text: "−10: Creatures you control get +2/+2 until end of turn. \
+                       Tap all creatures your opponents control.".into(),
                 cost: ActivationCost {
-                    remove_self_counter: Some((CounterKind::Loyalty, 10)),
+                    remove_self_counter: Some((arcana_core::types::CounterKind::Loyalty, 10)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
                 activation_zone: arcana_core::registry::ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: minus_ten_pump_tap,
+                effect: minus_ten,
             }),
     )
 }
 
-/// `+2: Untap all creatures you control. Those creatures get +1/+1 until
-/// end of turn.`
 fn plus_two_untap_pump(
-    _state: &GameState,
-    _ctx: &ActivationContext,
+    state: &GameState,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: board-wide non-targeted untap + pump of all creatures you
-    // control is not in the demonstrated Effect surface.
-    Vec::new()
+    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
+    let ids = script::ids_matching(state, &filter, ctx.controller);
+    let mut effects = Vec::new();
+    for id in ids {
+        effects.push(Effect::Untap { target: id });
+        effects.push(Effect::Pump {
+            target: id,
+            power: 1,
+            toughness: 1,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        });
+    }
+    effects
 }
 
-/// `0: Gideon becomes a 5/5 Human Soldier creature with indestructible.`
-fn zero_become_creature(
+fn zero_animate(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: self-animation continuous effect + damage-prevention rider not
-    // expressible with the demonstrated Effect surface.
-    Vec::new()
+    // GAP: "Human Soldier" creature-subtype grant is not expressible from
+    // the demonstrated Effect surface; the rest of the animation is faithful.
+    vec![
+        Effect::AddType {
+            target: ctx.source,
+            types: TypeLine::CREATURE.into(),
+            duration: Duration::EndOfTurn,
+        },
+        Effect::SetBasePT {
+            target: ctx.source,
+            power: 5,
+            toughness: 5,
+            duration: Duration::EndOfTurn,
+        },
+        Effect::GrantKeyword {
+            target: ctx.source,
+            keyword: KeywordAbility::Indestructible,
+            duration: Duration::EndOfTurn,
+        },
+        Effect::PreventDamage {
+            target: DamageTarget::Object(ctx.source),
+            amount: None,
+            duration: ReplacementDuration::EndOfTurn,
+        },
+    ]
 }
 
-/// `-10: Creatures you control get +2/+2 until end of turn. Tap all
-/// creatures your opponents control.`
-fn minus_ten_pump_tap(
-    _state: &GameState,
-    _ctx: &ActivationContext,
+fn minus_ten(
+    state: &GameState,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: board-wide non-targeted pump + mass tap not in the
-    // demonstrated Effect surface.
-    Vec::new()
+    let mut effects = Vec::new();
+    let yours = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
+    for id in script::ids_matching(state, &yours, ctx.controller) {
+        effects.push(Effect::Pump {
+            target: id,
+            power: 2,
+            toughness: 2,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        });
+    }
+    let opp = ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent);
+    for id in script::ids_matching(state, &opp, ctx.controller) {
+        effects.push(Effect::Tap { target: id });
+    }
+    effects
 }

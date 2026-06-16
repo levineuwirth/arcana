@@ -2,12 +2,13 @@
 //! "Commander enchantment. When you cast Taught by Bruce Tarl, draw a card.
 //!  Enchanted creature has double strike and protection from Oxen."
 //!
-//! ETB-installs an `attached_keyword(DoubleStrike)`. The cast-trigger
-//! draw and the "protection from Oxen" grant are not expressible with the
-//! demonstrated Aura API (no cast trigger / no Protection keyword) and are
-//! GAP'd. The Commander-enchantment zone rider is also outside the model.
+//! Buff Aura. Double strike is an `attached_keyword(DoubleStrike)`; protection
+//! from Oxen is `attached_keyword(Protection(CreatureType(Ox)))` — both ETB
+//! installs that follow the host. The "Commander enchantment" command-zone
+//! targeting rules and the "when you cast, draw a card" cast trigger are outside
+//! the demonstrated aura surface — GAP.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::{Effect, KeywordAbility, ProtectionQuality};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -23,8 +24,11 @@ use arcana_core::zones::Zone;
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Taught by Bruce Tarl");
     let aura = reg.interner_mut().intern("Aura");
+    // Intern the Ox creature type so the effect fn can look it back up.
+    let _ox = reg.interner_mut().intern("Ox");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(aura);
+    // GAP: "Commander enchantment" command-zone targeting; "When you cast …, draw a card."
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{R}").expect("valid cost")),
@@ -48,14 +52,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_install(_state: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
-    // GAP: "when you cast, draw a card" cast trigger and "protection from Oxen"
-    // (Protection keyword unsupported) — only double strike is installed.
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_keyword(
-            trig.source,
-            KeywordAbility::DoubleStrike,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+fn etb_install(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let ox = reg.interner().lookup("Ox").expect("Ox interned in register");
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::DoubleStrike,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_keyword(
+                trig.source,
+                KeywordAbility::Protection(ProtectionQuality::CreatureType(ox)),
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }

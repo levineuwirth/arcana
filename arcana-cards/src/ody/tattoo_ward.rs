@@ -1,12 +1,12 @@
 //! Tattoo Ward — `{2}{W}` enchantment — Aura.
 //! "Enchant creature. Enchanted creature gets +1/+1 and has protection from
-//! enchantments. This effect doesn't remove this Aura.
-//! Sacrifice this Aura: Destroy target enchantment."
+//!  enchantments. Sacrifice this Aura: Destroy target enchantment."
 //!
-//! The +1/+1 buff is expressed as an ETB-installed `attached_pt`. Protection
-//! from enchantments is not in the usable keyword surface, and the Aura's own
-//! "Sacrifice this Aura: Destroy target enchantment" activated ability is not
-//! expressible with the Aura builders (those install grants onto the HOST).
+//! Buff Aura. The +1/+1 is an ETB-installed `attached_pt`. "Protection from
+//! enchantments" is protection from a card TYPE (no ProtectionQuality variant) —
+//! GAP. The "Sacrifice this Aura: destroy target enchantment" self-activated
+//! ability runs on the AURA itself (not the host) and is outside the aura
+//! attached-grant surface — GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -54,10 +54,9 @@ fn etb_install(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "protection from enchantments" — Protection is not in the usable
-    // keyword surface. GAP: "Sacrifice this Aura: Destroy target enchantment"
-    // — the Aura's own activated ability is not expressible (builders install
-    // grants onto the host, not the Aura itself).
+    // GAP: protection from enchantments (a card TYPE) — no ProtectionQuality variant.
+    // GAP: "Sacrifice this Aura: Destroy target enchantment" — self-activated ability
+    // on the Aura, outside the aura attached-grant surface.
     vec![Effect::InstallContinuousEffect {
         effect: ContinuousEffect::attached_pt(
             trig.source,

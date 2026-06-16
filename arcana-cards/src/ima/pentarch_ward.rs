@@ -1,12 +1,13 @@
-//! Pentarch Ward — `{2}{W}` enchantment — Aura.
+//! Pentarch Ward — `{2}{W}` enchantment — Aura (Time Spiral).
 //! "Enchant creature. As this Aura enters, choose a color. When this Aura
-//! enters, draw a card. Enchanted creature has protection from the chosen
-//! color. This effect doesn't remove this Aura."
+//!  enters, draw a card. Enchanted creature has protection from the chosen
+//!  color."
 //!
-//! Buff Aura. The ETB trigger draws a card (faithful). GAP: the
-//! "as enters, choose a color" + "protection from the chosen color"
-//! grant — Protection is not in the usable keyword surface, and there
-//! is no choose-a-color-on-enter / attached-protection primitive.
+//! The ETB trigger draws a card (the "when this Aura enters, draw a card"
+//! clause).
+//! GAP: "choose a color" + "protection from the chosen color" — there is no
+//! chosen-color ProtectionQuality variant; the dynamic-color protection is
+//! not expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -48,8 +49,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_draw(_state: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
-    // GAP: choose-a-color-on-enter + protection-from-chosen-color grant
-    // (Protection keyword unsupported). Draw clause is faithful.
-    vec![Effect::DrawCards { player: trig.controller, count: 1 }]
+fn etb_draw(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "choose a color" + "protection from the chosen color" — no
+    // chosen-color ProtectionQuality variant; dynamic-color protection
+    // not expressible.
+    vec![Effect::DrawCards {
+        player: trig.controller,
+        count: 1,
+    }]
 }

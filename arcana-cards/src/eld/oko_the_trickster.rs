@@ -1,44 +1,37 @@
-//! Oko, the Trickster — `{4}{G}{U}` planeswalker, starting loyalty 5.
-//! Legendary Planeswalker — Oko.
+//! Oko, the Trickster — `{4}{G}{U}` Legendary Planeswalker — Oko,
+//! starting loyalty 5.
 //!
-//! Oracle text:
-//! * `+1`: Put two +1/+1 counters on up to one target creature you
-//!   control.
-//! * `0`: Until end of turn, Oko becomes a copy of target creature you
-//!   control. Prevent all damage that would be dealt to him this turn.
-//! * `−7`: Until end of turn, each creature you control has base power
-//!   and toughness 10/10 and gains trample.
-//!
-//! # Rules references
-//!
-//! * CR 113.3c — enters with loyalty counters equal to printed loyalty.
-//! * CR 606 — loyalty abilities.
-//! * CR 704.5i — a planeswalker with 0 loyalty is sacrificed (SBA).
+//! +1: Put two +1/+1 counters on up to one target creature you control.
+//! 0: Until end of turn, Oko becomes a copy of target creature you control.
+//!    Prevent all damage that would be dealt to him this turn.
+//! −7: Until end of turn, each creature you control has base power and
+//!     toughness 10/10 and gains trample.
 //!
 //! # Scope
-//!
-//! Only the `+1` (put two +1/+1 counters on up to one target creature
-//! you control) is fully modeled, via `AddCounters`. The `0` ability
-//! ("becomes a copy of target creature") needs copy + damage-prevention
-//! riders, and the `−7` ("base power/toughness 10/10") needs a
-//! base-P/T-setting continuous effect — neither is in the demonstrated
-//! surface, so their loyalty shells are declared with GAP'd bodies.
+//! - The `+1` puts two +1/+1 counters on an optional target creature you
+//!   control (modeled via two AddCounters).
+//! - The `0` ("Oko becomes a copy of target creature you control") is a
+//!   becomes-a-copy onto the source planeswalker — the demonstrated
+//!   CopyPermanent variant mints a TOKEN copy rather than overwriting Oko's
+//!   characteristics, so this is GAP'd (correct `0` cost + target shell kept).
+//! - The `−7` sets each of your creatures to base 10/10 (SetBasePT per id) and
+//!   grants trample (GrantKeyword per id), iterated over the matching ids.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::Duration;
+use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
-    ActivatedAbilityDef, ActivationContext, ActivationCost, CardDefinition,
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone, CardDefinition,
     CardRegistry,
 };
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, TargetChoice, TargetCount, TargetFilter,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
     TargetRequirement,
 };
-use arcana_core::mana::ManaCost;
-use arcana_core::types::{
-    CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine,
-};
+use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Oko, the Trickster");
@@ -60,65 +53,68 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "+1: Put two +1/+1 counters on up to one target \
-                       creature you control.".into(),
+                text: "+1: Put two +1/+1 counters on up to one target creature \
+                       you control."
+                    .into(),
                 cost: ActivationCost {
                     add_self_counter: Some((CounterKind::Loyalty, 1)),
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    ),
                     count: TargetCount::UpTo(1),
-                    controller: Some(ControllerConstraint::You),
+                    controller: None,
                 }],
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
                 effect: plus_one_counters,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "0: Until end of turn, Oko becomes a copy of target \
-                       creature you control. Prevent all damage that would \
-                       be dealt to him this turn.".into(),
+                text: "0: Until end of turn, Oko becomes a copy of target creature \
+                       you control. Prevent all damage that would be dealt to him \
+                       this turn."
+                    .into(),
                 cost: ActivationCost::default(),
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    ),
                     count: TargetCount::Exactly(1),
-                    controller: Some(ControllerConstraint::You),
+                    controller: None,
                 }],
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: zero_copy,
+                effect: zero_become_copy,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "−7: Until end of turn, each creature you control has \
-                       base power and toughness 10/10 and gains trample.".into(),
+                text: "-7: Until end of turn, each creature you control has base \
+                       power and toughness 10/10 and gains trample."
+                    .into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 7)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: ultimate_base_pt,
+                effect: minus_seven_tenten,
             }),
     )
 }
 
 /// `+1: Put two +1/+1 counters on up to one target creature you control.`
-fn plus_one_counters(
-    _state: &GameState,
-    ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
+fn plus_one_counters(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
         return Vec::new();
     };
@@ -129,27 +125,31 @@ fn plus_one_counters(
     }]
 }
 
-/// `0: Until end of turn, Oko becomes a copy of target creature you
-/// control. Prevent all damage that would be dealt to him this turn.`
-fn zero_copy(
-    _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "becomes a copy of target creature" + the damage-prevention
-    // rider are not in the demonstrated Effect surface.
+/// `0: Oko becomes a copy of target creature you control.`
+fn zero_become_copy(_state: &GameState, _ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    // GAP: "becomes a copy of target creature" overwrites the source
+    // planeswalker's characteristics — the CopyPermanent variant mints a token
+    // copy rather than re-skinning Oko, and there's no becomes-a-copy-onto-self
+    // primitive in the demonstrated surface. Correct `0` cost + target retained.
     Vec::new()
 }
 
-/// `−7: Until end of turn, each creature you control has base power and
-/// toughness 10/10 and gains trample.`
-fn ultimate_base_pt(
-    _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: setting BASE power/toughness (10/10) is a layer-7b
-    // characteristic-defining effect, not the additive `Pump` shown;
-    // not in the demonstrated surface.
-    Vec::new()
+/// `−7: Each creature you control has base P/T 10/10 and gains trample.`
+fn minus_seven_tenten(state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
+    let mut effects = Vec::new();
+    for id in script::ids_matching(state, &filter, ctx.controller) {
+        effects.push(Effect::SetBasePT {
+            target: id,
+            power: 10,
+            toughness: 10,
+            duration: Duration::EndOfTurn,
+        });
+        effects.push(Effect::GrantKeyword {
+            target: id,
+            keyword: KeywordAbility::Trample,
+            duration: Duration::EndOfTurn,
+        });
+    }
+    effects
 }
