@@ -62,3 +62,4 @@ pub mod fevered_visions;
 pub mod equestrian_skill;
 pub mod senseless_rage;
 pub mod spiteful_motives;
+pub mod hope_against_hope;

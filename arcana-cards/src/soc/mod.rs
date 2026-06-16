@@ -123,3 +123,7 @@ pub mod raffine_s_guidance;
 pub mod animate_dead;
 pub mod coercive_impetus;
 pub mod martial_impetus;
+pub mod screams_from_within;
+pub mod shielded_by_faith;
+pub mod sheltered_by_ghosts;
+pub mod darksteel_mutation;

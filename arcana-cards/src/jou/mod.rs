@@ -36,3 +36,5 @@ pub mod knowledge_and_power;
 pub mod aspect_of_gorgon;
 pub mod mortal_obstinacy;
 pub mod cast_into_darkness;
+pub mod pin_to_the_earth;
+pub mod flamespeaker_s_will;

@@ -59,3 +59,4 @@ pub mod concealed_courtyard;
 pub mod lavaspur_boots;
 pub mod the_key_to_the_vault;
 pub mod reach_for_the_sky;
+pub mod demonic_ruckus;

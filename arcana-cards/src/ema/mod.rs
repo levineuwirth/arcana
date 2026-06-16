@@ -25,3 +25,5 @@ pub mod honden_of_cleansing_fire;
 pub mod elephant_guide;
 pub mod armadillo_cloak;
 pub mod ancestral_mask;
+pub mod stupefying_touch;
+pub mod roots;

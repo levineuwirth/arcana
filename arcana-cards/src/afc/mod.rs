@@ -16,3 +16,4 @@ pub mod zhalfirin_void;
 pub mod verdant_embrace;
 pub mod shielding_plax;
 pub mod angelic_gift;
+pub mod indomitable_might;

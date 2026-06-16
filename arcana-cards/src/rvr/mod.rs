@@ -52,3 +52,4 @@ pub mod wurmweaver_coil;
 pub mod kasmina_s_transmutation;
 pub mod faith_s_fetters;
 pub mod forced_adaptation;
+pub mod moldervine_cloak;

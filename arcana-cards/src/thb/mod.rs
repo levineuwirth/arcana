@@ -78,3 +78,5 @@ pub mod iroas_s_blessing;
 pub mod staggering_insight;
 pub mod escape_velocity;
 pub mod starlit_mantle;
+pub mod aspect_of_lamprey;
+pub mod hydra_s_growth;

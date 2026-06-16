@@ -61,3 +61,4 @@ pub mod militia_s_pride;
 pub mod merrow_commerce;
 pub mod soaring_hope;
 pub mod triclopean_sight;
+pub mod zephyr_net;

@@ -38,3 +38,4 @@ pub mod rakdos_cluestone;
 pub mod azorius_cluestone;
 pub mod runner_s_bane;
 pub mod krasis_incubation;
+pub mod sinister_possession;

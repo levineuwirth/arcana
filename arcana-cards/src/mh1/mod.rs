@@ -40,3 +40,4 @@ pub mod prismatic_vista;
 pub mod answered_prayers;
 pub mod sadistic_obsession;
 pub mod winter_s_rest;
+pub mod reprobation;

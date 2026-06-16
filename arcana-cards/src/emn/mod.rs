@@ -53,3 +53,4 @@ pub mod lunar_force;
 pub mod emrakul_s_influence;
 pub mod strange_augmentation;
 pub mod choking_restraints;
+pub mod boon_of_emrakul;

@@ -114,3 +114,5 @@ pub mod rune_of_might;
 pub mod rune_of_flight;
 pub mod arachnoform;
 pub mod bound_in_gold;
+pub mod rune_of_mortality;
+pub mod spectral_steel;

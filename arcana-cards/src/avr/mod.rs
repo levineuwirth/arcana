@@ -49,3 +49,5 @@ pub mod ghoulflesh;
 pub mod lightning_prowess;
 pub mod spectral_prison;
 pub mod grounded;
+pub mod call_to_serve;
+pub mod predator_s_gambit;

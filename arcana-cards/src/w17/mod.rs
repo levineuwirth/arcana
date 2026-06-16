@@ -11,3 +11,4 @@ pub mod wing_snare;
 pub mod stealer_of_secrets;
 pub mod rootwalla;
 pub mod tricks_of_the_trade;
+pub mod untamed_hunger;

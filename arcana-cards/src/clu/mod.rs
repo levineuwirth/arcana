@@ -69,3 +69,5 @@ pub mod gruul_signet;
 pub mod colossal_majesty;
 pub mod predatory_impetus;
 pub mod psychic_impetus;
+pub mod curse_of_chains;
+pub mod incriminating_impetus;

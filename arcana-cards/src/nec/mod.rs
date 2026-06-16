@@ -10,3 +10,4 @@ pub mod vedalken_engineer;
 pub mod access_denied;
 pub mod snake_umbra;
 pub mod bear_umbra;
+pub mod shifting_shadow;

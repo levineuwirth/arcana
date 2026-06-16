@@ -24,3 +24,4 @@ pub mod everbark_shaman;
 pub mod recross_the_paths;
 pub mod reins_of_the_vinesteed;
 pub mod weight_of_conscience;
+pub mod hostile_realm;

@@ -67,3 +67,4 @@ pub mod reparations;
 pub mod binding_agony;
 pub mod ritual_of_steel;
 pub mod soar;
+pub mod agility;

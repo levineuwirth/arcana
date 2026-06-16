@@ -28,3 +28,4 @@ pub mod street_savvy;
 pub mod riot_spikes;
 pub mod ocular_halo;
 pub mod nettling_curse;
+pub mod plumes_of_peace;

@@ -104,3 +104,4 @@ pub mod etali_s_favor;
 pub mod fungal_fortitude;
 pub mod dead_weight;
 pub mod petrify;
+pub mod zoetic_glyph;

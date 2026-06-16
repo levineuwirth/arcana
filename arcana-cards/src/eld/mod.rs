@@ -84,3 +84,4 @@ pub mod idyllic_grange;
 pub mod revenge_of_ravens;
 pub mod tall_as_a_beanstalk;
 pub mod so_tiny;
+pub mod trapped_in_the_tower;

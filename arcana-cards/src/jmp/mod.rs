@@ -131,3 +131,7 @@ pub mod forced_worship;
 pub mod death_s_approach;
 pub mod lightning_diadem;
 pub mod face_of_divinity;
+pub mod celestial_mantle;
+pub mod waterknot;
+pub mod eternal_thirst;
+pub mod feral_invocation;

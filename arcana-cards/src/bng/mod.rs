@@ -34,3 +34,5 @@ pub mod fearsome_temper;
 pub mod ephara_s_enlightenment;
 pub mod thunderous_might;
 pub mod evanescent_intellect;
+pub mod ephara_s_radiance;
+pub mod grisly_transformation;

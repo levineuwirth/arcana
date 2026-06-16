@@ -35,3 +35,4 @@ pub mod luminous_wake;
 pub mod eland_umbra;
 pub mod drake_umbra;
 pub mod lust_for_war;
+pub mod crab_umbra;

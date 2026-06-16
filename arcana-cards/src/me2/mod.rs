@@ -66,3 +66,5 @@ pub mod viscerid_armor;
 pub mod errantry;
 pub mod wings_of_aesthir;
 pub mod stonehands;
+pub mod forbidden_lore;
+pub mod funeral_march;

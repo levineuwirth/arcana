@@ -21,3 +21,4 @@ pub mod lifetap;
 pub mod soul_barrier;
 pub mod cursed_land;
 pub mod eternal_warrior;
+pub mod ironclaw_curse;

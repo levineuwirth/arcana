@@ -62,3 +62,6 @@ pub mod murky_sewer;
 pub mod sporogenic_infection;
 pub mod shardmage_s_rescue;
 pub mod ethereal_armor;
+pub mod frantic_strength;
+pub mod cracked_skull;
+pub mod stay_hidden_stay_silent;

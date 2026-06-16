@@ -82,3 +82,4 @@ pub mod furor_of_the_bitten;
 pub mod infernal_scarring;
 pub mod demonic_embrace;
 pub mod rousing_read;
+pub mod setessan_training;

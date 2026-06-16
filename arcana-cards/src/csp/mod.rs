@@ -34,3 +34,4 @@ pub mod boreal_shelf;
 pub mod mouth_of_ronom;
 pub mod rime_transfusion;
 pub mod gelid_shackles;
+pub mod surging_might;

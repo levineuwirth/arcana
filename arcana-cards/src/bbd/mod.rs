@@ -67,3 +67,5 @@ pub mod oracle_s_insight;
 pub mod lightning_talons;
 pub mod battle_mastery;
 pub mod inner_demon;
+pub mod dragon_breath;
+pub mod karametra_s_favor;

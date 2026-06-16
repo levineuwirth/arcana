@@ -27,3 +27,5 @@ pub mod dark_privilege;
 pub mod spider_climb;
 pub mod death_watch;
 pub mod betrayal;
+pub mod mystic_veil;
+pub mod mortal_wound;

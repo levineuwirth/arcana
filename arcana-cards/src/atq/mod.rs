@@ -2,3 +2,4 @@
 pub mod priest_of_yawgmoth;
 pub mod powerleech;
 pub mod damping_field;
+pub mod artifact_possession;

@@ -45,3 +45,5 @@ pub mod alpha_authority;
 pub mod dying_wish;
 pub mod primal_visitation;
 pub mod skygames;
+pub mod contaminated_ground;
+pub mod way_of_the_thief;

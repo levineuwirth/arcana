@@ -20,3 +20,4 @@ pub mod reckless_pangolin;
 pub mod earth_origin_yak;
 pub mod nine_tail_white_fox;
 pub mod sacred_white_deer;
+pub mod hardened_scale_armor;

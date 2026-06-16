@@ -76,3 +76,6 @@ pub mod gilt_leaf_s_embrace;
 pub mod spiral_into_solitude;
 pub mod aquitect_s_defenses;
 pub mod evershrike_s_gift;
+pub mod blossombind;
+pub mod lofty_dreams;
+pub mod noggle_the_mind;

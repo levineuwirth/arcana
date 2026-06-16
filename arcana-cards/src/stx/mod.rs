@@ -77,3 +77,4 @@ pub mod a_ardent_dustspeaker;
 pub mod ardent_dustspeaker;
 pub mod professor_of_symbology;
 pub mod the_biblioplex;
+pub mod detention_vortex;

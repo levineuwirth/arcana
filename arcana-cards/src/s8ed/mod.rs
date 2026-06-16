@@ -62,3 +62,4 @@ pub mod dingus_egg;
 pub mod sanctimony;
 pub mod warped_devotion;
 pub mod choke;
+pub mod living_terrain;

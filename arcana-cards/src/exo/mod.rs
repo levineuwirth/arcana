@@ -29,3 +29,5 @@ pub mod onslaught;
 pub mod convalescence;
 pub mod dizzying_gaze;
 pub mod bequeathal;
+pub mod cunning;
+pub mod predatory_hunger;

@@ -77,3 +77,5 @@ pub mod primal_frenzy;
 pub mod tattoo_ward;
 pub mod kamahl_s_desire;
 pub mod patriarch_s_desire;
+pub mod immobilizing_ink;
+pub mod kirtar_s_desire;

@@ -29,3 +29,5 @@ pub mod wolfhunter_s_quiver;
 pub mod favor_of_the_woods;
 pub mod chant_of_the_skifsang;
 pub mod spiteful_shadows;
+pub mod talons_of_falkenrath;
+pub mod burden_of_guilt;

@@ -41,3 +41,4 @@ pub mod spider_suit;
 pub mod web_up;
 pub mod spider_man_no_more;
 pub mod robotics_mastery;
+pub mod alien_symbiosis;

@@ -54,3 +54,4 @@ pub mod drowned_secrets;
 pub mod urban_utopia;
 pub mod candlelight_vigil;
 pub mod demotion;
+pub mod luminous_bonds;

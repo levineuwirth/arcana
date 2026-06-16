@@ -69,3 +69,4 @@ pub mod requiem_monolith;
 pub mod cryoshatter;
 pub mod hardlight_containment;
 pub mod pain_for_all;
+pub mod tractor_beam;

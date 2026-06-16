@@ -53,3 +53,4 @@ pub mod thrull_retainer;
 pub mod divine_transformation;
 pub mod wanderlust;
 pub mod blight;
+pub mod psychic_venom;

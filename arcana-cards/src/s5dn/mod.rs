@@ -37,3 +37,4 @@ pub mod conjurer_s_bauble;
 pub mod chimeric_coils;
 pub mod krark_clan_ironworks;
 pub mod eyes_of_the_watcher;
+pub mod stasis_cocoon;

@@ -32,3 +32,4 @@ pub mod mudbutton_torchrunner;
 pub mod skirsdag_cultist;
 pub mod golgari_germination;
 pub mod gift_of_orzhova;
+pub mod madcap_skills;
