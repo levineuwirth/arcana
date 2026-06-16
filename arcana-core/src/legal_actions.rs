@@ -2150,12 +2150,33 @@ fn enumerate_activation_actions(
                 if hand < ability.cost.discard_random as usize { continue; }
             }
 
+            // CR 606.5 "−X" loyalty: fan out one activation per X in
+            // 1..=current loyalty, each removing X Loyalty counters. The
+            // chosen X rides in the RemoveCounters payment; apply derives
+            // the stack entry's x_value from it. (Empty when loyalty is
+            // 0 — can't pay any X ≥ 1.) `None` = the ordinary fixed-cost
+            // path.
+            let x_loyalties: Vec<Option<u32>> = if ability.cost.remove_loyalty_x {
+                let loy = obj.count_counters(crate::types::CounterKind::Loyalty);
+                (1..=loy).map(Some).collect()
+            } else {
+                vec![None]
+            };
             for plan in &plans {
                 for targets in &target_selections {
                     for sac in &sac_choices {
                         for disc in &discard_choices {
                             for taps in &tap_choices {
+                                for x in &x_loyalties {
                                 let mut costs = additional.clone();
+                                if let Some(n) = x {
+                                    costs.push(
+                                        crate::actions::AdditionalCostPayment::RemoveCounters {
+                                            source: id,
+                                            kind: crate::types::CounterKind::Loyalty,
+                                            count: *n,
+                                        });
+                                }
                                 for s in sac {
                                     costs.push(
                                         crate::actions::AdditionalCostPayment::Sacrifice(*s));
@@ -2176,6 +2197,7 @@ fn enumerate_activation_actions(
                                     mana_payment: plan.clone(),
                                     additional_costs: costs,
                                 });
+                                }
                             }
                         }
                     }
@@ -3399,6 +3421,47 @@ mod tests {
                 | crate::actions::AdditionalCostPayment::AddCounters { .. })),
             "min_self_counters is a precondition, not a cost — \
              no counter payment should be emitted");
+    }
+
+    #[test]
+    fn dynamic_x_loyalty_fans_out_one_activation_per_x() {
+        use crate::registry::{ActivatedAbilityDef, ActivationCost, CardDefinition};
+        let mut reg = CardRegistry::new();
+        let name = reg.interner_mut().intern("X PW Stub");
+        let cid = {
+            let chars = creature_chars(0, 0);
+            reg.register(CardDefinition::new(name, chars).with_activated_ability(
+                ActivatedAbilityDef {
+                    text: "−X: do X".into(),
+                    cost: ActivationCost { remove_loyalty_x: true, ..ActivationCost::default() },
+                    target_requirements: vec![],
+                    is_mana_ability: false,
+                    is_loyalty_ability: true,
+                    activation_zone: crate::registry::ActivationZone::Battlefield,
+                    is_instant_speed: false,
+                    face_gate: None,
+                    effect: |_, _, _| Vec::new(),
+                }))
+        };
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let pw = state_put_with_card(&mut s, 0, Zone::Battlefield, creature_chars(0, 0), cid);
+        s.objects.get_mut(pw).unwrap().add_counters(CounterKind::Loyalty, 3);
+
+        let acts: Vec<_> = legal_actions(&s, &reg).into_iter().filter(|a|
+            matches!(a, Action::ActivateAbility { source, .. } if *source == pw)).collect();
+        // One activation per X in 1..=3, each removing X loyalty.
+        assert_eq!(acts.len(), 3, "fans out X = 1,2,3");
+        let mut xs: Vec<u32> = acts.iter().filter_map(|a| {
+            let Action::ActivateAbility { additional_costs, .. } = a else { return None; };
+            additional_costs.iter().find_map(|c| match c {
+                crate::actions::AdditionalCostPayment::RemoveCounters {
+                    kind: CounterKind::Loyalty, count, .. } => Some(*count),
+                _ => None,
+            })
+        }).collect();
+        xs.sort();
+        assert_eq!(xs, vec![1, 2, 3]);
     }
 
     // --- activation_condition precondition (CR 602.5b) ------------------

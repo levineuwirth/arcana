@@ -1073,6 +1073,15 @@ fn apply_activate_ability(
         // graveyard as part of the activation cost — cycling,
         // sacrifice-self abilities).
         let entry_id = state.allocate_object_id();
+        // CR 606.5 "−X" loyalty: the chosen X rode in as a Loyalty
+        // RemoveCounters additional cost — surface it as the entry's
+        // x_value so the effect reads `ctx.x_value`.
+        let x_value = additional_costs.iter().find_map(|c| match c {
+            crate::actions::AdditionalCostPayment::RemoveCounters {
+                kind: crate::types::CounterKind::Loyalty, count, ..
+            } => Some(*count),
+            _ => None,
+        });
         // Snapshot the effect fn so a token whose activation sacrifices
         // itself can still resolve: by the time the stack entry fires,
         // the source object may be gone, so a registry-keyed lookup
@@ -1087,7 +1096,7 @@ fn apply_activate_ability(
             /*text=*/ String::new(),
             targets,
             Vec::new(),
-            None,
+            x_value,
         );
         state.push_stack_entry(entry);
         // CR 115 — activated abilities that target emit BecomesTarget

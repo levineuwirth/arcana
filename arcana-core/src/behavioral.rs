@@ -308,6 +308,8 @@ fn synth_event(
         TC::SelfEntersBattlefield =>
             GE::EntersBattlefield { object_id: source, from_zone: Zone::Stack, was_cast: true },
         TC::SelfDies => GE::Dies { object_id: source },
+        TC::SelfLeavesBattlefield => GE::LeavesBattlefield {
+            object_id: source, destination: Zone::Graveyard(controller) },
         TC::SelfAttacks => GE::CreatureAttacks {
             attacker: source, defending: crate::combat::DefendingEntity::Player(1 - controller) },
         TC::SelfAttacksUnblocked => GE::CreatureNotBlocked { attacker: source },

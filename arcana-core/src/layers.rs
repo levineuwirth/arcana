@@ -1930,6 +1930,31 @@ mod tests {
     }
 
     #[test]
+    fn aura_grants_protection_via_attached_keyword() {
+        // "Enchanted creature has protection from red" — attached_keyword
+        // carries the Protection keyword to the host; the existing
+        // protection enforcement (is_protected_from) then applies. No
+        // new engine surface — pure pack idiom.
+        use crate::effects::{KeywordAbility, ProtectionQuality};
+        use crate::types::Color;
+        let mut s = GameState::new(2, 0);
+        let host = put_creature(&mut s, 0, 2, 2);
+        let aura = s.allocate_object_id();
+        s.objects.insert(GameObject::new(
+            aura, 0, Zone::Battlefield, 1, Characteristics {
+                types: TypeLine::ENCHANTMENT.into(), ..Default::default() }));
+        s.objects.get_mut(aura).unwrap().attached_to = Some(host);
+        s.add_continuous_effect(ContinuousEffect::attached_keyword(
+            aura, KeywordAbility::Protection(ProtectionQuality::Color(Color::Red)),
+            Duration::WhileSourceOnBattlefield));
+
+        let red = Characteristics { colors: ColorSet::red(), ..Default::default() };
+        let blue = Characteristics { colors: ColorSet::blue(), ..Default::default() };
+        assert!(s.is_protected_from(host, &red), "protected from red source");
+        assert!(!s.is_protected_from(host, &blue), "not from blue");
+    }
+
+    #[test]
     fn attached_pt_per_match_counts_from_host_controllers_board() {
         // Blanchwood Armor: "+1/+1 for each Forest you control" — modeled
         // as a per-match attached pump counted from the source (aura)

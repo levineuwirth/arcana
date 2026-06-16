@@ -234,6 +234,12 @@ pub enum TriggerCondition {
     SelfEntersBattlefield,
     /// "When ~ dies".
     SelfDies,
+    /// "When ~ leaves the battlefield" (broader than SelfDies — fires
+    /// on a move to ANY zone: graveyard, exile, hand, library). Fires
+    /// from LKI for the pre-move id. The canonical consumer is a
+    /// control-change Aura reverting its host's controller when the
+    /// Aura leaves (Control Magic), plus "when ~ leaves, …" payoffs.
+    SelfLeavesBattlefield,
     /// "When ~ attacks".
     SelfAttacks,
     /// Aura/Equipment host trigger — "When/Whenever ENCHANTED (or
@@ -387,6 +393,9 @@ impl TriggerCondition {
 
             SelfDies => matches!(event,
                 GameEvent::Dies { object_id } if *object_id == source),
+
+            SelfLeavesBattlefield => matches!(event,
+                GameEvent::LeavesBattlefield { object_id, .. } if *object_id == source),
 
             SelfAttacks => matches!(event,
                 GameEvent::CreatureAttacks { attacker, .. } if *attacker == source),
@@ -1196,6 +1205,19 @@ mod tests {
         // The Aura itself dying does NOT fire this trigger.
         let aura_dies = GameEvent::Dies { object_id: aura };
         assert!(!cond.matches(&aura_dies, aura, 0, &s));
+    }
+
+    #[test]
+    fn self_leaves_battlefield_matches_any_destination() {
+        let s = GameState::new(2, 0);
+        for dest in [Zone::Graveyard(0), Zone::Exile, Zone::Hand(0)] {
+            let ev = GameEvent::LeavesBattlefield { object_id: 7, destination: dest };
+            assert!(TriggerCondition::SelfLeavesBattlefield.matches(&ev, 7, 0, &s));
+            assert!(!TriggerCondition::SelfLeavesBattlefield.matches(&ev, 8, 0, &s));
+        }
+        // Does NOT fire on a plain Dies-only consumer's event shape.
+        let dies = GameEvent::Dies { object_id: 7 };
+        assert!(!TriggerCondition::SelfLeavesBattlefield.matches(&dies, 7, 0, &s));
     }
 
     #[test]

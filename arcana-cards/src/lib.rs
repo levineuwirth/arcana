@@ -1406,6 +1406,7 @@ mod behavioral_triage {
             T::CardDrawn{..} => "CardDrawn", T::CardDiscarded{..} => "CardDiscarded",
             T::CreatureAttacks{..} => "CreatureAttacks", T::Sacrificed{..} => "Sacrificed",
             T::AttachedCreatureDoes{..} => "AttachedCreatureDoes",
+            T::SelfLeavesBattlefield => "SelfLeavesBattlefield",
             T::Custom(_) => "Custom",
         }
     }

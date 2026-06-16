@@ -1033,6 +1033,16 @@ pub struct ActivationCost {
     /// both fit this shape. Legal-action enumeration filters the
     /// ability out when the source doesn't have enough counters.
     pub remove_self_counter: Option<(CounterKind, u32)>,
+    /// CR 606.5 — a planeswalker "−X" loyalty ability where X is chosen
+    /// at activation and equals the loyalty removed (Sorin, Vengeful
+    /// Bloodlord; Jace, the Mind Sculptor's −X… well, fixed; Ugin's
+    /// X-scaled ultimates). When `true`, legal-action enumeration fans
+    /// out one activation per X in `1..=current_loyalty` (each removing
+    /// X Loyalty counters), and the chosen X is threaded onto the stack
+    /// entry's `x_value` so the effect reads it via
+    /// `ActivationContext::x_value`. Mutually exclusive with
+    /// `remove_self_counter` (don't set both). Default `false`.
+    pub remove_loyalty_x: bool,
     /// "Put N [kind] counters on ~: …" — the mirror of
     /// [`Self::remove_self_counter`]. Planeswalker plus-loyalty
     /// costs are the canonical consumer (CR 606.2). Routed through
