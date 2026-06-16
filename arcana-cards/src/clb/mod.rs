@@ -139,3 +139,6 @@ pub mod livaan_cultist_of_tiamat;
 pub mod undercellar_myconid;
 pub mod skullport_merchant;
 pub mod solemn_doomguide;
+pub mod vhal_candlekeep_researcher;
+pub mod druid_of_the_emerald_grove;
+pub mod mardu_strike_leader;

@@ -90,3 +90,5 @@ pub mod gor_muldrak_amphinologist;
 pub mod lightning_rig_crew;
 pub mod kamahl_heart_of_krosa;
 pub mod rograkh_son_of_rohgahh;
+pub mod glacian_powerstone_engineer;
+pub mod kangee_sky_warden;

@@ -62,3 +62,4 @@ pub mod liliana_vess;
 pub mod xathrid_slyblade;
 pub mod necrogen_scudder;
 pub mod wall_of_fire;
+pub mod paragon_of_open_graves;

@@ -68,3 +68,4 @@ pub mod cactusfolk_sureshot;
 pub mod bruse_tarl_roving_rancher;
 pub mod akul_the_unrepentant;
 pub mod boneyard_desecrator;
+pub mod bristly_bill_spine_sower;

@@ -74,3 +74,5 @@ pub mod the_bear_force_pilot_runner;
 pub mod the_faction_dragon;
 pub mod the_brewing_chef;
 pub mod azra_matchthrower;
+pub mod stormscale_wurm;
+pub mod seer_of_the_bright_side;

@@ -85,3 +85,5 @@ pub mod nightblade_brigade;
 pub mod neriv_heart_of_the_storm;
 pub mod anafenza_unyielding_lineage;
 pub mod clarion_conqueror;
+pub mod kin_tree_nurturer;
+pub mod jade_cast_sentinel;

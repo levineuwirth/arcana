@@ -118,3 +118,8 @@ pub mod elvish_vatkeeper;
 pub mod shivan_branch_burner;
 pub mod phyrexian_archivist;
 pub mod injector_crocodile;
+pub mod furnace_host_charger;
+pub mod chomping_kavu;
+pub mod ancient_imperiosaur;
+pub mod marshal_of_zhalfir;
+pub mod sandstalker_moloch;

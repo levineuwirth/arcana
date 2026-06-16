@@ -92,3 +92,4 @@ pub mod search_party_captain;
 pub mod larder_zombie;
 pub mod rootcoil_creeper;
 pub mod katilda_dawnhart_prime;
+pub mod moonveil_regent;

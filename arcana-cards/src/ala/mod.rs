@@ -54,3 +54,5 @@ pub mod jund_battlemage;
 pub mod bant_battlemage;
 pub mod knight_captain_of_eos;
 pub mod dawnray_archer;
+pub mod cloudheath_drake;
+pub mod kathari_screecher;

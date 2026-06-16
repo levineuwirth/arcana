@@ -63,3 +63,6 @@ pub mod roil_cartographer;
 pub mod sneaky_snacker;
 pub mod guide_of_souls;
 pub mod propagator_drone;
+pub mod corrupted_shapeshifter;
+pub mod six;
+pub mod emissary_of_soulfire;

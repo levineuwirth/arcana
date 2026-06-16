@@ -46,3 +46,4 @@ pub mod air_bladder;
 pub mod lashknife;
 pub mod flowstone_wall;
 pub mod belbe_s_percher;
+pub mod rathi_intimidator;

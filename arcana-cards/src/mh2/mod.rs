@@ -67,3 +67,5 @@ pub mod ethersworn_sphinx;
 pub mod sanctifier_en_vec;
 pub mod archfiend_of_sorrows;
 pub mod chrome_courier;
+pub mod slag_strider;
+pub mod bottle_golems;

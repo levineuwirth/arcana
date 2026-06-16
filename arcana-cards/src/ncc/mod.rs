@@ -32,3 +32,6 @@ pub mod primal_empathy;
 pub mod family_s_favor;
 pub mod ajani_unyielding;
 pub mod slippery_bogbonder;
+pub mod mezzio_mugger;
+pub mod aven_mimeomancer;
+pub mod jenara_asura_of_war;

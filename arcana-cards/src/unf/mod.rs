@@ -40,3 +40,4 @@ pub mod glitterflitter;
 pub mod lineprancers;
 pub mod minotaur_de_force;
 pub mod focused_funambulist;
+pub mod celebr_8000;

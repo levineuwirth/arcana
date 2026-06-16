@@ -62,3 +62,4 @@ pub mod peema_aether_seer;
 pub mod aetherstream_leopard;
 pub mod hinterland_drake;
 pub mod aether_inspector;
+pub mod narnam_renegade;

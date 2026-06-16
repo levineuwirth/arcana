@@ -28,3 +28,4 @@ pub mod aspect_of_mongoose;
 pub mod aether_web;
 pub mod gustcloak_cavalier;
 pub mod viscerid_deepwalker;
+pub mod aetherflame_wall;

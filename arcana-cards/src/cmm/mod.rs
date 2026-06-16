@@ -151,3 +151,5 @@ pub mod cabal_patriarch;
 pub mod ulamog_s_crusher;
 pub mod phyrexian_triniform;
 pub mod karador_ghost_chieftain;
+pub mod isareth_the_awakener;
+pub mod coveted_peacock;

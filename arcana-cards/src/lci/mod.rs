@@ -110,3 +110,5 @@ pub mod marauding_brinefang;
 pub mod starving_revenant;
 pub mod screaming_phantom;
 pub mod amalia_benavides_aguirre;
+pub mod seismic_monstrosaur;
+pub mod souls_of_the_lost;

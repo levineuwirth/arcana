@@ -92,3 +92,5 @@ pub mod fog_on_the_barrow_downs;
 pub mod dunland_crebain;
 pub mod landroval_horizon_witness;
 pub mod frodo_determined_hero;
+pub mod bilbo_retired_burglar;
+pub mod a_orcish_bowmasters;

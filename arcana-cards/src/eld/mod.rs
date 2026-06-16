@@ -92,3 +92,4 @@ pub mod oko_the_trickster;
 pub mod the_royal_scions;
 pub mod embereth_paladin;
 pub mod savvy_hunter;
+pub mod archon_of_absolution;

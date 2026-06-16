@@ -4,3 +4,4 @@ pub mod inversion_behemoth;
 pub mod hourglass_of_the_lost;
 pub mod trenchpost;
 pub mod infested_thrinax;
+pub mod angelic_aberration;

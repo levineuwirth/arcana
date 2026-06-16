@@ -33,3 +33,4 @@ pub mod strax_sontaran_nurse;
 pub mod ian_chesterton;
 pub mod weeping_angel;
 pub mod sarah_jane_smith;
+pub mod vislor_turlough;

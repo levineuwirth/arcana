@@ -86,3 +86,4 @@ pub mod savage_firecat;
 pub mod thought_devourer;
 pub mod amugaba;
 pub mod infected_vermin;
+pub mod resilient_wanderer;

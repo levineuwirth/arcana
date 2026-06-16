@@ -2,3 +2,4 @@
 pub mod casal_lurkwood_pathfinder_casal_pathbreaker_owlbear;
 pub mod sophina_spearsage_deserter;
 pub mod evin_waterdeep_opportunist;
+pub mod bjorna_nightfall_alchemist;

@@ -69,3 +69,5 @@ pub mod klement_knowledge_acolyte;
 pub mod lulu_curious_hollyphant;
 pub mod skanos_blue_dragon_vassal;
 pub mod sarevok_divine_usurper;
+pub mod imoen_honorable_trickster;
+pub mod viconia_disciple_of_violence;

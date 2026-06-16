@@ -104,3 +104,6 @@ pub mod lizard_blades;
 pub mod asari_captain;
 pub mod a_circuit_mender;
 pub mod armguard_familiar;
+pub mod acquisition_octopus;
+pub mod spring_leaf_avenger;
+pub mod inkrise_infiltrator;

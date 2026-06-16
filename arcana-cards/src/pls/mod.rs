@@ -32,3 +32,4 @@ pub mod hobble;
 pub mod sinister_strength;
 pub mod insolence;
 pub mod tahngarth_talruum_hero;
+pub mod steel_leaf_paladin;

@@ -103,3 +103,6 @@ pub mod valkyrie_aerial_unit;
 pub mod pupu_ufo;
 pub mod stiltzkin_moogle_merchant;
 pub mod demon_wall;
+pub mod il_mheg_pixie;
+pub mod barret_wallace;
+pub mod noctis_prince_of_lucis;

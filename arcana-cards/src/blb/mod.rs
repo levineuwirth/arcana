@@ -85,3 +85,5 @@ pub mod lifecreed_duo;
 pub mod moonrise_cleric;
 pub mod iridescent_vinelasher;
 pub mod darkstar_augur;
+pub mod the_infamous_cruelclaw;
+pub mod splash_lasher;

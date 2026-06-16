@@ -102,3 +102,4 @@ pub mod sigarda_s_imprisonment;
 pub mod sheltering_boughs;
 pub mod sorin_the_mirthless;
 pub mod courier_bat;
+pub mod parish_blade_trainee;

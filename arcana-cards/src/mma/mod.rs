@@ -19,3 +19,5 @@ pub mod paradise_mantle;
 pub mod elspeth_knight_errant;
 pub mod sarkhan_vol;
 pub mod tidehollow_sculler;
+pub mod arcbound_ravager;
+pub mod dreamspoiler_witches;

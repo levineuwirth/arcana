@@ -29,6 +29,7 @@ Beguiler of Wills
 Biogenic Ooze
 Blinkmoth Well
 Blizzard Elemental
+Bloodcrazed Hoplite
 Bloodtithe Harvester
 Boon of Boseiju
 Bulwark
@@ -41,6 +42,7 @@ Chandra, Fire of Kaladesh
 Chandra, Gremlin Wrangler
 Chandra, Legacy of Fire
 Charge Across the Araba
+Cinderhaze Wretch
 City of Traitors
 Civic Gardener
 Clever Conjurer
@@ -77,6 +79,7 @@ Donal, Herald of Wings
 Double Negative
 Dread Slaver
 Drooling Ogre
+Drover of the Swine
 Drownyard Temple
 Dumb Ass
 Durable Coilbug
@@ -155,6 +158,7 @@ Lunar Force
 Mage-Ring Responder
 Magebane Lizard
 Magewright's Stone
+Magmaroth
 Mana Crypt
 Mana Drain
 Mana Leak
@@ -240,11 +244,13 @@ Sanitarium Skeleton
 Savage Firecat
 Scattering Stroke
 Scoria Wurm
+Scrib Nibblers
 Scroll of Isildur
 Scuttling Sliver
 Second Chance
 Second Guess
 Seeker of Skybreak
+Seer of the Bright Side
 Serene Heart
 Shard Phoenix
 Silkenfist Fighter
@@ -265,6 +271,7 @@ Spell Syphon
 Spelljack
 Steel Overseer
 Stensia Innkeeper
+Super Mutant Scavenger
 Superior Numbers
 Tale's End
 Teferi's Contingency

@@ -11,3 +11,5 @@ pub mod access_denied;
 pub mod snake_umbra;
 pub mod bear_umbra;
 pub mod shifting_shadow;
+pub mod goblin_razerunners;
+pub mod whiptongue_hydra;

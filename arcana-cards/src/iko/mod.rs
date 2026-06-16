@@ -71,3 +71,4 @@ pub mod vivien_monsters_advocate;
 pub mod patagia_tiger;
 pub mod chevill_bane_of_monsters;
 pub mod lava_serpent;
+pub mod pyroceratops;

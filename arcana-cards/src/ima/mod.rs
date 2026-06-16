@@ -37,3 +37,4 @@ pub mod crucible_of_fire;
 pub mod pentarch_ward;
 pub mod guard_duty;
 pub mod dragon_bell_monk;
+pub mod jace_s_phantasm;

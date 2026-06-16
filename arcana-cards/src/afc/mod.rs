@@ -22,3 +22,5 @@ pub mod fleecemane_lion;
 pub mod shivan_hellkite;
 pub mod hoard_smelter_dragon;
 pub mod demanding_dragon;
+pub mod storvald_frost_giant_jarl;
+pub mod obsessive_stitcher;

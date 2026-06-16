@@ -86,3 +86,4 @@ pub mod mutable_explorer;
 pub mod kinscaer_sentry;
 pub mod stratosoarer;
 pub mod boldwyr_aggressor;
+pub mod sunderflock;

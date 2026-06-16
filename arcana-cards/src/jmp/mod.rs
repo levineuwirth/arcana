@@ -138,3 +138,6 @@ pub mod feral_invocation;
 pub mod lawmage_s_binding;
 pub mod emancipation_angel;
 pub mod kira_great_glass_spinner;
+pub mod bloodhunter_bat;
+pub mod feral_hydra;
+pub mod angel_of_mercy;

@@ -19,3 +19,4 @@ pub mod withered_wretch;
 pub mod skeleton_shard;
 pub mod nuisance_engine;
 pub mod furnace_of_rath;
+pub mod wizard_replica;

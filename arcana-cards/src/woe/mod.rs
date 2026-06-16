@@ -116,3 +116,4 @@ pub mod charming_scoundrel;
 pub mod ash_party_crasher;
 pub mod neva_stalked_by_nightmares;
 pub mod old_flitterfang;
+pub mod agatha_of_the_vile_cauldron;

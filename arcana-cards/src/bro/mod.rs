@@ -92,3 +92,4 @@ pub mod combat_courier;
 pub mod yotian_frontliner;
 pub mod survivor_of_korlis;
 pub mod misery_s_shadow;
+pub mod ambush_paratrooper;

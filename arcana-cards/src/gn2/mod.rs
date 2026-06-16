@@ -12,3 +12,4 @@ pub mod gavony_unhallowed;
 pub mod accursed_horde;
 pub mod zealot_of_the_god_pharaoh;
 pub mod claustrophobia;
+pub mod torgaar_famine_incarnate;

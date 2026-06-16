@@ -23,3 +23,4 @@ pub mod keen_eyed_raven;
 pub mod shaun_rebecca_agents;
 pub mod assassin_den;
 pub mod eivor_battle_ready;
+pub mod merciless_harlequin;

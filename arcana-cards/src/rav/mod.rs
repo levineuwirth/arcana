@@ -55,3 +55,4 @@ pub mod clinging_darkness;
 pub mod mark_of_eviction;
 pub mod tattered_drake;
 pub mod screeching_griffin;
+pub mod guardian_of_vitu_ghazi;

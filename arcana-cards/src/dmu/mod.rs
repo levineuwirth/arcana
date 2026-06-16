@@ -61,3 +61,6 @@ pub mod academy_wall;
 pub mod a_sprouting_goblin;
 pub mod lagomos_hand_of_hatred;
 pub mod defiler_of_dreams;
+pub mod shield_wall_sentinel;
+pub mod nishoba_brawler;
+pub mod a_nael_avizoa_aeronaut;

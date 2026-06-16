@@ -54,3 +54,4 @@ pub mod dovin_architect_of_law;
 pub mod domri_chaos_bringer;
 pub mod spear_spewer;
 pub mod mesmerizing_benthid;
+pub mod spirit_of_the_spires;

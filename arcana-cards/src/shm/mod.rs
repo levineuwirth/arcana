@@ -72,3 +72,5 @@ pub mod deep_slumber_titan;
 pub mod reaper_king;
 pub mod valleymaker;
 pub mod ghastlord_of_fugue;
+pub mod crowd_of_cinders;
+pub mod cinderhaze_wretch;

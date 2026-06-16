@@ -77,3 +77,5 @@ pub mod hedge_whisperer;
 pub mod sanctuary_wall;
 pub mod living_conundrum;
 pub mod axebane_ferox;
+pub mod glint_weaver;
+pub mod tin_street_gossip;

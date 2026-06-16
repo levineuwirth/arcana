@@ -45,3 +45,6 @@ pub mod smoke_shroud;
 pub mod soul_strike_technique;
 pub mod serra_the_benevolent;
 pub mod viashino_sandsprinter;
+pub mod azra_smokeshaper;
+pub mod ranger_captain_of_eos;
+pub mod chillerpillar;

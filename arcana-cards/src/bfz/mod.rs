@@ -48,3 +48,4 @@ pub mod brood_butcher;
 pub mod forerunner_of_slaughter;
 pub mod undergrowth_champion;
 pub mod drana_s_emissary;
+pub mod brood_monitor;

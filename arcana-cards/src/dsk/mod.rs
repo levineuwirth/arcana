@@ -76,3 +76,5 @@ pub mod piranha_fly;
 pub mod vile_mutilator;
 pub mod the_wandering_rescuer;
 pub mod screaming_nemesis;
+pub mod veteran_survivor;
+pub mod clockwork_percussionist;

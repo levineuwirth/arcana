@@ -44,3 +44,5 @@ pub mod master_of_death;
 pub mod shimmer_dragon;
 pub mod wavesifter;
 pub mod akroma_angel_of_fury;
+pub mod sphinx_of_the_second_sun;
+pub mod otherworldly_escort;

@@ -65,3 +65,5 @@ pub mod deceptive_frostkite;
 pub mod hornet_nest;
 pub mod shigeki_jukai_visionary;
 pub mod arasta_of_the_endless_web;
+pub mod sylvan_caryatid;
+pub mod wingmantle_chaplain;

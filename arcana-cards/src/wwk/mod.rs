@@ -29,3 +29,4 @@ pub mod terra_eternal;
 pub mod corrupted_zendikon;
 pub mod crusher_zendikon;
 pub mod wind_zendikon;
+pub mod scrib_nibblers;

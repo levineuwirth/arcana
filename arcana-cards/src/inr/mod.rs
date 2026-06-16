@@ -114,3 +114,4 @@ pub mod cathar_commando;
 pub mod bloodtithe_harvester;
 pub mod bedlam_reveler;
 pub mod thalia_heretic_cathar;
+pub mod mist_raven;

@@ -48,3 +48,4 @@ pub mod agent_venom;
 pub mod angry_rabble;
 pub mod scorpion_seething_striker;
 pub mod spider_girl_legacy_hero;
+pub mod symbiote_spider_man;

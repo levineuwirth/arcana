@@ -56,3 +56,4 @@ pub mod avatar_kyoshi_earthbender;
 pub mod nyla_shirshu_sleuth;
 pub mod smellerbee_rebel_fighter;
 pub mod longshot_rebel_bowman;
+pub mod bosco_just_a_bear;
