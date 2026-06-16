@@ -93,3 +93,4 @@ pub mod underfoot_underdogs;
 pub mod summit_intimidator;
 pub mod arashin_sunshield;
 pub mod armament_dragon;
+pub mod snowmelt_stag;

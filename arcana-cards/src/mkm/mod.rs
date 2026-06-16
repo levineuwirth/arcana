@@ -86,3 +86,5 @@ pub mod undercover_crocodelf;
 pub mod pompous_gadabout;
 pub mod conspiracy_unraveler;
 pub mod delney_streetwise_lookout;
+pub mod vitu_ghazi_inspector;
+pub mod voja_jaws_of_the_conclave;

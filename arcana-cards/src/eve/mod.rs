@@ -53,3 +53,5 @@ pub mod merrow_bonegnawer;
 pub mod ballynock_trapper;
 pub mod heartlash_cinder;
 pub mod suture_spirit;
+pub mod kithkin_spellduster;
+pub mod deity_of_scars;

@@ -157,3 +157,8 @@ pub mod sower_of_discord;
 pub mod anikthea_hand_of_erebos;
 pub mod erebos_bleak_hearted;
 pub mod alms_collector;
+pub mod metalwork_colossus;
+pub mod skysnare_spider;
+pub mod chainer_dementia_master;
+pub mod hellkite_charger;
+pub mod destiny_spinner;

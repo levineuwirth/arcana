@@ -14,3 +14,4 @@ pub mod contemplation;
 pub mod mortuary;
 pub mod contempt;
 pub mod torment;
+pub mod furnace_spirit;

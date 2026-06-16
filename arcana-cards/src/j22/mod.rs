@@ -13,3 +13,5 @@ pub mod hold_for_questioning;
 pub mod kibo_uktabi_prince;
 pub mod conductor_of_cacophony;
 pub mod ashcoat_of_the_shadow_swarm;
+pub mod mizzix_replica_rider;
+pub mod kenessos_priest_of_thassa;

@@ -75,3 +75,4 @@ pub mod drifting_djinn;
 pub mod skittering_skirge;
 pub mod goblin_war_buggy;
 pub mod shivan_raptor;
+pub mod hawkeater_moth;

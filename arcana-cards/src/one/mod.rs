@@ -71,3 +71,5 @@ pub mod thrun_breaker_of_silence;
 pub mod bonepicker_skirge;
 pub mod unctus_s_retrofitter;
 pub mod leonin_lightbringer;
+pub mod skyscythe_engulfer;
+pub mod atmosphere_surgeon;

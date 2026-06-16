@@ -2,3 +2,4 @@
 pub mod teferi_s_contingency;
 pub mod trove_mage;
 pub mod reezug_the_bonecobbler;
+pub mod niambi_beloved_protector;

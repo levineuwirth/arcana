@@ -151,3 +151,4 @@ pub mod phyrexian_revoker;
 pub mod renari_merchant_of_marvels;
 pub mod ellyn_harbreeze_busybody;
 pub mod harper_recruiter;
+pub mod raggadragga_goreguts_boss;

@@ -75,3 +75,5 @@ pub mod abbot_of_keral_keep;
 pub mod jeskai_elder;
 pub mod grand_arbiter_augustin_iv;
 pub mod seasoned_pyromancer;
+pub mod seeker_of_the_way;
+pub mod lyev_skyknight;

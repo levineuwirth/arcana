@@ -51,3 +51,4 @@ pub mod spider_girl_legacy_hero;
 pub mod symbiote_spider_man;
 pub mod ultimate_green_goblin;
 pub mod venom_evil_unleashed;
+pub mod doctor_octopus_master_planner;

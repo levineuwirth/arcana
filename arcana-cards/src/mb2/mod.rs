@@ -27,3 +27,6 @@ pub mod omnipresent_impostor;
 pub mod mothers_yamazaki;
 pub mod pokey_the_scallywagg;
 pub mod nalathni_dragon;
+pub mod chea_friend_to_maybe_too_many;
+pub mod teferi_druid_of_argoth;
+pub mod a_girl_and_her_dogs;

@@ -74,3 +74,5 @@ pub mod lava_serpent;
 pub mod pyroceratops;
 pub mod general_s_enforcer;
 pub mod proud_wildbonder;
+pub mod umori_the_collector;
+pub mod lavabrink_venturer;

@@ -114,3 +114,4 @@ pub mod seismic_monstrosaur;
 pub mod souls_of_the_lost;
 pub mod panicked_altisaur;
 pub mod stinging_cave_crawler;
+pub mod stalactite_stalker;

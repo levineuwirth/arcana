@@ -69,3 +69,6 @@ pub mod gloryheath_lynx;
 pub mod marketback_walker;
 pub mod hazoret_godseeker;
 pub mod sabotage_strategist;
+pub mod alacrian_jaguar;
+pub mod fang_druid_summoner;
+pub mod lagorin_soul_of_alacria;

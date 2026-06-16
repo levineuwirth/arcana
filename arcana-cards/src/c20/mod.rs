@@ -21,3 +21,4 @@ pub mod vorapede;
 pub mod spellpyre_phoenix;
 pub mod isperia_supreme_judge;
 pub mod archon_of_valor_s_reach;
+pub mod magus_of_the_disk;

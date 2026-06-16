@@ -65,3 +65,5 @@ pub mod shieldmage_elder;
 pub mod whipcorder;
 pub mod headhunter;
 pub mod gravel_slinger;
+pub mod dawning_purist;
+pub mod hystrodon;

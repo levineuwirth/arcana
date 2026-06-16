@@ -29,3 +29,4 @@ pub mod inspired_sprite;
 pub mod dewdrop_spy;
 pub mod fencer_clique;
 pub mod nightshade_schemers;
+pub mod kinsbaile_borderguard;

@@ -3,3 +3,4 @@ pub mod elvish_elegy;
 pub mod craterous_stomp;
 pub mod aquatic_subtlety;
 pub mod putrid_hexhag;
+pub mod thorna_and_twigtooth;

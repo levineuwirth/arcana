@@ -99,3 +99,6 @@ pub mod secret_door;
 pub mod delina_wild_mage;
 pub mod blue_dragon;
 pub mod scion_of_stygia;
+pub mod battle_cry_goblin;
+pub mod loyal_warhound;
+pub mod a_krydle_of_baldur_s_gate;

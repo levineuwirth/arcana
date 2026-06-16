@@ -51,3 +51,5 @@ pub mod drana_s_emissary;
 pub mod brood_monitor;
 pub mod salvage_drone;
 pub mod drowner_of_hope;
+pub mod tide_drifter;
+pub mod eyeless_watcher;

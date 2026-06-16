@@ -32,3 +32,4 @@ pub mod volatile_chimera;
 pub mod paliano_vanguard;
 pub mod menagerie_liberator;
 pub mod vertigo_spawn;
+pub mod archdemon_of_paliano;

@@ -7,3 +7,4 @@ pub mod wreck_hunter;
 pub mod hexavus;
 pub mod tawnos_solemn_survivor;
 pub mod blast_furnace_hellkite;
+pub mod the_archimandrite;

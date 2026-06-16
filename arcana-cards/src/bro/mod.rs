@@ -95,3 +95,7 @@ pub mod misery_s_shadow;
 pub mod ambush_paratrooper;
 pub mod thopter_mechanic;
 pub mod tocasia_dig_site_mentor;
+pub mod scrapwork_cohort;
+pub mod skystrike_officer;
+pub mod tyrant_of_kher_ridges;
+pub mod mishra_tamer_of_mak_fawa;

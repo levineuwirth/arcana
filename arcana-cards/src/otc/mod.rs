@@ -38,3 +38,4 @@ pub mod rankle_master_of_pranks;
 pub mod sand_scout;
 pub mod thieving_amalgam;
 pub mod misfortune_teller;
+pub mod vihaan_goldwaker;

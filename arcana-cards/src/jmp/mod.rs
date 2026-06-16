@@ -145,3 +145,5 @@ pub mod ormos_archive_keeper;
 pub mod tibalt_s_rager;
 pub mod scuttlemutt;
 pub mod chamber_sentry;
+pub mod steel_plume_marshal;
+pub mod prescient_chimera;

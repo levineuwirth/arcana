@@ -105,3 +105,6 @@ pub mod courier_bat;
 pub mod parish_blade_trainee;
 pub mod dreadfeast_demon;
 pub mod falkenrath_celebrants;
+pub mod olivia_crimson_bride;
+pub mod ollenbock_escort;
+pub mod frenzied_devils;

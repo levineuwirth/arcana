@@ -90,3 +90,4 @@ pub mod splash_lasher;
 pub mod glidedive_duo;
 pub mod kindlespark_duo;
 pub mod lilysplash_mentor;
+pub mod flamecache_gecko;

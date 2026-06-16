@@ -73,3 +73,6 @@ pub mod azimaet_drake;
 pub mod zombie_mob;
 pub mod subterranean_spirit;
 pub mod wall_of_corpses;
+pub mod armorer_guildmage;
+pub mod ersatz_gnomes;
+pub mod leering_gargoyle;

@@ -13,3 +13,5 @@ pub mod merfolk_thaumaturgist;
 pub mod firefright_mage;
 pub mod frozen_aether;
 pub mod dust_corona;
+pub mod ana_battlemage;
+pub mod voidstone_gargoyle;

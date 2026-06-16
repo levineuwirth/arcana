@@ -42,3 +42,4 @@ pub mod ajani_mentor_of_heroes;
 pub mod war_wing_siren;
 pub mod bloodcrazed_hoplite;
 pub mod fleetfeather_cockatrice;
+pub mod crystalline_nautilus;

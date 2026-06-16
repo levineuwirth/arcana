@@ -117,3 +117,4 @@ pub mod thalia_heretic_cathar;
 pub mod mist_raven;
 pub mod liesa_forgotten_archangel;
 pub mod captivating_vampire;
+pub mod battleground_geist;

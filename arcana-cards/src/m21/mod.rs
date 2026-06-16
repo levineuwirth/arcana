@@ -103,3 +103,5 @@ pub mod basri_s_acolyte;
 pub mod bone_pit_brute;
 pub mod sparkhunter_masticore;
 pub mod containment_priest;
+pub mod teferi_s_wavecaster;
+pub mod speaker_of_the_heavens;

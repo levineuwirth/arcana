@@ -78,3 +78,5 @@ pub mod the_wandering_rescuer;
 pub mod screaming_nemesis;
 pub mod veteran_survivor;
 pub mod clockwork_percussionist;
+pub mod hauntwoods_shrieker;
+pub mod cackling_slasher;

@@ -2,3 +2,4 @@
 pub mod captain_america_team_leader;
 pub mod doctor_doom_king_of_latveria;
 pub mod the_thing;
+pub mod human_torch;

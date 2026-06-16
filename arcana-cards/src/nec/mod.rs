@@ -13,3 +13,4 @@ pub mod bear_umbra;
 pub mod shifting_shadow;
 pub mod goblin_razerunners;
 pub mod whiptongue_hydra;
+pub mod ascendant_acolyte;

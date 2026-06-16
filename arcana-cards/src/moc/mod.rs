@@ -40,3 +40,4 @@ pub mod weirding_wood;
 pub mod ethersworn_adjudicator;
 pub mod incubation_druid;
 pub mod herald_of_hoofbeats;
+pub mod the_locust_god;

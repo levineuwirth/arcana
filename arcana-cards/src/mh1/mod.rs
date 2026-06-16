@@ -48,3 +48,4 @@ pub mod viashino_sandsprinter;
 pub mod azra_smokeshaper;
 pub mod ranger_captain_of_eos;
 pub mod chillerpillar;
+pub mod murasa_behemoth;

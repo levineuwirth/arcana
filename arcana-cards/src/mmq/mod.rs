@@ -134,3 +134,5 @@ pub mod cateran_slaver;
 pub mod extravagant_spirit;
 pub mod ramosian_sky_marshal;
 pub mod venomous_dragonfly;
+pub mod caller_of_the_hunt;
+pub mod megatherium;

@@ -35,3 +35,7 @@ pub mod termagant_swarm;
 pub mod arco_flagellant;
 pub mod noise_marine;
 pub mod herald_of_slaanesh;
+pub mod grey_knight_paragon;
+pub mod space_marine_devastator;
+pub mod chaos_defiler;
+pub mod tallyman_of_nurgle;

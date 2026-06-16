@@ -28,3 +28,4 @@ pub mod power_of_fire;
 pub mod screaming_seahawk;
 pub mod apex_hawks;
 pub mod skitter_of_lizards;
+pub mod lurking_automaton;

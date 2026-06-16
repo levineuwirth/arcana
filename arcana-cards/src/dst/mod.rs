@@ -40,3 +40,7 @@ pub mod arcbound_hybrid;
 pub mod neurok_prodigy;
 pub mod quicksilver_behemoth;
 pub mod leonin_battlemage;
+pub mod synod_artificer;
+pub mod arcbound_overseer;
+pub mod arcbound_lancer;
+pub mod neurok_transmuter;

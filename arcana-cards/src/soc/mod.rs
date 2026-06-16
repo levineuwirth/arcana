@@ -141,3 +141,5 @@ pub mod gyome_master_chef;
 pub mod balefire_liege;
 pub mod conspiracy_theorist;
 pub mod zimone_quandrix_prodigy;
+pub mod armored_skyhunter;
+pub mod selfless_spirit;

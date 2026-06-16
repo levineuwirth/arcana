@@ -77,3 +77,4 @@ pub mod demon_of_dark_schemes;
 pub mod aethersquall_ancient;
 pub mod empyreal_voyager;
 pub mod thriving_grubs;
+pub mod thriving_rhino;

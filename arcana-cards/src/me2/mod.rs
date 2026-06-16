@@ -76,3 +76,4 @@ pub mod order_of_the_white_shield;
 pub mod aurochs;
 pub mod clockwork_steed;
 pub mod sibilant_spirit;
+pub mod soldevi_simulacrum;

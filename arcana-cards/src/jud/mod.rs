@@ -34,3 +34,4 @@ pub mod exoskeletal_armor;
 pub mod cagemail;
 pub mod infectious_rage;
 pub mod lost_in_thought;
+pub mod masked_gorgon;

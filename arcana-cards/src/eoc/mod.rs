@@ -36,3 +36,5 @@ pub mod crystalline_crawler;
 pub mod multani_yavimaya_s_avatar;
 pub mod juri_master_of_the_revue;
 pub mod depthshaker_titan;
+pub mod the_gitrog_monster;
+pub mod tireless_tracker;

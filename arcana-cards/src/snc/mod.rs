@@ -94,3 +94,5 @@ pub mod all_seeing_arbiter;
 pub mod rakish_revelers;
 pub mod a_glamorous_outlaw;
 pub mod darling_of_the_masses;
+pub mod shakedown_heavy;
+pub mod ziatora_s_envoy;

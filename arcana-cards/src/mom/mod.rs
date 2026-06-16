@@ -128,3 +128,6 @@ pub mod progenitor_exarch;
 pub mod ruins_recluse;
 pub mod ichor_drinker;
 pub mod gloomfang_mauler;
+pub mod interdisciplinary_mascot;
+pub mod wildwood_escort;
+pub mod essence_of_orthodoxy;

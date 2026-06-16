@@ -89,3 +89,4 @@ pub mod mystic_decree;
 pub mod weakness;
 pub mod instill_energy;
 pub mod brass_man;
+pub mod ebon_dragon;

@@ -10,3 +10,5 @@ pub mod wildsear_scouring_maw;
 pub mod zinnia_valley_s_voice;
 pub mod steelburr_champion;
 pub mod hazel_s_brewmaster;
+pub mod arthur_marigold_knight;
+pub mod the_odd_acorn_gang;

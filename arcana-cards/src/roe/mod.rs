@@ -40,3 +40,4 @@ pub mod sarkhan_the_mad;
 pub mod hellcarver_demon;
 pub mod haze_frog;
 pub mod spawnsire_of_ulamog;
+pub mod reinforced_bulwark;

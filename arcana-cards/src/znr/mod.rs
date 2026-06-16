@@ -71,3 +71,5 @@ pub mod a_gnarlid_colony;
 pub mod wayward_guide_beast;
 pub mod fireblade_charger;
 pub mod territorial_scythecat;
+pub mod skyclave_geopede;
+pub mod a_kargan_warleader;

@@ -12,3 +12,4 @@ pub mod nicol_bolas_planeswalker;
 pub mod nissa_worldwaker;
 pub mod torchling;
 pub mod precinct_captain;
+pub mod windrider_eel;

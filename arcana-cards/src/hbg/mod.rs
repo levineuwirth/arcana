@@ -78,3 +78,4 @@ pub mod ambergris_agent_of_progress;
 pub mod sarevok_the_usurper;
 pub mod imoen_trickster_friend;
 pub mod a_pseudodragon_familiar;
+pub mod vhal_scholar_of_mortality;

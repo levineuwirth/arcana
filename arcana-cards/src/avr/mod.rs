@@ -55,3 +55,4 @@ pub mod tamiyo_the_moon_sage;
 pub mod elgaud_shieldmate;
 pub mod moonlight_geist;
 pub mod fettergeist;
+pub mod diregraf_escort;

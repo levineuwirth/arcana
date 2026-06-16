@@ -24,3 +24,4 @@ pub mod crackling_club;
 pub mod strength_of_lunacy;
 pub mod llawan_cephalid_empress;
 pub mod militant_monk;
+pub mod cabal_torturer;

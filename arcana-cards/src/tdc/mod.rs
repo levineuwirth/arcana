@@ -70,3 +70,6 @@ pub mod wingmantle_chaplain;
 pub mod verix_bladewing;
 pub mod harbinger_of_the_hunt;
 pub mod steward_of_the_harvest;
+pub mod opportunistic_dragon;
+pub mod jarad_golgari_lich_lord;
+pub mod hammerhead_tyrant;

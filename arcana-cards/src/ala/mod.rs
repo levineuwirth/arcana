@@ -58,3 +58,5 @@ pub mod cloudheath_drake;
 pub mod kathari_screecher;
 pub mod predator_dragon;
 pub mod naya_battlemage;
+pub mod skill_borrower;
+pub mod esper_battlemage;

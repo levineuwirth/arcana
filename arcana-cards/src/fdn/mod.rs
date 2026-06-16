@@ -183,3 +183,5 @@ pub mod heroes_bane;
 pub mod kellan_planar_trailblazer;
 pub mod trygon_predator;
 pub mod wilt_leaf_liege;
+pub mod perforating_artist;
+pub mod arahbo_the_first_fang;

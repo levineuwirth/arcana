@@ -85,3 +85,8 @@ pub mod riku_and_riku;
 pub mod windy_city_elemental;
 pub mod valko_indorian_researcher;
 pub mod daxiver_izzet_electromancer;
+pub mod incisor_steed;
+pub mod arcbound_mamba;
+pub mod the_bearded_teakeeper;
+pub mod unclaimed_cat;
+pub mod rosewater_s_nemesis;

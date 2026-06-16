@@ -10,3 +10,4 @@ pub mod henge_guardian;
 pub mod temporary_insanity;
 pub mod spidersilk_armor;
 pub mod paladin_of_prahv;
+pub mod fire_belly_changeling;

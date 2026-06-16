@@ -40,6 +40,7 @@ Captivating Vampire
 Ceremonious Rejection
 Chain Stasis
 Chainbreaker
+Chainer, Dementia Master
 Chakram Retriever
 Chamber Sentry
 Chandra, Fire of Kaladesh
@@ -186,6 +187,7 @@ Memory Lapse
 Merchant of Many Hats
 Merrow Bonegnawer
 Merrow Commerce
+Metalwork Colossus
 Midnight Guard
 Mijae Djinn
 Minamo's Meddling
@@ -235,6 +237,7 @@ Puppet Strings
 Put Away
 Quench
 Radagast the Brown
+Raggadragga, Goreguts Boss
 Rakshasa's Disdain
 Ral Zarek
 Raph & Leo, Sibling Rivals
@@ -294,8 +297,11 @@ Spell Syphon
 Spelljack
 Steel Overseer
 Stensia Innkeeper
+Stitchwing Skaab
 Super Mutant Scavenger
 Superior Numbers
+Synod Artificer
+Tadeas, Juniper Ascendant
 Tale's End
 Teferi's Contingency
 Teferi, Master of Time

@@ -96,3 +96,5 @@ pub mod flock_impostor;
 pub mod enraged_flamecaster;
 pub mod squawkroaster;
 pub mod nightmare_sower;
+pub mod pummeler_for_hire;
+pub mod tam_mindful_first_year;
