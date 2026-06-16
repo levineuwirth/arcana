@@ -87,7 +87,14 @@ pub fn classify(card: &Card) -> Classification {
     }
 
     if card.is_planeswalker() {
-        return Classification::new(Tier::Four, "planeswalker (multiple loyalty abilities)");
+        // Wave-2: single-faced planeswalkers route to the Planeswalker
+        // shape (loyalty abilities via CR 606 — the Chandra idiom).
+        // Transform / MDFC planeswalker faces stay T4 (the multi-face
+        // plumbing is a separate problem).
+        if card.layout == "normal" {
+            return Classification::new(Tier::Three, "planeswalker (loyalty abilities)");
+        }
+        return Classification::new(Tier::Four, "planeswalker (multi-face)");
     }
     if has_x_cost(card) {
         return Classification::new(Tier::Four, "X mana cost");
@@ -601,13 +608,17 @@ mod tests {
     // --- T4 --------------------------------------------------------
 
     #[test]
-    fn t4_planeswalker() {
-        let c = mk_card(|c| {
+    fn planeswalker_normal_is_t3_transform_is_t4() {
+        // Wave-2: a single-faced (normal-layout) planeswalker routes to
+        // the T3 Planeswalker shape; a transform/MDFC PW face stays T4.
+        let mut c = mk_card(|c| {
             c.name = "Chandra".into();
             c.type_line = "Legendary Planeswalker — Chandra".into();
             c.oracle_text = Some("+1: stuff.\n-3: more stuff.".into());
             c.loyalty = Some("4".into());
         });
+        assert_eq!(classify(&c).tier, Tier::Three);
+        c.layout = "transform".into();
         assert_eq!(classify(&c).tier, Tier::Four);
     }
 

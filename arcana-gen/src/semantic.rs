@@ -46,6 +46,10 @@ fn shape_requires_effect(shape: Option<&str>) -> bool {
             // change, host-trigger) constructs no `Effect::` and is
             // correctly caught as a stub.
             | Some("Aura")
+            // Planeswalkers: each loyalty ability's effect fn builds an
+            // `Effect::`. A PW whose every ability is GAP'd (emblem-only,
+            // etc.) constructs none → correctly caught as a stub.
+            | Some("Planeswalker")
     )
 }
 

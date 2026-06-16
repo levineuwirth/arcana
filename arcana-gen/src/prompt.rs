@@ -128,6 +128,12 @@ pub enum PromptShape {
     /// `ContinuousEffect` that follows `source.attached_to` — the
     /// Equipment idiom (Holy Strength / Pacifism patterns).
     Aura,
+    /// Wave-2: single-faced planeswalker. `loyalty: Some(N)` printed
+    /// starting loyalty + one `ActivatedAbilityDef` per loyalty ability
+    /// (`add_self_counter`/`remove_self_counter` for +N/-N, empty for 0;
+    /// `is_loyalty_ability: true`). CR 606 — the Chandra, Pyromaster
+    /// idiom; the engine enforces sorcery-speed / once-per-turn / 0-SBA.
+    Planeswalker,
 }
 
 /// Why a (card, tier) combination is not currently renderable. The
@@ -249,6 +255,7 @@ fn user_for_shape(card: &Card, shape: PromptShape) -> String {
         PromptShape::Equipment => user_equipment(card),
         PromptShape::StaticEnchantment => user_static_enchantment(card),
         PromptShape::Aura => user_aura(card),
+        PromptShape::Planeswalker => user_planeswalker(card),
     }
 }
 
@@ -290,6 +297,11 @@ fn select_shape(card: &Card, tier: Tier) -> Result<PromptShape, Unsupported> {
     }
     if card.is_battle() {
         return Ok(PromptShape::Battle);
+    }
+    // Wave-2: single-faced planeswalker (loyalty abilities). Transform/
+    // MDFC PW faces have a non-normal layout and stay refused.
+    if card.is_planeswalker() && card.layout == "normal" {
+        return Ok(PromptShape::Planeswalker);
     }
     // Tier 4/5 are explicitly out-of-scope for the classifier; refuse
     // AFTER the typed-card layout dispatch so Saga/Class/Battle
@@ -551,6 +563,8 @@ const FS_HOLY_STRENGTH: &str =
     include_str!("../../arcana-cards/src/lea/holy_strength.rs");
 const FS_PACIFISM: &str =
     include_str!("../../arcana-cards/src/mir/pacifism.rs");
+const FS_CHANDRA_PYROMASTER: &str =
+    include_str!("../../arcana-cards/src/m15/chandra_pyromaster.rs");
 
 // =============================================================================
 // shared target-card spec block
@@ -1809,6 +1823,45 @@ Never invent a `ContinuousEffect` builder, an `Effect` variant, or a filter the 
     )
 }
 
+/// Per-card prompt block for Planeswalker (Wave 2). A PW with printed
+/// starting loyalty and a set of CR 606 loyalty abilities.
+fn user_planeswalker(card: &Card) -> String {
+    format!(
+        "Generate a PLANESWALKER — a permanent with printed starting loyalty and one or more loyalty abilities ('+1: …', '0: …', '−7: …'). The engine models each loyalty ability as an `ActivatedAbilityDef` with `is_loyalty_ability: true`; the cost is adding/removing Loyalty counters (CR 606.2). The engine ENFORCES the loyalty rules for you — sorcery-speed only, stack empty, controller-only, once per turn per planeswalker (CR 606.3), and the 0-loyalty state-based sacrifice (CR 704.5i). You only declare the abilities.
+
+REFERENCE — Chandra, Pyromaster ({{2}}{{R}}{{R}} planeswalker, starting loyalty 4; the COMPLETE loyalty-ability pattern — mirror its structure):
+```rust
+{FS_CHANDRA_PYROMASTER}
+```
+
+BONES:
+- `mana_cost`: exactly the spec's `Mana cost` into `ManaCost::parse(\"…\")`. `colors`: exactly its colored pips.
+- `types: TypeLine::PLANESWALKER.into()`. NO power/toughness.
+- `loyalty: Some(N)` — the spec's `Loyalty` value (printed starting loyalty). `after_enter_battlefield` places the counters (CR 113.3c).
+- subtypes: the planeswalker's name-word is its subtype (Chandra → intern \"Chandra\"; Jace → \"Jace\"). Put it in a `SubtypeSet`.
+
+LOYALTY ABILITIES — one `ActivatedAbilityDef` per printed loyalty line. ALL share: `is_loyalty_ability: true`, `activation_zone: arcana_core::registry::ActivationZone::Battlefield`, `is_instant_speed: false`, `face_gate: None`, and a free `effect` fn. The COST encodes the loyalty symbol:
+- '+N: …' → `cost: ActivationCost {{ add_self_counter: Some((CounterKind::Loyalty, N)), ..ActivationCost::default() }}`.
+- '−N: …' → `cost: ActivationCost {{ remove_self_counter: Some((CounterKind::Loyalty, N)), ..ActivationCost::default() }}` (the engine filters the ability out unless loyalty ≥ N, so ultimates are gated automatically).
+- '0: …' → `cost: ActivationCost::default()` (no counter change).
+The effect fn has the activated-ability signature `fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>` — reach targets via `ctx.targets.targets.first()`, the source via `ctx.source` (exactly like Chandra). Use the full `Effect` catalog from the system prompt (DealDamage, DrawCards, CreateToken, DestroyPermanent, ExilePermanent, GainLife, AddCounters on a target, etc.) and `TargetRequirement` for any 'target …' clause.
+
+GOTCHAS:
+- `TypeLine::LAND` / `TypeLine::PLANESWALKER` / etc. are `u16` constants, NOT `TypeLine` values. In ANY `ObjectFilter` builder they need `.into()`: `ObjectFilter::permanent().without_types(TypeLine::LAND.into())`, `.with_types(TypeLine::PLANESWALKER.into())`. The bare constant is the #1 compile error.
+- `−X` loyalty ('−X: …' where X is chosen) is NOT expressible — `remove_self_counter` is a fixed `u32`. GAP the ability (shell it with a small fixed cost is wrong; instead `// GAP: dynamic-X loyalty cost`, and omit the ability rather than mis-cost it).
+- 'Target card in a graveyard' needs a concrete `Zone::Graveyard(player)` — there's no any-graveyard sentinel in the demonstrated surface, so GAP graveyard-targeting loyalty abilities.
+
+NOT EXPRESSIBLE — for a loyalty ability whose effect can't be built from the demonstrated `Effect` surface, still declare the ability with its correct loyalty COST but make its effect fn return `Vec::new()` with a `// GAP: <reason>` comment. Common GAPs: emblems ('you get an emblem with …'), 'cast from exile / play this turn' riders, static/continuous abilities (no loyalty cost — those aren't loyalty abilities at all; if the PW's only text is a static, GAP the whole card), ultimates with bespoke one-shot effects, dynamic-X costs/effects. Declaring the ability shell (correct +/−/cost) is still valuable even when the effect is GAP'd. Emit AT LEAST the abilities you CAN express.
+
+=== TARGET CARD ===
+{spec}
+
+Transcribe bones verbatim from the spec above, never from Chandra. Build each loyalty ability with the correct counter cost. Never invent an `Effect` variant, a cost field, or a builder the reference / system prompt doesn't show. Generate the Rust source. Output only the file contents.",
+        spec = card_spec(card),
+        FS_CHANDRA_PYROMASTER = FS_CHANDRA_PYROMASTER,
+    )
+}
+
 // =============================================================================
 // tests
 // =============================================================================
@@ -2212,13 +2265,14 @@ mod tests {
     #[test]
     fn retry_prompt_respects_unsupported_shapes() {
         // A retry for an out-of-scope card (Tier::Four/Five) is still
-        // Unsupported. Use a planeswalker rather than a typed-card
-        // layout: Battle / Saga / Class are now layout-dispatched
-        // BEFORE the tier guard, so they would route to their typed
-        // prompt regardless of tier.
+        // Unsupported. Use a TRANSFORM-layout planeswalker: single-faced
+        // PWs now route to the Planeswalker shape, but transform/MDFC PW
+        // faces stay refused (and Battle/Saga/Class are layout-dispatched
+        // before the tier guard, so they'd route regardless of tier).
         let c = mk_card(|c| {
             c.name = "Some Planeswalker".into();
             c.type_line = "Legendary Planeswalker — Test".into();
+            c.layout = "transform".into();
             c.loyalty = Some("4".into());
             c.oracle_text = Some(
                 "+1: Do a thing.\n-2: Do another thing.".into());
@@ -2419,6 +2473,25 @@ mod tests {
         assert!(p.user.contains("InstallContinuousEffect"));
         assert!(p.user.contains("keyword_anthem"));
         assert!(p.user.contains("Banner of Valor"));
+    }
+
+    #[test]
+    fn planeswalker_routes_to_pw_shape() {
+        let c = mk_card(|c| {
+            c.name = "Jaya, Fiery Negotiator".into();
+            c.mana_cost = Some("{2}{R}".into());
+            c.type_line = "Legendary Planeswalker — Jaya".into();
+            c.loyalty = Some("4".into());
+            c.colors = vec!["R".into()];
+            c.oracle_text = Some(
+                "+1: Add {R}{R}{R}.\n+1: Jaya deals 2 damage to target creature.\n\
+                 -8: You get an emblem.".into());
+        });
+        let p = render_prompt(&c, Tier::Three).expect("PW yields a prompt");
+        assert_eq!(p.shape, PromptShape::Planeswalker);
+        assert!(p.user.contains("is_loyalty_ability")
+            && p.user.contains("add_self_counter"),
+            "PW pack teaches the loyalty-ability idiom");
     }
 
     #[test]
