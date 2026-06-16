@@ -127,3 +127,7 @@ pub mod screams_from_within;
 pub mod shielded_by_faith;
 pub mod sheltered_by_ghosts;
 pub mod darksteel_mutation;
+pub mod eldrazi_conscription;
+pub mod spirit_mantle;
+pub mod chains_of_custody;
+pub mod sentinel_s_eyes;

@@ -89,3 +89,4 @@ pub mod glaring_aegis;
 pub mod maniacal_rage;
 pub mod hard_cover;
 pub mod sleep_paralysis;
+pub mod wolfkin_bond;

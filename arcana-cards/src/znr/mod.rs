@@ -59,3 +59,4 @@ pub mod a_base_camp;
 pub mod bubble_snare;
 pub mod lithoform_blight;
 pub mod nissa_s_zendikon;
+pub mod nahiri_s_binding;

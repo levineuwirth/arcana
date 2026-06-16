@@ -60,3 +60,4 @@ pub mod messenger_s_speed;
 pub mod viper_s_kiss;
 pub mod scourgemark;
 pub mod chosen_by_heliod;
+pub mod fate_foretold;

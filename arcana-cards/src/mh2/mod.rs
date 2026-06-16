@@ -60,3 +60,4 @@ pub mod shattered_ego;
 pub mod captured_by_lagacs;
 pub mod so_shiny;
 pub mod world_weary;
+pub mod skyblade_s_boon;

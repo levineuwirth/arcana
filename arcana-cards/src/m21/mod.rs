@@ -83,3 +83,4 @@ pub mod infernal_scarring;
 pub mod demonic_embrace;
 pub mod rousing_read;
 pub mod setessan_training;
+pub mod dub;

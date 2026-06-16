@@ -124,3 +124,6 @@ pub mod soul_channeling;
 pub mod cave_sense;
 pub mod stamina;
 pub mod maggot_therapy;
+pub mod diplomatic_immunity;
+pub mod tiger_claws;
+pub mod ferocity;

@@ -17,3 +17,4 @@ pub mod verdant_embrace;
 pub mod shielding_plax;
 pub mod angelic_gift;
 pub mod indomitable_might;
+pub mod kenrith_s_transformation;

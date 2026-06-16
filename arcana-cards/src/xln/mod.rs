@@ -69,3 +69,5 @@ pub mod shapers_sanctuary;
 pub mod axis_of_mortality;
 pub mod one_with_the_wind;
 pub mod swashbuckling;
+pub mod castaway_s_despair;
+pub mod pious_interdiction;

@@ -18,3 +18,4 @@ pub mod omenpath_to_naya;
 pub mod temur_elevator;
 pub mod planeswalkerificate;
 pub mod meandered_towershell;
+pub mod toddler_s_rage;

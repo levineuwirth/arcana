@@ -55,3 +55,4 @@ pub mod spectra_ward;
 pub mod vineweft;
 pub mod crippling_blight;
 pub mod divine_favor;
+pub mod inferno_fist;

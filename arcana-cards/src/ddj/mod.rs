@@ -8,3 +8,4 @@ pub mod sadistic_hypnotist;
 pub mod elves_of_deep_shadow;
 pub mod steamcore_weird;
 pub mod nivix_aerie_of_the_firemind;
+pub mod yoke_of_the_damned;

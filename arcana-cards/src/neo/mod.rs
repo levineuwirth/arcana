@@ -91,3 +91,6 @@ pub mod gift_of_wrath;
 pub mod grafted_growth;
 pub mod clawing_torment;
 pub mod twisted_embrace;
+pub mod tamiyo_s_compleation;
+pub mod favor_of_jukai;
+pub mod crackling_emergence;

@@ -47,3 +47,5 @@ pub mod onyx_goblet;
 pub mod vicious_shadows;
 pub mod savage_hunger;
 pub mod coma_veil;
+pub mod banewasp_affliction;
+pub mod lush_growth;

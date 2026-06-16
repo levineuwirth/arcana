@@ -41,3 +41,5 @@ pub mod answered_prayers;
 pub mod sadistic_obsession;
 pub mod winter_s_rest;
 pub mod reprobation;
+pub mod smoke_shroud;
+pub mod soul_strike_technique;

@@ -154,3 +154,4 @@ pub mod ordeal_of_nylea;
 pub mod twinblade_blessing;
 pub mod eaten_by_piranhas;
 pub mod starlight_snare;
+pub mod new_horizons;

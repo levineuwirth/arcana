@@ -62,3 +62,4 @@ pub mod trusty_boomerang;
 pub mod path_to_redemption;
 pub mod avatar_destiny;
 pub mod honest_work;
+pub mod swampsnare_trap;

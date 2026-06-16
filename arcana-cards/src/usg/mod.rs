@@ -67,3 +67,5 @@ pub mod bravado;
 pub mod vampiric_embrace;
 pub mod zephid_s_embrace;
 pub mod fiery_mantle;
+pub mod lingering_mirage;
+pub mod sicken;

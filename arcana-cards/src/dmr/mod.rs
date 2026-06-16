@@ -69,3 +69,5 @@ pub mod twisted_experiment;
 pub mod sun_clasp;
 pub mod undying_rage;
 pub mod lightning_reflexes;
+pub mod leaden_fists;
+pub mod quicksilver_dagger;

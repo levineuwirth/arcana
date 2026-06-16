@@ -6,3 +6,4 @@ pub mod wirewood_savage;
 pub mod deathgreeter;
 pub mod drudge_skeletons;
 pub mod bad_moon;
+pub mod lignify;

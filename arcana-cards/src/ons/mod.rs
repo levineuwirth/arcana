@@ -54,3 +54,4 @@ pub mod mythic_proportions;
 pub mod lavamancer_s_skill;
 pub mod crown_of_ascension;
 pub mod crown_of_suspicion;
+pub mod crown_of_vigor;

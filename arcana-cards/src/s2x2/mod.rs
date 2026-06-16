@@ -56,3 +56,6 @@ pub mod hyena_umbra;
 pub mod rancor;
 pub mod knightly_valor;
 pub mod capture_sphere;
+pub mod strands_of_undeath;
+pub mod eel_umbra;
+pub mod arachnus_web;

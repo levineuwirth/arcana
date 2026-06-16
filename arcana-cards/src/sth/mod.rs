@@ -13,3 +13,4 @@ pub mod bottomless_pit;
 pub mod contemplation;
 pub mod mortuary;
 pub mod contempt;
+pub mod torment;

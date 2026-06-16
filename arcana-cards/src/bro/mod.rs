@@ -82,3 +82,6 @@ pub mod prison_sentence;
 pub mod a_mightstone_s_animation;
 pub mod weakstone_s_subjugation;
 pub mod audacity;
+pub mod draconic_destiny;
+pub mod military_discipline;
+pub mod mightstone_s_animation;

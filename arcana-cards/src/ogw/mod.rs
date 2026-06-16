@@ -33,3 +33,4 @@ pub mod bone_saw;
 pub mod pyromancer_s_assault;
 pub mod isolation_zone;
 pub mod visions_of_brutality;
+pub mod iona_s_blessing;

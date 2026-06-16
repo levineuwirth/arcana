@@ -70,3 +70,6 @@ pub mod arcane_teachings;
 pub mod shimmering_wings;
 pub mod regeneration;
 pub mod fear;
+pub mod robe_of_mirrors;
+pub mod dehydration;
+pub mod contaminated_bond;

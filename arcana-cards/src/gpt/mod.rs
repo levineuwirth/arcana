@@ -34,3 +34,4 @@ pub mod hatching_plans;
 pub mod hypervolt_grasp;
 pub mod fencer_s_magemark;
 pub mod sinstriker_s_will;
+pub mod shadow_lance;

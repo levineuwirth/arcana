@@ -29,3 +29,5 @@ pub mod destructive_flow;
 pub mod keldon_mantle;
 pub mod sisay_s_ingenuity;
 pub mod hobble;
+pub mod sinister_strength;
+pub mod insolence;

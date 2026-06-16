@@ -67,3 +67,5 @@ pub mod whip_silk;
 pub mod sleeper_s_robe;
 pub mod wings_of_hope;
 pub mod mourning;
+pub mod tainted_well;
+pub mod crown_of_flames;

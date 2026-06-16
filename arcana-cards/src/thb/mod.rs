@@ -80,3 +80,4 @@ pub mod escape_velocity;
 pub mod starlit_mantle;
 pub mod aspect_of_lamprey;
 pub mod hydra_s_growth;
+pub mod mantle_of_the_wolf;

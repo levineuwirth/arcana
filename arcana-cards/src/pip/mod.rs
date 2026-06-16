@@ -19,3 +19,4 @@ pub mod power_fist;
 pub mod almost_perfect;
 pub mod acquired_mutation;
 pub mod nerd_rage;
+pub mod grim_reaper_s_sprint;

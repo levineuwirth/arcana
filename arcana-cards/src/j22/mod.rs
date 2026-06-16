@@ -9,3 +9,4 @@ pub mod spectral_hunt_caller;
 pub mod infernal_idol;
 pub mod rhystic_study;
 pub mod daring_piracy;
+pub mod hold_for_questioning;

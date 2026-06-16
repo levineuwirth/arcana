@@ -35,3 +35,5 @@ pub mod mardu_runemark;
 pub mod sultai_runemark;
 pub mod temur_runemark;
 pub mod abzan_runemark;
+pub mod fruit_of_the_first_tree;
+pub mod ancestral_vengeance;

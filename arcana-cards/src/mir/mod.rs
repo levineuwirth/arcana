@@ -68,3 +68,4 @@ pub mod binding_agony;
 pub mod ritual_of_steel;
 pub mod soar;
 pub mod agility;
+pub mod grave_servitude;

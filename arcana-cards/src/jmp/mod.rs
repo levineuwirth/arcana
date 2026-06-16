@@ -135,3 +135,4 @@ pub mod celestial_mantle;
 pub mod waterknot;
 pub mod eternal_thirst;
 pub mod feral_invocation;
+pub mod lawmage_s_binding;

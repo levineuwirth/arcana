@@ -48,3 +48,4 @@ pub mod cooperation;
 pub mod seizures;
 pub mod earthlore;
 pub mod aggression;
+pub mod hot_springs;

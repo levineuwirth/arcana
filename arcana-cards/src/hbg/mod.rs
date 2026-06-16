@@ -61,3 +61,4 @@ pub mod a_navigation_orb;
 pub mod gate_to_seatower;
 pub mod a_sigil_of_myrkul;
 pub mod seatower_imprisonment;
+pub mod craving_of_yeenoghu;

@@ -51,3 +51,4 @@ pub mod sunken_field;
 pub mod mageta_s_boon;
 pub mod jolrael_s_favor;
 pub mod barbed_field;
+pub mod noxious_field;

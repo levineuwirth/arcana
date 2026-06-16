@@ -63,3 +63,4 @@ pub mod fishliver_oil;
 pub mod sea_s_claim;
 pub mod web;
 pub mod reflexes;
+pub mod enfeeblement;

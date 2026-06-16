@@ -70,3 +70,5 @@ pub mod curious_inquiry;
 pub mod airtight_alibi;
 pub mod convenient_target;
 pub mod fae_flight;
+pub mod coerced_to_kill;
+pub mod dramatic_accusation;

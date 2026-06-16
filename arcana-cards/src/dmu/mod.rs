@@ -46,3 +46,4 @@ pub mod vanquisher_s_axe;
 pub mod inscribed_tablet;
 pub mod temporary_lockdown;
 pub mod citizen_s_arrest;
+pub mod hammerhand;

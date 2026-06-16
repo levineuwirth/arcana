@@ -54,3 +54,4 @@ pub mod gremlin_infestation;
 pub mod siege_modification;
 pub mod aerial_modification;
 pub mod tezzeret_s_touch;
+pub mod caught_in_the_brights;

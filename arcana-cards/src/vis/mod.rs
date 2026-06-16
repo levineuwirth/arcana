@@ -29,3 +29,4 @@ pub mod death_watch;
 pub mod betrayal;
 pub mod mystic_veil;
 pub mod mortal_wound;
+pub mod relic_ward;

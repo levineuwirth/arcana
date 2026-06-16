@@ -33,3 +33,4 @@ pub mod nesting_grounds;
 pub mod cream_of_the_crop;
 pub mod blowfly_infestation;
 pub mod flourishing_defenses;
+pub mod abundant_growth;

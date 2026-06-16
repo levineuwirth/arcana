@@ -83,3 +83,4 @@ pub mod a_public_enemy;
 pub mod a_most_wanted;
 pub mod sticky_fingers;
 pub mod sleep_with_the_fishes;
+pub mod most_wanted;

@@ -74,3 +74,4 @@ pub mod uncharted_haven;
 pub mod colossification;
 pub mod feather_of_flight;
 pub mod war_squeak;
+pub mod charmed_sleep;

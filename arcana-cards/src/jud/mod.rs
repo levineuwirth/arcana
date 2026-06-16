@@ -32,3 +32,5 @@ pub mod telekinetic_bonds;
 pub mod riftstone_portal;
 pub mod exoskeletal_armor;
 pub mod cagemail;
+pub mod infectious_rage;
+pub mod lost_in_thought;

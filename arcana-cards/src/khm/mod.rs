@@ -116,3 +116,5 @@ pub mod arachnoform;
 pub mod bound_in_gold;
 pub mod rune_of_mortality;
 pub mod spectral_steel;
+pub mod bind_the_monster;
+pub mod mists_of_littjara;

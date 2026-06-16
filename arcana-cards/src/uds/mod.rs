@@ -33,3 +33,5 @@ pub mod carnival_of_souls;
 pub mod dying_wail;
 pub mod capashen_standard;
 pub mod mark_of_fury;
+pub mod illuminated_wings;
+pub mod disappear;

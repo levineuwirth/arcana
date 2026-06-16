@@ -73,3 +73,5 @@ pub mod smile_at_death;
 pub mod stormplain_detainment;
 pub mod fresh_start;
 pub mod ringing_strike_mastery;
+pub mod fire_rim_form;
+pub mod wingspan_stride;
