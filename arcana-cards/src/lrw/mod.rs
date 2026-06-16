@@ -63,3 +63,4 @@ pub mod soaring_hope;
 pub mod triclopean_sight;
 pub mod zephyr_net;
 pub mod protective_bubble;
+pub mod squeaking_pie_sneak;

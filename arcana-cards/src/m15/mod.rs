@@ -59,3 +59,4 @@ pub mod inferno_fist;
 pub mod garruk_apex_predator;
 pub mod jace_the_living_guildpact;
 pub mod liliana_vess;
+pub mod xathrid_slyblade;

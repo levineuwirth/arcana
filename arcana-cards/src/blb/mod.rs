@@ -76,3 +76,5 @@ pub mod feather_of_flight;
 pub mod war_squeak;
 pub mod charmed_sleep;
 pub mod ral_crackling_wit;
+pub mod skyskipper_duo;
+pub mod reptilian_recruiter;

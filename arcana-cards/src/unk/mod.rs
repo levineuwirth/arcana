@@ -58,3 +58,4 @@ pub mod taught_by_narset;
 pub mod taught_by_serra;
 pub mod taught_by_vito;
 pub mod taught_by_bruce_tarl;
+pub mod the_kami_knight;

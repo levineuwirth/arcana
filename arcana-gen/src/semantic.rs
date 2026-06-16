@@ -50,6 +50,11 @@ fn shape_requires_effect(shape: Option<&str>) -> bool {
             // `Effect::`. A PW whose every ability is GAP'd (emblem-only,
             // etc.) constructs none → correctly caught as a stub.
             | Some("Planeswalker")
+            // Multi-ability creatures: each triggered/activated effect fn
+            // builds an `Effect::`. A creature whose every ability is
+            // GAP'd (or that's purely keywords, which would have routed
+            // french-vanilla) constructs none → caught as a stub.
+            | Some("MultiAbilityCreature")
     )
 }
 

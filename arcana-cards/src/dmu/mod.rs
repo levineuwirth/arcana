@@ -51,3 +51,5 @@ pub mod jaya_fiery_negotiator;
 pub mod a_karn_living_legacy;
 pub mod karn_living_legacy;
 pub mod ajani_sleeper_agent;
+pub mod mossbeard_ancient;
+pub mod mesa_cavalier;

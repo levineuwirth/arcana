@@ -455,6 +455,9 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
                         }
                         "aura" => "Aura",
                         "planeswalker" | "pw" => "Planeswalker",
+                        "multi" | "multi-ability" | "multiabilitycreature" => {
+                            "MultiAbilityCreature"
+                        }
                         other => {
                             return Err(anyhow!(
                                 "--shapes: unknown shape '{other}' \

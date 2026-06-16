@@ -138,3 +138,5 @@ pub mod narset_of_the_ancient_way;
 pub mod ob_nixilis_of_the_black_oath;
 pub mod commodore_guff;
 pub mod jace_beleren;
+pub mod elite_scaleguard;
+pub mod narci_fable_singer;

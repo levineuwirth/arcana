@@ -89,3 +89,4 @@ pub mod gift_of_strands;
 pub mod bewitching_leechcraft;
 pub mod morgul_knife_wound;
 pub mod fog_on_the_barrow_downs;
+pub mod dunland_crebain;

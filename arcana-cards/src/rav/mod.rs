@@ -53,3 +53,4 @@ pub mod light_of_sanction;
 pub mod suppression_field;
 pub mod clinging_darkness;
 pub mod mark_of_eviction;
+pub mod tattered_drake;

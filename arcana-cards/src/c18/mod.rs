@@ -21,3 +21,4 @@ pub mod octopus_umbra;
 pub mod saheeli_the_gifted;
 pub mod estrid_the_masked;
 pub mod lord_windgrace;
+pub mod enigma_sphinx;

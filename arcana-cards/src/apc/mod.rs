@@ -36,3 +36,5 @@ pub mod squee_s_embrace;
 pub mod coalition_flag;
 pub mod manacles_of_decay;
 pub mod foul_presence;
+pub mod putrid_warrior;
+pub mod rakavolver;

@@ -28,3 +28,4 @@ pub mod dread_statuary;
 pub mod ghostly_possession;
 pub mod kaya_ghost_assassin;
 pub mod daretti_ingenious_iconoclast;
+pub mod volatile_chimera;

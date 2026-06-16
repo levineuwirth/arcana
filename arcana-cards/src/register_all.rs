@@ -95,6 +95,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::lrw::triclopean_sight::register(reg); n += 1;
     crate::lrw::zephyr_net::register(reg); n += 1;
     crate::lrw::protective_bubble::register(reg); n += 1;
+    crate::lrw::squeaking_pie_sneak::register(reg); n += 1;
     // --- isd ---
     crate::isd::murder::register(reg); n += 1;
     crate::isd::snapcaster_mage::register(reg); n += 1;
@@ -312,6 +313,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::rav::suppression_field::register(reg); n += 1;
     crate::rav::clinging_darkness::register(reg); n += 1;
     crate::rav::mark_of_eviction::register(reg); n += 1;
+    crate::rav::tattered_drake::register(reg); n += 1;
     // --- m11 ---
     crate::m11::preordain::register(reg); n += 1;
     crate::m11::typhoid_rats::register(reg); n += 1;
@@ -441,6 +443,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::m15::garruk_apex_predator::register(reg); n += 1;
     crate::m15::jace_the_living_guildpact::register(reg); n += 1;
     crate::m15::liliana_vess::register(reg); n += 1;
+    crate::m15::xathrid_slyblade::register(reg); n += 1;
     // --- zen ---
     crate::zen::burst_lightning::register(reg); n += 1;
     crate::zen::shatterskull_giant::register(reg); n += 1;
@@ -743,6 +746,8 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::apc::coalition_flag::register(reg); n += 1;
     crate::apc::manacles_of_decay::register(reg); n += 1;
     crate::apc::foul_presence::register(reg); n += 1;
+    crate::apc::putrid_warrior::register(reg); n += 1;
+    crate::apc::rakavolver::register(reg); n += 1;
     // --- ktk ---
     crate::ktk::monastery_swiftspear::register(reg); n += 1;
     crate::ktk::rotting_mastodon::register(reg); n += 1;
@@ -938,6 +943,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::m14::garruk_caller_of_beasts::register(reg); n += 1;
     crate::m14::jace_memory_adept::register(reg); n += 1;
     crate::m14::liliana_of_the_dark_realms::register(reg); n += 1;
+    crate::m14::colossal_whale::register(reg); n += 1;
     // --- mrd ---
     crate::mrd::bonesplitter::register(reg); n += 1;
     crate::mrd::alpha_myr::register(reg); n += 1;
@@ -1007,6 +1013,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::mrd::necrogen_mists::register(reg); n += 1;
     crate::mrd::sphere_of_purity::register(reg); n += 1;
     crate::mrd::inertia_bubble::register(reg); n += 1;
+    crate::mrd::clockwork_dragon::register(reg); n += 1;
     // --- fdn ---
     crate::fdn::quakestrider_ceratops::register(reg); n += 1;
     crate::fdn::bear_cub::register(reg); n += 1;
@@ -1661,6 +1668,8 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::rna::domri_city_smasher::register(reg); n += 1;
     crate::rna::dovin_architect_of_law::register(reg); n += 1;
     crate::rna::domri_chaos_bringer::register(reg); n += 1;
+    crate::rna::spear_spewer::register(reg); n += 1;
+    crate::rna::mesmerizing_benthid::register(reg); n += 1;
     // --- por ---
     crate::por::skeletal_crocodile::register(reg); n += 1;
     crate::por::rowan_treefolk::register(reg); n += 1;
@@ -3030,6 +3039,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::nph::viridian_harvest::register(reg); n += 1;
     crate::nph::evil_presence::register(reg); n += 1;
     crate::nph::defensive_stance::register(reg); n += 1;
+    crate::nph::vault_skirge::register(reg); n += 1;
     // --- soi ---
     crate::soi::devilthorn_fox::register(reg); n += 1;
     crate::soi::vampire_noble::register(reg); n += 1;
@@ -3179,6 +3189,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::tle::crystalline_armor::register(reg); n += 1;
     crate::tle::creeping_crystal_coating::register(reg); n += 1;
     crate::tle::lost_in_memories::register(reg); n += 1;
+    crate::tle::avatar_kyoshi_earthbender::register(reg); n += 1;
     // --- m10 ---
     crate::m10::craw_wurm::register(reg); n += 1;
     crate::m10::enormous_baloth::register(reg); n += 1;
@@ -3592,6 +3603,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::mir::soar::register(reg); n += 1;
     crate::mir::agility::register(reg); n += 1;
     crate::mir::grave_servitude::register(reg); n += 1;
+    crate::mir::azimaet_drake::register(reg); n += 1;
     // --- shm ---
     crate::shm::old_ghastbark::register(reg); n += 1;
     crate::shm::loamdragger_giant::register(reg); n += 1;
@@ -3710,6 +3722,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::ala::coma_veil::register(reg); n += 1;
     crate::ala::banewasp_affliction::register(reg); n += 1;
     crate::ala::lush_growth::register(reg); n += 1;
+    crate::ala::sphinx_sovereign::register(reg); n += 1;
     // --- ust ---
     crate::ust::despondent_killbot::register(reg); n += 1;
     crate::ust::curious_killbot::register(reg); n += 1;
@@ -4180,6 +4193,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::mom::failed_conversion::register(reg); n += 1;
     crate::mom::archangel_elspeth::register(reg); n += 1;
     crate::mom::wrenn_and_realmbreaker::register(reg); n += 1;
+    crate::mom::drana_and_linvala::register(reg); n += 1;
     // --- m19 ---
     crate::m19::loxodon_line_breaker::register(reg); n += 1;
     crate::m19::oreskos_swiftclaw::register(reg); n += 1;
@@ -4475,6 +4489,8 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::cmm::ob_nixilis_of_the_black_oath::register(reg); n += 1;
     crate::cmm::commodore_guff::register(reg); n += 1;
     crate::cmm::jace_beleren::register(reg); n += 1;
+    crate::cmm::elite_scaleguard::register(reg); n += 1;
+    crate::cmm::narci_fable_singer::register(reg); n += 1;
     // --- kld ---
     crate::kld::terrain_elemental::register(reg); n += 1;
     crate::kld::terror_of_the_fairgrounds::register(reg); n += 1;
@@ -4550,6 +4566,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::kld::nissa_vital_force::register(reg); n += 1;
     crate::kld::saheeli_rai::register(reg); n += 1;
     crate::kld::chandra_pyrogenius::register(reg); n += 1;
+    crate::kld::demon_of_dark_schemes::register(reg); n += 1;
     // --- stx ---
     crate::stx::spined_karok::register(reg); n += 1;
     crate::stx::ageless_guardian::register(reg); n += 1;
@@ -4712,6 +4729,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::cn2::ghostly_possession::register(reg); n += 1;
     crate::cn2::kaya_ghost_assassin::register(reg); n += 1;
     crate::cn2::daretti_ingenious_iconoclast::register(reg); n += 1;
+    crate::cn2::volatile_chimera::register(reg); n += 1;
     // --- roe ---
     crate::roe::lagac_lizard::register(reg); n += 1;
     crate::roe::jwari_scuttler::register(reg); n += 1;
@@ -4788,6 +4806,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::gpt::fencer_s_magemark::register(reg); n += 1;
     crate::gpt::sinstriker_s_will::register(reg); n += 1;
     crate::gpt::shadow_lance::register(reg); n += 1;
+    crate::gpt::witch_maw_nephilim::register(reg); n += 1;
     // --- a25 ---
     crate::a25::watchwolf::register(reg); n += 1;
     crate::a25::geist_of_the_moors::register(reg); n += 1;
@@ -5164,6 +5183,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::rtr::racecourse_fury::register(reg); n += 1;
     crate::rtr::deviant_glee::register(reg); n += 1;
     crate::rtr::chronic_flooding::register(reg); n += 1;
+    crate::rtr::sluiceway_scorpion::register(reg); n += 1;
     // --- ema ---
     crate::ema::elite_vanguard::register(reg); n += 1;
     crate::ema::glacial_wall::register(reg); n += 1;
@@ -5608,6 +5628,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::csp::gelid_shackles::register(reg); n += 1;
     crate::csp::surging_might::register(reg); n += 1;
     crate::csp::frozen_solid::register(reg); n += 1;
+    crate::csp::adarkar_windform::register(reg); n += 1;
     // --- me1 ---
     crate::me1::crookshank_kobolds::register(reg); n += 1;
     crate::me1::benalish_hero::register(reg); n += 1;
@@ -5793,6 +5814,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::td2::viridian_claw::register(reg); n += 1;
     crate::td2::slagwurm_armor::register(reg); n += 1;
     crate::td2::coastal_tower::register(reg); n += 1;
+    crate::td2::spire_serpent::register(reg); n += 1;
     // --- avr ---
     crate::avr::nettle_swine::register(reg); n += 1;
     crate::avr::raging_poltergeist::register(reg); n += 1;
@@ -5847,6 +5869,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::avr::call_to_serve::register(reg); n += 1;
     crate::avr::predator_s_gambit::register(reg); n += 1;
     crate::avr::tamiyo_the_moon_sage::register(reg); n += 1;
+    crate::avr::elgaud_shieldmate::register(reg); n += 1;
     // --- hml ---
     crate::hml::dwarven_trader::register(reg); n += 1;
     crate::hml::willow_faerie::register(reg); n += 1;
@@ -6126,6 +6149,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::usg::fiery_mantle::register(reg); n += 1;
     crate::usg::lingering_mirage::register(reg); n += 1;
     crate::usg::sicken::register(reg); n += 1;
+    crate::usg::vug_lizard::register(reg); n += 1;
     // --- evg ---
     crate::evg::elvish_warrior::register(reg); n += 1;
     crate::evg::wirewood_herald::register(reg); n += 1;
@@ -6592,6 +6616,8 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::dmu::a_karn_living_legacy::register(reg); n += 1;
     crate::dmu::karn_living_legacy::register(reg); n += 1;
     crate::dmu::ajani_sleeper_agent::register(reg); n += 1;
+    crate::dmu::mossbeard_ancient::register(reg); n += 1;
+    crate::dmu::mesa_cavalier::register(reg); n += 1;
     // --- dis ---
     crate::dis::assault_zeppelid::register(reg); n += 1;
     crate::dis::stomp_and_howl::register(reg); n += 1;
@@ -7051,6 +7077,8 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::blb::war_squeak::register(reg); n += 1;
     crate::blb::charmed_sleep::register(reg); n += 1;
     crate::blb::ral_crackling_wit::register(reg); n += 1;
+    crate::blb::skyskipper_duo::register(reg); n += 1;
+    crate::blb::reptilian_recruiter::register(reg); n += 1;
     // --- gn2 ---
     crate::gn2::carrion_screecher::register(reg); n += 1;
     crate::gn2::grazing_whiptail::register(reg); n += 1;
@@ -7944,6 +7972,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::cmr::burning_anger::register(reg); n += 1;
     crate::cmr::jeska_thrice_reborn::register(reg); n += 1;
     crate::cmr::tevesh_szat_doom_of_fools::register(reg); n += 1;
+    crate::cmr::gor_muldrak_amphinologist::register(reg); n += 1;
     // --- dst ---
     crate::dst::arcbound_bruiser::register(reg); n += 1;
     crate::dst::ritual_of_restoration::register(reg); n += 1;
@@ -8381,6 +8410,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::uma::boar_umbra::register(reg); n += 1;
     crate::uma::conviction::register(reg); n += 1;
     crate::uma::mammoth_umbra::register(reg); n += 1;
+    crate::uma::scuzzback_marauders::register(reg); n += 1;
     // --- ddo ---
     crate::ddo::loxodon_partisan::register(reg); n += 1;
     crate::ddo::mortal_s_ardor::register(reg); n += 1;
@@ -8700,6 +8730,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::snc::ob_nixilis_the_adversary::register(reg); n += 1;
     crate::snc::vivien_on_the_hunt::register(reg); n += 1;
     crate::snc::elspeth_resplendent::register(reg); n += 1;
+    crate::snc::a_high_rise_sawjack::register(reg); n += 1;
     // --- dds ---
     crate::dds::cloudcrown_oak::register(reg); n += 1;
     crate::dds::guttural_response::register(reg); n += 1;
@@ -8804,6 +8835,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::unk::taught_by_serra::register(reg); n += 1;
     crate::unk::taught_by_vito::register(reg); n += 1;
     crate::unk::taught_by_bruce_tarl::register(reg); n += 1;
+    crate::unk::the_kami_knight::register(reg); n += 1;
     // --- ddt ---
     crate::ddt::goblin_wardriver::register(reg); n += 1;
     crate::ddt::tidal_wave::register(reg); n += 1;
@@ -8933,6 +8965,8 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::fin::insomnia_crown_city::register(reg); n += 1;
     crate::fin::vector_imperial_capital::register(reg); n += 1;
     crate::fin::stuck_in_summoner_s_sanctum::register(reg); n += 1;
+    crate::fin::bartz_and_boko::register(reg); n += 1;
+    crate::fin::gaius_van_baelsar::register(reg); n += 1;
     // --- dvd ---
     crate::dvd::dusk_imp::register(reg); n += 1;
     crate::dvd::abyssal_gatekeeper::register(reg); n += 1;
@@ -9312,6 +9346,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::ltr::bewitching_leechcraft::register(reg); n += 1;
     crate::ltr::morgul_knife_wound::register(reg); n += 1;
     crate::ltr::fog_on_the_barrow_downs::register(reg); n += 1;
+    crate::ltr::dunland_crebain::register(reg); n += 1;
     // --- ecc ---
     crate::ecc::putrefy::register(reg); n += 1;
     crate::ecc::persist::register(reg); n += 1;
@@ -9917,6 +9952,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::woe::cooped_up::register(reg); n += 1;
     crate::woe::bestial_bloodline::register(reg); n += 1;
     crate::woe::ashiok_wicked_manipulator::register(reg); n += 1;
+    crate::woe::tangled_colony::register(reg); n += 1;
     // --- ydsk ---
     crate::ydsk::anguished_recollection::register(reg); n += 1;
     crate::ydsk::housemeld::register(reg); n += 1;
@@ -9989,6 +10025,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::dsk::stay_hidden_stay_silent::register(reg); n += 1;
     crate::dsk::unable_to_scream::register(reg); n += 1;
     crate::dsk::kaito_bane_of_nightmares::register(reg); n += 1;
+    crate::dsk::entity_tracker::register(reg); n += 1;
     // --- mid ---
     crate::mid::no_way_out::register(reg); n += 1;
     crate::mid::dissipate::register(reg); n += 1;
@@ -10213,6 +10250,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::who::trenzalore_clocktower::register(reg); n += 1;
     crate::who::ominous_cemetery::register(reg); n += 1;
     crate::who::become_the_pilot::register(reg); n += 1;
+    crate::who::k_9_mark_i::register(reg); n += 1;
     // --- spm ---
     crate::spm::scorpion_s_sting::register(reg); n += 1;
     crate::spm::rhino_s_rampage::register(reg); n += 1;
@@ -10257,6 +10295,8 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::spm::spider_man_no_more::register(reg); n += 1;
     crate::spm::robotics_mastery::register(reg); n += 1;
     crate::spm::alien_symbiosis::register(reg); n += 1;
+    crate::spm::kraven_the_hunter::register(reg); n += 1;
+    crate::spm::morlun_devourer_of_spiders::register(reg); n += 1;
     // --- ulg ---
     crate::ulg::intervene::register(reg); n += 1;
     crate::ulg::burst_of_energy::register(reg); n += 1;
@@ -11062,6 +11102,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::c18::saheeli_the_gifted::register(reg); n += 1;
     crate::c18::estrid_the_masked::register(reg); n += 1;
     crate::c18::lord_windgrace::register(reg); n += 1;
+    crate::c18::enigma_sphinx::register(reg); n += 1;
     // --- ysnc ---
     crate::ysnc::giant_regrowth::register(reg); n += 1;
     crate::ysnc::traumatic_prank::register(reg); n += 1;

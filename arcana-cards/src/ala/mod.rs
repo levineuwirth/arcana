@@ -49,3 +49,4 @@ pub mod savage_hunger;
 pub mod coma_veil;
 pub mod banewasp_affliction;
 pub mod lush_growth;
+pub mod sphinx_sovereign;

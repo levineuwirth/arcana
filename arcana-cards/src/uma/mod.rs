@@ -48,3 +48,4 @@ pub mod pattern_of_rebirth;
 pub mod boar_umbra;
 pub mod conviction;
 pub mod mammoth_umbra;
+pub mod scuzzback_marauders;

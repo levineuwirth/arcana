@@ -134,6 +134,14 @@ pub enum PromptShape {
     /// `is_loyalty_ability: true`). CR 606 — the Chandra, Pyromaster
     /// idiom; the engine enforces sorcery-speed / once-per-turn / 0-SBA.
     Planeswalker,
+    /// Wave-3: a `normal`-layout creature with 2+ ability lines — any
+    /// mix of a keyword line + N triggered abilities + N activated
+    /// abilities. The union of the FrenchVanilla / TriggeredAbility /
+    /// ActivatedAbility creature shapes: emit a `keywords` vec plus one
+    /// `with_triggered_ability`/`with_activated_ability` per ability
+    /// clause. The engine already carries arbitrary N of each — pure
+    /// decomposition.
+    MultiAbilityCreature,
 }
 
 /// Why a (card, tier) combination is not currently renderable. The
@@ -256,6 +264,7 @@ fn user_for_shape(card: &Card, shape: PromptShape) -> String {
         PromptShape::StaticEnchantment => user_static_enchantment(card),
         PromptShape::Aura => user_aura(card),
         PromptShape::Planeswalker => user_planeswalker(card),
+        PromptShape::MultiAbilityCreature => user_multi_ability_creature(card),
     }
 }
 
@@ -302,6 +311,17 @@ fn select_shape(card: &Card, tier: Tier) -> Result<PromptShape, Unsupported> {
     // MDFC PW faces have a non-normal layout and stay refused.
     if card.is_planeswalker() && card.layout == "normal" {
         return Ok(PromptShape::Planeswalker);
+    }
+    // Wave-3: a single-faced creature at T4/T5 (the single-ability
+    // creature shapes already claimed T1/T2/T3) is a multi-ability
+    // creature — keyword line + N triggered/activated abilities. Gated
+    // to T4/T5 so it doesn't preempt the vanilla/french-vanilla/
+    // triggered/activated routing below. Typed layouts and PWs are
+    // dispatched above, so this only catches plain `normal` creatures.
+    if matches!(tier, Tier::Four | Tier::Five)
+        && card.is_creature() && card.layout == "normal"
+    {
+        return Ok(PromptShape::MultiAbilityCreature);
     }
     // Tier 4/5 are explicitly out-of-scope for the classifier; refuse
     // AFTER the typed-card layout dispatch so Saga/Class/Battle
@@ -1870,6 +1890,69 @@ Transcribe bones verbatim from the spec above, never from Chandra. Build each lo
     )
 }
 
+/// Per-card prompt block for MultiAbilityCreature (Wave 3) — a
+/// `normal`-layout creature with 2+ ability lines. The union of the
+/// FrenchVanilla + TriggeredAbility + ActivatedAbility creature shapes.
+fn user_multi_ability_creature(card: &Card) -> String {
+    format!(
+        "Generate a CREATURE WITH MULTIPLE ABILITIES — a `CardDefinition` carrying, in any combination: a `keywords` vec for the keyword line, one `TriggeredAbilityDef` per 'When/Whenever/At …' clause, and one `ActivatedAbilityDef` per '\\[cost\\]: …' clause. Each ability is wired EXACTLY as in the single-ability references below; you are composing them. The engine already carries arbitrarily many of each on one card — this is pure DECOMPOSITION, not new machinery.
+
+DECOMPOSE the oracle text into independent abilities, in printed order:
+1. A leading line of comma-separated keywords (e.g. 'Flying, vigilance') → put those `KeywordAbility` variants in `characteristics.keywords` (see Serra Angel). Keyword reminder text in parens is ignored. Only use `KeywordAbility` variants Scryfall parsed for THIS card (shown in the spec's `Keywords`).
+2. Each line starting 'When', 'Whenever', or 'At' → one `with_triggered_ability(TriggeredAbilityDef {{ … }})` (Elvish Visionary / Young Pyromancer / Weldfast Engineer pattern). Give each a distinct `id` (1, 2, 3…).
+3. Each line of the form '\\[cost\\]: \\[effect\\]' (e.g. '{{T}}: …', '{{2}}{{R}}: …', 'Sacrifice ~: …') → one `with_activated_ability(ActivatedAbilityDef {{ … }})` (Llanowar Elves / Prodigal Sorcerer pattern).
+A static continuous ability (no trigger word, no cost — 'Other Goblins you control get +1/+1') is NOT a triggered/activated ability; if a line is a pure static you can't express, `// GAP: <the static>` it and still emit the abilities you CAN. A card whose ONLY non-keyword text is one such static would have routed elsewhere — emit what you can.
+
+REFERENCE — Serra Angel (keyword line → `keywords: vec![KeywordAbility::Flying, KeywordAbility::Vigilance]`):
+```rust
+{FS_SERRA_ANGEL}
+```
+REFERENCE — Elvish Visionary (a `TriggeredAbilityDef` + no-target effect fn, `fn(_, trig, reg)`):
+```rust
+{FS_ELVISH_VISIONARY}
+```
+REFERENCE — Weldfast Engineer (a TARGETED trigger: `target_requirements` + reading `trig.targets.targets.first()`):
+```rust
+{FS_WELDFAST_ENGINEER}
+```
+REFERENCE — Prodigal Sorcerer (an `ActivatedAbilityDef`: tap cost + `any_target()` + the `TargetChoice` match, effect fn `fn(_, ctx, reg)`):
+```rust
+{FS_PRODIGAL_SORCERER}
+```
+A card with N abilities simply chains `.with_triggered_ability(...)` / `.with_activated_ability(...)` N times on the `CardDefinition` (Walking Ballista chains two activated; the same applies across kinds).
+
+{trigcat}
+
+{paccess}
+
+{actcost}
+
+EFFECT FN BINDINGS — a triggered ability's effect fn is `fn(_: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect>`; an activated ability's is `fn(_: &GameState, ctx: &ActivationContext, reg: &CardRegistry) -> Vec<Effect>`. BOTH expose `.controller` (the ability's controller — use for 'you'), `.source` (this creature's `ObjectId`), and `.targets` (declared targets, read via `.targets.targets.first()` + a `TargetChoice` match). The shared catalog below writes `trig.<field>`; in an activated fn use `ctx.<field>` identically. `ctx` additionally has `ctx.x_value: Option<u32>`.
+
+{cat}
+
+WORKED TRIGGER EFFECT FN:
+```rust
+{worked}
+```
+
+=== TARGET CARD ===
+{spec}
+
+BONES ARE AUTHORITATIVE AND COME ONLY FROM THE TARGET CARD SPEC ABOVE — transcribe verbatim: `mana_cost` exactly into `ManaCost::parse(\"…\")`; `colors` exactly the colored pips; `types` exactly (`Creature` → `TypeLine::CREATURE.into()`; `Enchantment Creature` → `TypeLine(TypeLine::ENCHANTMENT | TypeLine::CREATURE)`; `Artifact Creature` similarly); power/toughness exactly as `Some(PtValue::Fixed(n))`. Build the `keywords` vec from the keyword line, then one ability def per remaining clause. Per-ability GAP (effect fn returns `Vec::new()` + `// GAP: …`) when a single ability's effect is unexpressible — never invent an `Effect` / `TriggerCondition` / `ActivationCost` variant or field. Emit AT LEAST the abilities you CAN express. Generate the Rust source. Output only the file contents.",
+        spec = card_spec(card),
+        trigcat = TRIGGER_CONDITION_CATALOG,
+        paccess = TRIGGER_PENDING_ACCESSORS,
+        actcost = ACTIVATION_COST_CATALOG,
+        cat = effect_catalog("trig"),
+        worked = WORKED_TRIGGER_FN,
+        FS_SERRA_ANGEL = FS_SERRA_ANGEL,
+        FS_ELVISH_VISIONARY = FS_ELVISH_VISIONARY,
+        FS_WELDFAST_ENGINEER = FS_WELDFAST_ENGINEER,
+        FS_PRODIGAL_SORCERER = FS_PRODIGAL_SORCERER,
+    )
+}
+
 // =============================================================================
 // tests
 // =============================================================================
@@ -2481,6 +2564,27 @@ mod tests {
         assert!(p.user.contains("InstallContinuousEffect"));
         assert!(p.user.contains("keyword_anthem"));
         assert!(p.user.contains("Banner of Valor"));
+    }
+
+    #[test]
+    fn multi_ability_creature_routes_to_multi_shape() {
+        let c = mk_card(|c| {
+            c.name = "Two-Trick Pony".into();
+            c.mana_cost = Some("{2}{G}".into());
+            c.type_line = "Creature — Beast".into();
+            c.power = Some("3".into());
+            c.toughness = Some("3".into());
+            c.colors = vec!["G".into()];
+            c.oracle_text = Some(
+                "Trample\nWhen Two-Trick Pony enters the battlefield, draw a card.\n\
+                 {1}{G}: Two-Trick Pony gets +1/+1 until end of turn.".into());
+        });
+        let p = render_prompt(&c, Tier::Four).expect("multi-ability creature yields a prompt");
+        assert_eq!(p.shape, PromptShape::MultiAbilityCreature);
+        assert!(p.user.contains("with_triggered_ability")
+            && p.user.contains("with_activated_ability")
+            && p.user.contains("keywords"),
+            "pack teaches keyword + triggered + activated composition");
     }
 
     #[test]

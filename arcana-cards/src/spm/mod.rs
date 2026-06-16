@@ -42,3 +42,5 @@ pub mod web_up;
 pub mod spider_man_no_more;
 pub mod robotics_mastery;
 pub mod alien_symbiosis;
+pub mod kraven_the_hunter;
+pub mod morlun_devourer_of_spiders;

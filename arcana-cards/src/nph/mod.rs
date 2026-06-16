@@ -30,3 +30,4 @@ pub mod glistening_oil;
 pub mod viridian_harvest;
 pub mod evil_presence;
 pub mod defensive_stance;
+pub mod vault_skirge;

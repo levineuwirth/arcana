@@ -52,3 +52,5 @@ pub mod sentinel_s_mark;
 pub mod domri_city_smasher;
 pub mod dovin_architect_of_law;
 pub mod domri_chaos_bringer;
+pub mod spear_spewer;
+pub mod mesmerizing_benthid;
