@@ -51,3 +51,4 @@ pub mod overseer_of_the_damned;
 pub mod psychosis_crawler;
 pub mod lazav_the_multifarious;
 pub mod feather_radiant_arbiter;
+pub mod ancient_stone_idol;

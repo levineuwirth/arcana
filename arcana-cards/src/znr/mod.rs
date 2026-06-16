@@ -80,3 +80,5 @@ pub mod zareth_san_the_trickster;
 pub mod skyclave_sentinel;
 pub mod attended_healer;
 pub mod living_tempest;
+pub mod murasa_sproutling;
+pub mod sure_footed_infiltrator;

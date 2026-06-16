@@ -41,3 +41,5 @@ pub mod cliffhaven_vampire;
 pub mod dread_defiler;
 pub mod stormchaser_mage;
 pub mod cyclone_sire;
+pub mod essence_depleter;
+pub mod walker_of_the_wastes;

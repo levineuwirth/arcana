@@ -44,3 +44,5 @@ pub mod siren_reaver;
 pub mod sun_collared_raptor;
 pub mod resplendent_griffin;
 pub mod soul_of_the_rapids;
+pub mod azor_the_lawbringer;
+pub mod relentless_raptor;

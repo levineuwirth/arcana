@@ -11,3 +11,4 @@ pub mod underdome;
 pub mod b_o_b_bevy_of_beebles;
 pub mod goblin_haberdasher;
 pub mod infernius_spawnington_iii_esq;
+pub mod syr_cadian_knight_owl;

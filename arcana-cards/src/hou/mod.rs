@@ -58,3 +58,5 @@ pub mod oasis_ritualist;
 pub mod angel_of_the_god_pharaoh;
 pub mod unraveling_mummy;
 pub mod burning_fist_minotaur;
+pub mod obelisk_spider;
+pub mod ramunap_hydra;

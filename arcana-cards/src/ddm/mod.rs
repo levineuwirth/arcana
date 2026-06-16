@@ -13,3 +13,4 @@ pub mod stonefare_crocodile;
 pub mod chronomaton;
 pub mod agoraphobia;
 pub mod gatecreeper_vine;
+pub mod spawnwrithe;

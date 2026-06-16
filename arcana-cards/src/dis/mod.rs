@@ -39,3 +39,4 @@ pub mod entropic_eidolon;
 pub mod haazda_shield_mate;
 pub mod stoic_ephemera;
 pub mod minister_of_impediments;
+pub mod sandstorm_eidolon;

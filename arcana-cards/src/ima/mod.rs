@@ -42,3 +42,5 @@ pub mod crowned_ceratok;
 pub mod serra_ascendant;
 pub mod phantom_tiger;
 pub mod sustainer_of_the_realm;
+pub mod jin_gitaxias_core_augur;
+pub mod malfegor;

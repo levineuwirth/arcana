@@ -62,3 +62,4 @@ pub mod lord_of_tresserhorn;
 pub mod varchild_s_war_riders;
 pub mod elder_land_wurm;
 pub mod m_rton_stromgald;
+pub mod angry_mob;

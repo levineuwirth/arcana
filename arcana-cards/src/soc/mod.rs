@@ -146,3 +146,5 @@ pub mod selfless_spirit;
 pub mod guardian_augmenter;
 pub mod ingenious_prodigy;
 pub mod anger;
+pub mod faerie_mastermind;
+pub mod smothering_abomination;

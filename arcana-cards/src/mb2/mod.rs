@@ -32,3 +32,5 @@ pub mod teferi_druid_of_argoth;
 pub mod a_girl_and_her_dogs;
 pub mod brigid_who_s_seen_some_stuff;
 pub mod the_colossal_dreadmaw;
+pub mod toralf_s_disciple;
+pub mod flavor_disaster;

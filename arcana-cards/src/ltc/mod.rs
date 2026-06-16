@@ -18,3 +18,4 @@ pub mod champions_of_minas_tirith;
 pub mod c_rdan_the_shipwright;
 pub mod treebeard_gracious_host;
 pub mod riders_of_rohan;
+pub mod motivated_pony;

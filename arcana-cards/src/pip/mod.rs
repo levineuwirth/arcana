@@ -33,3 +33,4 @@ pub mod desdemona_freedom_s_edge;
 pub mod dr_madison_li;
 pub mod armory_paladin;
 pub mod kellogg_dangerous_mind;
+pub mod veronica_dissident_scribe;

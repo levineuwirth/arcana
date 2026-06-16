@@ -61,3 +61,6 @@ pub mod defiant_greatmaw;
 pub mod angler_drake;
 pub mod vizier_of_deferment;
 pub mod shadowstorm_vizier;
+pub mod honored_hydra;
+pub mod prowling_serpopard;
+pub mod zenith_seeker;

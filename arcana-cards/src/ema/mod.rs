@@ -31,3 +31,4 @@ pub mod dack_fayden;
 pub mod silvos_rogue_elemental;
 pub mod sengir_autocrat;
 pub mod nekrataal;
+pub mod xantid_swarm;

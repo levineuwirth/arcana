@@ -123,3 +123,4 @@ pub mod storyteller_pixie;
 pub mod provisions_merchant;
 pub mod hamlet_glutton;
 pub mod harried_spearguard;
+pub mod totentanz_swarm_piper;

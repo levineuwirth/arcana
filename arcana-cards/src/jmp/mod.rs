@@ -150,3 +150,5 @@ pub mod prescient_chimera;
 pub mod liliana_s_reaver;
 pub mod belltower_sphinx;
 pub mod gargoyle_sentinel;
+pub mod serendib_efreet;
+pub mod angelic_page;

@@ -34,3 +34,5 @@ pub mod lead_belly_chimera;
 pub mod teferi_s_honor_guard;
 pub mod phyrexian_marauder;
 pub mod kookus;
+pub mod bogardan_phoenix;
+pub mod knight_of_the_mists;

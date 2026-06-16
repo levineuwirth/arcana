@@ -23,3 +23,4 @@ pub mod rysorian_badger;
 pub mod aysen_highway;
 pub mod mammoth_harness;
 pub mod ghost_hounds;
+pub mod cemetery_gate;

@@ -77,3 +77,5 @@ pub mod goblin_war_buggy;
 pub mod shivan_raptor;
 pub mod hawkeater_moth;
 pub mod cradle_guard;
+pub mod spire_owl;
+pub mod child_of_gaea;

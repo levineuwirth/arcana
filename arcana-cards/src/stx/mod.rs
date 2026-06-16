@@ -86,3 +86,6 @@ pub mod waterfall_aerialist;
 pub mod relic_sloth;
 pub mod maelstrom_muse;
 pub mod dream_strix;
+pub mod overgrown_arch;
+pub mod prismari_pledgemage;
+pub mod daemogoth_woe_eater;

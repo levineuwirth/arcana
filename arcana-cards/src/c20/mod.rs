@@ -25,3 +25,4 @@ pub mod magus_of_the_disk;
 pub mod bounty_agent;
 pub mod wydwen_the_biting_gale;
 pub mod cairn_wanderer;
+pub mod niv_mizzet_the_firemind;

@@ -55,3 +55,4 @@ pub mod goblin_piledriver;
 pub mod ringwarden_owl;
 pub mod rabid_bloodsucker;
 pub mod terra_stomper;
+pub mod acolyte_of_the_inferno;

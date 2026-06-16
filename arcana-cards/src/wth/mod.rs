@@ -46,3 +46,6 @@ pub mod nature_s_kiss;
 pub mod arctic_wolves;
 pub mod roc_hatchling;
 pub mod morinfen;
+pub mod peacekeeper;
+pub mod mwonvuli_ooze;
+pub mod ertai_s_familiar;

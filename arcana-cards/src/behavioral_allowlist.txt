@@ -11,6 +11,7 @@
 # it; never grow without confirming the card is a genuine false-positive.
 Absorb Energy
 Access Denied
+Admiral Beckett Brass
 Aladdin
 All Suns' Dawn
 Altar of the Wretched
@@ -69,6 +70,7 @@ Counterbore
 Counterlash
 Counterpoint
 Counterspell
+Cybermat
 Cytoplast Manipulator
 Dack Fayden
 Dark Suspicions
@@ -140,6 +142,7 @@ Horseshoe Crab
 Huatli, Dinosaur Knight
 Hyperion Blacksmith
 Hyrax Tower Scout
+Imaryll, Elfhame Elite
 Induce Paranoia
 Initiate's Companion
 Inspired Sprite
@@ -223,6 +226,7 @@ Nimbleclaw Adept
 Nix
 No More Lies
 Noise Marine
+Old Man of the Sea
 Onakke Oathkeeper
 Open the Vaults
 Oppressive Will
@@ -310,6 +314,7 @@ Spelljack
 Steel Overseer
 Stensia Innkeeper
 Stitchwing Skaab
+Sunrise Cavalier
 Super Mutant Scavenger
 Superior Numbers
 Synod Artificer

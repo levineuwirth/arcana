@@ -32,3 +32,4 @@ pub mod swooping_talon;
 pub mod keeper_of_the_nine_gales;
 pub mod mistform_seaswift;
 pub mod ghastly_remains;
+pub mod goblin_dynamo;

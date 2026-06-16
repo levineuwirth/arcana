@@ -73,3 +73,4 @@ pub mod alacrian_jaguar;
 pub mod fang_druid_summoner;
 pub mod lagorin_soul_of_alacria;
 pub mod endrider_catalyzer;
+pub mod pride_of_the_road;

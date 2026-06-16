@@ -86,3 +86,4 @@ pub mod miasma_demon;
 pub mod undead_sprinter;
 pub mod popular_egotist;
 pub mod enduring_courage;
+pub mod unstoppable_slasher;

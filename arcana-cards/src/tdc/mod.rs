@@ -74,3 +74,5 @@ pub mod opportunistic_dragon;
 pub mod jarad_golgari_lich_lord;
 pub mod hammerhead_tyrant;
 pub mod dragonlord_dromoka;
+pub mod wall_of_limbs;
+pub mod sidar_kondo_of_jamuraa;

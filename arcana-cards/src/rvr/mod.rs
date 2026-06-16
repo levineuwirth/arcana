@@ -76,3 +76,6 @@ pub mod lord_of_the_void;
 pub mod scab_clan_mauler;
 pub mod balustrade_spy;
 pub mod wasteland_viper;
+pub mod moroii;
+pub mod simic_guildmage;
+pub mod tin_street_dodger;

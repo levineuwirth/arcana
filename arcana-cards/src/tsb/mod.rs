@@ -25,3 +25,4 @@ pub mod stormscape_familiar;
 pub mod gaea_s_liege;
 pub mod voidmage_prodigy;
 pub mod eron_the_relentless;
+pub mod avalanche_riders;

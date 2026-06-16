@@ -37,3 +37,4 @@ pub mod tifa_martial_artist;
 pub mod cid_freeflier_pilot;
 pub mod umaro_raging_yeti;
 pub mod siegfried_famed_swordsman;
+pub mod tidus_yuna_s_guardian;

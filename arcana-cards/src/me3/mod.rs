@@ -93,3 +93,5 @@ pub mod cosmic_horror;
 pub mod sun_ce_young_conquerer;
 pub mod fire_sprites;
 pub mod killer_bees;
+pub mod old_man_of_the_sea;
+pub mod rasputin_dreamweaver;

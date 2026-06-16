@@ -80,3 +80,4 @@ pub mod nyxborn_unicorn;
 pub mod golden_tail_trainer;
 pub mod eldrazi_ravager;
 pub mod petrifying_meddler;
+pub mod sarpadian_simulacrum;

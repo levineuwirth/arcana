@@ -2,3 +2,4 @@
 pub mod turbocharged_escape;
 pub mod chomping_mastasaur;
 pub mod naktamun_shines_again;
+pub mod trackhand_trainer;

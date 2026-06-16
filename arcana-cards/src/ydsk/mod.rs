@@ -4,3 +4,4 @@ pub mod housemeld;
 pub mod valiant_emberkin;
 pub mod effie_fast_learner;
 pub mod fear_of_ridicule;
+pub mod golden_sidekick;

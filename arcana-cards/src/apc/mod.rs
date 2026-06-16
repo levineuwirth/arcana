@@ -43,3 +43,5 @@ pub mod necra_disciple;
 pub mod necravolver;
 pub mod kavu_mauler;
 pub mod haunted_angel;
+pub mod living_airship;
+pub mod ana_disciple;

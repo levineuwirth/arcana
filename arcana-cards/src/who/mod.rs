@@ -39,3 +39,4 @@ pub mod duggan_private_detective;
 pub mod frost_fair_lure_fish;
 pub mod sycorax_commander;
 pub mod astrid_peth;
+pub mod cybermat;

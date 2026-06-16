@@ -134,3 +134,5 @@ pub mod essence_of_orthodoxy;
 pub mod scorn_blade_berserker;
 pub mod furtive_analyst;
 pub mod voldaren_thrillseeker;
+pub mod knight_errant_of_eos;
+pub mod oracle_of_tragedy;

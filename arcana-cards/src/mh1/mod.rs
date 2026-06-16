@@ -52,3 +52,5 @@ pub mod murasa_behemoth;
 pub mod ayula_queen_among_bears;
 pub mod martyr_s_soul;
 pub mod vengeful_devil;
+pub mod cabal_therapist;
+pub mod plague_engineer;

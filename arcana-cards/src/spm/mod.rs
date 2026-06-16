@@ -54,3 +54,5 @@ pub mod venom_evil_unleashed;
 pub mod doctor_octopus_master_planner;
 pub mod spider_woman_stunning_savior;
 pub mod sun_spider_nimble_webber;
+pub mod arachne_psionic_weaver;
+pub mod beetle_legacy_criminal;

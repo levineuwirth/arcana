@@ -101,3 +101,4 @@ pub mod myojin_of_infinite_rage;
 pub mod marrow_gnawer;
 pub mod venerable_kumo;
 pub mod nagao_bound_by_honor;
+pub mod masako_the_humorless;

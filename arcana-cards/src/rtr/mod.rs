@@ -67,3 +67,4 @@ pub mod soulsworn_spirit;
 pub mod loxodon_smiter;
 pub mod ash_zealot;
 pub mod cryptborn_horror;
+pub mod runewing;

@@ -78,3 +78,8 @@ pub mod knowledge_seeker;
 pub mod earth_rumble_wrestlers;
 pub mod koh_the_face_stealer;
 pub mod glider_kids;
+pub mod badgermole;
+pub mod ran_and_shaw;
+pub mod rabaroo_troop;
+pub mod foggy_swamp_vinebender;
+pub mod earthen_ally;

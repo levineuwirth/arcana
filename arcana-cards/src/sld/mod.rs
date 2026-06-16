@@ -5,3 +5,4 @@ pub mod the_wise_mothman;
 pub mod captain_america_first_avenger;
 pub mod fluttershy;
 pub mod maximus_knight_apparent;
+pub mod sonic_the_hedgehog;

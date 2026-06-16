@@ -36,3 +36,4 @@ pub mod madcap_skills;
 pub mod kathari_bomber;
 pub mod corpse_connoisseur;
 pub mod spire_monitor;
+pub mod abyssal_specter;

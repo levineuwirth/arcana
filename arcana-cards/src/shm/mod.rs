@@ -77,3 +77,4 @@ pub mod cinderhaze_wretch;
 pub mod glamer_spinners;
 pub mod chainbreaker;
 pub mod rune_cervin_rider;
+pub mod painter_s_servant;

@@ -40,3 +40,5 @@ pub mod torch_drake;
 pub mod restless_bones;
 pub mod rabble_rouser;
 pub mod order_of_the_stars;
+pub mod silhana_starfletcher;
+pub mod burning_tree_bloodscale;

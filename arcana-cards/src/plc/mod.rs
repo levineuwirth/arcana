@@ -15,3 +15,5 @@ pub mod frozen_aether;
 pub mod dust_corona;
 pub mod ana_battlemage;
 pub mod voidstone_gargoyle;
+pub mod shivan_wumpus;
+pub mod molten_firebird;

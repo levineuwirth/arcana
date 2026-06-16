@@ -15,3 +15,4 @@ pub mod precinct_captain;
 pub mod windrider_eel;
 pub mod lightwielder_paladin;
 pub mod chandra_s_phoenix;
+pub mod turntimber_basilisk;

@@ -79,3 +79,5 @@ pub mod empyreal_voyager;
 pub mod thriving_grubs;
 pub mod thriving_rhino;
 pub mod embraal_bruiser;
+pub mod guardian_of_the_great_conduit;
+pub mod riparian_tiger;

@@ -83,3 +83,4 @@ pub mod nomad_decoy;
 pub mod radha_heir_to_keld;
 pub mod wild_dogs;
 pub mod arcades_sabboth;
+pub mod nightscape_familiar;

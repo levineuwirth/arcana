@@ -4,3 +4,4 @@ pub mod cunning_azurescale_divining_dive;
 pub mod pearl_lake_warden_nesting_instinct;
 pub mod hamza_might_of_the_yathan;
 pub mod lam_storm_crane_elder;
+pub mod runeblade_raiser;

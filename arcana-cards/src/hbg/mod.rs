@@ -82,3 +82,4 @@ pub mod vhal_scholar_of_mortality;
 pub mod ambergris_agent_of_destruction;
 pub mod sarevok_ferocious_usurper;
 pub mod water_weird;
+pub mod kardum_patron_of_flames;

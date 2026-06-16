@@ -117,3 +117,5 @@ pub mod stinging_cave_crawler;
 pub mod stalactite_stalker;
 pub mod intrepid_paleontologist;
 pub mod digsite_conservator;
+pub mod ruin_lurker_bat;
+pub mod uchbenbak_the_great_mistake;

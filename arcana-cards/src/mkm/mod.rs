@@ -90,3 +90,4 @@ pub mod vitu_ghazi_inspector;
 pub mod voja_jaws_of_the_conclave;
 pub mod topiary_panther;
 pub mod vein_ripper;
+pub mod perimeter_enforcer;

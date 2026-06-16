@@ -138,3 +138,4 @@ pub mod caller_of_the_hunt;
 pub mod megatherium;
 pub mod stinging_barrier;
 pub mod vine_dryad;
+pub mod sand_squid;

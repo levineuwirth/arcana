@@ -74,3 +74,4 @@ pub mod tezzeret_cruel_machinist;
 pub mod plague_mare;
 pub mod brawl_bash_ogre;
 pub mod palladia_mors_the_ruiner;
+pub mod ravenous_harpy;

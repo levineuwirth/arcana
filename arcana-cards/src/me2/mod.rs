@@ -77,3 +77,5 @@ pub mod aurochs;
 pub mod clockwork_steed;
 pub mod sibilant_spirit;
 pub mod soldevi_simulacrum;
+pub mod feral_thallid;
+pub mod phantasmal_fiend;

@@ -58,3 +58,4 @@ pub mod north_wind_avatar;
 pub mod primordial_pachyderm;
 pub mod high_flying_ace;
 pub mod old_hob_alleycat_blues;
+pub mod super_shredder;

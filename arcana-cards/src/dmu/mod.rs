@@ -75,3 +75,4 @@ pub mod ratadrabik_of_urborg;
 pub mod a_tatyova_steward_of_tides;
 pub mod defiler_of_faith;
 pub mod aether_channeler;
+pub mod argivian_phalanx;

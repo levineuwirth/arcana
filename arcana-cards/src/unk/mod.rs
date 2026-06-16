@@ -99,3 +99,7 @@ pub mod drake_with_set_s_mechanic;
 pub mod jiffy_vehicle_repairer;
 pub mod the_inspector_inspector;
 pub mod phyrexian_esthetician;
+pub mod gingerbehemoth;
+pub mod the_crafter;
+pub mod the_ice_dancer;
+pub mod the_wise_sable;

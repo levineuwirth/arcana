@@ -190,3 +190,8 @@ pub mod lightshell_duo;
 pub mod elementalist_adept;
 pub mod ball_lightning;
 pub mod drakuseth_maw_of_flames;
+pub mod darksteel_colossus;
+pub mod spinner_of_souls;
+pub mod eager_trufflesnout;
+pub mod brineborn_cutthroat;
+pub mod vanguard_seraph;

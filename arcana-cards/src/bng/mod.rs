@@ -46,3 +46,4 @@ pub mod archetype_of_courage;
 pub mod nyxborn_eidolon;
 pub mod archetype_of_endurance;
 pub mod nyxborn_wolf;
+pub mod graverobber_spider;

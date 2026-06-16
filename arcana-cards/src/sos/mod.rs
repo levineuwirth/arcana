@@ -70,3 +70,4 @@ pub mod spectacular_skywhale;
 pub mod emil_vastlands_roamer;
 pub mod ascendant_dustspeaker;
 pub mod rubble_rouser;
+pub mod lorehold_the_historian;

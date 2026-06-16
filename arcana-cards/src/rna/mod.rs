@@ -62,3 +62,4 @@ pub mod azorius_knight_arbiter;
 pub mod azorius_skyguard;
 pub mod pestilent_spirit;
 pub mod ghor_clan_wrecker;
+pub mod syndicate_guildmage;
