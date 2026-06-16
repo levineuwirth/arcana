@@ -67,3 +67,6 @@ pub mod postmortem_professor;
 pub mod page_loose_leaf;
 pub mod sundering_archaic;
 pub mod spectacular_skywhale;
+pub mod emil_vastlands_roamer;
+pub mod ascendant_dustspeaker;
+pub mod rubble_rouser;

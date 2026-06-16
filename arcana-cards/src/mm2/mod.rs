@@ -34,3 +34,4 @@ pub mod qumulox;
 pub mod lodestone_myr;
 pub mod cytoplast_root_kin;
 pub mod somber_hoverguard;
+pub mod scavenger_drake;

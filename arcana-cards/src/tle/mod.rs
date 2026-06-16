@@ -58,3 +58,4 @@ pub mod smellerbee_rebel_fighter;
 pub mod longshot_rebel_bowman;
 pub mod bosco_just_a_bear;
 pub mod earthbending_student;
+pub mod elephant_mandrill;

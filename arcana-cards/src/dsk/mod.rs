@@ -80,3 +80,5 @@ pub mod veteran_survivor;
 pub mod clockwork_percussionist;
 pub mod hauntwoods_shrieker;
 pub mod cackling_slasher;
+pub mod broodspinner;
+pub mod ripchain_razorkin;

@@ -33,3 +33,5 @@ pub mod tataru_taru;
 pub mod ardbert_warrior_of_darkness;
 pub mod elena_turk_recruit;
 pub mod shelinda_yevon_acolyte;
+pub mod tifa_martial_artist;
+pub mod cid_freeflier_pilot;

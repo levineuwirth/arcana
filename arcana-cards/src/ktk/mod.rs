@@ -63,3 +63,4 @@ pub mod snowhorn_rider;
 pub mod archers_parapet;
 pub mod dragon_style_twins;
 pub mod ponyback_brigade;
+pub mod heir_of_the_wilds;

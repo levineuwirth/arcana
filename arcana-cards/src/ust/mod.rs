@@ -67,3 +67,4 @@ pub mod the_big_idea;
 pub mod garbage_elemental;
 pub mod earl_of_squirrel;
 pub mod spy_eye;
+pub mod novellamental;

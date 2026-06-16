@@ -98,3 +98,6 @@ pub mod omer_marshal_of_rohan;
 pub mod generous_ent;
 pub mod lobelia_sackville_baggins;
 pub mod old_man_willow;
+pub mod aragorn_company_leader;
+pub mod moria_marauder;
+pub mod witch_king_bringer_of_ruin;

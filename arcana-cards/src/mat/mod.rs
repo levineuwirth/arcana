@@ -9,3 +9,4 @@ pub mod leyline_immersion;
 pub mod urborg_scavengers;
 pub mod samut_vizier_of_naktamun;
 pub mod calix_guided_by_fate;
+pub mod ayara_s_oathsworn;

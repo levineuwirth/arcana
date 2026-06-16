@@ -53,3 +53,4 @@ pub mod jolrael_s_favor;
 pub mod barbed_field;
 pub mod noxious_field;
 pub mod stormwatch_eagle;
+pub mod jeweled_spirit;

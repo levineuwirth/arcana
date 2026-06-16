@@ -96,3 +96,5 @@ pub mod a_glamorous_outlaw;
 pub mod darling_of_the_masses;
 pub mod shakedown_heavy;
 pub mod ziatora_s_envoy;
+pub mod body_dropper;
+pub mod a_masked_bandits;

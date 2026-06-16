@@ -68,3 +68,4 @@ pub mod serra_avenger;
 pub mod utopia_mycon;
 pub mod shade_of_trokair;
 pub mod celestial_crusader;
+pub mod cloudseeder;

@@ -17,3 +17,4 @@ pub mod scion_of_the_ur_dragon;
 pub mod silumgar_the_drifting_death;
 pub mod spirit_of_the_hearth;
 pub mod drana_kalastria_bloodchief;
+pub mod kolaghan_the_storm_s_fury;

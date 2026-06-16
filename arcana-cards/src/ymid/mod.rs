@@ -17,3 +17,4 @@ pub mod geistpack_alpha;
 pub mod wickerwing_effigy;
 pub mod gitrog_horror_of_zhava;
 pub mod citystalker_connoisseur;
+pub mod captain_eberhart;

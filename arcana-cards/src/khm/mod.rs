@@ -130,3 +130,4 @@ pub mod cinderheart_giant;
 pub mod vengeful_reaper;
 pub mod narfi_betrayer_king;
 pub mod icebreaker_kraken;
+pub mod thornmantle_striker;

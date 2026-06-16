@@ -118,3 +118,6 @@ pub mod neva_stalked_by_nightmares;
 pub mod old_flitterfang;
 pub mod agatha_of_the_vile_cauldron;
 pub mod edgewall_pack;
+pub mod tenacious_tomeseeker;
+pub mod storyteller_pixie;
+pub mod provisions_merchant;

@@ -55,3 +55,4 @@ pub mod heartlash_cinder;
 pub mod suture_spirit;
 pub mod kithkin_spellduster;
 pub mod deity_of_scars;
+pub mod voracious_hatchling;

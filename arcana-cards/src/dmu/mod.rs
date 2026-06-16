@@ -68,3 +68,6 @@ pub mod nael_avizoa_aeronaut;
 pub mod battlewing_mystic;
 pub mod valiant_veteran;
 pub mod frostfist_strider;
+pub mod a_llanowar_loamspeaker;
+pub mod vohar_vodalian_desecrator;
+pub mod sengir_connoisseur;

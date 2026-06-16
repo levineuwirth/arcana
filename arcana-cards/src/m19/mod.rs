@@ -72,3 +72,5 @@ pub mod tezzeret_artifice_master;
 pub mod ajani_wise_counselor;
 pub mod tezzeret_cruel_machinist;
 pub mod plague_mare;
+pub mod brawl_bash_ogre;
+pub mod palladia_mors_the_ruiner;

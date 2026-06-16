@@ -73,3 +73,6 @@ pub mod treetop_freedom_fighters;
 pub mod ty_lee_chi_blocker;
 pub mod serpent_of_the_pass;
 pub mod earth_kingdom_protectors;
+pub mod white_lotus_reinforcements;
+pub mod knowledge_seeker;
+pub mod earth_rumble_wrestlers;

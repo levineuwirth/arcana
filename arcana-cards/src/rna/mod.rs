@@ -57,3 +57,5 @@ pub mod mesmerizing_benthid;
 pub mod spirit_of_the_spires;
 pub mod saruli_caretaker;
 pub mod clamor_shaman;
+pub mod spire_mangler;
+pub mod azorius_knight_arbiter;

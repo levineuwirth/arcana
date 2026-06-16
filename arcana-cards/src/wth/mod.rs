@@ -45,3 +45,4 @@ pub mod briar_shield;
 pub mod nature_s_kiss;
 pub mod arctic_wolves;
 pub mod roc_hatchling;
+pub mod morinfen;

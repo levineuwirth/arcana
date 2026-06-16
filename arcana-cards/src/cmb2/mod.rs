@@ -28,3 +28,4 @@ pub mod visitor_from_planet_q;
 pub mod biting_remark;
 pub mod zyym_mesmeric_lord;
 pub mod plane_merge_elf;
+pub mod witty_demon;

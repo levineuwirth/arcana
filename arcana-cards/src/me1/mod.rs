@@ -60,3 +60,5 @@ pub mod rabid_wombat;
 pub mod clockwork_beast;
 pub mod lord_of_tresserhorn;
 pub mod varchild_s_war_riders;
+pub mod elder_land_wurm;
+pub mod m_rton_stromgald;

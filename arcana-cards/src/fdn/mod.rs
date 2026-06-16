@@ -185,3 +185,6 @@ pub mod trygon_predator;
 pub mod wilt_leaf_liege;
 pub mod perforating_artist;
 pub mod arahbo_the_first_fang;
+pub mod mischievous_mystic;
+pub mod lightshell_duo;
+pub mod elementalist_adept;

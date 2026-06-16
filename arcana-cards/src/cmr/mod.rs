@@ -97,3 +97,8 @@ pub mod molder_beast;
 pub mod rakshasa_debaser;
 pub mod plague_reaver;
 pub mod silverback_shaman;
+pub mod frenzied_saddlebrute;
+pub mod gnostro_voice_of_the_crags;
+pub mod amareth_the_lustrous;
+pub mod boarding_party;
+pub mod gilt_leaf_winnower;

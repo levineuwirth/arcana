@@ -30,3 +30,4 @@ pub mod dewdrop_spy;
 pub mod fencer_clique;
 pub mod nightshade_schemers;
 pub mod kinsbaile_borderguard;
+pub mod grimoire_thief;

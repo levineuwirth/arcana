@@ -57,3 +57,4 @@ pub mod boon_of_emrakul;
 pub mod prophetic_ravings;
 pub mod eternal_scourge;
 pub mod fogwalker;
+pub mod desperate_sentry;

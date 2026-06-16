@@ -48,3 +48,4 @@ pub mod will_o_the_wisp;
 pub mod nettle_sentinel;
 pub mod fallen_angel;
 pub mod pyre_hound;
+pub mod skirk_commando;

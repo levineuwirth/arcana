@@ -47,6 +47,7 @@ Chandra, Fire of Kaladesh
 Chandra, Gremlin Wrangler
 Chandra, Legacy of Fire
 Charge Across the Araba
+Cid, Freeflier Pilot
 Cinderhaze Wretch
 City of Traitors
 Civic Gardener
@@ -152,6 +153,7 @@ Jaded Response
 Jandor's Saddlebags
 Jaws of Defeat
 Jungle Creeper
+Keruga, the Macrosage
 Kindlespark Duo
 Kindred Denial
 Kiora's Follower
@@ -213,6 +215,7 @@ Nimbleclaw Adept
 Nix
 No More Lies
 Noise Marine
+Onakke Oathkeeper
 Open the Vaults
 Oppressive Will
 Outwit
@@ -333,9 +336,11 @@ Unified Lunge
 Unravel
 Urtet, Remnant of Memnarch
 Vedalken Plotter
+Vogar, Necropolis Tyrant
 Voidslime
 Volatile Rig
 Voltaic Construct
+Voracious Hatchling
 Warren Pilferers
 Watchful Blisterzoa
 Wild Wurm

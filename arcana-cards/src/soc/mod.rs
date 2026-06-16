@@ -143,3 +143,4 @@ pub mod conspiracy_theorist;
 pub mod zimone_quandrix_prodigy;
 pub mod armored_skyhunter;
 pub mod selfless_spirit;
+pub mod guardian_augmenter;

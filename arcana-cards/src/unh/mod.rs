@@ -31,3 +31,4 @@ pub mod loose_lips;
 pub mod monkey_monkey_monkey;
 pub mod greater_morphling;
 pub mod ladies_knight;
+pub mod man_of_measure;

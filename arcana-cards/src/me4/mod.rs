@@ -90,3 +90,4 @@ pub mod weakness;
 pub mod instill_energy;
 pub mod brass_man;
 pub mod ebon_dragon;
+pub mod dread_reaper;

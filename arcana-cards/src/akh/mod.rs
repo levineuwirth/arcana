@@ -58,3 +58,4 @@ pub mod gideon_martial_paragon;
 pub mod companion_of_the_trials;
 pub mod soulstinger;
 pub mod defiant_greatmaw;
+pub mod angler_drake;

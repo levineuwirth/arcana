@@ -56,3 +56,5 @@ pub mod elgaud_shieldmate;
 pub mod moonlight_geist;
 pub mod fettergeist;
 pub mod diregraf_escort;
+pub mod geist_trappers;
+pub mod nearheath_pilgrim;

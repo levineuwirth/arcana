@@ -109,3 +109,5 @@ pub mod lightning_stormkin;
 pub mod kethis_the_hidden_hand;
 pub mod embodiment_of_agonies;
 pub mod creeping_trailblazer;
+pub mod atemsis_all_seeing;
+pub mod goldmane_griffin;

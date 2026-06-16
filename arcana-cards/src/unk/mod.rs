@@ -90,3 +90,7 @@ pub mod arcbound_mamba;
 pub mod the_bearded_teakeeper;
 pub mod unclaimed_cat;
 pub mod rosewater_s_nemesis;
+pub mod the_dilu_horse;
+pub mod avacyn_and_griselbrand;
+pub mod phyrexian_adapter;
+pub mod the_fact_checker;

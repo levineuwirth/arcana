@@ -111,3 +111,5 @@ pub mod a_asari_captain;
 pub mod go_shintai_of_boundless_vigor;
 pub mod webspinner_cuff;
 pub mod rabbit_battery;
+pub mod jukai_preserver;
+pub mod kyodai_soul_of_kamigawa;

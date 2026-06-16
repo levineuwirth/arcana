@@ -91,3 +91,5 @@ pub mod glidedive_duo;
 pub mod kindlespark_duo;
 pub mod lilysplash_mentor;
 pub mod flamecache_gecko;
+pub mod camellia_the_seedmiser;
+pub mod seedpod_squire;

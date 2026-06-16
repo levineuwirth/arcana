@@ -70,3 +70,4 @@ pub mod sentinels_of_glen_elendra;
 pub mod changeling_titan;
 pub mod purity;
 pub mod glarewielder;
+pub mod bog_strider_ash;

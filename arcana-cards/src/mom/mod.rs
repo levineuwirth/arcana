@@ -131,3 +131,5 @@ pub mod gloomfang_mauler;
 pub mod interdisciplinary_mascot;
 pub mod wildwood_escort;
 pub mod essence_of_orthodoxy;
+pub mod scorn_blade_berserker;
+pub mod furtive_analyst;

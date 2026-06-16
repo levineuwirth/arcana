@@ -37,3 +37,4 @@ pub mod vislor_turlough;
 pub mod dan_lewis;
 pub mod duggan_private_detective;
 pub mod frost_fair_lure_fish;
+pub mod sycorax_commander;

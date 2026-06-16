@@ -73,3 +73,6 @@ pub mod fireblade_charger;
 pub mod territorial_scythecat;
 pub mod skyclave_geopede;
 pub mod a_kargan_warleader;
+pub mod omnath_locus_of_creation;
+pub mod tazri_beacon_of_unity;
+pub mod a_moss_pit_skeleton;

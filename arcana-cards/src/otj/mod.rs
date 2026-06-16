@@ -77,3 +77,5 @@ pub mod lilah_undefeated_slickshot;
 pub mod kraum_violent_cacophony;
 pub mod visage_bandit;
 pub mod calamity_galloping_inferno;
+pub mod djinn_of_fool_s_fall;
+pub mod oasis_gardener;

@@ -110,3 +110,4 @@ pub mod black_waltz_no_3;
 pub mod rook_turret;
 pub mod balamb_t_rexaur;
 pub mod cloudbound_moogle;
+pub mod lightning_security_sergeant;

@@ -73,3 +73,6 @@ pub mod unctus_s_retrofitter;
 pub mod leonin_lightbringer;
 pub mod skyscythe_engulfer;
 pub mod atmosphere_surgeon;
+pub mod lattice_blade_mantis;
+pub mod atraxa_grand_unifier;
+pub mod bloated_contaminator;

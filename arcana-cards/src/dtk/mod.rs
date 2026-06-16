@@ -61,3 +61,5 @@ pub mod arashin_foremost;
 pub mod crater_elemental;
 pub mod dirgur_nemesis;
 pub mod gudul_lurker;
+pub mod dragon_whisperer;
+pub mod reckless_imp;

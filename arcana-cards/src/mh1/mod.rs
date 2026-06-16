@@ -49,3 +49,4 @@ pub mod azra_smokeshaper;
 pub mod ranger_captain_of_eos;
 pub mod chillerpillar;
 pub mod murasa_behemoth;
+pub mod ayula_queen_among_bears;

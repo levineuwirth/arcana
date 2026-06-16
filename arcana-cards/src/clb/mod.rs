@@ -152,3 +152,5 @@ pub mod renari_merchant_of_marvels;
 pub mod ellyn_harbreeze_busybody;
 pub mod harper_recruiter;
 pub mod raggadragga_goreguts_boss;
+pub mod dusk_mangler;
+pub mod angler_turtle;

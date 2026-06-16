@@ -73,3 +73,6 @@ pub mod jace_the_mind_sculptor;
 pub mod death_hood_cobra;
 pub mod archangel_of_thune;
 pub mod blightsteel_colossus;
+pub mod iron_bully;
+pub mod geth_lord_of_the_vault;
+pub mod atraxa_praetors_voice;

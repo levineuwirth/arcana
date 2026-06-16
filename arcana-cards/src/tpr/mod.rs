@@ -91,3 +91,4 @@ pub mod selenia_dark_angel;
 pub mod soltari_champion;
 pub mod sandstone_warrior;
 pub mod krakilin;
+pub mod wall_of_diffusion;

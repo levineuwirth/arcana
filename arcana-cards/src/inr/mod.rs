@@ -118,3 +118,6 @@ pub mod mist_raven;
 pub mod liesa_forgotten_archangel;
 pub mod captivating_vampire;
 pub mod battleground_geist;
+pub mod spell_queller;
+pub mod soul_guide_gryff;
+pub mod noose_constrictor;

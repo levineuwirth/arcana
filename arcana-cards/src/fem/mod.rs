@@ -13,3 +13,4 @@ pub mod conch_horn;
 pub mod draconian_cylix;
 pub mod delif_s_cone;
 pub mod vodalian_war_machine;
+pub mod icatian_skirmishers;

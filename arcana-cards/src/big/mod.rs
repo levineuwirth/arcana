@@ -2,3 +2,4 @@
 pub mod fomori_vault;
 pub mod nexus_of_becoming;
 pub mod memory_vessel;
+pub mod oltec_matterweaver;

@@ -97,3 +97,5 @@ pub mod fervent_champion;
 pub mod locthwain_paladin;
 pub mod loch_dragon;
 pub mod feasting_troll_king;
+pub mod mysterious_pathlighter;
+pub mod faerie_formation;
