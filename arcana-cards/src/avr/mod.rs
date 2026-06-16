@@ -47,3 +47,4 @@ pub mod guise_of_fire;
 pub mod spirit_away;
 pub mod ghoulflesh;
 pub mod lightning_prowess;
+pub mod spectral_prison;

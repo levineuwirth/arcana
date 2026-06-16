@@ -41,3 +41,4 @@ pub mod thran_tome;
 pub mod winding_canyons;
 pub mod dingus_staff;
 pub mod coils_of_the_medusa;
+pub mod briar_shield;

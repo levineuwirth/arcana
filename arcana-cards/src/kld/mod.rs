@@ -65,3 +65,4 @@ pub mod sequestered_stash;
 pub mod torch_gauntlet;
 pub mod whirlermaker;
 pub mod aether_meltdown;
+pub mod malfunction;

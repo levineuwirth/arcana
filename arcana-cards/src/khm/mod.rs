@@ -108,3 +108,6 @@ pub mod a_cosmos_elixir;
 pub mod in_search_of_greatness;
 pub mod dogged_pursuit;
 pub mod valor_of_the_worthy;
+pub mod rune_of_speed;
+pub mod rune_of_sustenance;
+pub mod rune_of_might;

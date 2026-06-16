@@ -68,3 +68,4 @@ pub mod hierophant_s_chalice;
 pub mod shapers_sanctuary;
 pub mod axis_of_mortality;
 pub mod one_with_the_wind;
+pub mod swashbuckling;

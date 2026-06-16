@@ -80,3 +80,5 @@ pub mod brokers_ascendancy;
 pub mod hold_for_ransom;
 pub mod public_enemy;
 pub mod a_public_enemy;
+pub mod a_most_wanted;
+pub mod sticky_fingers;

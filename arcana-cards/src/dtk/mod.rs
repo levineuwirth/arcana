@@ -49,3 +49,4 @@ pub mod sight_of_the_scalelords;
 pub mod silkwrap;
 pub mod virulent_plague;
 pub mod encase_in_ice;
+pub mod gleam_of_authority;

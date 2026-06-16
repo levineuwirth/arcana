@@ -72,3 +72,4 @@ pub mod sword_of_vengeance;
 pub mod short_bow;
 pub mod uncharted_haven;
 pub mod colossification;
+pub mod feather_of_flight;

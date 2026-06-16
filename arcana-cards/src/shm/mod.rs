@@ -62,3 +62,4 @@ pub mod madblind_mountain;
 pub mod moonring_island;
 pub mod puca_s_mischief;
 pub mod polluted_bonds;
+pub mod torture;

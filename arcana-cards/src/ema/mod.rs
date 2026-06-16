@@ -23,3 +23,4 @@ pub mod honden_of_night_s_reach;
 pub mod honden_of_life_s_web;
 pub mod honden_of_cleansing_fire;
 pub mod elephant_guide;
+pub mod armadillo_cloak;

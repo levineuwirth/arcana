@@ -54,3 +54,4 @@ pub mod bitterblossom;
 pub mod concordant_crossroads;
 pub mod hyena_umbra;
 pub mod rancor;
+pub mod knightly_valor;

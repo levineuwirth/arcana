@@ -35,3 +35,4 @@ pub mod dismiss_into_dream;
 pub mod sensory_deprivation;
 pub mod illusionary_armor;
 pub mod trollhide;
+pub mod dark_favor;

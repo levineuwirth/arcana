@@ -31,3 +31,5 @@ pub mod frost_walker;
 pub mod qarsi_high_priest;
 pub mod abzan_beastmaster;
 pub mod jeskai_runemark;
+pub mod mardu_runemark;
+pub mod sultai_runemark;

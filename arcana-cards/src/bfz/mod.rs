@@ -41,3 +41,4 @@ pub mod blighted_fen;
 pub mod sanctum_of_ugin;
 pub mod dampening_pulse;
 pub mod tightening_coils;
+pub mod goblin_war_paint;

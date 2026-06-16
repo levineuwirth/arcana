@@ -85,3 +85,5 @@ pub mod bloodsoaked_altar;
 pub mod portal_of_sanctuary;
 pub mod oakenform;
 pub mod unholy_indenture;
+pub mod glaring_aegis;
+pub mod maniacal_rage;

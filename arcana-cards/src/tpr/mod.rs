@@ -79,3 +79,4 @@ pub mod spellshock;
 pub mod pandemonium;
 pub mod cursed_flesh;
 pub mod volrath_s_curse;
+pub mod flowstone_blade;

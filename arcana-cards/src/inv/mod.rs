@@ -65,3 +65,5 @@ pub mod divine_presence;
 pub mod scavenged_weaponry;
 pub mod whip_silk;
 pub mod sleeper_s_robe;
+pub mod wings_of_hope;
+pub mod mourning;

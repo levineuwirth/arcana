@@ -54,3 +54,6 @@ pub mod quiet_contemplation;
 pub mod sultai_ascendancy;
 pub mod suspension_field;
 pub mod siegecraft;
+pub mod debilitating_injury;
+pub mod dragon_grip;
+pub mod molting_snakeskin;

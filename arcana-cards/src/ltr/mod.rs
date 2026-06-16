@@ -86,3 +86,4 @@ pub mod doors_of_durin;
 pub mod ent_draught_basin;
 pub mod march_from_the_black_gate;
 pub mod gift_of_strands;
+pub mod bewitching_leechcraft;

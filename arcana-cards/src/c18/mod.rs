@@ -15,3 +15,4 @@ pub mod isolated_watchtower;
 pub mod haunted_fengraf;
 pub mod ever_watching_threshold;
 pub mod epic_proportions;
+pub mod spawning_grounds;

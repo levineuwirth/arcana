@@ -53,3 +53,4 @@ pub mod might_makes_right;
 pub mod feast_on_the_fallen;
 pub mod spectra_ward;
 pub mod vineweft;
+pub mod crippling_blight;

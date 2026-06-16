@@ -56,3 +56,5 @@ pub mod phyrexian_tower;
 pub mod wooded_foothills;
 pub mod mindless_conscription;
 pub mod ripples_of_undeath;
+pub mod strength_of_the_harvest_haven_of_the_harvest;
+pub mod glasswing_grace_age_graced_chapel;

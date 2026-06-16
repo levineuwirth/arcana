@@ -11,3 +11,4 @@ pub mod savaen_elves;
 pub mod whippoorwill;
 pub mod standing_stones;
 pub mod hidden_path;
+pub mod tangle_kelp;

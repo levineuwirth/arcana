@@ -22,3 +22,4 @@ pub mod acolyte_of_xathrid;
 pub mod goblin_artillery;
 pub mod gorgon_flail;
 pub mod megrim;
+pub mod entangling_vines;

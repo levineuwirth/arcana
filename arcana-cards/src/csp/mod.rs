@@ -32,3 +32,5 @@ pub mod frost_marsh;
 pub mod highland_weald;
 pub mod boreal_shelf;
 pub mod mouth_of_ronom;
+pub mod rime_transfusion;
+pub mod gelid_shackles;

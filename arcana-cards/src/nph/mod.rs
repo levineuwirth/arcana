@@ -27,3 +27,4 @@ pub mod greenhilt_trainee;
 pub mod isolation_cell;
 pub mod soul_conduit;
 pub mod glistening_oil;
+pub mod viridian_harvest;

@@ -83,3 +83,5 @@ pub mod pinecrest_ridge;
 pub mod boseiju_who_shelters_all;
 pub mod cloudcrest_lake;
 pub mod nature_s_will;
+pub mod serpent_skin;
+pub mod ragged_veins;

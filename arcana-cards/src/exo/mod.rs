@@ -28,3 +28,4 @@ pub mod medicine_bag;
 pub mod onslaught;
 pub mod convalescence;
 pub mod dizzying_gaze;
+pub mod bequeathal;

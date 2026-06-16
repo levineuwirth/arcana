@@ -28,3 +28,4 @@ pub mod executioner_s_hood;
 pub mod wolfhunter_s_quiver;
 pub mod favor_of_the_woods;
 pub mod chant_of_the_skifsang;
+pub mod spiteful_shadows;

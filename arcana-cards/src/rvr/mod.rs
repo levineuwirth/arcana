@@ -49,3 +49,4 @@ pub mod guardian_project;
 pub mod fists_of_ironwood;
 pub mod taste_for_mayhem;
 pub mod wurmweaver_coil;
+pub mod kasmina_s_transmutation;

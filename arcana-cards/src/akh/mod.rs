@@ -51,3 +51,4 @@ pub mod compulsory_rest;
 pub mod cartouche_of_knowledge;
 pub mod cartouche_of_solidarity;
 pub mod cartouche_of_zeal;
+pub mod cartouche_of_ambition;

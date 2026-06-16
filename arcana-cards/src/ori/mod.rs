@@ -46,3 +46,4 @@ pub mod stratus_walk;
 pub mod mantle_of_webs;
 pub mod consecrated_by_blood;
 pub mod suppression_bonds;
+pub mod murder_investigation;

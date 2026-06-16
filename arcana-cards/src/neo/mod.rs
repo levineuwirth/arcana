@@ -87,3 +87,4 @@ pub mod short_circuit;
 pub mod careful_cultivation;
 pub mod intercessor_s_arrest;
 pub mod akki_war_paint;
+pub mod gift_of_wrath;

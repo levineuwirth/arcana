@@ -71,3 +71,7 @@ pub mod heliod_s_punishment;
 pub mod impending_doom;
 pub mod mogis_s_favor;
 pub mod commanding_presence;
+pub mod ichthyomorphosis;
+pub mod mire_s_grasp;
+pub mod aspect_of_manticore;
+pub mod iroas_s_blessing;

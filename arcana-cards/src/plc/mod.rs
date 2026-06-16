@@ -12,3 +12,4 @@ pub mod sophic_centaur;
 pub mod merfolk_thaumaturgist;
 pub mod firefright_mage;
 pub mod frozen_aether;
+pub mod dust_corona;

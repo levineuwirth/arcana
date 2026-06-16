@@ -34,3 +34,4 @@ pub mod gingerbread_cabin;
 pub mod sequence_engine;
 pub mod novijen_heart_of_progress;
 pub mod tempting_contract;
+pub mod gift_of_paradise;

@@ -64,3 +64,4 @@ pub mod squirrel_nest;
 pub mod seton_s_desire;
 pub mod griffin_guide;
 pub mod hermetic_study;
+pub mod improvised_armor;

@@ -45,3 +45,6 @@ pub mod monsoon;
 pub mod chaos_moon;
 pub mod snow_devil;
 pub mod cooperation;
+pub mod seizures;
+pub mod earthlore;
+pub mod aggression;

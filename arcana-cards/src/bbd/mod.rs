@@ -65,3 +65,4 @@ pub mod mind_s_eye;
 pub mod sentinel_tower;
 pub mod oracle_s_insight;
 pub mod lightning_talons;
+pub mod battle_mastery;

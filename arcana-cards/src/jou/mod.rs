@@ -34,3 +34,4 @@ pub mod chariot_of_victory;
 pub mod mana_confluence;
 pub mod knowledge_and_power;
 pub mod aspect_of_gorgon;
+pub mod mortal_obstinacy;

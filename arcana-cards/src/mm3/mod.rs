@@ -31,3 +31,4 @@ pub mod mystic_genesis;
 pub mod mudbutton_torchrunner;
 pub mod skirsdag_cultist;
 pub mod golgari_germination;
+pub mod gift_of_orzhova;

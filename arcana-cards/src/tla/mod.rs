@@ -60,3 +60,5 @@ pub mod the_rise_of_sozin_fire_lord_sozin;
 pub mod the_legend_of_yangchen_avatar_yangchen;
 pub mod trusty_boomerang;
 pub mod path_to_redemption;
+pub mod avatar_destiny;
+pub mod honest_work;

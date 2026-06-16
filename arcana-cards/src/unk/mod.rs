@@ -54,3 +54,4 @@ pub mod white_rhystic_study;
 pub mod across_the_multiverse;
 pub mod unstickerify;
 pub mod taught_by_surrak;
+pub mod taught_by_narset;

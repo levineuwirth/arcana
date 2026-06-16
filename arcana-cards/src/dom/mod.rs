@@ -63,3 +63,4 @@ pub mod mox_amber;
 pub mod shield_of_the_realm;
 pub mod bloodtallow_candle;
 pub mod arcane_flight;
+pub mod demonic_vigor;

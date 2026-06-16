@@ -9,3 +9,4 @@ pub mod silver_myr;
 pub mod vedalken_engineer;
 pub mod access_denied;
 pub mod snake_umbra;
+pub mod bear_umbra;
