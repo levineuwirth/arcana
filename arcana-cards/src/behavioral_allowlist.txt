@@ -40,6 +40,8 @@ Captivating Vampire
 Ceremonious Rejection
 Chain Stasis
 Chainbreaker
+Chakram Retriever
+Chamber Sentry
 Chandra, Fire of Kaladesh
 Chandra, Gremlin Wrangler
 Chandra, Legacy of Fire
@@ -71,6 +73,7 @@ Dauntless Aven
 Dazzling Denial
 Death Watch
 Deep-Slumber Titan
+Defiant Greatmaw
 Delay
 Descendant of Masumaro
 Desertion
@@ -93,6 +96,7 @@ Elvish Scout
 Elvish Vatkeeper
 Empress Galina
 Ertai's Trickery
+Eternal Dragon
 Ethersworn Adjudicator
 Evaporate
 Evasive Action
@@ -155,6 +159,7 @@ Kiora, the Tide's Fury
 Kumano Faces Kakkazan
 Lapse of Certainty
 Lay Bare
+Leonin Battlemage
 Lifeline
 Lightning-Rig Crew
 Lingering Phantom
@@ -173,6 +178,7 @@ Mana Sculpt
 Mana Tithe
 Mandate of Abaddon
 Marchesa, the Black Rose
+Marketback Walker
 Master Thief
 Medicine Runner
 Medomai the Ageless
@@ -204,6 +210,7 @@ Nicol Bolas, Planeswalker
 Nimbleclaw Adept
 Nix
 No More Lies
+Noise Marine
 Open the Vaults
 Oppressive Will
 Outwit
@@ -222,6 +229,7 @@ Preeminent Captain
 Preyseizer Dragon
 Priest of the Haunted Edge
 Prince of Thralls
+Progenitor Exarch
 Punish Ignorance
 Puppet Strings
 Put Away
@@ -260,6 +268,7 @@ Scroll of Isildur
 Scuttling Sliver
 Second Chance
 Second Guess
+Seedship Broodtender
 Seeker of Skybreak
 Seer of the Bright Side
 Sengir Autocrat
@@ -303,6 +312,7 @@ Thistledown Players
 Thoughtbind
 Tibalt's Trickery
 Ticking Mime Bomb
+Torchling
 Touchstone
 Trampled Lotus
 Trickster Mage
@@ -315,6 +325,7 @@ Undersimplify
 Unholy Indenture
 Unified Lunge
 Unravel
+Urtet, Remnant of Memnarch
 Vedalken Plotter
 Voidslime
 Volatile Rig

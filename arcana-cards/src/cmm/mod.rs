@@ -155,3 +155,5 @@ pub mod isareth_the_awakener;
 pub mod coveted_peacock;
 pub mod sower_of_discord;
 pub mod anikthea_hand_of_erebos;
+pub mod erebos_bleak_hearted;
+pub mod alms_collector;

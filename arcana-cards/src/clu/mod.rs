@@ -77,3 +77,4 @@ pub mod orzhov_racketeers;
 pub mod carnage_interpreter;
 pub mod stampede_surfer;
 pub mod rakdos_the_showstopper;
+pub mod watcher_in_the_mist;

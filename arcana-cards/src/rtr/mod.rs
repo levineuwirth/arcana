@@ -64,3 +64,4 @@ pub mod sphinx_of_the_chimes;
 pub mod golgari_decoy;
 pub mod izzet_staticaster;
 pub mod soulsworn_spirit;
+pub mod loxodon_smiter;

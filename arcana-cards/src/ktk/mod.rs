@@ -61,3 +61,5 @@ pub mod sarkhan_the_dragonspeaker;
 pub mod sorin_solemn_visitor;
 pub mod snowhorn_rider;
 pub mod archers_parapet;
+pub mod dragon_style_twins;
+pub mod ponyback_brigade;

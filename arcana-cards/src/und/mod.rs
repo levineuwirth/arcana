@@ -10,3 +10,4 @@ pub mod timmy_power_gamer;
 pub mod underdome;
 pub mod b_o_b_bevy_of_beebles;
 pub mod goblin_haberdasher;
+pub mod infernius_spawnington_iii_esq;

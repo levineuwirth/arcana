@@ -52,3 +52,4 @@ pub mod scuzzback_marauders;
 pub mod gaddock_teeg;
 pub mod offalsnout;
 pub mod hero_of_iroas;
+pub mod angel_of_despair;

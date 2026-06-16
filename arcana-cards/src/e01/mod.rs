@@ -10,3 +10,5 @@ pub mod obelisk_of_grixis;
 pub mod grasp_of_the_hieromancer;
 pub mod nicol_bolas_planeswalker;
 pub mod nissa_worldwaker;
+pub mod torchling;
+pub mod precinct_captain;

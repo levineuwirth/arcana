@@ -76,3 +76,4 @@ pub mod chandra_pyrogenius;
 pub mod demon_of_dark_schemes;
 pub mod aethersquall_ancient;
 pub mod empyreal_voyager;
+pub mod thriving_grubs;

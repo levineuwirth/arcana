@@ -29,3 +29,5 @@ pub mod aether_web;
 pub mod gustcloak_cavalier;
 pub mod viscerid_deepwalker;
 pub mod aetherflame_wall;
+pub mod brass_gnat;
+pub mod d_avenant_healer;

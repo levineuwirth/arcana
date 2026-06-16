@@ -70,3 +70,5 @@ pub mod firebending_student;
 pub mod raven_eagle;
 pub mod curious_farm_animals;
 pub mod treetop_freedom_fighters;
+pub mod ty_lee_chi_blocker;
+pub mod serpent_of_the_pass;

@@ -63,3 +63,4 @@ pub mod barrier_of_bones;
 pub mod pelt_collector;
 pub mod legion_guildmage;
 pub mod gatekeeper_gargoyle;
+pub mod muse_drake;

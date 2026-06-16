@@ -74,3 +74,7 @@ pub mod viconia_disciple_of_violence;
 pub mod karlach_raging_tiefling;
 pub mod wilson_ardent_bear;
 pub mod imoen_occult_trickster;
+pub mod ambergris_agent_of_progress;
+pub mod sarevok_the_usurper;
+pub mod imoen_trickster_friend;
+pub mod a_pseudodragon_familiar;

@@ -88,3 +88,5 @@ pub mod shard_phoenix;
 pub mod kezzerdrix;
 pub mod spitting_hydra;
 pub mod selenia_dark_angel;
+pub mod soltari_champion;
+pub mod sandstone_warrior;

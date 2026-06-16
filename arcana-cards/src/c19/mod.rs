@@ -22,3 +22,4 @@ pub mod vraska_the_unseen;
 pub mod kadena_slinking_sorcerer;
 pub mod pramikon_sky_rampart;
 pub mod vitu_ghazi_guildmage;
+pub mod rayami_first_of_the_fallen;

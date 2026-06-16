@@ -5,3 +5,4 @@ pub mod emperor_apatzec_intli_iv;
 pub mod albiorix_goose_tyrant_wild_goose_chase;
 pub mod wagon_wrecker;
 pub mod switchgrass_grazer;
+pub mod jessie_zane_fangbringer;

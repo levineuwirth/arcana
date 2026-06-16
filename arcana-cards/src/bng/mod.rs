@@ -43,3 +43,4 @@ pub mod mindreaver;
 pub mod arbiter_of_the_ideal;
 pub mod pillar_of_war;
 pub mod archetype_of_courage;
+pub mod nyxborn_eidolon;

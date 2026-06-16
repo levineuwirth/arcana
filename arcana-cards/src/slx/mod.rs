@@ -4,3 +4,4 @@ pub mod sophina_spearsage_deserter;
 pub mod evin_waterdeep_opportunist;
 pub mod bjorna_nightfall_alchemist;
 pub mod greymond_avacyn_s_stalwart;
+pub mod the_howling_abomination;

@@ -69,3 +69,4 @@ pub mod tolsimir_wolfblood;
 pub mod boros_guildmage;
 pub mod blazing_archon;
 pub mod sharktocrab;
+pub mod lavinia_azorius_renegade;

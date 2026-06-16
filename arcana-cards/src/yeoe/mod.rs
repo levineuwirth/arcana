@@ -2,3 +2,4 @@
 pub mod worldweave;
 pub mod gravitic_herald;
 pub mod cosmic_sovereign;
+pub mod hydroponics_architect;

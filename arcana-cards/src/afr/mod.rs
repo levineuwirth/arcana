@@ -97,3 +97,5 @@ pub mod goblin_javelineer;
 pub mod elturgard_ranger;
 pub mod secret_door;
 pub mod delina_wild_mage;
+pub mod blue_dragon;
+pub mod scion_of_stygia;

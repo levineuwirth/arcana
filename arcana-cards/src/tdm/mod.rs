@@ -91,3 +91,5 @@ pub mod formation_breaker;
 pub mod venerated_stormsinger;
 pub mod underfoot_underdogs;
 pub mod summit_intimidator;
+pub mod arashin_sunshield;
+pub mod armament_dragon;

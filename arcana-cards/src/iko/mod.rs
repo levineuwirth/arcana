@@ -73,3 +73,4 @@ pub mod chevill_bane_of_monsters;
 pub mod lava_serpent;
 pub mod pyroceratops;
 pub mod general_s_enforcer;
+pub mod proud_wildbonder;

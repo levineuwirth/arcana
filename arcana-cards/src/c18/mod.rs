@@ -25,3 +25,5 @@ pub mod enigma_sphinx;
 pub mod bruna_light_of_alabaster;
 pub mod flameblast_dragon;
 pub mod night_incarnate;
+pub mod boon_satyr;
+pub mod maverick_thopterist;

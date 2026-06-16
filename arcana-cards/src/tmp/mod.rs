@@ -42,3 +42,4 @@ pub mod mirri_s_guile;
 pub mod hanna_s_custody;
 pub mod frog_tongue;
 pub mod advance_scout;
+pub mod dauthi_mindripper;

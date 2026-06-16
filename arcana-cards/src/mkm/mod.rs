@@ -83,3 +83,6 @@ pub mod persuasive_interrogators;
 pub mod lamplight_phoenix;
 pub mod furtive_courier;
 pub mod undercover_crocodelf;
+pub mod pompous_gadabout;
+pub mod conspiracy_unraveler;
+pub mod delney_streetwise_lookout;

@@ -144,3 +144,4 @@ pub mod angel_of_mercy;
 pub mod ormos_archive_keeper;
 pub mod tibalt_s_rager;
 pub mod scuttlemutt;
+pub mod chamber_sentry;

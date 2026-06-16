@@ -138,3 +138,6 @@ pub mod gorma_the_gullet;
 pub mod primordial_hydra;
 pub mod kor_spiritdancer;
 pub mod gyome_master_chef;
+pub mod balefire_liege;
+pub mod conspiracy_theorist;
+pub mod zimone_quandrix_prodigy;

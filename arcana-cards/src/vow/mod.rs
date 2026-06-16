@@ -103,3 +103,5 @@ pub mod sheltering_boughs;
 pub mod sorin_the_mirthless;
 pub mod courier_bat;
 pub mod parish_blade_trainee;
+pub mod dreadfeast_demon;
+pub mod falkenrath_celebrants;

@@ -87,3 +87,4 @@ pub mod thought_devourer;
 pub mod amugaba;
 pub mod infected_vermin;
 pub mod resilient_wanderer;
+pub mod dirty_wererat;

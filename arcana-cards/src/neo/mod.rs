@@ -108,3 +108,4 @@ pub mod acquisition_octopus;
 pub mod spring_leaf_avenger;
 pub mod inkrise_infiltrator;
 pub mod a_asari_captain;
+pub mod go_shintai_of_boundless_vigor;

@@ -63,3 +63,5 @@ pub mod thoughtbound_primoc;
 pub mod aven_brigadier;
 pub mod shieldmage_elder;
 pub mod whipcorder;
+pub mod headhunter;
+pub mod gravel_slinger;

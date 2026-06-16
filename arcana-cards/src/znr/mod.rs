@@ -69,3 +69,5 @@ pub mod kazandu_stomper;
 pub mod veteran_adventurer;
 pub mod a_gnarlid_colony;
 pub mod wayward_guide_beast;
+pub mod fireblade_charger;
+pub mod territorial_scythecat;

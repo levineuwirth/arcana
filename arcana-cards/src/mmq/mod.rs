@@ -132,3 +132,5 @@ pub mod saprazzan_bailiff;
 pub mod rishadan_brigand;
 pub mod cateran_slaver;
 pub mod extravagant_spirit;
+pub mod ramosian_sky_marshal;
+pub mod venomous_dragonfly;

@@ -53,3 +53,4 @@ pub mod mage_ring_responder;
 pub mod akroan_sergeant;
 pub mod goblin_piledriver;
 pub mod ringwarden_owl;
+pub mod rabid_bloodsucker;

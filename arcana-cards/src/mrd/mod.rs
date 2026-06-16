@@ -75,3 +75,4 @@ pub mod clockwork_dragon;
 pub mod looming_hoverguard;
 pub mod mirror_golem;
 pub mod clockwork_vorrac;
+pub mod flayed_nim;

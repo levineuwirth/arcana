@@ -52,3 +52,4 @@ pub mod noggle_hedge_mage;
 pub mod merrow_bonegnawer;
 pub mod ballynock_trapper;
 pub mod heartlash_cinder;
+pub mod suture_spirit;

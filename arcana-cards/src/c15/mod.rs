@@ -10,3 +10,4 @@ pub mod grave_peril;
 pub mod karmic_justice;
 pub mod crystal_chimes;
 pub mod awaken_the_sky_tyrant;
+pub mod kor_sanctifiers;

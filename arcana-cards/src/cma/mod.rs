@@ -32,3 +32,5 @@ pub mod oros_the_avenger;
 pub mod phantom_nantuko;
 pub mod reiver_demon;
 pub mod oni_of_wild_places;
+pub mod thief_of_blood;
+pub mod skyward_eye_prophets;

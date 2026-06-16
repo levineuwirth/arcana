@@ -79,3 +79,6 @@ pub mod kavu_primarch;
 pub mod peregrine_drake;
 pub mod glory;
 pub mod elvish_aberration;
+pub mod nomad_decoy;
+pub mod radha_heir_to_keld;
+pub mod wild_dogs;

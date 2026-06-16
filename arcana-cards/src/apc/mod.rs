@@ -39,3 +39,5 @@ pub mod foul_presence;
 pub mod putrid_warrior;
 pub mod rakavolver;
 pub mod anavolver;
+pub mod necra_disciple;
+pub mod necravolver;

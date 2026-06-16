@@ -46,3 +46,4 @@ pub mod colossal_whale;
 pub mod nephalia_seakite;
 pub mod witchstalker;
 pub mod guardian_of_the_ages;
+pub mod capashen_knight;

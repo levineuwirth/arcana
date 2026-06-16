@@ -15,3 +15,4 @@ pub mod tibalt_wicked_tormentor;
 pub mod garruk_wrath_of_the_wilds;
 pub mod geistpack_alpha;
 pub mod wickerwing_effigy;
+pub mod gitrog_horror_of_zhava;

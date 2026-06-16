@@ -74,3 +74,5 @@ pub mod fan_favorite;
 pub mod battle_rampart;
 pub mod gorm_the_great;
 pub mod blaring_captain;
+pub mod chakram_retriever;
+pub mod nimbus_champion;

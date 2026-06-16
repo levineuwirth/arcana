@@ -68,3 +68,4 @@ pub mod nova_chaser;
 pub mod timber_protector;
 pub mod sentinels_of_glen_elendra;
 pub mod changeling_titan;
+pub mod purity;

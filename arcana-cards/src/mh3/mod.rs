@@ -69,3 +69,4 @@ pub mod emissary_of_soulfire;
 pub mod cyclops_superconductor;
 pub mod nethergoyf;
 pub mod thief_of_existence;
+pub mod kami_of_jealous_thirst;

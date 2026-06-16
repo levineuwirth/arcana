@@ -107,3 +107,5 @@ pub mod unchained_berserker;
 pub mod cavalier_of_flame;
 pub mod lightning_stormkin;
 pub mod kethis_the_hidden_hand;
+pub mod embodiment_of_agonies;
+pub mod creeping_trailblazer;

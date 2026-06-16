@@ -37,3 +37,4 @@ pub mod aven_mimeomancer;
 pub mod jenara_asura_of_war;
 pub mod wrexial_the_risen_deep;
 pub mod syrix_carrier_of_the_flame;
+pub mod first_responder;

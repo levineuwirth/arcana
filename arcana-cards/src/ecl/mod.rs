@@ -93,3 +93,6 @@ pub mod glen_elendra_guardian;
 pub mod goliath_daydreamer;
 pub mod hovel_hurler;
 pub mod flock_impostor;
+pub mod enraged_flamecaster;
+pub mod squawkroaster;
+pub mod nightmare_sower;

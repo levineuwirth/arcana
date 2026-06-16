@@ -35,3 +35,6 @@ pub mod laurine_the_diversion;
 pub mod orochi_soul_reaver;
 pub mod void_attendant;
 pub mod rankle_master_of_pranks;
+pub mod sand_scout;
+pub mod thieving_amalgam;
+pub mod misfortune_teller;

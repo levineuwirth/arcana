@@ -69,3 +69,4 @@ pub mod sylvan_caryatid;
 pub mod wingmantle_chaplain;
 pub mod verix_bladewing;
 pub mod harbinger_of_the_hunt;
+pub mod steward_of_the_harvest;

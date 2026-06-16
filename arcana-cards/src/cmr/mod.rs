@@ -95,3 +95,5 @@ pub mod kangee_sky_warden;
 pub mod esior_wardwing_familiar;
 pub mod molder_beast;
 pub mod rakshasa_debaser;
+pub mod plague_reaver;
+pub mod silverback_shaman;

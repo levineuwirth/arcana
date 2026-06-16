@@ -66,3 +66,6 @@ pub mod lotusguard_disciple;
 pub mod slick_imitator;
 pub mod pit_automaton;
 pub mod gloryheath_lynx;
+pub mod marketback_walker;
+pub mod hazoret_godseeker;
+pub mod sabotage_strategist;

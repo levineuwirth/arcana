@@ -2,3 +2,4 @@
 pub mod fomori_nomad;
 pub mod ovinomancer;
 pub mod dragon_whelp;
+pub mod skyhunter_strike_force;

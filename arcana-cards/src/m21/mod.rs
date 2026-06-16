@@ -102,3 +102,4 @@ pub mod wall_of_runes;
 pub mod basri_s_acolyte;
 pub mod bone_pit_brute;
 pub mod sparkhunter_masticore;
+pub mod containment_priest;

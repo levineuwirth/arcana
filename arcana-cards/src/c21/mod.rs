@@ -45,3 +45,4 @@ pub mod sapling_of_colfenor;
 pub mod teysa_envoy_of_ghosts;
 pub mod sproutback_trudge;
 pub mod triplicate_titan;
+pub mod naru_meha_master_wizard;

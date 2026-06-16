@@ -39,3 +39,4 @@ pub mod vampire_envoy;
 pub mod thought_knot_seer;
 pub mod cliffhaven_vampire;
 pub mod dread_defiler;
+pub mod stormchaser_mage;

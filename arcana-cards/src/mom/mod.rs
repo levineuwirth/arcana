@@ -124,3 +124,7 @@ pub mod ancient_imperiosaur;
 pub mod marshal_of_zhalfir;
 pub mod sandstalker_moloch;
 pub mod glissa_herald_of_predation;
+pub mod progenitor_exarch;
+pub mod ruins_recluse;
+pub mod ichor_drinker;
+pub mod gloomfang_mauler;

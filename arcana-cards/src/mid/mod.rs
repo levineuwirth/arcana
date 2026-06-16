@@ -93,3 +93,4 @@ pub mod larder_zombie;
 pub mod rootcoil_creeper;
 pub mod katilda_dawnhart_prime;
 pub mod moonveil_regent;
+pub mod sungold_sentinel;

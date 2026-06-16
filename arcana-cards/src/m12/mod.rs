@@ -46,3 +46,4 @@ pub mod aven_fleetwing;
 pub mod carnage_wurm;
 pub mod lurking_crocodile;
 pub mod skinshifter;
+pub mod dungrove_elder;

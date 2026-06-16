@@ -50,3 +50,4 @@ pub mod viridian_revel;
 pub mod elspeth_tirel;
 pub mod corpse_cur;
 pub mod lumengrid_drake;
+pub mod abuna_acolyte;

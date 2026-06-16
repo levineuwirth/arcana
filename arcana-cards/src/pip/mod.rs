@@ -29,3 +29,5 @@ pub mod white_glove_gourmand;
 pub mod moira_brown_guide_author;
 pub mod super_mutant_scavenger;
 pub mod marcus_mutant_mayor;
+pub mod desdemona_freedom_s_edge;
+pub mod dr_madison_li;

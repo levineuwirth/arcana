@@ -95,3 +95,5 @@ pub mod frodo_determined_hero;
 pub mod bilbo_retired_burglar;
 pub mod a_orcish_bowmasters;
 pub mod omer_marshal_of_rohan;
+pub mod generous_ent;
+pub mod lobelia_sackville_baggins;

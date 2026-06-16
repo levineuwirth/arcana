@@ -58,3 +58,4 @@ pub mod animate_wall;
 pub mod phelddagrif;
 pub mod rabid_wombat;
 pub mod clockwork_beast;
+pub mod lord_of_tresserhorn;

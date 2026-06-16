@@ -107,3 +107,6 @@ pub mod il_mheg_pixie;
 pub mod barret_wallace;
 pub mod noctis_prince_of_lucis;
 pub mod black_waltz_no_3;
+pub mod rook_turret;
+pub mod balamb_t_rexaur;
+pub mod cloudbound_moogle;

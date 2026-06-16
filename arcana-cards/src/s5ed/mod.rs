@@ -25,3 +25,4 @@ pub mod ironclaw_curse;
 pub mod imposing_visage;
 pub mod the_brute;
 pub mod serra_paladin;
+pub mod primordial_ooze;

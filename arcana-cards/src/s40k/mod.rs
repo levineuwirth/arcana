@@ -33,3 +33,5 @@ pub mod broodlord;
 pub mod plasmancer;
 pub mod termagant_swarm;
 pub mod arco_flagellant;
+pub mod noise_marine;
+pub mod herald_of_slaanesh;

@@ -74,3 +74,6 @@ pub mod geyser_drake;
 pub mod sterling_supplier;
 pub mod outlaw_stitcher;
 pub mod lilah_undefeated_slickshot;
+pub mod kraum_violent_cacophony;
+pub mod visage_bandit;
+pub mod calamity_galloping_inferno;
