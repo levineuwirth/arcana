@@ -74,3 +74,5 @@ pub mod valleymaker;
 pub mod ghastlord_of_fugue;
 pub mod crowd_of_cinders;
 pub mod cinderhaze_wretch;
+pub mod glamer_spinners;
+pub mod chainbreaker;

@@ -76,3 +76,4 @@ pub mod steelswarm_operator;
 pub mod tapestry_warden;
 pub mod famished_worldsire;
 pub mod genemorph_imago;
+pub mod edge_rover;

@@ -70,3 +70,4 @@ pub mod chrome_courier;
 pub mod slag_strider;
 pub mod bottle_golems;
 pub mod ravenous_squirrel;
+pub mod territorial_kavu;

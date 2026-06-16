@@ -115,3 +115,5 @@ pub mod bloodtithe_harvester;
 pub mod bedlam_reveler;
 pub mod thalia_heretic_cathar;
 pub mod mist_raven;
+pub mod liesa_forgotten_archangel;
+pub mod captivating_vampire;

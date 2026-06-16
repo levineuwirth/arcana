@@ -22,3 +22,5 @@ pub mod consecrate_land;
 pub mod fire_whip;
 pub mod scragnoth;
 pub mod stormscape_familiar;
+pub mod gaea_s_liege;
+pub mod voidmage_prodigy;

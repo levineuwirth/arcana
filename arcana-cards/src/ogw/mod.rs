@@ -38,3 +38,4 @@ pub mod eldrazi_aggressor;
 pub mod vampire_envoy;
 pub mod thought_knot_seer;
 pub mod cliffhaven_vampire;
+pub mod dread_defiler;

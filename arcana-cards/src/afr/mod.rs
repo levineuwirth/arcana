@@ -96,3 +96,4 @@ pub mod kalain_reclusive_painter;
 pub mod goblin_javelineer;
 pub mod elturgard_ranger;
 pub mod secret_door;
+pub mod delina_wild_mage;

@@ -25,3 +25,5 @@ pub mod kozilek_compleated;
 pub mod creepy_crawler;
 pub mod omnipresent_impostor;
 pub mod mothers_yamazaki;
+pub mod pokey_the_scallywagg;
+pub mod nalathni_dragon;

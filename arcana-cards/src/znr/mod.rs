@@ -66,3 +66,6 @@ pub mod nissa_of_shadowed_boughs;
 pub mod phylath_world_sculptor;
 pub mod shepherd_of_heroes;
 pub mod kazandu_stomper;
+pub mod veteran_adventurer;
+pub mod a_gnarlid_colony;
+pub mod wayward_guide_beast;

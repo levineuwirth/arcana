@@ -89,3 +89,5 @@ pub mod kin_tree_nurturer;
 pub mod jade_cast_sentinel;
 pub mod formation_breaker;
 pub mod venerated_stormsinger;
+pub mod underfoot_underdogs;
+pub mod summit_intimidator;

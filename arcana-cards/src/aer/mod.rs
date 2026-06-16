@@ -65,3 +65,5 @@ pub mod aether_inspector;
 pub mod narnam_renegade;
 pub mod ajani_s_comrade;
 pub mod exquisite_archangel;
+pub mod aether_herder;
+pub mod lightning_runner;

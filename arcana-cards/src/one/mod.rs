@@ -67,3 +67,5 @@ pub mod basilica_shepherd;
 pub mod mite_overseer;
 pub mod malcator_purity_overseer;
 pub mod charforger;
+pub mod thrun_breaker_of_silence;
+pub mod bonepicker_skirge;

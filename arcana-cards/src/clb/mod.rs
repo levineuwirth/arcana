@@ -148,3 +148,6 @@ pub mod bloodboil_sorcerer;
 pub mod skanos_dragonheart;
 pub mod wrathful_red_dragon;
 pub mod phyrexian_revoker;
+pub mod renari_merchant_of_marvels;
+pub mod ellyn_harbreeze_busybody;
+pub mod harper_recruiter;

@@ -72,3 +72,5 @@ pub mod sicken;
 pub mod vug_lizard;
 pub mod shimmering_barrier;
 pub mod drifting_djinn;
+pub mod skittering_skirge;
+pub mod goblin_war_buggy;

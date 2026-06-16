@@ -36,8 +36,10 @@ Bulwark
 Burst of Energy
 Calamitous Cave-In
 Cancel
+Captivating Vampire
 Ceremonious Rejection
 Chain Stasis
+Chainbreaker
 Chandra, Fire of Kaladesh
 Chandra, Gremlin Wrangler
 Chandra, Legacy of Fire
@@ -46,6 +48,7 @@ Cinderhaze Wretch
 City of Traitors
 Civic Gardener
 Clever Conjurer
+Clockwork Beast
 Clockwork Steed
 Clone Legion
 Cloudpost
@@ -94,6 +97,7 @@ Ethersworn Adjudicator
 Evaporate
 Evasive Action
 Faerie Trickery
+Feasting Troll King
 Fickle Efreet
 Flaccify
 Floodwater Dam
@@ -108,6 +112,7 @@ Glimmerpost
 Goblin Assassin
 Goblin Psychopath
 Godo, Bandit Warlord
+Greater Morphling
 Greenside Watcher
 Groundskeeper
 Gruesome Menagerie
@@ -188,6 +193,7 @@ Mu Yanling
 Mystic Genesis
 Nahiri, Heir of the Ancients
 Nanoform Sentinel
+Narfi, Betrayer King
 Necrogen Communion
 Negate
 Nemesis Phoenix
@@ -212,6 +218,7 @@ Plasm Capture
 Polluted Bonds
 Powerstone Shard
 Praetor's Counsel
+Preeminent Captain
 Preyseizer Dragon
 Priest of the Haunted Edge
 Prince of Thralls
@@ -261,7 +268,9 @@ Shard Phoenix
 Silkenfist Fighter
 Silkenfist Order
 Simic Ragworm
+Skeleton Crew
 Skeleton Shard
+Skittering Skirge
 Skred
 Soliton
 Sorin, Imperious Bloodlord

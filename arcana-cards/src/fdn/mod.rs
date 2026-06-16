@@ -181,3 +181,5 @@ pub mod ruby_daring_tracker;
 pub mod ramos_dragon_engine;
 pub mod heroes_bane;
 pub mod kellan_planar_trailblazer;
+pub mod trygon_predator;
+pub mod wilt_leaf_liege;

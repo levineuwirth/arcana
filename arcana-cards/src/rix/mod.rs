@@ -41,3 +41,4 @@ pub mod vraska_scheming_gorgon;
 pub mod angrath_the_flame_chained;
 pub mod huatli_radiant_champion;
 pub mod siren_reaver;
+pub mod sun_collared_raptor;

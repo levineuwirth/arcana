@@ -7,3 +7,4 @@ pub mod drannith_ruins;
 pub mod training_grounds;
 pub mod leyline_immersion;
 pub mod urborg_scavengers;
+pub mod samut_vizier_of_naktamun;

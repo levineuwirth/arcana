@@ -31,3 +31,4 @@ pub mod baxter_fly_in_the_ointment;
 pub mod biogenic_ooze;
 pub mod tokka_rahzar_unsupervised;
 pub mod bebop_skull_crossbones;
+pub mod michelangelo_on_the_scene;

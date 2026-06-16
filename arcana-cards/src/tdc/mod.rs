@@ -68,3 +68,4 @@ pub mod arasta_of_the_endless_web;
 pub mod sylvan_caryatid;
 pub mod wingmantle_chaplain;
 pub mod verix_bladewing;
+pub mod harbinger_of_the_hunt;

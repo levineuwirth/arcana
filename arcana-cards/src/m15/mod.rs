@@ -64,3 +64,4 @@ pub mod necrogen_scudder;
 pub mod wall_of_fire;
 pub mod paragon_of_open_graves;
 pub mod kalonian_twingrove;
+pub mod preeminent_captain;

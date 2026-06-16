@@ -52,3 +52,5 @@ pub mod the_neutrinos;
 pub mod foot_mystic;
 pub mod madame_null_power_broker;
 pub mod savanti_romero_time_s_exile;
+pub mod leonardo_sewer_samurai;
+pub mod paramecia_coloniex;

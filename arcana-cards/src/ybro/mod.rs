@@ -5,3 +5,4 @@ pub mod sylvan_smite;
 pub mod foundry_groundbreaker;
 pub mod crucias_titan_of_the_waves;
 pub mod richlau_headmaster;
+pub mod hurkyl_s_prodigy;

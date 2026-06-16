@@ -38,3 +38,5 @@ pub mod pentarch_ward;
 pub mod guard_duty;
 pub mod dragon_bell_monk;
 pub mod jace_s_phantasm;
+pub mod crowned_ceratok;
+pub mod serra_ascendant;

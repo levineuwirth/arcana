@@ -76,3 +76,4 @@ pub mod rescuer_sphinx;
 pub mod orzhov_racketeers;
 pub mod carnage_interpreter;
 pub mod stampede_surfer;
+pub mod rakdos_the_showstopper;

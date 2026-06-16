@@ -81,3 +81,7 @@ pub mod your_favorite_missing_character;
 pub mod the_judge_of_height;
 pub mod blu_mansion_prince;
 pub mod the_bringer_of_the_red_beard;
+pub mod riku_and_riku;
+pub mod windy_city_elemental;
+pub mod valko_indorian_researcher;
+pub mod daxiver_izzet_electromancer;

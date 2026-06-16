@@ -91,3 +91,5 @@ pub mod burdened_stoneback;
 pub mod omni_changeling;
 pub mod glen_elendra_guardian;
 pub mod goliath_daydreamer;
+pub mod hovel_hurler;
+pub mod flock_impostor;

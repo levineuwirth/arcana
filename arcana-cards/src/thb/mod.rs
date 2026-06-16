@@ -89,3 +89,4 @@ pub mod nylea_keen_eyed;
 pub mod enemy_of_enlightenment;
 pub mod vexing_gull;
 pub mod grasping_giant;
+pub mod thassa_deep_dwelling;

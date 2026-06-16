@@ -29,3 +29,7 @@ pub mod mawloc;
 pub mod imotekh_the_stormlord;
 pub mod sautekh_immortal;
 pub mod company_commander;
+pub mod broodlord;
+pub mod plasmancer;
+pub mod termagant_swarm;
+pub mod arco_flagellant;

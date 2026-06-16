@@ -65,3 +65,4 @@ pub mod keen_buccaneer;
 pub mod lotusguard_disciple;
 pub mod slick_imitator;
 pub mod pit_automaton;
+pub mod gloryheath_lynx;

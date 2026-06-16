@@ -27,3 +27,5 @@ pub mod weight_of_conscience;
 pub mod hostile_realm;
 pub mod inspired_sprite;
 pub mod dewdrop_spy;
+pub mod fencer_clique;
+pub mod nightshade_schemers;

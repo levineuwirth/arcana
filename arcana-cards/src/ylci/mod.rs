@@ -4,3 +4,5 @@ pub mod dusk_s_landing;
 pub mod brazen_boarding;
 pub mod pirate_s_landing;
 pub mod mycoid_resurrection;
+pub mod caldera_breaker;
+pub mod legion_reconsecrator;

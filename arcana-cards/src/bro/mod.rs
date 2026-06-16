@@ -94,3 +94,4 @@ pub mod survivor_of_korlis;
 pub mod misery_s_shadow;
 pub mod ambush_paratrooper;
 pub mod thopter_mechanic;
+pub mod tocasia_dig_site_mentor;

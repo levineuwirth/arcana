@@ -50,3 +50,5 @@ pub mod deathknell_kami;
 pub mod cloudhoof_kirin;
 pub mod sekki_seasons_guide;
 pub mod kashi_tribe_elite;
+pub mod ghost_lit_warder;
+pub mod sokenzan_spellblade;

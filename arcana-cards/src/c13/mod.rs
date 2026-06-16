@@ -24,3 +24,4 @@ pub mod carnage_altar;
 pub mod where_ancients_tread;
 pub mod foster;
 pub mod arcane_melee;
+pub mod azorius_herald;

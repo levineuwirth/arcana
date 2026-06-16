@@ -50,3 +50,5 @@ pub mod conviction;
 pub mod mammoth_umbra;
 pub mod scuzzback_marauders;
 pub mod gaddock_teeg;
+pub mod offalsnout;
+pub mod hero_of_iroas;

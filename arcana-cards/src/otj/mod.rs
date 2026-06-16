@@ -70,3 +70,7 @@ pub mod akul_the_unrepentant;
 pub mod boneyard_desecrator;
 pub mod bristly_bill_spine_sower;
 pub mod the_gitrog_ravenous_ride;
+pub mod geyser_drake;
+pub mod sterling_supplier;
+pub mod outlaw_stitcher;
+pub mod lilah_undefeated_slickshot;

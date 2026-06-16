@@ -79,3 +79,7 @@ pub mod living_conundrum;
 pub mod axebane_ferox;
 pub mod glint_weaver;
 pub mod tin_street_gossip;
+pub mod persuasive_interrogators;
+pub mod lamplight_phoenix;
+pub mod furtive_courier;
+pub mod undercover_crocodelf;

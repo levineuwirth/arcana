@@ -75,3 +75,4 @@ pub mod sulam_djinn;
 pub mod metathran_aerostat;
 pub mod stormscape_apprentice;
 pub mod lotus_guardian;
+pub mod vodalian_serpent;

@@ -136,3 +136,5 @@ pub mod stormcatch_mentor;
 pub mod solemn_simulacrum;
 pub mod gorma_the_gullet;
 pub mod primordial_hydra;
+pub mod kor_spiritdancer;
+pub mod gyome_master_chef;

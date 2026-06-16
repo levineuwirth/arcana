@@ -66,3 +66,5 @@ pub mod nishoba_brawler;
 pub mod a_nael_avizoa_aeronaut;
 pub mod nael_avizoa_aeronaut;
 pub mod battlewing_mystic;
+pub mod valiant_veteran;
+pub mod frostfist_strider;

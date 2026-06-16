@@ -87,3 +87,4 @@ pub mod dauthi_jackal;
 pub mod shard_phoenix;
 pub mod kezzerdrix;
 pub mod spitting_hydra;
+pub mod selenia_dark_angel;

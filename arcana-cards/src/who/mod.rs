@@ -34,3 +34,6 @@ pub mod ian_chesterton;
 pub mod weeping_angel;
 pub mod sarah_jane_smith;
 pub mod vislor_turlough;
+pub mod dan_lewis;
+pub mod duggan_private_detective;
+pub mod frost_fair_lure_fish;

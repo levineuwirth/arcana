@@ -7,3 +7,4 @@ pub mod firemind_s_foresight;
 pub mod jori_en_ruin_diver;
 pub mod zo_zu_the_punisher;
 pub mod rubblebelt_raiders;
+pub mod spellheart_chimera;

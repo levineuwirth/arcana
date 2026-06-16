@@ -74,3 +74,5 @@ pub mod nissa_vital_force;
 pub mod saheeli_rai;
 pub mod chandra_pyrogenius;
 pub mod demon_of_dark_schemes;
+pub mod aethersquall_ancient;
+pub mod empyreal_voyager;

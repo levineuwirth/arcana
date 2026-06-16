@@ -127,3 +127,5 @@ pub mod stalwart_valkyrie;
 pub mod guardian_gladewalker;
 pub mod draugr_necromancer;
 pub mod cinderheart_giant;
+pub mod vengeful_reaper;
+pub mod narfi_betrayer_king;

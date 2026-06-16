@@ -29,3 +29,5 @@ pub mod mox_lotus;
 pub mod ach_hans_run;
 pub mod loose_lips;
 pub mod monkey_monkey_monkey;
+pub mod greater_morphling;
+pub mod ladies_knight;

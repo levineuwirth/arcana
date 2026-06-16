@@ -141,3 +141,6 @@ pub mod kira_great_glass_spinner;
 pub mod bloodhunter_bat;
 pub mod feral_hydra;
 pub mod angel_of_mercy;
+pub mod ormos_archive_keeper;
+pub mod tibalt_s_rager;
+pub mod scuttlemutt;

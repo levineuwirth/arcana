@@ -93,3 +93,6 @@ pub mod soratami_cloudskater;
 pub mod ronin_houndmaster;
 pub mod villainous_ogre;
 pub mod brutal_deceiver;
+pub mod kodama_of_the_north_tree;
+pub mod takeno_samurai_general;
+pub mod brothers_yamazaki;

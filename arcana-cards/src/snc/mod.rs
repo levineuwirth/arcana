@@ -92,3 +92,5 @@ pub mod errant_street_artist;
 pub mod brazen_upstart;
 pub mod all_seeing_arbiter;
 pub mod rakish_revelers;
+pub mod a_glamorous_outlaw;
+pub mod darling_of_the_masses;

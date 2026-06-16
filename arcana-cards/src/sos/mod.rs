@@ -64,3 +64,4 @@ pub mod orysa_tide_choreographer;
 pub mod biblioplex_tomekeeper;
 pub mod stirring_hopesinger;
 pub mod postmortem_professor;
+pub mod page_loose_leaf;

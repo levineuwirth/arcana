@@ -123,3 +123,4 @@ pub mod chomping_kavu;
 pub mod ancient_imperiosaur;
 pub mod marshal_of_zhalfir;
 pub mod sandstalker_moloch;
+pub mod glissa_herald_of_predation;

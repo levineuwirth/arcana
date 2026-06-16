@@ -71,3 +71,6 @@ pub mod boartusk_liege;
 pub mod fireblade_artist;
 pub mod elsha_of_the_infinite;
 pub mod scion_of_darkness;
+pub mod abbot_of_keral_keep;
+pub mod jeskai_elder;
+pub mod grand_arbiter_augustin_iv;

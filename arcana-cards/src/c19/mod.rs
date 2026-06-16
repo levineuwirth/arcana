@@ -20,3 +20,5 @@ pub mod secrets_of_the_dead;
 pub mod gift_of_doom;
 pub mod vraska_the_unseen;
 pub mod kadena_slinking_sorcerer;
+pub mod pramikon_sky_rampart;
+pub mod vitu_ghazi_guildmage;

@@ -67,3 +67,5 @@ pub mod aurelia_exemplar_of_justice;
 pub mod golgari_grave_troll;
 pub mod tolsimir_wolfblood;
 pub mod boros_guildmage;
+pub mod blazing_archon;
+pub mod sharktocrab;

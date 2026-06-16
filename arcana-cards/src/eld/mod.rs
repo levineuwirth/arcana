@@ -94,3 +94,6 @@ pub mod embereth_paladin;
 pub mod savvy_hunter;
 pub mod archon_of_absolution;
 pub mod fervent_champion;
+pub mod locthwain_paladin;
+pub mod loch_dragon;
+pub mod feasting_troll_king;

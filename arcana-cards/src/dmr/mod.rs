@@ -77,3 +77,5 @@ pub mod whitemane_lion;
 pub mod deadwood_treefolk;
 pub mod kavu_primarch;
 pub mod peregrine_drake;
+pub mod glory;
+pub mod elvish_aberration;

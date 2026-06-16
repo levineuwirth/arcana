@@ -48,3 +48,8 @@ pub mod mist_dancer;
 pub mod bronzebeak_foragers;
 pub mod carmen_cruel_skymarcher;
 pub mod vona_butcher_of_magan;
+pub mod zegana_utopian_speaker;
+pub mod kari_zev_skyship_raider;
+pub mod gemcutter_buccaneer;
+pub mod drana_liberator_of_malakir;
+pub mod skeleton_crew;

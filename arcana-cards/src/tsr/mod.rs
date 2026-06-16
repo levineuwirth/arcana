@@ -65,3 +65,4 @@ pub mod jaya_ballard_task_mage;
 pub mod bonded_fetch;
 pub mod mire_boa;
 pub mod serra_avenger;
+pub mod utopia_mycon;

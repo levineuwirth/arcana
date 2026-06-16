@@ -105,3 +105,5 @@ pub mod glint_horn_buccaneer;
 pub mod riddlemaster_sphinx;
 pub mod unchained_berserker;
 pub mod cavalier_of_flame;
+pub mod lightning_stormkin;
+pub mod kethis_the_hidden_hand;

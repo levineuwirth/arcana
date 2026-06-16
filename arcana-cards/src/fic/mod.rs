@@ -30,3 +30,6 @@ pub mod amarant_coral;
 pub mod lyse_hext;
 pub mod gatta_and_luzzu;
 pub mod tataru_taru;
+pub mod ardbert_warrior_of_darkness;
+pub mod elena_turk_recruit;
+pub mod shelinda_yevon_acolyte;
