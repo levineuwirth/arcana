@@ -60,3 +60,4 @@ pub mod ral_caller_of_storms;
 pub mod vraska_regal_gorgon;
 pub mod ral_izzet_viceroy;
 pub mod barrier_of_bones;
+pub mod pelt_collector;

@@ -29,3 +29,4 @@ pub mod tolaria;
 pub mod lifeblood;
 pub mod gravity_sphere;
 pub mod gosta_dirk;
+pub mod wall_of_caltrops;

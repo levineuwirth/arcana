@@ -59,3 +59,6 @@ pub mod pearlspear_courier;
 pub mod doubtless_one;
 pub mod shaleskin_bruiser;
 pub mod snapping_thragg;
+pub mod thoughtbound_primoc;
+pub mod aven_brigadier;
+pub mod shieldmage_elder;

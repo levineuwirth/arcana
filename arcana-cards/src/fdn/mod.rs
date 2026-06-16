@@ -171,3 +171,4 @@ pub mod gnarlid_colony;
 pub mod crystal_barricade;
 pub mod strix_lookout;
 pub mod sphinx_of_forgotten_lore;
+pub mod pelakka_wurm;

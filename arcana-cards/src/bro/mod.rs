@@ -91,3 +91,4 @@ pub mod a_saheeli_filigree_master;
 pub mod combat_courier;
 pub mod yotian_frontliner;
 pub mod survivor_of_korlis;
+pub mod misery_s_shadow;

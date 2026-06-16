@@ -137,3 +137,4 @@ pub mod eternal_thirst;
 pub mod feral_invocation;
 pub mod lawmage_s_binding;
 pub mod emancipation_angel;
+pub mod kira_great_glass_spinner;

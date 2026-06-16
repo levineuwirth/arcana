@@ -80,3 +80,4 @@ pub mod the_biblioplex;
 pub mod detention_vortex;
 pub mod kasmina_enigma_sage;
 pub mod stonerise_spirit;
+pub mod dragonsguard_elite;

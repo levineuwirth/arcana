@@ -103,3 +103,5 @@ pub mod dungeon_geists;
 pub mod golos_tireless_pilgrim;
 pub mod glint_horn_buccaneer;
 pub mod riddlemaster_sphinx;
+pub mod unchained_berserker;
+pub mod cavalier_of_flame;

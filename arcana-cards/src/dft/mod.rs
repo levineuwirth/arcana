@@ -57,3 +57,7 @@ pub mod gearseeker_serpent;
 pub mod migrating_ketradon;
 pub mod vnwxt_verbose_host;
 pub mod elvish_refueler;
+pub mod greenbelt_guardian;
+pub mod brightfield_mustang;
+pub mod embalmed_ascendant;
+pub mod coalstoke_gearhulk;

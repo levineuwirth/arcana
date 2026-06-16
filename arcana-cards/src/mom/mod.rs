@@ -117,3 +117,4 @@ pub mod drana_and_linvala;
 pub mod elvish_vatkeeper;
 pub mod shivan_branch_burner;
 pub mod phyrexian_archivist;
+pub mod injector_crocodile;

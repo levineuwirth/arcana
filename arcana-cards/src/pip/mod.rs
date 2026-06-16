@@ -25,3 +25,4 @@ pub mod gunner_conscript;
 pub mod raul_trouble_shooter;
 pub mod craig_boone_novac_guard;
 pub mod rampaging_yao_guai;
+pub mod white_glove_gourmand;

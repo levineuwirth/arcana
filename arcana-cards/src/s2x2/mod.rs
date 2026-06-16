@@ -68,3 +68,4 @@ pub mod magister_sphinx;
 pub mod marchesa_the_black_rose;
 pub mod ghave_guru_of_spores;
 pub mod boartusk_liege;
+pub mod fireblade_artist;

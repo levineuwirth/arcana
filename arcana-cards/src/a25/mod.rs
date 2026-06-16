@@ -44,3 +44,5 @@ pub mod pillory_of_the_sleepless;
 pub mod freed_from_the_real;
 pub mod fortune_thief;
 pub mod nezumi_cutthroat;
+pub mod will_o_the_wisp;
+pub mod nettle_sentinel;

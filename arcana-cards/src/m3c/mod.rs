@@ -3,3 +3,4 @@ pub mod spawnbed_protector;
 pub mod inversion_behemoth;
 pub mod hourglass_of_the_lost;
 pub mod trenchpost;
+pub mod infested_thrinax;

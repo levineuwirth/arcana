@@ -29,3 +29,4 @@ pub mod fervor;
 pub mod volcanic_strength;
 pub mod chandra_the_firebrand;
 pub mod battleflight_eagle;
+pub mod arctic_aven;

@@ -60,3 +60,4 @@ pub mod sluiceway_scorpion;
 pub mod volatile_rig;
 pub mod isperia_s_skywatch;
 pub mod armada_wurm;
+pub mod sphinx_of_the_chimes;

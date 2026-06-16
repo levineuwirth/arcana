@@ -44,3 +44,5 @@ pub mod aether_barrier;
 pub mod parallax_dementia;
 pub mod air_bladder;
 pub mod lashknife;
+pub mod flowstone_wall;
+pub mod belbe_s_percher;

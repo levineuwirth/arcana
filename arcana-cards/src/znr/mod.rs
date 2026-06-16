@@ -64,3 +64,4 @@ pub mod a_nahiri_heir_of_the_ancients;
 pub mod nahiri_heir_of_the_ancients;
 pub mod nissa_of_shadowed_boughs;
 pub mod phylath_world_sculptor;
+pub mod shepherd_of_heroes;

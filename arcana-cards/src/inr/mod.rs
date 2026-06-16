@@ -113,3 +113,4 @@ pub mod edgar_markov;
 pub mod cathar_commando;
 pub mod bloodtithe_harvester;
 pub mod bedlam_reveler;
+pub mod thalia_heretic_cathar;

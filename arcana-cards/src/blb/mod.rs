@@ -84,3 +84,4 @@ pub mod frilled_sparkshooter;
 pub mod lifecreed_duo;
 pub mod moonrise_cleric;
 pub mod iridescent_vinelasher;
+pub mod darkstar_augur;

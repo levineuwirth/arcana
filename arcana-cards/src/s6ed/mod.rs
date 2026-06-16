@@ -37,3 +37,4 @@ pub mod chill;
 pub mod hero_s_resolve;
 pub mod burrowing;
 pub mod feast_of_the_unicorn;
+pub mod unseen_walker;

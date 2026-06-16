@@ -23,3 +23,4 @@ pub mod kaya_ghost_haunter;
 pub mod abian_luvion_usurper;
 pub mod tibalt_the_chaotic;
 pub mod personal_decoy;
+pub mod inspirational_antelope;

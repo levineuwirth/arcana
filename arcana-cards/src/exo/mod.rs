@@ -32,3 +32,4 @@ pub mod bequeathal;
 pub mod cunning;
 pub mod predatory_hunger;
 pub mod welkin_hawk;
+pub mod soltari_visionary;

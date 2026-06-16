@@ -101,3 +101,5 @@ pub mod bartz_and_boko;
 pub mod gaius_van_baelsar;
 pub mod valkyrie_aerial_unit;
 pub mod pupu_ufo;
+pub mod stiltzkin_moogle_merchant;
+pub mod demon_wall;

@@ -90,3 +90,5 @@ pub mod grafted_identity;
 pub mod teferi_who_slows_the_sunset;
 pub mod search_party_captain;
 pub mod larder_zombie;
+pub mod rootcoil_creeper;
+pub mod katilda_dawnhart_prime;

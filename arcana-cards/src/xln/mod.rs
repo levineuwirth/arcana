@@ -77,3 +77,4 @@ pub mod jace_cunning_castaway;
 pub mod huatli_warrior_poet;
 pub mod huatli_dinosaur_knight;
 pub mod snapping_sailback;
+pub mod headstrong_brute;

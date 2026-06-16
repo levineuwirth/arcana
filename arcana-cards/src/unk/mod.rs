@@ -73,3 +73,4 @@ pub mod theopholos_order_acolyte;
 pub mod the_bear_force_pilot_runner;
 pub mod the_faction_dragon;
 pub mod the_brewing_chef;
+pub mod azra_matchthrower;

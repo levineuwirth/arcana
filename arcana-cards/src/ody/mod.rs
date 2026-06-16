@@ -84,3 +84,5 @@ pub mod cantivore;
 pub mod thought_eater;
 pub mod savage_firecat;
 pub mod thought_devourer;
+pub mod amugaba;
+pub mod infected_vermin;

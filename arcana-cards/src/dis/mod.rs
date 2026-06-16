@@ -30,3 +30,4 @@ pub mod ocular_halo;
 pub mod nettling_curse;
 pub mod plumes_of_peace;
 pub mod rakdos_the_defiler;
+pub mod kill_suit_cultist;

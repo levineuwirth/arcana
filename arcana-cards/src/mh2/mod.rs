@@ -66,3 +66,4 @@ pub mod geyadrone_dihada;
 pub mod ethersworn_sphinx;
 pub mod sanctifier_en_vec;
 pub mod archfiend_of_sorrows;
+pub mod chrome_courier;

@@ -30,3 +30,6 @@ pub mod k_9_mark_i;
 pub mod time_beetle;
 pub mod barbara_wright;
 pub mod strax_sontaran_nurse;
+pub mod ian_chesterton;
+pub mod weeping_angel;
+pub mod sarah_jane_smith;

@@ -29,3 +29,4 @@ pub mod sangrite_backlash;
 pub mod crystallization;
 pub mod sigil_of_the_nayan_gods;
 pub mod lich_lord_of_unx;
+pub mod anathemancer;

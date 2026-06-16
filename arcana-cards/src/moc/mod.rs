@@ -37,3 +37,5 @@ pub mod field_of_ruin;
 pub mod flameshadow_conjuring;
 pub mod teferi_s_talent;
 pub mod weirding_wood;
+pub mod ethersworn_adjudicator;
+pub mod incubation_druid;

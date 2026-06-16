@@ -39,3 +39,4 @@ pub mod cast_into_darkness;
 pub mod pin_to_the_earth;
 pub mod flamespeaker_s_will;
 pub mod ajani_mentor_of_heroes;
+pub mod war_wing_siren;

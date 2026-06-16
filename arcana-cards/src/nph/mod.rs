@@ -34,3 +34,4 @@ pub mod vault_skirge;
 pub mod mortis_dogs;
 pub mod dementia_bat;
 pub mod inquisitor_exarch;
+pub mod chancellor_of_the_annex;

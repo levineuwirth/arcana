@@ -31,3 +31,4 @@ pub mod mystic_veil;
 pub mod mortal_wound;
 pub mod relic_ward;
 pub mod lead_belly_chimera;
+pub mod teferi_s_honor_guard;

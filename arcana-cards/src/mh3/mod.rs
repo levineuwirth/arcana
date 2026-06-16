@@ -60,3 +60,6 @@ pub mod strength_of_the_harvest_haven_of_the_harvest;
 pub mod glasswing_grace_age_graced_chapel;
 pub mod lion_umbra;
 pub mod roil_cartographer;
+pub mod sneaky_snacker;
+pub mod guide_of_souls;
+pub mod propagator_drone;

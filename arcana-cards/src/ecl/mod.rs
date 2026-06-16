@@ -84,3 +84,5 @@ pub mod reluctant_dounguard;
 pub mod boggart_cursecrafter;
 pub mod mutable_explorer;
 pub mod kinscaer_sentry;
+pub mod stratosoarer;
+pub mod boldwyr_aggressor;

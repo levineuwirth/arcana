@@ -66,3 +66,5 @@ pub mod jace_reawakened;
 pub mod roxanne_starfall_savant;
 pub mod cactusfolk_sureshot;
 pub mod bruse_tarl_roving_rancher;
+pub mod akul_the_unrepentant;
+pub mod boneyard_desecrator;

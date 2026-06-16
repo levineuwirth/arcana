@@ -94,3 +94,5 @@ pub mod djinni_windseer;
 pub mod iymrith_desert_doom;
 pub mod kalain_reclusive_painter;
 pub mod goblin_javelineer;
+pub mod elturgard_ranger;
+pub mod secret_door;

@@ -38,3 +38,5 @@ pub mod space_beleren;
 pub mod quick_fixer;
 pub mod glitterflitter;
 pub mod lineprancers;
+pub mod minotaur_de_force;
+pub mod focused_funambulist;

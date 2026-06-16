@@ -44,3 +44,4 @@ pub mod reprobation;
 pub mod smoke_shroud;
 pub mod soul_strike_technique;
 pub mod serra_the_benevolent;
+pub mod viashino_sandsprinter;

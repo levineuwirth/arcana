@@ -22,3 +22,4 @@ pub mod cauldron_of_souls;
 pub mod bred_for_the_hunt;
 pub mod memory_erosion;
 pub mod vow_of_malice;
+pub mod troll_ascetic;

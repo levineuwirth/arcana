@@ -80,3 +80,8 @@ pub mod starry_eyed_skyrider;
 pub mod bearer_of_glory;
 pub mod wayspeaker_bodyguard;
 pub mod tempest_hawk;
+pub mod jeskai_devotee;
+pub mod nightblade_brigade;
+pub mod neriv_heart_of_the_storm;
+pub mod anafenza_unyielding_lineage;
+pub mod clarion_conqueror;

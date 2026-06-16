@@ -7,3 +7,4 @@ pub mod kiora_the_tide_s_fury;
 pub mod teyo_aegis_adept;
 pub mod sarkhan_wanderer_to_shiv;
 pub mod davriel_soul_broker;
+pub mod skyshroud_lookout;

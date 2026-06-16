@@ -34,3 +34,4 @@ pub mod irrigated_farmland;
 pub mod rocky_tar_pit;
 pub mod crystalline_crawler;
 pub mod multani_yavimaya_s_avatar;
+pub mod juri_master_of_the_revue;

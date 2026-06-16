@@ -88,3 +88,4 @@ pub mod elspeth_sun_s_nemesis;
 pub mod nylea_keen_eyed;
 pub mod enemy_of_enlightenment;
 pub mod vexing_gull;
+pub mod grasping_giant;

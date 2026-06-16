@@ -112,3 +112,7 @@ pub mod tangled_colony;
 pub mod raging_battle_mouse;
 pub mod toadstool_admirer;
 pub mod archive_dragon;
+pub mod charming_scoundrel;
+pub mod ash_party_crasher;
+pub mod neva_stalked_by_nightmares;
+pub mod old_flitterfang;

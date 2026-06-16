@@ -72,3 +72,4 @@ pub mod teferi_hero_of_dominaria;
 pub mod karn_scion_of_urza;
 pub mod teferi_timebender;
 pub mod grunn_the_lonely_king;
+pub mod krosan_druid;

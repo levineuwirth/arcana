@@ -28,3 +28,5 @@ pub mod magma_sliver;
 pub mod deathmark_prelate;
 pub mod goblin_assassin;
 pub mod zombie_brute;
+pub mod swooping_talon;
+pub mod keeper_of_the_nine_gales;

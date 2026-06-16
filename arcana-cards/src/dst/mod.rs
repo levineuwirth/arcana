@@ -36,3 +36,4 @@ pub mod thought_dissector;
 pub mod wirefly_hive;
 pub mod nemesis_mask;
 pub mod psychic_overload;
+pub mod arcbound_hybrid;

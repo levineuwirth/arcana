@@ -56,3 +56,4 @@ pub mod narset_transcendent;
 pub mod zephyr_scribe;
 pub mod minister_of_pain;
 pub mod vulturous_aven;
+pub mod sabertooth_outrider;

@@ -19,3 +19,4 @@ pub mod death_s_presence;
 pub mod open_the_graves;
 pub mod liliana_death_s_majesty;
 pub mod somberwald_beastmaster;
+pub mod sigarda_heron_s_grace;

@@ -91,3 +91,4 @@ pub mod garruk_cursed_huntsman;
 pub mod oko_the_trickster;
 pub mod the_royal_scions;
 pub mod embereth_paladin;
+pub mod savvy_hunter;

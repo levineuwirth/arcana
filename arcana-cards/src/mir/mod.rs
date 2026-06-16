@@ -71,3 +71,4 @@ pub mod agility;
 pub mod grave_servitude;
 pub mod azimaet_drake;
 pub mod zombie_mob;
+pub mod subterranean_spirit;

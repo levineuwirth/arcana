@@ -19,3 +19,4 @@ pub mod dihada_binder_of_wills;
 pub mod sivitri_dragon_master;
 pub mod jared_carthalion;
 pub mod cadric_soul_kindler;
+pub mod the_lady_of_otaria;

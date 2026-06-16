@@ -27,3 +27,8 @@ pub mod wren_s_run_packmaster;
 pub mod banshee_of_the_dread_choir;
 pub mod cloudthresher;
 pub mod siege_behemoth;
+pub mod djinn_of_infinite_deceits;
+pub mod oros_the_avenger;
+pub mod phantom_nantuko;
+pub mod reiver_demon;
+pub mod oni_of_wild_places;

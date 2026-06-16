@@ -63,3 +63,5 @@ pub mod yeva_nature_s_herald;
 pub mod arclight_phoenix;
 pub mod siege_wurm;
 pub mod sunder_shaman;
+pub mod aurelia_exemplar_of_justice;
+pub mod golgari_grave_troll;

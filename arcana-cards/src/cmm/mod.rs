@@ -150,3 +150,4 @@ pub mod crimson_fleet_commodore;
 pub mod cabal_patriarch;
 pub mod ulamog_s_crusher;
 pub mod phyrexian_triniform;
+pub mod karador_ghost_chieftain;

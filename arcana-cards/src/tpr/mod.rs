@@ -83,3 +83,6 @@ pub mod flowstone_blade;
 pub mod spinal_graft;
 pub mod shackles;
 pub mod spike_breeder;
+pub mod dauthi_jackal;
+pub mod shard_phoenix;
+pub mod kezzerdrix;

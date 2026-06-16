@@ -55,3 +55,5 @@ pub mod timely_ward;
 pub mod grist_the_hunger_tide;
 pub mod ob_nixilis_reignited;
 pub mod professor_onyx;
+pub mod demolisher_spawn;
+pub mod mogis_god_of_slaughter;

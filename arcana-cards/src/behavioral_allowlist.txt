@@ -16,6 +16,7 @@ All Suns' Dawn
 Altar of the Wretched
 Amulet of Vigor
 Armed Response
+Ashcoat of the Shadow Swarm
 Auriok Transfixer
 Avarice Totem
 Ayara, Widow of the Realm
@@ -43,6 +44,7 @@ Charge Across the Araba
 City of Traitors
 Civic Gardener
 Clever Conjurer
+Clockwork Steed
 Clone Legion
 Cloudpost
 Coffin Puppets
@@ -84,6 +86,7 @@ Elvish Scout
 Elvish Vatkeeper
 Empress Galina
 Ertai's Trickery
+Ethersworn Adjudicator
 Evaporate
 Evasive Action
 Faerie Trickery
@@ -122,6 +125,7 @@ Hyperion Blacksmith
 Hyrax Tower Scout
 Induce Paranoia
 Initiate's Companion
+Inspired Sprite
 Intervene
 Into the Night
 Invert Polarity
@@ -181,6 +185,7 @@ Necrogen Communion
 Negate
 Nemesis Phoenix
 Nether Spirit
+Nettle Sentinel
 Neutralizing Blast
 Nicol Bolas, Planeswalker
 Nimbleclaw Adept
@@ -200,6 +205,7 @@ Plasm Capture
 Polluted Bonds
 Powerstone Shard
 Praetor's Counsel
+Preyseizer Dragon
 Priest of the Haunted Edge
 Prince of Thralls
 Punish Ignorance
@@ -240,6 +246,7 @@ Second Chance
 Second Guess
 Seeker of Skybreak
 Serene Heart
+Shard Phoenix
 Silkenfist Fighter
 Silkenfist Order
 Simic Ragworm

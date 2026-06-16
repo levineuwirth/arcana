@@ -74,3 +74,5 @@ pub mod enduring_curiosity;
 pub mod bedhead_beastie;
 pub mod piranha_fly;
 pub mod vile_mutilator;
+pub mod the_wandering_rescuer;
+pub mod screaming_nemesis;

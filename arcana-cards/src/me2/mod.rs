@@ -74,3 +74,4 @@ pub mod krovikan_horror;
 pub mod wind_spirit;
 pub mod order_of_the_white_shield;
 pub mod aurochs;
+pub mod clockwork_steed;

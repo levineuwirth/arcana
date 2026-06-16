@@ -98,3 +98,4 @@ pub mod ugin_the_spirit_dragon;
 pub mod bolt_hound;
 pub mod fetid_imp;
 pub mod vryn_wingmare;
+pub mod wall_of_runes;

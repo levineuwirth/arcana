@@ -4,3 +4,4 @@ pub mod the_brothers_war;
 pub mod urza_s_workshop;
 pub mod machine_god_s_effigy;
 pub mod wreck_hunter;
+pub mod hexavus;

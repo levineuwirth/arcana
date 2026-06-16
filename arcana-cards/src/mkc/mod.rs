@@ -43,3 +43,4 @@ pub mod alandra_sky_dreamer;
 pub mod master_of_death;
 pub mod shimmer_dragon;
 pub mod wavesifter;
+pub mod akroma_angel_of_fury;
