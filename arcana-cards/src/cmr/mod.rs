@@ -84,3 +84,5 @@ pub mod cage_of_hands;
 pub mod vow_of_flight;
 pub mod dragon_mantle;
 pub mod burning_anger;
+pub mod jeska_thrice_reborn;
+pub mod tevesh_szat_doom_of_fools;

@@ -67,3 +67,7 @@ pub mod demonic_vigor;
 pub mod deep_freeze;
 pub mod curator_s_ward;
 pub mod frenzied_rage;
+pub mod chandra_bold_pyromancer;
+pub mod teferi_hero_of_dominaria;
+pub mod karn_scion_of_urza;
+pub mod teferi_timebender;

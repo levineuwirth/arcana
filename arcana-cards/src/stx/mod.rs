@@ -78,3 +78,4 @@ pub mod ardent_dustspeaker;
 pub mod professor_of_symbology;
 pub mod the_biblioplex;
 pub mod detention_vortex;
+pub mod kasmina_enigma_sage;

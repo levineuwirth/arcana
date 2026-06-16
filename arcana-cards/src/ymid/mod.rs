@@ -11,3 +11,5 @@ pub mod ravenous_pursuit;
 pub mod puppet_raiser;
 pub mod rahilda_wanted_cutthroat_rahilda_feral_outlaw;
 pub mod unexpected_conversion;
+pub mod tibalt_wicked_tormentor;
+pub mod garruk_wrath_of_the_wilds;

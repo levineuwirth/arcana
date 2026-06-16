@@ -57,3 +57,5 @@ pub mod siegecraft;
 pub mod debilitating_injury;
 pub mod dragon_grip;
 pub mod molting_snakeskin;
+pub mod sarkhan_the_dragonspeaker;
+pub mod sorin_solemn_visitor;

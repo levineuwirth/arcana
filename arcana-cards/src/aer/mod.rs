@@ -55,3 +55,6 @@ pub mod siege_modification;
 pub mod aerial_modification;
 pub mod tezzeret_s_touch;
 pub mod caught_in_the_brights;
+pub mod ajani_valiant_protector;
+pub mod tezzeret_the_schemer;
+pub mod tezzeret_master_of_metal;

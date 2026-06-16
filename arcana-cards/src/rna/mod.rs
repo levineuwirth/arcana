@@ -49,3 +49,6 @@ pub mod gruul_locket;
 pub mod cavalcade_of_calamity;
 pub mod slimebind;
 pub mod sentinel_s_mark;
+pub mod domri_city_smasher;
+pub mod dovin_architect_of_law;
+pub mod domri_chaos_bringer;

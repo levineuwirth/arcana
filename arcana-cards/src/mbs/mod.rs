@@ -39,3 +39,4 @@ pub mod silverskin_armor;
 pub mod magnetic_mine;
 pub mod phyresis;
 pub mod corrupted_conscience;
+pub mod tezzeret_agent_of_bolas;

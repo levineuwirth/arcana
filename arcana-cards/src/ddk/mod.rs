@@ -5,3 +5,4 @@ pub mod unmake;
 pub mod blazing_salvo;
 pub mod breaking_point;
 pub mod lavaborn_muse;
+pub mod tibalt_the_fiend_blooded;

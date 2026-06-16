@@ -16,3 +16,5 @@ pub mod test_of_faith;
 pub mod drag_down;
 pub mod runed_stalactite;
 pub mod paradise_mantle;
+pub mod elspeth_knight_errant;
+pub mod sarkhan_vol;

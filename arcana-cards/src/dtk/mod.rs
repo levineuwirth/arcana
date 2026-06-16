@@ -51,3 +51,5 @@ pub mod virulent_plague;
 pub mod encase_in_ice;
 pub mod gleam_of_authority;
 pub mod reduce_in_stature;
+pub mod sarkhan_unbroken;
+pub mod narset_transcendent;

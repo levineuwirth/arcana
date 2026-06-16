@@ -59,3 +59,7 @@ pub mod capture_sphere;
 pub mod strands_of_undeath;
 pub mod eel_umbra;
 pub mod arachnus_web;
+pub mod liliana_the_last_hope;
+pub mod wrenn_and_six;
+pub mod nicol_bolas_god_pharaoh;
+pub mod aminatou_the_fateshifter;

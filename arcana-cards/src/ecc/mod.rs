@@ -34,3 +34,5 @@ pub mod cream_of_the_crop;
 pub mod blowfly_infestation;
 pub mod flourishing_defenses;
 pub mod abundant_growth;
+pub mod liliana_death_wielder;
+pub mod vraska_betrayal_s_sting;

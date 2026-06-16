@@ -37,3 +37,6 @@ pub mod path_of_discovery;
 pub mod squire_s_devotion;
 pub mod tilonalli_s_crown;
 pub mod see_red;
+pub mod vraska_scheming_gorgon;
+pub mod angrath_the_flame_chained;
+pub mod huatli_radiant_champion;

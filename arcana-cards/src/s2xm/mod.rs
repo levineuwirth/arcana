@@ -68,3 +68,5 @@ pub mod tempered_steel;
 pub mod rage_reflection;
 pub mod yavimaya_s_embrace;
 pub mod frogify;
+pub mod karn_liberated;
+pub mod jace_the_mind_sculptor;

@@ -71,3 +71,8 @@ pub mod one_with_the_wind;
 pub mod swashbuckling;
 pub mod castaway_s_despair;
 pub mod pious_interdiction;
+pub mod jace_ingenious_mind_mage;
+pub mod vraska_relic_seeker;
+pub mod jace_cunning_castaway;
+pub mod huatli_warrior_poet;
+pub mod huatli_dinosaur_knight;

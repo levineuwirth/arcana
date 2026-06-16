@@ -36,3 +36,5 @@ pub mod search_the_premises;
 pub mod duelist_s_heritage;
 pub mod vow_of_lightning;
 pub mod vow_of_duty;
+pub mod tezzeret_betrayer_of_flesh;
+pub mod elspeth_sun_s_champion;

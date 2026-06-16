@@ -60,3 +60,6 @@ pub mod bubble_snare;
 pub mod lithoform_blight;
 pub mod nissa_s_zendikon;
 pub mod nahiri_s_binding;
+pub mod a_nahiri_heir_of_the_ancients;
+pub mod nahiri_heir_of_the_ancients;
+pub mod nissa_of_shadowed_boughs;

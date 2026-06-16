@@ -47,3 +47,6 @@ pub mod visage_of_bolas;
 pub mod desert_s_hold;
 pub mod saving_grace;
 pub mod unquenchable_thirst;
+pub mod nissa_genesis_mage;
+pub mod samut_the_tested;
+pub mod nicol_bolas_the_deceiver;

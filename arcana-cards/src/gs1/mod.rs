@@ -21,3 +21,5 @@ pub mod earth_origin_yak;
 pub mod nine_tail_white_fox;
 pub mod sacred_white_deer;
 pub mod hardened_scale_armor;
+pub mod mu_yanling;
+pub mod jiang_yanggu;

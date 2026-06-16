@@ -85,3 +85,6 @@ pub mod audacity;
 pub mod draconic_destiny;
 pub mod military_discipline;
 pub mod mightstone_s_animation;
+pub mod teferi_temporal_pilgrim;
+pub mod saheeli_filigree_master;
+pub mod a_saheeli_filigree_master;

@@ -58,3 +58,4 @@ pub mod jaws_of_defeat;
 pub mod elemental_bond;
 pub mod shiny_impetus;
 pub mod tempest_technique;
+pub mod kaya_geist_hunter;

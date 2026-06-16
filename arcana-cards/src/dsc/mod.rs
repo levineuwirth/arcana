@@ -52,3 +52,6 @@ pub mod wilderness_reclamation;
 pub mod sigil_of_the_empty_throne;
 pub mod sphere_of_safety;
 pub mod timely_ward;
+pub mod grist_the_hunger_tide;
+pub mod ob_nixilis_reignited;
+pub mod professor_onyx;

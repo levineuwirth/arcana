@@ -84,3 +84,6 @@ pub mod a_most_wanted;
 pub mod sticky_fingers;
 pub mod sleep_with_the_fishes;
 pub mod most_wanted;
+pub mod ob_nixilis_the_adversary;
+pub mod vivien_on_the_hunt;
+pub mod elspeth_resplendent;

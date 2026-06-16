@@ -27,3 +27,4 @@ pub mod touch_of_the_eternal;
 pub mod blood_reckoning;
 pub mod fervor;
 pub mod volcanic_strength;
+pub mod chandra_the_firebrand;

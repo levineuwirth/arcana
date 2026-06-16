@@ -79,3 +79,4 @@ pub mod evershrike_s_gift;
 pub mod blossombind;
 pub mod lofty_dreams;
 pub mod noggle_the_mind;
+pub mod ajani_outland_chaperone;

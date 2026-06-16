@@ -85,3 +85,8 @@ pub mod revenge_of_ravens;
 pub mod tall_as_a_beanstalk;
 pub mod so_tiny;
 pub mod trapped_in_the_tower;
+pub mod rowan_fearless_sparkmage;
+pub mod oko_thief_of_crowns;
+pub mod garruk_cursed_huntsman;
+pub mod oko_the_trickster;
+pub mod the_royal_scions;

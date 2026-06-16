@@ -81,3 +81,7 @@ pub mod starlit_mantle;
 pub mod aspect_of_lamprey;
 pub mod hydra_s_growth;
 pub mod mantle_of_the_wolf;
+pub mod ashiok_sculptor_of_fears;
+pub mod ashiok_nightmare_muse;
+pub mod elspeth_undaunted_hero;
+pub mod elspeth_sun_s_nemesis;

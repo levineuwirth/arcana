@@ -39,3 +39,6 @@ pub mod dark_favor;
 pub mod shiv_s_embrace;
 pub mod indestructibility;
 pub mod blessing;
+pub mod garruk_caller_of_beasts;
+pub mod jace_memory_adept;
+pub mod liliana_of_the_dark_realms;

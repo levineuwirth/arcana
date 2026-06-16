@@ -70,3 +70,4 @@ pub mod cryoshatter;
 pub mod hardlight_containment;
 pub mod pain_for_all;
 pub mod tractor_beam;
+pub mod tezzeret_cruel_captain;

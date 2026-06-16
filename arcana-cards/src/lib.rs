@@ -612,6 +612,20 @@ pub mod s2ed;
 
 pub mod yeoe;
 
+pub mod ph21;
+
+pub mod ph23;
+
+pub mod ph22;
+
+pub mod phtr;
+
+pub mod ppc1;
+
+pub mod fra;
+
+pub mod pcel;
+
 /// Staging area for arcana-gen card generations. See the module
 /// docs — this is intermediate storage, not a stable public API.
 pub mod generated;

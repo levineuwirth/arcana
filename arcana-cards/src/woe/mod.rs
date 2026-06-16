@@ -107,3 +107,4 @@ pub mod food_coma;
 pub mod up_the_beanstalk;
 pub mod cooped_up;
 pub mod bestial_bloodline;
+pub mod ashiok_wicked_manipulator;

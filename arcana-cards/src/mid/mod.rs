@@ -87,3 +87,4 @@ pub mod howl_of_the_hunt;
 pub mod locked_in_the_cemetery;
 pub mod candletrap;
 pub mod grafted_identity;
+pub mod teferi_who_slows_the_sunset;

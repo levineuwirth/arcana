@@ -53,3 +53,5 @@ pub mod cartouche_of_solidarity;
 pub mod cartouche_of_zeal;
 pub mod cartouche_of_ambition;
 pub mod consuming_fervor;
+pub mod gideon_of_the_trials;
+pub mod gideon_martial_paragon;

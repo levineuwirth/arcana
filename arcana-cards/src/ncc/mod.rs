@@ -30,3 +30,4 @@ pub mod jund_panorama;
 pub mod naya_panorama;
 pub mod primal_empathy;
 pub mod family_s_favor;
+pub mod ajani_unyielding;

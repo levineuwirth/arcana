@@ -14,3 +14,4 @@ pub mod promise_of_bunrei;
 pub mod field_of_souls;
 pub mod haunted_library;
 pub mod underworld_connections;
+pub mod dovin_grand_arbiter;

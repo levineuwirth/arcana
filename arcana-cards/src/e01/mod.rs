@@ -8,3 +8,5 @@ pub mod anointer_of_champions;
 pub mod obsidian_fireheart;
 pub mod obelisk_of_grixis;
 pub mod grasp_of_the_hieromancer;
+pub mod nicol_bolas_planeswalker;
+pub mod nissa_worldwaker;

@@ -61,3 +61,4 @@ pub mod optical_optimizer;
 pub mod pet_project;
 pub mod gnomeball_machine;
 pub mod hazmat_suit_used;
+pub mod urza_academy_headmaster;

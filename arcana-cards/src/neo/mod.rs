@@ -94,3 +94,5 @@ pub mod twisted_embrace;
 pub mod tamiyo_s_compleation;
 pub mod favor_of_jukai;
 pub mod crackling_emergence;
+pub mod tamiyo_compleated_sage;
+pub mod the_wandering_emperor;

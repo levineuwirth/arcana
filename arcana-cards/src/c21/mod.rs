@@ -35,3 +35,6 @@ pub mod sequence_engine;
 pub mod novijen_heart_of_progress;
 pub mod tempting_contract;
 pub mod gift_of_paradise;
+pub mod jaya_ballard;
+pub mod gideon_champion_of_justice;
+pub mod garruk_primal_hunter;

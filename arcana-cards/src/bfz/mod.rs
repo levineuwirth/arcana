@@ -42,3 +42,5 @@ pub mod sanctum_of_ugin;
 pub mod dampening_pulse;
 pub mod tightening_coils;
 pub mod goblin_war_paint;
+pub mod gideon_ally_of_zendikar;
+pub mod kiora_master_of_the_depths;

@@ -122,3 +122,8 @@ pub mod cultist_of_the_absolute;
 pub mod feywild_visitor;
 pub mod stunning_strike;
 pub mod stoneskin;
+pub mod rowan_kenrith;
+pub mod vivien_champion_of_the_wilds;
+pub mod will_kenrith;
+pub mod xenagos_the_reveler;
+pub mod tasha_the_witch_queen;

@@ -19,3 +19,5 @@ pub mod temur_elevator;
 pub mod planeswalkerificate;
 pub mod meandered_towershell;
 pub mod toddler_s_rage;
+pub mod wrenn_and_one;
+pub mod luxior_ignited;

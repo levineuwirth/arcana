@@ -66,3 +66,4 @@ pub mod frantic_strength;
 pub mod cracked_skull;
 pub mod stay_hidden_stay_silent;
 pub mod unable_to_scream;
+pub mod kaito_bane_of_nightmares;

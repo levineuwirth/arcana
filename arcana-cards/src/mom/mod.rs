@@ -111,3 +111,5 @@ pub mod realmbreaker_s_grasp;
 pub mod disturbing_conversion;
 pub mod stasis_field;
 pub mod failed_conversion;
+pub mod archangel_elspeth;
+pub mod wrenn_and_realmbreaker;

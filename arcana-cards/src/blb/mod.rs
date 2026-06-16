@@ -75,3 +75,4 @@ pub mod colossification;
 pub mod feather_of_flight;
 pub mod war_squeak;
 pub mod charmed_sleep;
+pub mod ral_crackling_wit;

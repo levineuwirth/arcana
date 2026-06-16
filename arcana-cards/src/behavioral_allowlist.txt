@@ -14,23 +14,35 @@ Access Denied
 Aladdin
 All Suns' Dawn
 Altar of the Wretched
+Amulet of Vigor
 Armed Response
+Auriok Transfixer
+Avarice Totem
 Ayara, Widow of the Realm
 Bag Check
+Baldur's Gate
 Bane's Contingency
+Basilisk Gate
 Beguiler of Wills
+Blinkmoth Well
 Boon of Boseiju
+Bulwark
 Burst of Energy
 Calamitous Cave-In
 Cancel
 Ceremonious Rejection
 Chain Stasis
 Chandra, Fire of Kaladesh
+Chandra, Gremlin Wrangler
+Chandra, Legacy of Fire
 Charge Across the Araba
+City of Traitors
 Civic Gardener
 Clever Conjurer
 Clone Legion
+Cloudpost
 Coffin Puppets
+Commodore Guff
 Concerted Defense
 Convolute
 Corridor Monitor
@@ -39,7 +51,10 @@ Counterbore
 Counterlash
 Counterpoint
 Counterspell
+Dack Fayden
+Dark Suspicions
 Dazzling Denial
+Death Watch
 Delay
 Descendant of Masumaro
 Desertion
@@ -52,6 +67,7 @@ Donal, Herald of Wings
 Double Negative
 Dread Slaver
 Drooling Ogre
+Drownyard Temple
 Dumb Ass
 Durable Coilbug
 Elder Druid
@@ -64,12 +80,15 @@ Evasive Action
 Faerie Trickery
 Fickle Efreet
 Flaccify
+Floodwater Dam
 Force Spike
 Frazzle
+Freyalise, Skyshroud Partisan
 Fuel for the Cause
 Fyndhorn Brownie
 Gates Ablaze
 Ghoulsteed
+Glimmerpost
 Goblin Assassin
 Goblin Psychopath
 Greenside Watcher
@@ -82,7 +101,13 @@ Hajar, Loyal Bodyguard
 Hana Kami
 Hinder
 Hisoka's Defiance
+Honden of Cleansing Fire
+Honden of Infinite Rage
+Honden of Night's Reach
+Honden of Seeing Winds
 Horseshoe Crab
+Huatli, Dinosaur Knight
+Hyperion Blacksmith
 Hyrax Tower Scout
 Induce Paranoia
 Initiate's Companion
@@ -93,18 +118,27 @@ Inverted Iceberg
 Ire of Kaminari
 It'll Quench Ya!
 Ixidor's Will
+Jace, Ingenious Mind-Mage
 Jaded Response
+Jandor's Saddlebags
+Jaws of Defeat
 Jungle Creeper
 Kindred Denial
 Kiora's Follower
+Kiora, Behemoth Beckoner
+Kiora, the Tide's Fury
 Kumano Faces Kakkazan
 Lapse of Certainty
 Lay Bare
+Lifeline
 Lingering Phantom
 Liquify
 Lofty Denial
 Loyal Retainers
+Lunar Force
 Magebane Lizard
+Magewright's Stone
+Mana Crypt
 Mana Drain
 Mana Leak
 Mana Sculpt
@@ -114,16 +148,24 @@ Master Thief
 Medicine Runner
 Memory Lapse
 Merchant of Many Hats
+Merrow Commerce
 Midnight Guard
 Mijae Djinn
 Minamo's Meddling
+Minamo, School at Water's Edge
 Mindstatic
 Minor Misstep
+Mirror Universe
+Mishra's Helix
+Mu Yanling
 Mystic Genesis
+Nahiri, Heir of the Ancients
 Nanoform Sentinel
+Necrogen Communion
 Negate
 Nether Spirit
 Neutralizing Blast
+Nicol Bolas, Planeswalker
 Nimbleclaw Adept
 Nix
 No More Lies
@@ -138,43 +180,54 @@ Permission Denied
 Peter Parker
 Phyrexian Infiltrator
 Plasm Capture
+Polluted Bonds
+Powerstone Shard
 Praetor's Counsel
 Priest of the Haunted Edge
 Prince of Thralls
 Punish Ignorance
+Puppet Strings
 Put Away
 Quench
 Radagast the Brown
 Rakshasa's Disdain
+Ral Zarek
 Raph & Leo, Sibling Rivals
 Rebuff the Wicked
 Reinterpret
 Reject Imperfection
+Relic Barrier
 Render Silent
 Repeat Offender
 Resurrected Cultist
 Revive
 Revolutionary Rebuff
 Rime Tender
+Rishadan Port
 Rogues' Gallery
 Rona, Herald of Invasion
 Rootwater Matriarch
 Rubblebelt Braggart
 Rune Snag
+Sacred Ground
 Salvager of Secrets
+Sanctum of Stone Fangs
 Sanitarium Skeleton
 Scattering Stroke
 Scoria Wurm
 Scroll of Isildur
 Scuttling Sliver
+Second Chance
 Second Guess
 Seeker of Skybreak
 Serene Heart
 Silkenfist Fighter
 Silkenfist Order
 Simic Ragworm
+Skeleton Shard
 Skred
 Soliton
+Sorin, Imperious Bloodlord
 Sparring Mummy
 Spell Crumple
 Spell Pierce
@@ -189,6 +242,10 @@ Stensia Innkeeper
 Superior Numbers
 Tale's End
 Teferi's Contingency
+Teferi, Master of Time
+Teferi, Temporal Archmage
+Teferi, Timebender
+Tezzeret, Cruel Captain
 Thassa's Rebuff
 The Akroan War
 The Legend of Yangchen
@@ -198,11 +255,16 @@ Thistledown Players
 Thoughtbind
 Tibalt's Trickery
 Ticking Mime Bomb
+Touchstone
+Trampled Lotus
 Trickster Mage
 Tunnel Rats
 Turn Aside
 Two-Headed Giant
+Tyvar, Jubilant Brawler
+Unbender Tine
 Undersimplify
+Unholy Indenture
 Unified Lunge
 Unravel
 Vedalken Plotter
@@ -210,50 +272,7 @@ Voidslime
 Voltaic Construct
 Warren Pilferers
 Wild Wurm
+Wirewood Lodge
 Wyll of the Blade Pact
 Ydwen Efreet
 Yomiji, Who Bars the Way
-Avarice Totem
-Mana Crypt
-Amulet of Vigor
-Auriok Transfixer
-Baldur's Gate
-Basilisk Gate
-Blinkmoth Well
-City of Traitors
-Cloudpost
-Drownyard Temple
-Floodwater Dam
-Glimmerpost
-Hyperion Blacksmith
-Jandor's Saddlebags
-Magewright's Stone
-Minamo, School at Water's Edge
-Mirror Universe
-Mishra's Helix
-Powerstone Shard
-Puppet Strings
-Relic Barrier
-Rishadan Port
-Skeleton Shard
-Touchstone
-Trampled Lotus
-Unbender Tine
-Wirewood Lodge
-Bulwark
-Dark Suspicions
-Honden of Cleansing Fire
-Honden of Infinite Rage
-Honden of Night's Reach
-Honden of Seeing Winds
-Jaws of Defeat
-Lifeline
-Lunar Force
-Death Watch
-Merrow Commerce
-Necrogen Communion
-Polluted Bonds
-Unholy Indenture
-Sacred Ground
-Sanctum of Stone Fangs
-Second Chance

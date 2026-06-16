@@ -26,3 +26,5 @@ pub mod spy_kit;
 pub mod horn_of_greed;
 pub mod dread_statuary;
 pub mod ghostly_possession;
+pub mod kaya_ghost_assassin;
+pub mod daretti_ingenious_iconoclast;

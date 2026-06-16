@@ -118,3 +118,6 @@ pub mod rune_of_mortality;
 pub mod spectral_steel;
 pub mod bind_the_monster;
 pub mod mists_of_littjara;
+pub mod kaya_the_inexorable;
+pub mod a_tyvar_kell;
+pub mod tyvar_kell;

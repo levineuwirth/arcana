@@ -61,3 +61,5 @@ pub mod the_key_to_the_vault;
 pub mod reach_for_the_sky;
 pub mod demonic_ruckus;
 pub mod stop_cold;
+pub mod oko_the_ringleader;
+pub mod jace_reawakened;

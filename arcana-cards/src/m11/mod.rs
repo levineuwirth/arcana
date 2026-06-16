@@ -21,3 +21,4 @@ pub mod voltaic_key;
 pub mod liliana_s_caress;
 pub mod dark_tutelage;
 pub mod primal_cocoon;
+pub mod ajani_goldmane;

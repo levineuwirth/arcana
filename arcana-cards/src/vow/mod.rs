@@ -100,3 +100,4 @@ pub mod supernatural_rescue;
 pub mod radiant_grace_radiant_restraints;
 pub mod sigarda_s_imprisonment;
 pub mod sheltering_boughs;
+pub mod sorin_the_mirthless;

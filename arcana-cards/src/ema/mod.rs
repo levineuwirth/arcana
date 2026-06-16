@@ -27,3 +27,4 @@ pub mod armadillo_cloak;
 pub mod ancestral_mask;
 pub mod stupefying_touch;
 pub mod roots;
+pub mod dack_fayden;

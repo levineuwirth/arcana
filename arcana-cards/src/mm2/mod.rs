@@ -28,3 +28,4 @@ pub mod all_suns_dawn;
 pub mod copper_carapace;
 pub mod inexorable_tide;
 pub mod arrest;
+pub mod tezzeret_the_seeker;

@@ -40,3 +40,4 @@ pub mod nephalia_drownyard;
 pub mod blade_of_the_bloodchief;
 pub mod deeproot_waters;
 pub mod exquisite_blood;
+pub mod sorin_lord_of_innistrad;

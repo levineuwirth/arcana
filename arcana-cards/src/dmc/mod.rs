@@ -15,3 +15,6 @@ pub mod the_reaver_cleaver;
 pub mod tenza_godo_s_maul;
 pub mod murmuring_bosk;
 pub mod day_of_destiny;
+pub mod dihada_binder_of_wills;
+pub mod sivitri_dragon_master;
+pub mod jared_carthalion;

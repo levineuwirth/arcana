@@ -155,3 +155,8 @@ pub mod twinblade_blessing;
 pub mod eaten_by_piranhas;
 pub mod starlight_snare;
 pub mod new_horizons;
+pub mod vivien_reid;
+pub mod kaito_cunning_infiltrator;
+pub mod ajani_caller_of_the_pride;
+pub mod liliana_dreadhorde_general;
+pub mod chandra_flameshaper;

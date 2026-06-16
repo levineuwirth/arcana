@@ -47,3 +47,7 @@ pub mod inscribed_tablet;
 pub mod temporary_lockdown;
 pub mod citizen_s_arrest;
 pub mod hammerhand;
+pub mod jaya_fiery_negotiator;
+pub mod a_karn_living_legacy;
+pub mod karn_living_legacy;
+pub mod ajani_sleeper_agent;

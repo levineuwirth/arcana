@@ -50,3 +50,5 @@ pub mod silken_strength;
 pub mod lightwheel_enhancements;
 pub mod roadside_assistance;
 pub mod flood_the_engine;
+pub mod chandra_spark_hunter;
+pub mod the_aetherspark;

@@ -68,3 +68,8 @@ pub mod aether_meltdown;
 pub mod malfunction;
 pub mod revoke_privileges;
 pub mod giant_spectacle;
+pub mod dovin_baan;
+pub mod nissa_nature_s_artisan;
+pub mod nissa_vital_force;
+pub mod saheeli_rai;
+pub mod chandra_pyrogenius;

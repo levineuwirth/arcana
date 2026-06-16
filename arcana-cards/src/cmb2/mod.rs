@@ -19,3 +19,7 @@ pub mod waste_land;
 pub mod taiga_stadium;
 pub mod generated_horizons;
 pub mod soulmates;
+pub mod kaya_ghost_haunter;
+pub mod abian_luvion_usurper;
+pub mod tibalt_the_chaotic;
+pub mod personal_decoy;

@@ -56,3 +56,6 @@ pub mod vineweft;
 pub mod crippling_blight;
 pub mod divine_favor;
 pub mod inferno_fist;
+pub mod garruk_apex_predator;
+pub mod jace_the_living_guildpact;
+pub mod liliana_vess;

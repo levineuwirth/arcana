@@ -55,3 +55,7 @@ pub mod urban_utopia;
 pub mod candlelight_vigil;
 pub mod demotion;
 pub mod luminous_bonds;
+pub mod vraska_golgari_queen;
+pub mod ral_caller_of_storms;
+pub mod vraska_regal_gorgon;
+pub mod ral_izzet_viceroy;

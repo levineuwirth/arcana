@@ -38,3 +38,5 @@ pub mod mire_blight;
 pub mod nimbus_wings;
 pub mod spreading_seas;
 pub mod gigantiform;
+pub mod nissa_revane;
+pub mod chandra_ablaze;

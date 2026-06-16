@@ -10,3 +10,5 @@ pub mod bloodfire_kavu;
 pub mod jaws_of_stone;
 pub mod vulshok_morningstar;
 pub mod journeyer_s_kite;
+pub mod venser_the_sojourner;
+pub mod koth_of_the_hammer;
