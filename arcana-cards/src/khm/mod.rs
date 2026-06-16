@@ -131,3 +131,4 @@ pub mod vengeful_reaper;
 pub mod narfi_betrayer_king;
 pub mod icebreaker_kraken;
 pub mod thornmantle_striker;
+pub mod moritte_of_the_frost;

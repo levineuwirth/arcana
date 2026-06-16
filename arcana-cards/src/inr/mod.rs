@@ -121,3 +121,4 @@ pub mod battleground_geist;
 pub mod spell_queller;
 pub mod soul_guide_gryff;
 pub mod noose_constrictor;
+pub mod wandering_mind;

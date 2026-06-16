@@ -82,3 +82,4 @@ pub mod tolsimir_friend_to_wolves;
 pub mod saheeli_s_silverwing;
 pub mod thundering_ceratok;
 pub mod dreadhorde_twins;
+pub mod ugin_s_conjurant;

@@ -58,3 +58,5 @@ pub mod prophetic_ravings;
 pub mod eternal_scourge;
 pub mod fogwalker;
 pub mod desperate_sentry;
+pub mod dusk_feaster;
+pub mod spirit_of_the_hunt;

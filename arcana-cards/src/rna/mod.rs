@@ -59,3 +59,5 @@ pub mod saruli_caretaker;
 pub mod clamor_shaman;
 pub mod spire_mangler;
 pub mod azorius_knight_arbiter;
+pub mod azorius_skyguard;
+pub mod pestilent_spirit;

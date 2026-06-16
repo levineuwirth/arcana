@@ -93,3 +93,7 @@ pub mod lilysplash_mentor;
 pub mod flamecache_gecko;
 pub mod camellia_the_seedmiser;
 pub mod seedpod_squire;
+pub mod azure_beastbinder;
+pub mod galewind_moose;
+pub mod osteomancer_adept;
+pub mod valley_mightcaller;

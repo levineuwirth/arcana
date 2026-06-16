@@ -6,3 +6,5 @@ pub mod trenchpost;
 pub mod infested_thrinax;
 pub mod angelic_aberration;
 pub mod broodmate_tyrant;
+pub mod sphinx_of_the_revelation;
+pub mod coram_the_undertaker;

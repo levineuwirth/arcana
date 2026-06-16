@@ -113,3 +113,6 @@ pub mod webspinner_cuff;
 pub mod rabbit_battery;
 pub mod jukai_preserver;
 pub mod kyodai_soul_of_kamigawa;
+pub mod kami_of_transience;
+pub mod moonsnare_specialist;
+pub mod blade_of_the_oni;

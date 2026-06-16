@@ -73,3 +73,4 @@ pub mod lavinia_azorius_renegade;
 pub mod sky_hussar;
 pub mod tidespout_tyrant;
 pub mod lord_of_the_void;
+pub mod scab_clan_mauler;

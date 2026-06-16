@@ -71,3 +71,5 @@ pub mod frostfist_strider;
 pub mod a_llanowar_loamspeaker;
 pub mod vohar_vodalian_desecrator;
 pub mod sengir_connoisseur;
+pub mod ratadrabik_of_urborg;
+pub mod a_tatyova_steward_of_tides;

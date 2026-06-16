@@ -77,3 +77,5 @@ pub mod stormscape_apprentice;
 pub mod lotus_guardian;
 pub mod vodalian_serpent;
 pub mod kavu_titan;
+pub mod rainbow_crow;
+pub mod ruby_leech;

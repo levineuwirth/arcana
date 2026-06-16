@@ -40,3 +40,6 @@ pub mod space_marine_devastator;
 pub mod chaos_defiler;
 pub mod tallyman_of_nurgle;
 pub mod abaddon_the_despoiler;
+pub mod magnus_the_red;
+pub mod lictor;
+pub mod trazyn_the_infinite;

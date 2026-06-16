@@ -16,3 +16,4 @@ pub mod omer_king_of_rohan;
 pub mod prize_pig;
 pub mod champions_of_minas_tirith;
 pub mod c_rdan_the_shipwright;
+pub mod treebeard_gracious_host;

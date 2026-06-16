@@ -58,3 +58,4 @@ pub mod screeching_griffin;
 pub mod guardian_of_vitu_ghazi;
 pub mod undercity_shade;
 pub mod lurking_informant;
+pub mod goblin_fire_fiend;

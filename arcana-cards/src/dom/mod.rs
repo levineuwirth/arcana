@@ -75,3 +75,6 @@ pub mod grunn_the_lonely_king;
 pub mod krosan_druid;
 pub mod amaranthine_wall;
 pub mod keldon_overseer;
+pub mod rat_colony;
+pub mod kazarov_sengir_pureblood;
+pub mod academy_journeymage;

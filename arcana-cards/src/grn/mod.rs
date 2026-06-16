@@ -64,3 +64,4 @@ pub mod pelt_collector;
 pub mod legion_guildmage;
 pub mod gatekeeper_gargoyle;
 pub mod muse_drake;
+pub mod barging_sergeant;

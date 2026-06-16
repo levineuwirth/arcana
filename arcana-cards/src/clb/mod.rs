@@ -154,3 +154,4 @@ pub mod harper_recruiter;
 pub mod raggadragga_goreguts_boss;
 pub mod dusk_mangler;
 pub mod angler_turtle;
+pub mod ancient_bronze_dragon;

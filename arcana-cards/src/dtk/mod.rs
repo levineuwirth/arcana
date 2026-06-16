@@ -63,3 +63,4 @@ pub mod dirgur_nemesis;
 pub mod gudul_lurker;
 pub mod dragon_whisperer;
 pub mod reckless_imp;
+pub mod scaleguard_sentinels;

@@ -59,3 +59,4 @@ pub mod demolisher_spawn;
 pub mod mogis_god_of_slaughter;
 pub mod star_athlete;
 pub mod nightmare_shepherd;
+pub mod greater_tanuki;

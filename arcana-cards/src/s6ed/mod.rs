@@ -39,3 +39,4 @@ pub mod burrowing;
 pub mod feast_of_the_unicorn;
 pub mod unseen_walker;
 pub mod mesa_falcon;
+pub mod daraja_griffin;

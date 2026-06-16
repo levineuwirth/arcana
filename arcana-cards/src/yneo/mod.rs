@@ -7,3 +7,4 @@ pub mod soul_servitude;
 pub mod holographic_double;
 pub mod forceful_cultivator;
 pub mod futurist_spellthief;
+pub mod experimental_pilot;

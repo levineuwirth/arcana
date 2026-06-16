@@ -56,3 +56,4 @@ pub mod leonardo_sewer_samurai;
 pub mod paramecia_coloniex;
 pub mod north_wind_avatar;
 pub mod primordial_pachyderm;
+pub mod high_flying_ace;

@@ -47,3 +47,4 @@ pub mod wreath_of_geists;
 pub mod gruesome_deformity;
 pub mod manor_gargoyle;
 pub mod bitterheart_witch;
+pub mod one_eyed_scarecrow;

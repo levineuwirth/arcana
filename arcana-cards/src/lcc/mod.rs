@@ -54,3 +54,4 @@ pub mod gemcutter_buccaneer;
 pub mod drana_liberator_of_malakir;
 pub mod skeleton_crew;
 pub mod charismatic_conqueror;
+pub mod wayta_trainer_prodigy;

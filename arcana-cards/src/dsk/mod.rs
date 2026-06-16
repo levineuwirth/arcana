@@ -82,3 +82,6 @@ pub mod hauntwoods_shrieker;
 pub mod cackling_slasher;
 pub mod broodspinner;
 pub mod ripchain_razorkin;
+pub mod miasma_demon;
+pub mod undead_sprinter;
+pub mod popular_egotist;

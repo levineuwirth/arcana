@@ -59,3 +59,4 @@ pub mod companion_of_the_trials;
 pub mod soulstinger;
 pub mod defiant_greatmaw;
 pub mod angler_drake;
+pub mod vizier_of_deferment;

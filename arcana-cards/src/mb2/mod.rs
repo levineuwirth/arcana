@@ -31,3 +31,4 @@ pub mod chea_friend_to_maybe_too_many;
 pub mod teferi_druid_of_argoth;
 pub mod a_girl_and_her_dogs;
 pub mod brigid_who_s_seen_some_stuff;
+pub mod the_colossal_dreadmaw;

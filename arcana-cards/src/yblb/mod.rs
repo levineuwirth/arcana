@@ -2,3 +2,4 @@
 pub mod cindercone_smite;
 pub mod tasteful_offering;
 pub mod putrefying_rotboar;
+pub mod recruit_instructor;

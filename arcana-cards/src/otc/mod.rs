@@ -39,3 +39,5 @@ pub mod sand_scout;
 pub mod thieving_amalgam;
 pub mod misfortune_teller;
 pub mod vihaan_goldwaker;
+pub mod skullwinder;
+pub mod gonti_lord_of_luxury;

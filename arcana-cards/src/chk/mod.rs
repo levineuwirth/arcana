@@ -97,3 +97,6 @@ pub mod kodama_of_the_north_tree;
 pub mod takeno_samurai_general;
 pub mod brothers_yamazaki;
 pub mod sensei_golden_tail;
+pub mod myojin_of_infinite_rage;
+pub mod marrow_gnawer;
+pub mod venerable_kumo;

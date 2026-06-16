@@ -101,3 +101,5 @@ pub mod old_man_willow;
 pub mod aragorn_company_leader;
 pub mod moria_marauder;
 pub mod witch_king_bringer_of_ruin;
+pub mod the_balrog_flame_of_ud_n;
+pub mod samwise_gamgee;

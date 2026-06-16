@@ -72,3 +72,7 @@ pub mod thief_of_existence;
 pub mod kami_of_jealous_thirst;
 pub mod titans_vanguard;
 pub mod nulldrifter;
+pub mod ocelot_pride;
+pub mod nightshade_dryad;
+pub mod annoyed_altisaur;
+pub mod hydra_trainer;

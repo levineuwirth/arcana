@@ -159,6 +159,7 @@ Kindred Denial
 Kiora's Follower
 Kiora, Behemoth Beckoner
 Kiora, the Tide's Fury
+Koh, the Face Stealer
 Kumano Faces Kakkazan
 Lapse of Certainty
 Lay Bare
@@ -237,6 +238,7 @@ Prince of Thralls
 Progenitor Exarch
 Punish Ignorance
 Puppet Strings
+Purple Pentapus
 Put Away
 Quench
 Radagast the Brown
@@ -348,4 +350,5 @@ Wirewood Lodge
 Wyll of the Blade Pact
 Ydwen Efreet
 Yomiji, Who Bars the Way
+Zareth San, the Trickster
 Zephyr Scribe

@@ -99,3 +99,5 @@ pub mod loch_dragon;
 pub mod feasting_troll_king;
 pub mod mysterious_pathlighter;
 pub mod faerie_formation;
+pub mod rowan_s_battleguard;
+pub mod syr_gwyn_hero_of_ashvale;

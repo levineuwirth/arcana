@@ -77,3 +77,5 @@ pub mod grand_arbiter_augustin_iv;
 pub mod seasoned_pyromancer;
 pub mod seeker_of_the_way;
 pub mod lyev_skyknight;
+pub mod shadowborn_apostle;
+pub mod sedraxis_specter;

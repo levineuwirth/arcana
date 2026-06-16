@@ -9,3 +9,5 @@ pub mod gift_of_estates;
 pub mod ur_golem_s_eye;
 pub mod tectonic_edge;
 pub mod true_conviction;
+pub mod dulcet_sirens;
+pub mod frost_titan;

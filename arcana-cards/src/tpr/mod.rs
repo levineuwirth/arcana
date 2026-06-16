@@ -92,3 +92,5 @@ pub mod soltari_champion;
 pub mod sandstone_warrior;
 pub mod krakilin;
 pub mod wall_of_diffusion;
+pub mod mawcor;
+pub mod screeching_harpy;

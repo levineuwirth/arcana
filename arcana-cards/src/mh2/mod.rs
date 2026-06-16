@@ -75,3 +75,5 @@ pub mod arcbound_tracker;
 pub mod burdened_aerialist;
 pub mod thrasta_tempest_s_roar;
 pub mod monoskelion;
+pub mod timeless_dragon;
+pub mod arcbound_slasher;

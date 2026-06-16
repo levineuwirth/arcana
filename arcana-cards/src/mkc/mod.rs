@@ -49,3 +49,5 @@ pub mod otherworldly_escort;
 pub mod jolrael_mwonvuli_recluse;
 pub mod overseer_of_the_damned;
 pub mod psychosis_crawler;
+pub mod lazav_the_multifarious;
+pub mod feather_radiant_arbiter;

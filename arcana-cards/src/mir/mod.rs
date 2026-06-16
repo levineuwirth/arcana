@@ -76,3 +76,6 @@ pub mod wall_of_corpses;
 pub mod armorer_guildmage;
 pub mod ersatz_gnomes;
 pub mod leering_gargoyle;
+pub mod basalt_golem;
+pub mod civic_guildmage;
+pub mod ravenous_vampire;

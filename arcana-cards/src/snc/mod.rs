@@ -98,3 +98,5 @@ pub mod shakedown_heavy;
 pub mod ziatora_s_envoy;
 pub mod body_dropper;
 pub mod a_masked_bandits;
+pub mod rigo_streetwise_mentor;
+pub mod a_revel_ruiner;

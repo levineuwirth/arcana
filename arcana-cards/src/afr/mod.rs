@@ -103,3 +103,8 @@ pub mod battle_cry_goblin;
 pub mod loyal_warhound;
 pub mod a_krydle_of_baldur_s_gate;
 pub mod planar_ally;
+pub mod cloister_gargoyle;
+pub mod a_cloister_gargoyle;
+pub mod ebondeath_dracolich;
+pub mod triumphant_adventurer;
+pub mod ochre_jelly;

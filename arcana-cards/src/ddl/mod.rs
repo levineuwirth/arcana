@@ -7,3 +7,6 @@ pub mod somberwald_vigilante;
 pub mod stun_sniper;
 pub mod daily_regimen;
 pub mod skarrgan_skybreaker;
+pub mod deus_of_calamity;
+pub mod freewind_equenaut;
+pub mod conquering_manticore;

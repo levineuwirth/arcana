@@ -14,3 +14,4 @@ pub mod aquitect_s_will;
 pub mod rootwater_hunter;
 pub mod brittle_effigy;
 pub mod blighted_gorge;
+pub mod merfolk_wayfinder;

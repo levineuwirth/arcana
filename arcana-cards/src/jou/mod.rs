@@ -43,3 +43,4 @@ pub mod war_wing_siren;
 pub mod bloodcrazed_hoplite;
 pub mod fleetfeather_cockatrice;
 pub mod crystalline_nautilus;
+pub mod felhide_petrifier;

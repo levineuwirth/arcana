@@ -81,3 +81,4 @@ pub mod watcher_in_the_mist;
 pub mod fire_urchin;
 pub mod syndicate_heavy;
 pub mod owl_familiar;
+pub mod syndicate_messenger;

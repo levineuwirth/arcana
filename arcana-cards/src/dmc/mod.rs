@@ -22,3 +22,4 @@ pub mod cadric_soul_kindler;
 pub mod the_lady_of_otaria;
 pub mod rosnakht_heir_of_rohgahh;
 pub mod archelos_lagoon_mystic;
+pub mod tajic_blade_of_the_legion;

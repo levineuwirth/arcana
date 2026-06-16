@@ -95,3 +95,4 @@ pub mod arashin_sunshield;
 pub mod armament_dragon;
 pub mod snowmelt_stag;
 pub mod monastery_messenger;
+pub mod temur_devotee;

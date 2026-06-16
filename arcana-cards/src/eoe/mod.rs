@@ -79,3 +79,4 @@ pub mod genemorph_imago;
 pub mod edge_rover;
 pub mod seedship_broodtender;
 pub mod biomechan_engineer;
+pub mod kav_landseeker;

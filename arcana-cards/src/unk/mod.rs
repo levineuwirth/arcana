@@ -94,3 +94,5 @@ pub mod the_dilu_horse;
 pub mod avacyn_and_griselbrand;
 pub mod phyrexian_adapter;
 pub mod the_fact_checker;
+pub mod devoted_jeskai;
+pub mod drake_with_set_s_mechanic;

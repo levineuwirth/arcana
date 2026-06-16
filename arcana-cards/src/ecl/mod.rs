@@ -98,3 +98,5 @@ pub mod squawkroaster;
 pub mod nightmare_sower;
 pub mod pummeler_for_hire;
 pub mod tam_mindful_first_year;
+pub mod wistfulness;
+pub mod prideful_feastling;

@@ -31,3 +31,4 @@ pub mod sigil_of_the_nayan_gods;
 pub mod lich_lord_of_unx;
 pub mod anathemancer;
 pub mod bant_sojourners;
+pub mod illusory_demon;

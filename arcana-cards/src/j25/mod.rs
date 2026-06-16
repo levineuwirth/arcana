@@ -15,3 +15,4 @@ pub mod angelic_cub;
 pub mod pol_jamaar_illusionist;
 pub mod psemilla_meletian_poet;
 pub mod shardless_outlander;
+pub mod thurid_mare_of_destiny;

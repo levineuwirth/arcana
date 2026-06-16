@@ -73,3 +73,4 @@ pub mod steward_of_the_harvest;
 pub mod opportunistic_dragon;
 pub mod jarad_golgari_lich_lord;
 pub mod hammerhead_tyrant;
+pub mod dragonlord_dromoka;
