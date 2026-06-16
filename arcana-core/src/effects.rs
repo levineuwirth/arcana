@@ -6519,6 +6519,30 @@ mod tests {
     }
 
     #[test]
+    fn planeswalker_animates_into_a_creature_keeping_planeswalker() {
+        // Gideon-class "becomes an N/N creature; it's still a
+        // planeswalker": AddType(CREATURE) + SetBasePT on self compose
+        // through the layers — the object is BOTH a creature and a
+        // planeswalker with the set P/T (no engine change needed).
+        use crate::layers::Duration;
+        let mut s = GameState::new(2, 0);
+        let pw = s.allocate_object_id();
+        s.objects.insert(GameObject::new(pw, 0, Zone::Battlefield, 1, Characteristics {
+            types: TypeLine::PLANESWALKER.into(),
+            loyalty: Some(4),
+            ..Default::default()
+        }));
+        Effect::AddType { target: pw, types: TypeLine::CREATURE.into(),
+            duration: Duration::EndOfTurn }.execute(&mut s);
+        Effect::SetBasePT { target: pw, power: 5, toughness: 5,
+            duration: Duration::EndOfTurn }.execute(&mut s);
+        let chars = s.compute_characteristics(pw).unwrap();
+        assert!(chars.is_creature() && chars.types.is_planeswalker(),
+            "animated PW is both creature and planeswalker");
+        assert_eq!(s.computed_power(pw), Some(5));
+    }
+
+    #[test]
     fn emblem_static_anthem_buffs_controllers_creatures() {
         // "You get an emblem with 'Creatures you control get +2/+2.'"
         // (Elspeth, Gideon class). The static is installed sourced on

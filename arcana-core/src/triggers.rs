@@ -569,11 +569,20 @@ impl TriggerCondition {
 
             AttachedCreatureDoes { condition } => {
                 // Re-evaluate the inner condition with the host
-                // substituted for the source. CR 303.4: the Aura's
-                // ability watches events on the enchanted permanent.
+                // substituted for the source AND the host's controller
+                // substituted for source_controller. CR 303.4: the
+                // Aura's ability watches events on the enchanted
+                // permanent — so `Self*` object conditions key on the
+                // host, and controller-relative conditions ("your
+                // upkeep", StepBegins{whose: You}) key on the enchanted
+                // creature's controller (host-controller-upkeep triggers
+                // like Underworld Dreams-on-a-creature, Sky Swallower).
                 match state.objects.get(source).and_then(|o| o.attached_to) {
-                    Some(host) =>
-                        condition.matches(event, host, source_controller, state),
+                    Some(host) => {
+                        let host_ctrl = state.objects.get(host)
+                            .map(|o| o.controller).unwrap_or(source_controller);
+                        condition.matches(event, host, host_ctrl, state)
+                    }
                     None => false,
                 }
             }
@@ -1187,6 +1196,32 @@ mod tests {
         // The Aura itself dying does NOT fire this trigger.
         let aura_dies = GameEvent::Dies { object_id: aura };
         assert!(!cond.matches(&aura_dies, aura, 0, &s));
+    }
+
+    #[test]
+    fn attached_creature_does_keys_step_on_host_controller() {
+        // "At the beginning of enchanted creature's controller's upkeep"
+        // — AttachedCreatureDoes(StepBegins{Upkeep, You}) must fire on
+        // the HOST's controller's upkeep, not the aura controller's.
+        use crate::turn::Step;
+        use crate::targets::ControllerConstraint;
+        let mut s = GameState::new(2, 0);
+        let host = put_creature(&mut s, 1, Zone::Battlefield); // controlled by player 1
+        let aura = put_creature(&mut s, 0, Zone::Battlefield);  // aura controlled by player 0
+        s.objects.get_mut(aura).unwrap().attached_to = Some(host);
+        let cond = TriggerCondition::AttachedCreatureDoes {
+            condition: Box::new(TriggerCondition::StepBegins {
+                step: Step::Upkeep, whose: ControllerConstraint::You,
+            }),
+        };
+        let ev = GameEvent::StepBegins { step: Step::Upkeep };
+
+        // Host's controller (1) is the active player → fires.
+        s.turn.active_player = 1;
+        assert!(cond.matches(&ev, aura, 0, &s), "fires on enchanted creature's controller's upkeep");
+        // Aura controller (0) is active → does NOT fire.
+        s.turn.active_player = 0;
+        assert!(!cond.matches(&ev, aura, 0, &s), "not on the aura controller's upkeep");
     }
 
     #[test]

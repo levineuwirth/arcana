@@ -275,6 +275,24 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build a "+P/+T for each [filter] permanent" attached pump
+    /// (Blanchwood Armor). `filter` is matched from the host's
+    /// controller's perspective at apply time.
+    pub fn attached_pt_per_match(source: ObjectId,
+                                 filter: crate::targets::ObjectFilter,
+                                 per_power: i32, per_toughness: i32,
+                                 duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L7cPTModifying,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::AttachedCreatureGetsPtPerMatch {
+                filter, per_power, per_toughness },
+        }
+    }
+
     /// Build an "equipped/enchanted creature has [keyword]" effect —
     /// the keyword sibling of [`Self::attached_pt`]: whatever creature
     /// `source` is currently attached to gains the keyword (Layer 6).
@@ -943,6 +961,20 @@ pub enum ContinuousEffectKind {
     AttachedCreatureGetsPtDynamic {
         compute: fn(&GameState, ObjectId) -> (i32, i32),
     },
+    /// "Enchanted/equipped creature gets +`per_power`/+`per_toughness`
+    /// for each [filter] permanent" — Blanchwood Armor ("+1/+1 for each
+    /// Forest you control"), Aspect of Wolf, Nightmare. The
+    /// registry-free counterpart of [`Self::AttachedCreatureGetsPtDynamic`]
+    /// for the common board-count case: `filter` is matched against the
+    /// battlefield from the SOURCE's controller's perspective (so
+    /// `controlled_by(You)` resolves correctly), the count multiplies
+    /// the per-match P/T, and the total is added to the host. Follows
+    /// `source.attached_to`. Layer 7c, additive.
+    AttachedCreatureGetsPtPerMatch {
+        filter: crate::targets::ObjectFilter,
+        per_power: i32,
+        per_toughness: i32,
+    },
     /// Layer 7c — GLOBAL FILTERED pump: "[filter] creatures get
     /// +P/+T" beyond the controller-anthem ("creatures with flying
     /// you control get +1/+1", "all Goblins get +1/+0", "white
@@ -1099,6 +1131,7 @@ impl ContinuousEffectKind {
             Self::AttachedCreatureGetsPt { .. }
             | Self::AttachedCreatureGainsKeyword { .. }
             | Self::AttachedCreatureGetsPtDynamic { .. }
+            | Self::AttachedCreatureGetsPtPerMatch { .. }
             | Self::AttachedCreatureAddSubtypes { .. }
             | Self::AttachedCreatureAddColors { .. }
             | Self::AttachedCreatureAddTypes { .. }
@@ -1162,6 +1195,11 @@ impl ContinuousEffectKind {
             Self::AttachedCreatureGetsPtDynamic { compute } => {
                 let (power, toughness) = compute(state, source);
                 add_to_pt(chars, power, toughness);
+            }
+            Self::AttachedCreatureGetsPtPerMatch { filter, per_power, per_toughness } => {
+                let who = state.objects.get(source).map(|s| s.controller).unwrap_or(0);
+                let n = crate::script::count_matching(state, filter, who) as i32;
+                add_to_pt(chars, per_power * n, per_toughness * n);
             }
             Self::AttachedCreatureAddSubtypes { subtypes }
             | Self::AddSubtypesTarget { subtypes, .. } => {
@@ -1889,6 +1927,33 @@ mod tests {
         assert!(s.cant_block(creature), "enchanted creature can't block");
         // The Aura itself is unaffected.
         assert!(!s.cant_attack(aura));
+    }
+
+    #[test]
+    fn attached_pt_per_match_counts_from_host_controllers_board() {
+        // Blanchwood Armor: "+1/+1 for each Forest you control" — modeled
+        // as a per-match attached pump counted from the source (aura)
+        // controller's perspective.
+        use crate::targets::{ControllerConstraint, ObjectFilter};
+        let mut s = GameState::new(2, 0);
+        let host = put_creature(&mut s, 0, 2, 2);
+        // Two more creatures controlled by player 0 (the count target).
+        put_creature(&mut s, 0, 1, 1);
+        put_creature(&mut s, 0, 1, 1);
+        let aura = s.allocate_object_id();
+        s.objects.insert(GameObject::new(
+            aura, 0, Zone::Battlefield, 1, Characteristics {
+                types: TypeLine::ENCHANTMENT.into(), ..Default::default() }));
+        s.objects.get_mut(aura).unwrap().attached_to = Some(host);
+
+        // +1/+1 for each creature you control. Host (2/2) + 2 others = 3
+        // creatures controlled by player 0 → +3/+3.
+        s.add_continuous_effect(ContinuousEffect::attached_pt_per_match(
+            aura,
+            ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+            1, 1, Duration::WhileSourceOnBattlefield));
+        assert_eq!(s.computed_power(host), Some(2 + 3));
+        assert_eq!(s.computed_toughness(host), Some(2 + 3));
     }
 
     #[test]
