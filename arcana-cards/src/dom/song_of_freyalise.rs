@@ -138,7 +138,7 @@ fn chapter_iii(
     // Put a +1/+1 counter on each creature you control
     let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
     let ids = script::ids_matching(state, &filter, trig.controller);
-    let mut effects: Vec<Effect> = ids
+    let effects: Vec<Effect> = ids
         .iter()
         .map(|&id| Effect::AddCounters {
             target: id,

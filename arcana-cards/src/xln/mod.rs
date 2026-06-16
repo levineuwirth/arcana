@@ -76,3 +76,4 @@ pub mod vraska_relic_seeker;
 pub mod jace_cunning_castaway;
 pub mod huatli_warrior_poet;
 pub mod huatli_dinosaur_knight;
+pub mod snapping_sailback;

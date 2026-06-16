@@ -36,3 +36,4 @@ pub mod fencer_s_magemark;
 pub mod sinstriker_s_will;
 pub mod shadow_lance;
 pub mod witch_maw_nephilim;
+pub mod torch_drake;

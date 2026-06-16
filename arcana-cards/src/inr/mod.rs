@@ -107,3 +107,8 @@ pub mod jace_unraveler_of_secrets;
 pub mod liliana_of_the_veil;
 pub mod tamiyo_field_researcher;
 pub mod sorin_imperious_bloodlord;
+pub mod haunted_dead;
+pub mod pack_guardian;
+pub mod edgar_markov;
+pub mod cathar_commando;
+pub mod bloodtithe_harvester;

@@ -38,3 +38,4 @@ pub mod chimeric_coils;
 pub mod krark_clan_ironworks;
 pub mod eyes_of_the_watcher;
 pub mod stasis_cocoon;
+pub mod bringer_of_the_red_dawn;

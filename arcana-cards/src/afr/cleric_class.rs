@@ -22,8 +22,7 @@
 //! gain based on the returned creature's toughness is GAP'd (can't query the
 //! toughness of the just-entered creature from the resolver context).
 
-use arcana_core::effects::{Effect, KeywordAbility};
-use arcana_core::layers::{ContinuousEffect, Duration};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -32,7 +31,7 @@ use arcana_core::registry::{
 };
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
-use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {

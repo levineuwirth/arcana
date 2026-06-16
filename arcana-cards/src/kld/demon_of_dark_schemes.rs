@@ -26,7 +26,7 @@ use arcana_core::registry::{
 use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetCount, TargetFilter, TargetRequirement,
+    ObjectFilter, TargetCount, TargetFilter, TargetRequirement,
 };
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,

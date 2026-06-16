@@ -49,7 +49,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn dies_each_player_seek(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: "seek" (random card from library) not in Effect catalog; using TutorToHand as approximation.

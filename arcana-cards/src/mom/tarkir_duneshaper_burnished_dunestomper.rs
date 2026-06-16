@@ -10,7 +10,7 @@
 //! in this engine (no {G/P} hybrid symbol support). The transform activation is omitted;
 //! only the static characteristics are wired.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};

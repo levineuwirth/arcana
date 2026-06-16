@@ -54,7 +54,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn nontoken_creature_enters_proliferate(
-    state: &GameState,
+    _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {

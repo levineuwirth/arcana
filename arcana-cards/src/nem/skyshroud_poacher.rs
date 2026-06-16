@@ -20,7 +20,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(rebel);
-    let elf_filter = script::subtype_filter(reg, "Elf");
+    let _elf_filter = script::subtype_filter(reg, "Elf");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{G}{G}").expect("valid cost")),

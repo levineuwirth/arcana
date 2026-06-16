@@ -63,7 +63,7 @@ fn artifact_cast_optional_damage(
     let damage_target = match target {
         TargetChoice::Object(id) => DamageTarget::Object(*id),
         TargetChoice::Player(p) => DamageTarget::Player(*p),
-        TargetChoice::ObjectOrPlayer(id_or_p) => {
+        TargetChoice::ObjectOrPlayer(_id_or_p) => {
             // GAP: ObjectOrPlayer variant — treat as gap
             return Vec::new();
         }

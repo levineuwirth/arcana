@@ -19,7 +19,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::types::{
-    CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine,
+    CardId, ColorSet, PtValue, SubtypeSet, TypeLine,
 };
 
 pub fn register(reg: &mut CardRegistry) -> CardId {

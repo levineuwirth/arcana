@@ -70,3 +70,4 @@ pub mod fiery_mantle;
 pub mod lingering_mirage;
 pub mod sicken;
 pub mod vug_lizard;
+pub mod shimmering_barrier;

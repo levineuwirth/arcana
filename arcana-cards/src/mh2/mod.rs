@@ -63,3 +63,5 @@ pub mod world_weary;
 pub mod skyblade_s_boon;
 pub mod dakkon_shadow_slayer;
 pub mod geyadrone_dihada;
+pub mod ethersworn_sphinx;
+pub mod sanctifier_en_vec;

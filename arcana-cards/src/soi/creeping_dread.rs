@@ -52,7 +52,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 /// GAP'd (see module doc).
 fn everyone_discards(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let effects = script::all_players(state)

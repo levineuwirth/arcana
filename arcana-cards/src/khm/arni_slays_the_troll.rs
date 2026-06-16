@@ -8,7 +8,7 @@
 //!       (GAP: "greatest power among creatures you control" — no script::max_power
 //!       helper; emitting Vec::new().)
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};

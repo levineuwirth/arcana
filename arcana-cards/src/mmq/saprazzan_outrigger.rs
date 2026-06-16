@@ -8,7 +8,7 @@
 //! "at end of combat" — DelayedAction with NextEndStep is the closest
 //! available; no EndOfCombat DelayedWhen variant exists.
 
-use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};

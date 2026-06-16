@@ -13,7 +13,6 @@ use arcana_core::registry::{
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::layers::Duration;
-use arcana_core::targets::ControllerConstraint;
 use arcana_core::effects::DiscardChoice;
 use arcana_core::registry::ActivationContext;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};

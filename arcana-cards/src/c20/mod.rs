@@ -16,3 +16,5 @@ pub mod drake_haven;
 pub mod vigilante_justice;
 pub mod nissa_steward_of_elements;
 pub mod chandra_flamecaller;
+pub mod daring_fiendbonder;
+pub mod vorapede;

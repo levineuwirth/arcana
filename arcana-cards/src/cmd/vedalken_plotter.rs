@@ -78,7 +78,7 @@ fn on_enter(
     let Some(t1) = iter.next() else { return Vec::new(); };
     let Some(t2) = iter.next() else { return Vec::new(); };
     let TargetChoice::Object(id1) = t1 else { return Vec::new(); };
-    let TargetChoice::Object(id2) = t2 else { return Vec::new(); };
+    let TargetChoice::Object(_id2) = t2 else { return Vec::new(); };
     vec![
         Effect::ChangeControl { target: *id1, new_controller: trig.controller },
         // GAP: opponent's land assigned to opponent — need their player id; not accessible here

@@ -99,3 +99,4 @@ pub mod vector_imperial_capital;
 pub mod stuck_in_summoner_s_sanctum;
 pub mod bartz_and_boko;
 pub mod gaius_van_baelsar;
+pub mod valkyrie_aerial_unit;

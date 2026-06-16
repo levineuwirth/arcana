@@ -54,7 +54,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn tutor_legendary_spirit(
     _state: &GameState,
     ctx: &ActivationContext,
-    reg: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: ActivationCost has no "sacrifice three Spirits" field.
     // Using TutorToBattlefield with creature filter + legendary supertype as best-effort.

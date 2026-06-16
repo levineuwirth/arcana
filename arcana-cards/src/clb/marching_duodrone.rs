@@ -46,7 +46,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn attacks_each_player_treasure(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
     let treasure_id = reg.interner().lookup("Treasure")

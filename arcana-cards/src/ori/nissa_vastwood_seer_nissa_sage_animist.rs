@@ -50,8 +50,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Nissa, Vastwood Seer");
     let elf_sub = reg.interner_mut().intern("Elf");
     let scout_sub = reg.interner_mut().intern("Scout");
-    let forest_sub = reg.interner_mut().intern("Forest");
-    let elemental_sub = reg.interner_mut().intern("Elemental");
+    let _forest_sub = reg.interner_mut().intern("Forest");
+    let _elemental_sub = reg.interner_mut().intern("Elemental");
     let _ashaya = reg.interner_mut().intern("Ashaya, the Awoken World");
 
     let mut front_subs = SubtypeSet::default();

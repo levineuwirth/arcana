@@ -56,7 +56,7 @@ fn on_etb(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(opponent) = target else { return Vec::new(); };
+    let TargetChoice::Player(_opponent) = target else { return Vec::new(); };
     let creature_ids = script::ids_matching(
         state,
         &ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),

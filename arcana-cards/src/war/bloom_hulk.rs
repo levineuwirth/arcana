@@ -45,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn bloom_hulk_trigger(
     _state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Proliferate]

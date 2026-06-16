@@ -1,7 +1,7 @@
 //! Kraven's Cats — `{1}{G}` 2/2 green Cat Villain.
 //! "{2}{G}: This creature gets +2/+2 until end of turn. Activate only once each turn."
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

@@ -52,3 +52,5 @@ pub mod roadside_assistance;
 pub mod flood_the_engine;
 pub mod chandra_spark_hunter;
 pub mod the_aetherspark;
+pub mod scrounging_skyray;
+pub mod gearseeker_serpent;

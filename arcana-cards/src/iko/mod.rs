@@ -68,3 +68,4 @@ pub mod footfall_crater;
 pub mod mystic_subdual;
 pub mod lukka_coppercoat_outcast;
 pub mod vivien_monsters_advocate;
+pub mod patagia_tiger;

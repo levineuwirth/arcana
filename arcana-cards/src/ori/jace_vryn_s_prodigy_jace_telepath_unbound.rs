@@ -26,12 +26,9 @@
 //! - Emblem creation not available.
 //! Back-face-only triggered abilities are not modeled (GAP).
 
-use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
-use arcana_core::triggers::PendingTrigger;
-use arcana_core::state::GameState;
 use arcana_core::types::{
     CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine,
 };

@@ -8,7 +8,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -56,8 +56,8 @@ fn etb_mill_then_counter(
     let artifact_filter = ObjectFilter::new()
         .with_types(TypeLine::ARTIFACT.into());
     let creature_filter = ObjectFilter::creature();
-    let n_artifacts = script::count_matching(state, &artifact_filter, trig.controller);
-    let n_creatures = script::count_matching(state, &creature_filter, trig.controller);
+    let _n_artifacts = script::count_matching(state, &artifact_filter, trig.controller);
+    let _n_creatures = script::count_matching(state, &creature_filter, trig.controller);
     // Use graveyard_size as upper bound; we count artifact+creature in graveyard via script.
     // GAP: no graveyard-zone filter in count_matching; using battlefield counts as approximation.
     // Using static graveyard_size as rough proxy.

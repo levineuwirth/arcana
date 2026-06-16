@@ -12,7 +12,7 @@
 //! GAP: the back land's "pay 3 life or enter tapped" ETB choice and its "{T}: Add {R}" mana
 //! ability are not modeled (land MDFC back-face activations are engine debt).
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

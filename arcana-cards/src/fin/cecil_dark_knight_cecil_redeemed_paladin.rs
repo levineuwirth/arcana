@@ -22,7 +22,7 @@
 //! - Keywords: "Protect" and "Darkness" are not standard keyword abilities; omitted.
 //! - Transform trigger: GAP — DealDamage trigger condition not expressible.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};

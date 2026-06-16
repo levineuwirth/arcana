@@ -62,3 +62,4 @@ pub mod scourgemark;
 pub mod chosen_by_heliod;
 pub mod fate_foretold;
 pub mod ashiok_nightmare_weaver;
+pub mod colossus_of_akros;

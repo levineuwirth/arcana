@@ -35,3 +35,5 @@ pub mod killer_cosplay;
 pub mod plot_armor;
 pub mod comet_stellar_pup;
 pub mod space_beleren;
+pub mod quick_fixer;
+pub mod glitterflitter;

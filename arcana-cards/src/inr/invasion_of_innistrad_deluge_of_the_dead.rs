@@ -28,7 +28,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{
-    CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine,
+    CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine,
 };
 use arcana_core::zones::Zone;
 use arcana_core::state::GameState;

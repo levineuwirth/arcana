@@ -46,7 +46,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn centaur_peacemaker_trigger(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     script::all_players(state)

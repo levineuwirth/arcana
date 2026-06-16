@@ -2,7 +2,7 @@
 //! {2}{B}, {T}, Discard a card: Each other player loses 2 life. You gain life equal to the life lost this way.
 //! GAP: "you gain life equal to life lost this way" — GainLife with dynamic amount (opponents × 2) computed via script.
 
-use arcana_core::effects::{DiscardChoice, Effect};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{

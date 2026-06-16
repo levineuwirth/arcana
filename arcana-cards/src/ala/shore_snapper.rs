@@ -17,7 +17,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let beast = reg.interner_mut().intern("Beast");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(beast);
-    let island = reg.interner_mut().intern("Island");
+    let _island = reg.interner_mut().intern("Island");
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{B}").expect("valid cost")),

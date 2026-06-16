@@ -29,3 +29,5 @@ pub mod copper_carapace;
 pub mod inexorable_tide;
 pub mod arrest;
 pub mod tezzeret_the_seeker;
+pub mod nobilis_of_war;
+pub mod qumulox;

@@ -114,3 +114,4 @@ pub mod failed_conversion;
 pub mod archangel_elspeth;
 pub mod wrenn_and_realmbreaker;
 pub mod drana_and_linvala;
+pub mod elvish_vatkeeper;

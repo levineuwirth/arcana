@@ -65,3 +65,6 @@ pub mod polluted_bonds;
 pub mod torture;
 pub mod torpor_dust;
 pub mod sinking_feeling;
+pub mod silkbind_faerie;
+pub mod sootstoke_kindler;
+pub mod kithkin_rabble;

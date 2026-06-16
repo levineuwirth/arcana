@@ -13,7 +13,7 @@
 //! −X: Chandra deals X damage to target creature or planeswalker (exile if it
 //!   would die). GAP — dynamic-X loyalty cost is not expressible; ability omitted.
 
-use arcana_core::effects::{Effect, EmblemDefinition};
+use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

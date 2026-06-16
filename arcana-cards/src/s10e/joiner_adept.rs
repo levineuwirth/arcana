@@ -3,7 +3,6 @@
 //! GAP: Granting an activated ability to all permanents of a type (continuous
 //! effect, layer 6) is not expressible as a triggered or activated ability.
 
-use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};

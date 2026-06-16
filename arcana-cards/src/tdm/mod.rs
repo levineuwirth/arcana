@@ -76,3 +76,4 @@ pub mod ringing_strike_mastery;
 pub mod fire_rim_form;
 pub mod wingspan_stride;
 pub mod elspeth_storm_slayer;
+pub mod starry_eyed_skyrider;

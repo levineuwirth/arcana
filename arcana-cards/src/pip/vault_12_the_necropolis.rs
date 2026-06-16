@@ -7,9 +7,9 @@
 //! GAP: Chapter III "each creature that's a Zombie or Mutant" — subtype-OR filter uses .with_subtypes_any but Mutant subtype may be custom.
 //! Final-chapter sacrifice is automatic (engine SBA).
 
-use arcana_core::effects::{Effect, TokenDefinition};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
 use arcana_core::script;
 use arcana_core::state::GameState;
@@ -18,7 +18,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggerSelf, TriggeredAbilityDef,
 };
 use arcana_core::turn::Phase;
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {

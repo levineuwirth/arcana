@@ -2,14 +2,13 @@
 //! "At the beginning of your end step, each player loses 4 life unless they sacrifice
 //! a nontoken creature of their choice."
 
-use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -52,7 +51,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn each_player_sac_or_lose_life(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // "unless they sacrifice a nontoken creature" — OptionalPaymentKind has no Sacrifice variant

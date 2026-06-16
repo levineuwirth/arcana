@@ -4,13 +4,11 @@
 //! GAP: "prevent all damage by a source of your choice" — source-specific prevention not in catalog.
 
 use arcana_core::effects::Effect;
-use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone, CardDefinition, CardRegistry,
 };
-use arcana_core::replacement::ReplacementDuration;
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement, ObjectFilter};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};

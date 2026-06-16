@@ -118,7 +118,7 @@ fn add_lore_counter(
 
 fn chapter_i(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
     script::all_players(state)
@@ -132,7 +132,7 @@ fn chapter_ii(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects: Vec<Effect> = trig.targets.targets.iter()
+    let effects: Vec<Effect> = trig.targets.targets.iter()
         .filter_map(|t| {
             if let TargetChoice::Object(id) = t {
                 Some(Effect::ExileFromGraveyard { target: *id })

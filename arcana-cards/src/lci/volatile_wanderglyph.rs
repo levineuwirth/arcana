@@ -1,7 +1,6 @@
 //! Volatile Wanderglyph — `{1}{R}` 2/2 red Artifact Creature — Golem.
 //! "Whenever this creature becomes tapped, you may discard a card. If you do, draw a card."
 
-use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

@@ -20,16 +20,15 @@
 //! Defense counter count: 4 (as printed on Invasion of Ergamon).
 //! Back face P/T: 4/4 (as printed on Truga Cliffcharger).
 
-use arcana_core::effects::{CommodityToken, DiscardChoice, Effect, KeywordAbility};
+use arcana_core::effects::{CommodityToken, Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, EntersWithSpec};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {

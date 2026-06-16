@@ -61,7 +61,7 @@ fn historic_enters_drain(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let opponents = script::opponents(state, trig.controller);
-    let opp_count = opponents.len() as u32;
+    let _opp_count = opponents.len() as u32;
     let mut effects: Vec<Effect> = opponents.into_iter().map(|p| Effect::DealDamage {
         target: DamageTarget::Player(p),
         amount: 1,

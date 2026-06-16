@@ -50,7 +50,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn on_draw_step(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // "that player" = the active player whose draw step this is.

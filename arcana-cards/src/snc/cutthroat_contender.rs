@@ -1,7 +1,7 @@
 //! Cutthroat Contender — `{B}` 1/1 black Vampire Warrior.
 //! "Pay 1 life: This creature gets +1/+0 until end of turn. Activate only once each turn."
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

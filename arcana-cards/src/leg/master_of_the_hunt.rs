@@ -3,7 +3,7 @@
 //! GAP: "bands with other creatures named X" — Banding (the keyword) is listed but the "bands with"
 //! variant that refers to a specific name is not modeled in KeywordAbility.
 
-use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{

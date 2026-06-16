@@ -20,7 +20,7 @@ use arcana_core::targets::{
     ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
 };
 use arcana_core::triggers::{
-    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+    TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{CardId, ColorSet, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;

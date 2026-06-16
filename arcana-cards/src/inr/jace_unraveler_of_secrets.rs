@@ -19,7 +19,7 @@ use arcana_core::registry::{
 };
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    ControllerConstraint, TargetChoice, TargetCount, TargetFilter,
     TargetRequirement,
 };
 use arcana_core::triggers::{

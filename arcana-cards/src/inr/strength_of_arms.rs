@@ -11,7 +11,7 @@ use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement,
+    ControllerConstraint, TargetChoice, TargetRequirement,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 

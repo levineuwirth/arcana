@@ -12,7 +12,7 @@
 //! GAP: back-face-only triggered ability (upkeep back-transform) not auto-installed on transform.
 
 use arcana_core::conditions;
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::objects::ObjectId;

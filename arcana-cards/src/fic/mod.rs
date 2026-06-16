@@ -22,3 +22,5 @@ pub mod fishing_gear;
 pub mod summoner_s_sending;
 pub mod brilliant_wings;
 pub mod eye_of_nidhogg;
+pub mod lord_jyscal_guado;
+pub mod alisaie_leveilleur;

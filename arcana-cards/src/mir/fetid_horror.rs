@@ -1,7 +1,7 @@
 //! Fetid Horror — `{3}{B}` 1/2 black Shade Horror.
 //! "{B}: This creature gets +1/+1 until end of turn."
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

@@ -46,7 +46,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn etb_each_sac_creature(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let all_players = script::all_players(state);

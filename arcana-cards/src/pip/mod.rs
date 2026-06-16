@@ -20,3 +20,4 @@ pub mod almost_perfect;
 pub mod acquired_mutation;
 pub mod nerd_rage;
 pub mod grim_reaper_s_sprint;
+pub mod young_deathclaws;

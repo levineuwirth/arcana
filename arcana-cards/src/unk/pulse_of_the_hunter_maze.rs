@@ -3,7 +3,7 @@
 //! owner's hand."
 //! GAP: conditional self-return to hand; poison counter support not in catalog.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

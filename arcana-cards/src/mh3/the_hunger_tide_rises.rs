@@ -12,7 +12,7 @@
 //!   TutorToBattlefield with a creature filter but the CMC bound is hardcoded 0
 //!   (worst-case approximation). Real logic GAP'd.
 
-use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};

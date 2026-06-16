@@ -11,7 +11,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -23,7 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Mysterio, Master of Illusion");
     let human = reg.interner_mut().intern("Human");
     let villain = reg.interner_mut().intern("Villain");
-    let illusion = reg.interner_mut().intern("Illusion");
+    let _illusion = reg.interner_mut().intern("Illusion");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(villain);

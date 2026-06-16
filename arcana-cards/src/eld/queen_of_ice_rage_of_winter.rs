@@ -38,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn on_combat_damage_creature(_state: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
+fn on_combat_damage_creature(_state: &GameState, _trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
     // GAP: "doesn't untap during controller's next untap step" — no-untap duration not in catalog
     // Using damaged_player detection as best effort — actually we need the damaged creature id
     Vec::new()

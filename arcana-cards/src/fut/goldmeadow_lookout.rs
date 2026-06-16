@@ -5,7 +5,6 @@
 //! does not support embedded activated abilities.
 
 use arcana_core::effects::{Effect, TokenDefinition};
-use arcana_core::effects::DiscardChoice;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{

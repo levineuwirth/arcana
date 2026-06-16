@@ -17,7 +17,6 @@
 //!
 //! Keyword note: Disturb, Enchant, Transform are not KeywordAbility variants; keywords: vec![].
 
-use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};

@@ -21,7 +21,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(wizard);
-    let swamp_filter = ObjectFilter::new().with_subtypes_any(vec![swamp]);
+    let _swamp_filter = ObjectFilter::new().with_subtypes_any(vec![swamp]);
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{4}{B}").expect("valid cost")),

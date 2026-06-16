@@ -31,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         toughness: Some(PtValue::Fixed(5)),
         ..Default::default()
     };
-    let forest_id = reg.interner_mut().intern("Forest");
+    let _forest_id = reg.interner_mut().intern("Forest");
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {

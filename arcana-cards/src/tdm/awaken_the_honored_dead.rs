@@ -5,7 +5,7 @@
 //! GAP: Chapter III "you may discard a card. When you do, return..." — discard-conditional not in catalog.
 //! Final-chapter sacrifice is automatic (engine SBA).
 
-use arcana_core::effects::{DiscardChoice, Effect};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};

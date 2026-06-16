@@ -21,7 +21,7 @@ use arcana_core::registry::{
     CardRegistry, EntersWithSpec,
 };
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Artist's Talent");

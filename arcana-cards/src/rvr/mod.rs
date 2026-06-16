@@ -59,3 +59,5 @@ pub mod kaya_orzhov_usurper;
 pub mod nicol_bolas_dragon_god;
 pub mod karn_the_great_creator;
 pub mod teferi_time_raveler;
+pub mod yeva_nature_s_herald;
+pub mod arclight_phoenix;

@@ -85,3 +85,7 @@ pub mod grand_master_of_flowers;
 pub mod mordenkainen;
 pub mod lolth_spider_queen;
 pub mod a_ellywick_tumblestrum;
+pub mod shessra_death_s_whisper;
+pub mod shambling_ghast;
+pub mod werewolf_pack_leader;
+pub mod arcane_investigator;

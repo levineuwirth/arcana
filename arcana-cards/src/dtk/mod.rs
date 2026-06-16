@@ -53,3 +53,6 @@ pub mod gleam_of_authority;
 pub mod reduce_in_stature;
 pub mod sarkhan_unbroken;
 pub mod narset_transcendent;
+pub mod zephyr_scribe;
+pub mod minister_of_pain;
+pub mod vulturous_aven;

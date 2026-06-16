@@ -28,7 +28,7 @@
 //!
 //! GAP: back-face-only loyalty abilities not auto-installed on transform.
 
-use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{

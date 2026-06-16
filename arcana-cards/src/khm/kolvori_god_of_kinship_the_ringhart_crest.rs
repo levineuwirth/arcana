@@ -5,12 +5,9 @@
 //!   {1}{G}, {T}: Look at the top six cards. May reveal a legendary creature card and put it to hand. Rest on bottom in random order.
 //! Back: Legendary Artifact (land-like permanent) — GAP: MDFC back face not modeled (mechanic deferred)
 
-use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
-use arcana_core::stack::StackEntry;
-use arcana_core::state::GameState;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {

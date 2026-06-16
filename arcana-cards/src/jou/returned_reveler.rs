@@ -47,7 +47,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn dies_each_player_mills(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
     let players = script::all_players(state);

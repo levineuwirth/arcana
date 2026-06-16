@@ -2,13 +2,12 @@
 //! {5}, Exile this card from your graveyard: Create a tapped 3/2 red and white Spirit creature token.
 //! This is a graveyard activated ability (activation_zone: Graveyard).
 
-use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone, CardDefinition, CardRegistry,
 };
-use arcana_core::registry::EntersWithSpec;
 use arcana_core::state::GameState;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 

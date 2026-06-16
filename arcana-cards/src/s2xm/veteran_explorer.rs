@@ -51,7 +51,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn each_player_search_lands(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let all = script::all_players(state);

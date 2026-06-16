@@ -42,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn resolve(
     _state: &GameState,
-    entry: &StackEntry,
+    _entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: no primitive mints "a token for each 1 damage prevented this way";

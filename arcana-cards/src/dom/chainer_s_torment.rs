@@ -6,7 +6,7 @@
 //!   TokenDefinition (power/toughness are fixed); emitting a 1/1 placeholder with GAP note.
 //! Final-chapter sacrifice is automatic (engine SBA).
 
-use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

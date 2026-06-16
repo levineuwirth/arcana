@@ -33,7 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn resolve(
     state: &GameState,
-    entry: &StackEntry,
+    _entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // Best-effort: each player draws 2; cannot model "up to" / per-player

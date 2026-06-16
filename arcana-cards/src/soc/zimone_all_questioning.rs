@@ -16,7 +16,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 use arcana_core::script;
 
@@ -66,7 +66,7 @@ fn on_end_step(
         .expect("Fractal interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(fractal);
-    let land_count = script::count_matching(
+    let _land_count = script::count_matching(
         state,
         &arcana_core::targets::ObjectFilter::new()
             .with_types(TypeLine::LAND.into())

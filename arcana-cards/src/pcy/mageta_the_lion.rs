@@ -13,7 +13,7 @@ use arcana_core::registry::{
 };
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::objects::NULL_OBJECT_ID;
 
@@ -62,7 +62,7 @@ fn wrath_except_self(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::creature()
+    let _filter = ObjectFilter::creature()
         .without_supertypes(arcana_core::types::SupertypeSet::new().with(arcana_core::types::SupertypeSet::LEGENDARY));
     // Destroy all creatures (except Mageta — GAP: can't exclude self by id from ForEach)
     let ids = script::ids_matching(state, &ObjectFilter::creature(), ctx.controller);

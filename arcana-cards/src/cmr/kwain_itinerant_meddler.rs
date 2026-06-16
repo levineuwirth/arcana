@@ -51,7 +51,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn group_draw(
     state: &GameState,
-    ctx: &ActivationContext,
+    _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: "each player MAY draw" — optional per-player draw not expressible;

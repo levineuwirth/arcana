@@ -9,7 +9,7 @@
 //! authored correctly. The back face is registered with Ward {3}.
 //! GAP: back-face-only triggered ability not modeled.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};

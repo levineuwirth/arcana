@@ -23,3 +23,5 @@ pub mod inquisitorial_rosette;
 pub mod bone_sabres;
 pub mod the_lost_and_the_damned;
 pub mod nurgle_s_rot;
+pub mod shard_of_the_nightbringer;
+pub mod tyranid_prime;

@@ -37,7 +37,7 @@ fn add_lore_counter(_state: &GameState, trig: &PendingTrigger, _: &CardRegistry)
     vec![Effect::AddCounters { target: trig.source, kind: CounterKind::Lore, count: 1 }]
 }
 
-fn chapter_i(state: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
+fn chapter_i(state: &GameState, _trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
     script::all_players(state).into_iter().map(|p| Effect::Mill { player: p, count: 4 }).collect()
     // GAP: "exile a creature or planeswalker card from each graveyard" — not in catalog
 }

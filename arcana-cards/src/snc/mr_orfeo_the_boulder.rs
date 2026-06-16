@@ -62,7 +62,7 @@ fn on_attack_double_power(
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     let current_power = script::power_of(state, *id);
-    let current_toughness = script::toughness_of(state, *id);
+    let _current_toughness = script::toughness_of(state, *id);
     // "double power" — add power equal to current power (net: 2x power).
     vec![Effect::Pump {
         target: *id,

@@ -85,3 +85,5 @@ pub mod ashiok_sculptor_of_fears;
 pub mod ashiok_nightmare_muse;
 pub mod elspeth_undaunted_hero;
 pub mod elspeth_sun_s_nemesis;
+pub mod nylea_keen_eyed;
+pub mod enemy_of_enlightenment;

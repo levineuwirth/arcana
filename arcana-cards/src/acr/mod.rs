@@ -17,3 +17,4 @@ pub mod origin_of_the_hidden_ones;
 pub mod brotherhood_headquarters;
 pub mod rooftop_bypass;
 pub mod detained_by_legionnaires;
+pub mod bayek_of_siwa;

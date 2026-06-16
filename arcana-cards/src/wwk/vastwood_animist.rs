@@ -42,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
 
     let ally_subtype = reg.interner_mut().intern("Ally");
-    let ally_filter = ObjectFilter::creature()
+    let _ally_filter = ObjectFilter::creature()
         .controlled_by(ControllerConstraint::You)
         .with_subtypes_any(vec![ally_subtype]);
 

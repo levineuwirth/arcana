@@ -10,7 +10,7 @@
 //!      the granted activated ability is not modelable. We approximate by creating the token directly.
 //! GAP: Chapter II — Construct token's static "+1/+1 for each artifact you control" not modeled.
 
-use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
 use arcana_core::state::GameState;

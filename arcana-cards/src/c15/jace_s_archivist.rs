@@ -54,7 +54,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn wheel(
     state: &GameState,
-    ctx: &ActivationContext,
+    _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // Pre-compute hand sizes to determine draw count (greatest hand size)

@@ -63,7 +63,7 @@ fn on_attack(
 ) -> Vec<Effect> {
     // GAP: "can't be blocked" and perpetual -1/-0 not in engine.
     // Best-effort: schedule a bounce at end step.
-    if let Some(TargetChoice::Object(id)) = trig.targets.targets.first() {
+    if let Some(TargetChoice::Object(_id)) = trig.targets.targets.first() {
         vec![Effect::DelayedAction {
             source: trig.source,
             controller: trig.controller,

@@ -66,7 +66,7 @@ fn discard_hand_draw_spells(
     // "you may discard your hand. If you do, draw N cards"
     // Discard hand = discard all cards. hand_size gives current count.
     let hand = script::hand_size(state, trig.controller);
-    use arcana_core::actions::OptionalPaymentKind;
+    
     // GAP: OptionalPayment only supports Mana/Life costs, not "discard hand".
     // Emitting sequence as best effort: discard hand then draw.
     if hand == 0 {

@@ -52,7 +52,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 /// sacrifice (lands - 3) of them (controller chooses which to keep).
 fn etb_sac_lands(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let mut effects = Vec::new();

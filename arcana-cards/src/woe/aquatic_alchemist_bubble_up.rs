@@ -10,7 +10,7 @@
 //! Adventure "Bubble Up": Put target instant or sorcery card from your
 //! graveyard on top of your library.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

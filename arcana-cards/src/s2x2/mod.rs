@@ -63,3 +63,6 @@ pub mod liliana_the_last_hope;
 pub mod wrenn_and_six;
 pub mod nicol_bolas_god_pharaoh;
 pub mod aminatou_the_fateshifter;
+pub mod hellkite_overlord;
+pub mod magister_sphinx;
+pub mod marchesa_the_black_rose;

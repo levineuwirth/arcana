@@ -55,7 +55,7 @@ fn etb_life_gain(
     _: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Player(p) = target else { return Vec::new(); };
+    let TargetChoice::Player(_p) = target else { return Vec::new(); };
     // Count black and/or red creatures that opponent controls
     let black_count = script::count_matching(
         state,

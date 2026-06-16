@@ -89,3 +89,4 @@ pub mod the_abyss;
 pub mod spectral_shield;
 pub mod spirit_shackle;
 pub mod demonic_torment;
+pub mod cosmic_horror;

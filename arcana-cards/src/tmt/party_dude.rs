@@ -15,7 +15,7 @@
 //! - Level 3: +X/+X where X is hand size — modeled dynamically via script::hand_size.
 //! - Keyword "Food" on scryfall: represented by Level 1 ETB creating Food tokens.
 
-use arcana_core::effects::{CommodityToken, Effect, KeywordAbility};
+use arcana_core::effects::{CommodityToken, Effect};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

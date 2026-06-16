@@ -11,7 +11,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -56,7 +56,7 @@ fn on_etb(
     reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: intervening_if — "if cast from hand" not expressible; destroying all non-Dinosaur unconditionally.
-    let dinosaur_filter = script::subtype_filter(reg, "Dinosaur");
+    let _dinosaur_filter = script::subtype_filter(reg, "Dinosaur");
     let targets = script::ids_matching(
         state,
         &ObjectFilter::creature(),

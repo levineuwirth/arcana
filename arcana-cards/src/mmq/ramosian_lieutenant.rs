@@ -11,7 +11,6 @@ use arcana_core::registry::{
 };
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -21,7 +20,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(rebel);
-    let rebel_filter = script::subtype_filter(reg, "Rebel").with_max_cmc(3);
+    let _rebel_filter = script::subtype_filter(reg, "Rebel").with_max_cmc(3);
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{W}").expect("valid cost")),
@@ -57,7 +56,7 @@ fn tutor_rebel(
     ctx: &ActivationContext,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let rebel_id = reg.interner().lookup("Rebel").unwrap();
+    let _rebel_id = reg.interner().lookup("Rebel").unwrap();
     let filter = script::subtype_filter(reg, "Rebel").with_max_cmc(3);
     vec![Effect::TutorToBattlefield {
         player: ctx.controller,

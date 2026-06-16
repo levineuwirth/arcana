@@ -14,7 +14,6 @@ use arcana_core::registry::{
 };
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -76,7 +75,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn etb_seek(
     _state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: "seek two cards" (random search) not expressible

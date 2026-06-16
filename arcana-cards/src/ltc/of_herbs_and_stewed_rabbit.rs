@@ -3,13 +3,13 @@
 //! II — Draw a card. Create a Food token.
 //! III — Create a 1/1 white Halfling creature token for each Food you control.
 
-use arcana_core::effects::{CommodityToken, Effect, KeywordAbility, TokenDefinition};
+use arcana_core::effects::{CommodityToken, Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggerSelf, TriggeredAbilityDef,
 };

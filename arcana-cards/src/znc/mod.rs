@@ -7,3 +7,4 @@ pub mod dimir_locket;
 pub mod submerged_boneyard;
 pub mod military_intelligence;
 pub mod zendikar_s_roil;
+pub mod emeria_shepherd;

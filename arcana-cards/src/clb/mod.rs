@@ -127,3 +127,5 @@ pub mod vivien_champion_of_the_wilds;
 pub mod will_kenrith;
 pub mod xenagos_the_reveler;
 pub mod tasha_the_witch_queen;
+pub mod korlessa_scale_singer;
+pub mod pontiff_of_blight;

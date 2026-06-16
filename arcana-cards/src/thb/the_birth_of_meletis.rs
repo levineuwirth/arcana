@@ -20,7 +20,7 @@ use arcana_core::zones::Zone;
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("The Birth of Meletis");
     let saga_sub = reg.interner_mut().intern("Saga");
-    let plains_sub = reg.interner_mut().intern("Plains");
+    let _plains_sub = reg.interner_mut().intern("Plains");
     let _wall = reg.interner_mut().intern("Wall");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(saga_sub);

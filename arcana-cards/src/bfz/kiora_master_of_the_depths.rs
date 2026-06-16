@@ -22,7 +22,6 @@
 //!   Octopus tokens are part of the −8 RESOLUTION and ARE created.
 
 use arcana_core::effects::{Effect, EmblemDefinition, TokenDefinition};
-use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{

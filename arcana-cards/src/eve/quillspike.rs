@@ -4,7 +4,7 @@
 //! ActivationCost.remove_self_counter only removes from self, not another creature.
 //! Approximating as mana-only cost.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

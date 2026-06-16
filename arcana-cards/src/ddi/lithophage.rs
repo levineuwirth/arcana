@@ -2,7 +2,6 @@
 //! "At the beginning of your upkeep, sacrifice this creature unless you sacrifice a Mountain."
 //! GAP: "sacrifice a Mountain" as upkeep choice not in OptionalPaymentKind.
 
-use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

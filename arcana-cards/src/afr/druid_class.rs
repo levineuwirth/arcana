@@ -13,7 +13,6 @@
 //!   modeled as a ZoneChange triggered ability.
 
 use arcana_core::effects::Effect;
-use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -23,7 +22,7 @@ use arcana_core::registry::{
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::state::GameState;

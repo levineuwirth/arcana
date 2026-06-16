@@ -33,7 +33,7 @@ use arcana_core::triggers::{
 };
 use arcana_core::turn::Step;
 use arcana_core::types::{
-    CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine,
+    CardId, ColorSet, PtValue, SubtypeSet, TypeLine,
 };
 use arcana_core::zones::Zone;
 

@@ -54,3 +54,4 @@ pub mod suppression_field;
 pub mod clinging_darkness;
 pub mod mark_of_eviction;
 pub mod tattered_drake;
+pub mod screeching_griffin;

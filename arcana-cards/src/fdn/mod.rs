@@ -160,3 +160,7 @@ pub mod kaito_cunning_infiltrator;
 pub mod ajani_caller_of_the_pride;
 pub mod liliana_dreadhorde_general;
 pub mod chandra_flameshaper;
+pub mod swiftblade_vindicator;
+pub mod giant_cindermaw;
+pub mod angel_of_finality;
+pub mod healer_s_hawk;

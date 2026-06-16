@@ -10,7 +10,6 @@
 //! "whenever … attacks alone this turn" delayed trigger is not expressible.
 
 use arcana_core::effects::Effect;
-use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
@@ -21,10 +20,9 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggerSelf, TriggeredAbilityDef,
 };
 use arcana_core::turn::Phase;
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 use arcana_core::objects::NULL_OBJECT_ID;
-use arcana_core::effects::KeywordAbility;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("The Last Ronin");

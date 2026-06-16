@@ -12,7 +12,6 @@ use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
 };
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
@@ -61,9 +60,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn reanimate_if_ally_count(
-    state: &GameState,
+    _state: &GameState,
     ctx: &ActivationContext,
-    reg: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: "if its mana value ≤ Ally count" — mana value comparison with target card
     // not expressible; ignoring condition, always reanimating.

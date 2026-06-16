@@ -46,3 +46,5 @@ pub mod wine_of_blood_and_iron;
 pub mod seed_the_land;
 pub mod reverence;
 pub mod kagemaro_s_clutch;
+pub mod deathknell_kami;
+pub mod cloudhoof_kirin;

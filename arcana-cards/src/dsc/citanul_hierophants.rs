@@ -4,7 +4,6 @@
 //! GAP: "grant '{T}: Add {G}' to all creatures you control" is a static
 //! ability — no global activated-ability grant variant.
 
-use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};

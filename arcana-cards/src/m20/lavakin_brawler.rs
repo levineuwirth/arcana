@@ -2,7 +2,7 @@
 //! this creature attacks, it gets +1/+0 until end of turn for each Elemental
 //! you control."
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

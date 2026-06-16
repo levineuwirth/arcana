@@ -52,7 +52,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn wheel_effect(
     state: &GameState,
-    ctx: &ActivationContext,
+    _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let all_players = script::all_players(state);

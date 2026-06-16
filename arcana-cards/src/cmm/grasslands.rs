@@ -4,7 +4,6 @@
 //! battlefield, then shuffle."
 
 use arcana_core::effects::Effect;
-use arcana_core::mana::ManaUnit;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,

@@ -1,7 +1,7 @@
 //! Child of Thorns — `{G}` 1/1 green Spirit.
 //! "Sacrifice this creature: Target creature gets +1/+1 until end of turn."
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

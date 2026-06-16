@@ -8,13 +8,12 @@
 //! expressible. GAP: Chapter IV "exile all Warriors" conditional not
 //! expressible cleanly.
 
-use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggerSelf, TriggeredAbilityDef,
 };
@@ -115,7 +114,7 @@ fn add_lore_counter(_s: &GameState, trig: &PendingTrigger, _r: &CardRegistry) ->
     vec![Effect::AddCounters { target: trig.source, kind: CounterKind::Lore, count: 1 }]
 }
 
-fn chapter_i(state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
+fn chapter_i(state: &GameState, _trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
     let warrior = reg.interner().lookup("Warrior").expect("Warrior interned during register()");
     let all = script::all_players(state);
     let mut effects = Vec::new();

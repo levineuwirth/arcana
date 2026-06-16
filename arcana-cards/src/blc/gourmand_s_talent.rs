@@ -29,7 +29,7 @@ use arcana_core::objects::NULL_OBJECT_ID;
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Gourmand's Talent");
     let class_sub = reg.interner_mut().intern("Class");
-    let raccoon = reg.interner_mut().intern("Raccoon");
+    let _raccoon = reg.interner_mut().intern("Raccoon");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(class_sub);
     let chars = Characteristics {

@@ -1,7 +1,7 @@
 //! Nantuko Disciple — `{3}{G}` 2/2 green Insect Druid. "{G}, {T}: Target creature
 //! gets +2/+2 until end of turn."
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

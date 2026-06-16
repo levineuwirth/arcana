@@ -6,7 +6,7 @@
 //! GAP: phasing out the source is not expressible with the current Effect
 //! catalog. Goad + counter are emitted; phase-out is omitted.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

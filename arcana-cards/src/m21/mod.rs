@@ -95,3 +95,4 @@ pub mod garruk_unleashed;
 pub mod liliana_death_mage;
 pub mod chandra_heart_of_fire;
 pub mod ugin_the_spirit_dragon;
+pub mod bolt_hound;

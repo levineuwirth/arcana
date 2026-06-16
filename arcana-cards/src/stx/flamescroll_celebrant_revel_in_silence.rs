@@ -17,7 +17,7 @@
 //!   this turn" has no Effect variant — not modeled.
 //! - GAP: back-face-only triggered ability not modeled.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

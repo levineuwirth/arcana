@@ -118,7 +118,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_tutor_land(
     _state: &GameState,
     trig: &PendingTrigger,
-    reg: &CardRegistry,
+    _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // Search for any basic land card.
     let filter = arcana_core::targets::ObjectFilter::new()

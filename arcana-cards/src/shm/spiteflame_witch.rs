@@ -50,7 +50,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn each_player_loses_1(
     state: &GameState,
-    ctx: &ActivationContext,
+    _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let all = script::all_players(state);

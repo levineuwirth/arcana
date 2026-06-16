@@ -94,7 +94,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn exile_top_card(
     _state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: "exile top card of that player's library face down" not expressible;

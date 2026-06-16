@@ -33,7 +33,6 @@ use arcana_core::targets::{
 use arcana_core::types::{
     CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine,
 };
-use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Nicol Bolas, God-Pharaoh");

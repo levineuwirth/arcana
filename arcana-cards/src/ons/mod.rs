@@ -55,3 +55,5 @@ pub mod lavamancer_s_skill;
 pub mod crown_of_ascension;
 pub mod crown_of_suspicion;
 pub mod crown_of_vigor;
+pub mod pearlspear_courier;
+pub mod doubtless_one;

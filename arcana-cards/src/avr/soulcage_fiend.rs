@@ -45,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn dies_all_lose_life(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
     script::all_players(state)

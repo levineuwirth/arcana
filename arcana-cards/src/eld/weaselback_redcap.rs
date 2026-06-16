@@ -1,7 +1,7 @@
 //! Weaselback Redcap — `{R}` 1/1 red Goblin Knight.
 //! "{1}{R}: This creature gets +2/+0 until end of turn."
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

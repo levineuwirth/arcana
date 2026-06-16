@@ -26,7 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn cast_off_resolve(state: &GameState, entry: &StackEntry, reg: &CardRegistry) -> Vec<Effect> {
-    let giant_filter = script::subtype_filter(reg, "Giant");
+    let _giant_filter = script::subtype_filter(reg, "Giant");
     let non_giant_creatures = script::ids_matching(
         state,
         &ObjectFilter::creature().with_subtypes_any(vec![]),  // all creatures

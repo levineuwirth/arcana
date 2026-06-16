@@ -2,7 +2,7 @@
 //! creature: Create a 1/1 white Spirit creature token with flying at the
 //! beginning of the next end step."
 
-use arcana_core::effects::{Effect, TokenDefinition, KeywordAbility, DelayedWhen, DelayedAction};
+use arcana_core::effects::{Effect, TokenDefinition, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{

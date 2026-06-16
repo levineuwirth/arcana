@@ -28,3 +28,4 @@ pub mod ancestral_mask;
 pub mod stupefying_touch;
 pub mod roots;
 pub mod dack_fayden;
+pub mod silvos_rogue_elemental;

@@ -16,8 +16,8 @@ use arcana_core::zones::Zone;
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Enlightened Maniac");
     let human = reg.interner_mut().intern("Human");
-    let eldrazi = reg.interner_mut().intern("Eldrazi");
-    let horror = reg.interner_mut().intern("Horror");
+    let _eldrazi = reg.interner_mut().intern("Eldrazi");
+    let _horror = reg.interner_mut().intern("Horror");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     let chars = Characteristics {

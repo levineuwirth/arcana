@@ -3,7 +3,6 @@
 //! GAP: "exile the top creature card of your graveyard" as OptionalPaymentKind not supported;
 //! only Mana and Life variants exist. Using Sacrifice in else_effect as approximation.
 
-use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

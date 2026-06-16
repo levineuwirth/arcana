@@ -4,7 +4,6 @@
 //! GAP: "exile creature card from any graveyard" — TargetFilter::Card(Graveyard) works
 //! but we need optional choice with conditional. Using optional payment approximation.
 
-use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

@@ -13,7 +13,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount,
+    ControllerConstraint, TargetChoice, TargetCount,
     TargetFilter, TargetRequirement,
 };
 use arcana_core::triggers::{

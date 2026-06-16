@@ -23,11 +23,10 @@ use arcana_core::registry::{
 };
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetRequirement};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{
     CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine,
 };
-use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Grist, the Hunger Tide");

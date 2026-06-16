@@ -12,7 +12,7 @@
 //! three creatures of their choice.
 //! GAP: back-face-only triggered ability not modeled (opponent sacrifice 3 on transform).
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};

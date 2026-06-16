@@ -82,3 +82,4 @@ pub mod volrath_s_curse;
 pub mod flowstone_blade;
 pub mod spinal_graft;
 pub mod shackles;
+pub mod spike_breeder;

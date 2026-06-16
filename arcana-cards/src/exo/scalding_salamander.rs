@@ -51,7 +51,7 @@ fn attacks_deal_to_grounders(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let defender = match trig.defending_player() {
+    let _defender = match trig.defending_player() {
         Some(p) => p,
         None => return Vec::new(),
     };

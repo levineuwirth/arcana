@@ -121,7 +121,7 @@ fn chapter_iii(
     _: &CardRegistry,
 ) -> Vec<Effect> {
     let opponents = script::opponents(state, trig.controller);
-    let mut effects: Vec<Effect> = opponents.iter()
+    let effects: Vec<Effect> = opponents.iter()
         .map(|&p| Effect::DealDamage {
             target: DamageTarget::Player(p),
             amount: 1,

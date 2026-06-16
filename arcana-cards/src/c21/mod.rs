@@ -38,3 +38,5 @@ pub mod gift_of_paradise;
 pub mod jaya_ballard;
 pub mod gideon_champion_of_justice;
 pub mod garruk_primal_hunter;
+pub mod bold_plagiarist;
+pub mod ruxa_patient_professor;

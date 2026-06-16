@@ -53,3 +53,4 @@ pub mod crystalline_armor;
 pub mod creeping_crystal_coating;
 pub mod lost_in_memories;
 pub mod avatar_kyoshi_earthbender;
+pub mod nyla_shirshu_sleuth;

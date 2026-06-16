@@ -37,3 +37,5 @@ pub mod evanescent_intellect;
 pub mod ephara_s_radiance;
 pub mod grisly_transformation;
 pub mod claim_of_erebos;
+pub mod shrike_harpy;
+pub mod forgestoker_dragon;

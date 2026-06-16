@@ -20,7 +20,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Wellgabber Apothecary");
     let merfolk = reg.interner_mut().intern("Merfolk");
     let cleric = reg.interner_mut().intern("Cleric");
-    let kithkin = reg.interner_mut().intern("Kithkin");
+    let _kithkin = reg.interner_mut().intern("Kithkin");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(merfolk);
     subtypes.0.insert(cleric);

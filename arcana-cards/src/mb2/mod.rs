@@ -21,3 +21,5 @@ pub mod meandered_towershell;
 pub mod toddler_s_rage;
 pub mod wrenn_and_one;
 pub mod luxior_ignited;
+pub mod kozilek_compleated;
+pub mod creepy_crawler;

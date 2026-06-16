@@ -1,7 +1,7 @@
 //! Dauntless Veteran — `{1}{W}{W}` 2/2 white Human Soldier.
 //! "Whenever this creature attacks, other creatures you control get +1/+1 until end of turn."
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};

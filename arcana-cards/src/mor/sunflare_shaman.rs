@@ -58,7 +58,7 @@ fn deal_x_damage_to_target_and_self(
     ctx: &ActivationContext,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let elemental_filter = script::subtype_filter(reg, "Elemental");
+    let _elemental_filter = script::subtype_filter(reg, "Elemental");
     let x = script::graveyard_size(state, ctx.controller);
     // Count Elemental cards in graveyard — using graveyard_size as proxy
     // (exact subtype filter in graveyard not supported by script API)

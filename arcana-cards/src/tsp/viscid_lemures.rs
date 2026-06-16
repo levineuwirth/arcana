@@ -21,7 +21,7 @@ use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Viscid Lemures");
     let spirit = reg.interner_mut().intern("Spirit");
-    let swamp = reg.interner_mut().intern("Swamp");
+    let _swamp = reg.interner_mut().intern("Swamp");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(spirit);
     let chars = Characteristics {

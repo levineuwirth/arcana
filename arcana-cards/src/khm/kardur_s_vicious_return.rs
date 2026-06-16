@@ -132,7 +132,7 @@ fn chapter_i(
 
 fn chapter_ii(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
     let all_players = script::all_players(state);

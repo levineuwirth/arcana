@@ -14,7 +14,6 @@ use arcana_core::registry::{
 };
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -25,7 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(cleric);
-    let swamp_filter = arcana_core::targets::ObjectFilter::new().with_subtypes_any(vec![swamp]);
+    let _swamp_filter = arcana_core::targets::ObjectFilter::new().with_subtypes_any(vec![swamp]);
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{W}").expect("valid cost")),
@@ -54,7 +53,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn each_player_swamp_loss(
     state: &GameState,
-    ctx: &ActivationContext,
+    _ctx: &ActivationContext,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
     let swamp = reg.interner().lookup("Swamp").expect("Swamp interned");

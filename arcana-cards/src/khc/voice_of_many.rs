@@ -58,7 +58,7 @@ fn draw_per_opponent_fewer_creatures(
         trig.controller,
     );
     let opponents = script::opponents(state, trig.controller);
-    let count = opponents.iter().filter(|&&opp| {
+    let count = opponents.iter().filter(|&&_opp| {
         let opp_creatures = script::count_matching(
             state,
             &ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),

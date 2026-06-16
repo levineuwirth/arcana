@@ -13,7 +13,6 @@
 //! - Siege protector-designation simplified (any opponent may attack it).
 
 use arcana_core::effects::Effect;
-use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, EntersWithSpec};

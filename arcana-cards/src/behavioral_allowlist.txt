@@ -24,7 +24,9 @@ Baldur's Gate
 Bane's Contingency
 Basilisk Gate
 Beguiler of Wills
+Biogenic Ooze
 Blinkmoth Well
+Bloodtithe Harvester
 Boon of Boseiju
 Bulwark
 Burst of Energy
@@ -73,6 +75,7 @@ Durable Coilbug
 Elder Druid
 Electrosiphon
 Elvish Scout
+Elvish Vatkeeper
 Empress Galina
 Ertai's Trickery
 Evaporate
@@ -97,8 +100,8 @@ Gruesome Menagerie
 Gumdrop Poisoner
 Gustcloak Runner
 Gustcloak Sentinel
-Hajar, Loyal Bodyguard
 Hana Kami
+Haunted Dead
 Hinder
 Hisoka's Defiance
 Honden of Cleansing Fire
@@ -144,6 +147,7 @@ Mana Leak
 Mana Sculpt
 Mana Tithe
 Mandate of Abaddon
+Marchesa, the Black Rose
 Master Thief
 Medicine Runner
 Memory Lapse
@@ -157,6 +161,7 @@ Mindstatic
 Minor Misstep
 Mirror Universe
 Mishra's Helix
+Moonstone Harbinger
 Mu Yanling
 Mystic Genesis
 Nahiri, Heir of the Ancients
@@ -197,6 +202,7 @@ Rebuff the Wicked
 Reinterpret
 Reject Imperfection
 Relic Barrier
+Reluctant Dounguard
 Render Silent
 Repeat Offender
 Resurrected Cultist
@@ -276,3 +282,4 @@ Wirewood Lodge
 Wyll of the Blade Pact
 Ydwen Efreet
 Yomiji, Who Bars the Way
+Zephyr Scribe

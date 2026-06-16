@@ -17,7 +17,7 @@
 //! GAP: back-face-only triggered ability not modeled (attack trigger granting +2/+1
 //! conditional on sacrifice).
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};

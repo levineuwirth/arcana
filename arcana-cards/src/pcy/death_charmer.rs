@@ -7,7 +7,6 @@ use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ObjectFilter, TargetFilter};
 use arcana_core::triggers::{
@@ -52,7 +51,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn damage_effect(
-    state: &GameState,
+    _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {

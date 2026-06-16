@@ -10,3 +10,6 @@ pub mod song_of_e_rendil;
 pub mod in_the_darkness_bind_them;
 pub mod of_herbs_and_stewed_rabbit;
 pub mod nazg_l_battle_mace;
+pub mod aragorn_king_of_gondor;
+pub mod galadriel_light_of_valinor;
+pub mod omer_king_of_rohan;

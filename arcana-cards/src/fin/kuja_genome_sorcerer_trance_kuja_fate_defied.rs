@@ -16,7 +16,7 @@
 //!   double that damage instead. (GAP: replacement effect not modeled.)
 
 use arcana_core::conditions;
-use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};

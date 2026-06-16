@@ -48,7 +48,7 @@ fn etb_tutor_myr(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::creature()
+    let _filter = ObjectFilter::creature()
         .with_types(TypeLine::CREATURE.into());
     // GAP: subtype-filtered tutor — TutorToHand with Myr subtype filter requires
     // script::subtype_filter, but that uses reg; closest approximation uses creature filter.

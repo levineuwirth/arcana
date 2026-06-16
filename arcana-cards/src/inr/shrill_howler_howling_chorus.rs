@@ -11,7 +11,7 @@
 //! GAP: back-face-only triggered ability not modeled (combat damage -> create 3/2 colorless
 //! Eldrazi Horror token). The DamageDealt trigger fires on the back face only.
 
-use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{

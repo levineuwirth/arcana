@@ -51,7 +51,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn etb_land_tutor_all(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: "each player who discarded this way" conditional not modeled;

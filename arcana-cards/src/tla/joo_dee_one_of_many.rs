@@ -3,7 +3,7 @@
 //! an artifact or creature. Activate only as a sorcery."
 //! GAP: "Sacrifice an artifact or creature" (not self) — sacrifice field is self-sacrifice.
 
-use arcana_core::effects::{DiscardChoice, Effect};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{

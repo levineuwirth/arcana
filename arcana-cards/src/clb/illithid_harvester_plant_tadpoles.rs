@@ -4,7 +4,7 @@
 //! GAP: "turn creatures face down as 2/2 Horrors" — no Effect variant for face-down transforms.
 //! GAP: "they don't untap during their controllers' next untap step" — no ongoing untap prevention.
 
-use arcana_core::effects::{Effect, DiscardChoice};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, SpellAbilityDef};

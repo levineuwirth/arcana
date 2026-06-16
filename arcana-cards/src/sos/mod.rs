@@ -58,3 +58,4 @@ pub mod sundown_pass;
 pub mod stormcarved_coast;
 pub mod ral_zarek_guest_lecturer;
 pub mod professor_dellian_fel;
+pub mod shattered_acolyte;

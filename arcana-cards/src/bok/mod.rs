@@ -57,3 +57,5 @@ pub mod lifegift;
 pub mod in_the_web_of_war;
 pub mod phantom_wings;
 pub mod blessing_of_leeches;
+pub mod pus_kami;
+pub mod skullmane_baku;

@@ -4,7 +4,6 @@
 //! GAP: "exile top card; if land gets -4/-0, otherwise +2/+0" — conditional based on exiled card type not in catalog.
 
 use arcana_core::effects::Effect;
-use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{

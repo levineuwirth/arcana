@@ -54,7 +54,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn each_player_sacrifices_creature(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
     // Non-Vampire creature ("Vampire" interned in register; on a failed

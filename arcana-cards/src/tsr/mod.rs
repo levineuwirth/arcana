@@ -57,3 +57,5 @@ pub mod temporal_isolation;
 pub mod enslave;
 pub mod feebleness;
 pub mod utopia_vow;
+pub mod firemaw_kavu;
+pub mod nantuko_shaman;

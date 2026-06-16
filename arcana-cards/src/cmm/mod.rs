@@ -140,3 +140,4 @@ pub mod commodore_guff;
 pub mod jace_beleren;
 pub mod elite_scaleguard;
 pub mod narci_fable_singer;
+pub mod geode_golem;

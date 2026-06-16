@@ -3,7 +3,7 @@
 //! Discard-a-card cost modeled via `discard_other`.
 //! GAP: "becomes the color of your choice" — no Effect variant for color change.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

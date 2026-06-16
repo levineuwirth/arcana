@@ -99,3 +99,4 @@ pub mod vivien_arkbow_ranger;
 pub mod sorin_vampire_lord;
 pub mod a_sorin_imperious_bloodlord;
 pub mod chandra_flame_s_fury;
+pub mod dungeon_geists;

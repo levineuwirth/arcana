@@ -52,7 +52,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn etb_sacrifice(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
     script::all_players(state)

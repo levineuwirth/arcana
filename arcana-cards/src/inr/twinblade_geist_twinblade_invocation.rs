@@ -18,7 +18,7 @@
 //! replacement effect not modeled.
 //! GAP: back-face-only Aura grant ability not modeled.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};

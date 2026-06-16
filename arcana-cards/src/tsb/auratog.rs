@@ -3,7 +3,7 @@
 //! "Sacrifice an enchantment" cost modeled via `sacrifice_other` (enchantment
 //! filter).
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

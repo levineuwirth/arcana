@@ -24,3 +24,4 @@ pub mod eternal_warrior;
 pub mod ironclaw_curse;
 pub mod imposing_visage;
 pub mod the_brute;
+pub mod serra_paladin;

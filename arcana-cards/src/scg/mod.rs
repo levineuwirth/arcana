@@ -20,3 +20,4 @@ pub mod uncontrolled_infestation;
 pub mod extra_arms;
 pub mod dragon_wings;
 pub mod dragon_scales;
+pub mod woodcloaker;

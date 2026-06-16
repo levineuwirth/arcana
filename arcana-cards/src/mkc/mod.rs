@@ -38,3 +38,5 @@ pub mod vow_of_lightning;
 pub mod vow_of_duty;
 pub mod tezzeret_betrayer_of_flesh;
 pub mod elspeth_sun_s_champion;
+pub mod hidden_dragonslayer;
+pub mod alandra_sky_dreamer;

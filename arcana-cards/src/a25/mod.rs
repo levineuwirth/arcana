@@ -42,3 +42,4 @@ pub mod goblin_war_drums;
 pub mod caustic_tar;
 pub mod pillory_of_the_sleepless;
 pub mod freed_from_the_real;
+pub mod fortune_thief;

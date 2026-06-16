@@ -151,7 +151,7 @@ fn chapter_iii(
     );
     let opponents = script::opponents(state, trig.controller);
     let mut effects = Vec::new();
-    for opp in opponents {
+    for _opp in opponents {
         let their_creatures = script::count_matching(
             state,
             &ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),

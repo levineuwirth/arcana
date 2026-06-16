@@ -25,3 +25,4 @@ pub mod uncontrollable_anger;
 pub mod traveler_s_cloak;
 pub mod guardian_zendikon;
 pub mod power_of_fire;
+pub mod screaming_seahawk;

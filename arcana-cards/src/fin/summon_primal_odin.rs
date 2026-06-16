@@ -9,7 +9,7 @@
 //!      (GAP: granting triggered "lose the game" ability not expressible.)
 //! III — Hall of Sorrow — Draw two cards. Each player loses 2 life.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};

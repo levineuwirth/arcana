@@ -7,7 +7,7 @@
 //! II — Tap up to two target creatures. Put a stun counter on each.
 //! III — Draw a card for each tapped creature target opponent controls.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
@@ -22,7 +22,7 @@ use arcana_core::triggers::{
 };
 use arcana_core::turn::Phase;
 use arcana_core::types::{
-    CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine,
+    CardId, ColorSet, CounterKind, SubtypeSet, TypeLine,
 };
 use arcana_core::zones::Zone;
 

@@ -48,7 +48,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn on_dies_each_sac_land(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
     let land_filter = ObjectFilter::new().with_types(TypeLine::LAND.into());

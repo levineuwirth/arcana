@@ -47,7 +47,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn each_player_draw_discard(
     state: &GameState,
-    ctx: &ActivationContext,
+    _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let players = script::all_players(state);

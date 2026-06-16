@@ -6,7 +6,7 @@
 //! II — Add {R}{R}{R}.
 //! III — This Saga deals 5 damage to each opponent.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;

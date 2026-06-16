@@ -52,10 +52,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn etb_mill_all(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    let mut effects: Vec<Effect> = script::all_players(state)
+    let effects: Vec<Effect> = script::all_players(state)
         .into_iter()
         .map(|p| Effect::Mill { player: p, count: 2 })
         .collect();

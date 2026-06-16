@@ -32,7 +32,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+fn resolve(state: &GameState, _entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     // GAP: "if you sacrificed a permanent this way, you may return
     // another from your graveyard" reflexive clause is not
     // expressible. The Sacrifice filter cannot express

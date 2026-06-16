@@ -23,3 +23,4 @@ pub mod goblin_artillery;
 pub mod gorgon_flail;
 pub mod megrim;
 pub mod entangling_vines;
+pub mod sage_owl;

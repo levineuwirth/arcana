@@ -127,3 +127,5 @@ pub mod maggot_therapy;
 pub mod diplomatic_immunity;
 pub mod tiger_claws;
 pub mod ferocity;
+pub mod ramosian_captain;
+pub mod saprazzan_bailiff;

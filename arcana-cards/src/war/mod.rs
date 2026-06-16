@@ -77,3 +77,4 @@ pub mod teyo_the_shieldmage;
 pub mod jace_arcane_strategist;
 pub mod jaya_venerated_firemage;
 pub mod vraska_swarm_s_eminence;
+pub mod centaur_nurturer;

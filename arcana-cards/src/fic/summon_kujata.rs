@@ -10,7 +10,7 @@
 //! GAP: Chapter III "deal damage equal to discarded card's mana value" not
 //! computable (no access to discarded card's CMC).
 
-use arcana_core::effects::{DiscardChoice, Effect};
+use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -161,8 +161,8 @@ fn chapter_iii_fire(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let opponents = script::opponents(state, trig.controller);
-    let mut effects = vec![
+    let _opponents = script::opponents(state, trig.controller);
+    let effects = vec![
         Effect::Discard { player: trig.controller, count: 1, choice: arcana_core::effects::DiscardChoice::ControllerChooses },
         Effect::DrawCards { player: trig.controller, count: 2 },
     ];

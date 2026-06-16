@@ -34,7 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn resolve(
     state: &GameState,
-    entry: &StackEntry,
+    _entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
     let zombie = reg.interner().lookup("Zombie")

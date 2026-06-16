@@ -27,3 +27,4 @@ pub mod trenzalore_clocktower;
 pub mod ominous_cemetery;
 pub mod become_the_pilot;
 pub mod k_9_mark_i;
+pub mod time_beetle;

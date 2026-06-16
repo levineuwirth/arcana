@@ -49,7 +49,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn on_end_step(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // Each player discards their hand (use hand_size as count)

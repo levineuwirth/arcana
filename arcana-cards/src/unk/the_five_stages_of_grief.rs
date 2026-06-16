@@ -22,7 +22,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggerSelf, TriggeredAbilityDef,
 };
 use arcana_core::turn::Phase;
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -156,7 +156,7 @@ fn chapter_ii(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) ->
     vec![Effect::Goad { target: *id, goader: trig.controller, duration: Duration::EndOfTurn }]
 }
 
-fn chapter_iii(state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+fn chapter_iii(state: &GameState, _trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     let all = script::all_players(state);
     // GAP: "artifact, enchantment, or token" filter; using creature as placeholder
     all.into_iter().map(|p| Effect::Sacrifice {
@@ -166,7 +166,7 @@ fn chapter_iii(state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) ->
     }).collect()
 }
 
-fn chapter_iv(state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+fn chapter_iv(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     // GAP: "loses all abilities" not expressible
     vec![Effect::CreateCommodityToken {
         controller: trig.controller,

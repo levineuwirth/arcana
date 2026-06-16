@@ -63,3 +63,7 @@ pub mod a_sigil_of_myrkul;
 pub mod seatower_imprisonment;
 pub mod craving_of_yeenoghu;
 pub mod tasha_unholy_archmage;
+pub mod rasaad_monk_of_sel_ne;
+pub mod wyll_pact_bound_duelist;
+pub mod klement_knowledge_acolyte;
+pub mod lulu_curious_hollyphant;

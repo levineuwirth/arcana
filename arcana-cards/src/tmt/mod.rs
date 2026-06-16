@@ -44,3 +44,5 @@ pub mod does_machines;
 pub mod hard_won_jitte;
 pub mod retro_mutation;
 pub mod uneasy_alliance;
+pub mod mondo_gecko;
+pub mod raph_mikey_troublemakers;

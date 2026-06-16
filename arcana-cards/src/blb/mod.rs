@@ -78,3 +78,5 @@ pub mod charmed_sleep;
 pub mod ral_crackling_wit;
 pub mod skyskipper_duo;
 pub mod reptilian_recruiter;
+pub mod maha_its_feathers_night;
+pub mod moonstone_harbinger;

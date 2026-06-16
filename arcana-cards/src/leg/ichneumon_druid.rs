@@ -4,7 +4,6 @@
 //! GAP: "other than the first spell per turn" per-player count tracking not in engine.
 
 use arcana_core::effects::Effect;
-use arcana_core::events::GameEvent;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};

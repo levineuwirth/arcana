@@ -17,3 +17,4 @@ pub mod arcanum_wings;
 pub mod pooling_venom;
 pub mod fatal_attraction;
 pub mod petrified_plating;
+pub mod maelstrom_djinn;

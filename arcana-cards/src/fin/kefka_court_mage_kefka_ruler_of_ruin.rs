@@ -119,7 +119,7 @@ fn enters_or_attacks_discard(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // Each player discards a card.
-    let mut effects: Vec<Effect> = script::all_players(state)
+    let effects: Vec<Effect> = script::all_players(state)
         .into_iter()
         .map(|p| Effect::Discard {
             player: p,

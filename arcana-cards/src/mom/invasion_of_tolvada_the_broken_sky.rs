@@ -26,7 +26,7 @@ use arcana_core::triggers::{
 };
 use arcana_core::turn::Step;
 use arcana_core::types::{
-    CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine,
+    CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine,
 };
 use arcana_core::zones::Zone;
 

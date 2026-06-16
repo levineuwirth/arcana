@@ -1,7 +1,7 @@
 //! Thrilling Discovery — `{R}{W}` sorcery. "You gain 2 life. Then you
 //! may discard two cards. If you do, draw three cards."
 
-use arcana_core::effects::{DiscardChoice, Effect};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};

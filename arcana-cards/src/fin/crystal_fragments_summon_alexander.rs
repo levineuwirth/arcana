@@ -46,7 +46,7 @@ use arcana_core::triggers::{
 };
 use arcana_core::turn::Phase;
 use arcana_core::types::{
-    CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine,
+    CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine,
 };
 use arcana_core::effects::KeywordAbility;
 use arcana_core::objects::NULL_OBJECT_ID;
@@ -205,7 +205,7 @@ fn add_lore_counter(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegist
 
 /// Chapters I and II both prevent all damage that would be dealt to
 /// creatures you control this turn.
-fn chapter_i_ii(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+fn chapter_i_ii(_state: &GameState, _trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     vec![Effect::PreventDamageFrom {
         source_filter: ObjectFilter::permanent(),
         target_filter: TargetFilter::Permanent(

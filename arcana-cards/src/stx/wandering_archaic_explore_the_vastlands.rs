@@ -19,7 +19,7 @@
 //!      The effect is approximated as two DigTopN calls (each GAP'd below) but the
 //!      "same 5 cards" constraint can't be modeled; we emit Vec::new() for the whole back effect.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, SpellAbilityDef};

@@ -53,7 +53,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn each_player_sacrifices(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // The active player (whose upkeep it is) sacrifices an artifact, creature, or

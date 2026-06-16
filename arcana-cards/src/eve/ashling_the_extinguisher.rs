@@ -4,7 +4,6 @@
 //! that creature."
 
 use arcana_core::effects::Effect;
-use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};

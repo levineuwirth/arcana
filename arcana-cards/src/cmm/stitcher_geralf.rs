@@ -58,7 +58,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn geralf_ability(
     state: &GameState,
-    ctx: &ActivationContext,
+    _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: exile-milled-creatures + X/X-Zombie not expressible

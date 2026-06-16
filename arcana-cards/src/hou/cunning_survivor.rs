@@ -3,7 +3,7 @@
 //! and can't be blocked this turn."
 //! GAP: "can't be blocked" effect is not in the Effect catalog.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

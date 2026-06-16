@@ -44,3 +44,4 @@ pub mod tightening_coils;
 pub mod goblin_war_paint;
 pub mod gideon_ally_of_zendikar;
 pub mod kiora_master_of_the_depths;
+pub mod brood_butcher;

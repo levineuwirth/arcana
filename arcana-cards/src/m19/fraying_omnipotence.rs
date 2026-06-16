@@ -38,7 +38,7 @@ fn half_round_up(n: u32) -> u32 {
 
 fn resolve(
     state: &GameState,
-    entry: &StackEntry,
+    _entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let mut effects: Vec<Effect> = Vec::new();

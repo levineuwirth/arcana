@@ -9,7 +9,7 @@ use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
 use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Body of Research");
@@ -37,7 +37,7 @@ fn resolve(
     entry: &StackEntry,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let lib_count = script::library_size(state, entry.controller);
+    let _lib_count = script::library_size(state, entry.controller);
     let fractal = reg.interner().lookup("Fractal")
         .expect("Fractal interned during register()");
     let mut subtypes = SubtypeSet::default();

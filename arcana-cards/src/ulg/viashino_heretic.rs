@@ -5,7 +5,6 @@
 //! of a targeted permanent.
 
 use arcana_core::effects::Effect;
-use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -65,7 +64,7 @@ fn destroy_artifact_deal_mana_value(
 ) -> Vec<Effect> {
     let Some(target) = ctx.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    let target_controller = script::target_controller(state, *id, ctx.controller);
+    let _target_controller = script::target_controller(state, *id, ctx.controller);
     // GAP: no script helper for mana value of targeted permanent; omitting damage.
     vec![
         Effect::DestroyPermanent { target: *id },

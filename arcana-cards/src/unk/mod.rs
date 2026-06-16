@@ -59,3 +59,7 @@ pub mod taught_by_serra;
 pub mod taught_by_vito;
 pub mod taught_by_bruce_tarl;
 pub mod the_kami_knight;
+pub mod the_multifaceted_phyrexian;
+pub mod x_mystery_racer;
+pub mod phyrexian_cytoshaper;
+pub mod the_master_of_cuisine;

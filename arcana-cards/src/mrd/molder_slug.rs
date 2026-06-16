@@ -51,7 +51,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn on_each_upkeep(
     state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // Each player sacrifices an artifact; use Sequence for each player

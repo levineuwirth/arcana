@@ -48,7 +48,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn protection_from_everything(
     _state: &GameState,
-    ctx: &ActivationContext,
+    _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: "protection from everything" — only the prevent-all-damage-to-you

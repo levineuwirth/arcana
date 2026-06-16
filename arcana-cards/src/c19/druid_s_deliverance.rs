@@ -41,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn resolve(
     _state: &GameState,
-    entry: &StackEntry,
+    _entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: cannot restrict prevention to *combat* damage only (engine

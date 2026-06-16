@@ -626,6 +626,8 @@ pub mod fra;
 
 pub mod pcel;
 
+pub mod onc;
+
 /// Staging area for arcana-gen card generations. See the module
 /// docs — this is intermediate storage, not a stable public API.
 pub mod generated;

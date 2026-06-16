@@ -54,7 +54,7 @@ fn on_etb(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let opponents = script::opponents(state, trig.controller);
-    let mut effects: Vec<Effect> = opponents
+    let effects: Vec<Effect> = opponents
         .into_iter()
         .map(|p| Effect::Discard {
             player: p,

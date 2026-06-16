@@ -21,7 +21,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Prince Imrahil the Fair");
     let human = reg.interner_mut().intern("Human");
     let noble = reg.interner_mut().intern("Noble");
-    let soldier = reg.interner_mut().intern("Soldier");
+    let _soldier = reg.interner_mut().intern("Soldier");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human);
     subtypes.0.insert(noble);

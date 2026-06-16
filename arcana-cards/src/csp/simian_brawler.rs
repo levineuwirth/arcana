@@ -2,7 +2,7 @@
 //! "Discard a land card: This creature gets +1/+1 until end of turn."
 //! "Discard a land card" cost modeled via `discard_other` (land-card filter).
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

@@ -2,7 +2,6 @@
 //! "Hellbent — As long as you have no cards in hand, Sliver creatures you control have '{T}: This creature deals 1 damage to target player or planeswalker.'"
 //! GAP: "Hellbent — as long as you have no cards in hand" conditional static ability grant — no static layer effect supported for conditional grant-to-all-Slivers; emitting Vec::new().
 
-use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};

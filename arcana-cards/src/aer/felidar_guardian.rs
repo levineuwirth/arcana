@@ -2,7 +2,7 @@
 //! "When this creature enters, you may exile another target permanent you
 //! control, then return that card to the battlefield under its owner's control."
 
-use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};

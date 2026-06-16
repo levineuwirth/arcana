@@ -105,3 +105,5 @@ pub mod fungal_fortitude;
 pub mod dead_weight;
 pub mod petrify;
 pub mod zoetic_glyph;
+pub mod hermitic_nautilus;
+pub mod marauding_brinefang;
