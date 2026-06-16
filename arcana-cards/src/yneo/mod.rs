@@ -5,3 +5,4 @@ pub mod molten_impact;
 pub mod undercity_plunder;
 pub mod soul_servitude;
 pub mod holographic_double;
+pub mod forceful_cultivator;

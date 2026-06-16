@@ -45,3 +45,5 @@ pub mod spectral_flight;
 pub mod skeletal_grimace;
 pub mod wreath_of_geists;
 pub mod gruesome_deformity;
+pub mod manor_gargoyle;
+pub mod bitterheart_witch;

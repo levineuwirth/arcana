@@ -122,3 +122,5 @@ pub mod kaya_the_inexorable;
 pub mod a_tyvar_kell;
 pub mod tyvar_kell;
 pub mod righteous_valkyrie;
+pub mod spirit_of_the_aldergard;
+pub mod stalwart_valkyrie;

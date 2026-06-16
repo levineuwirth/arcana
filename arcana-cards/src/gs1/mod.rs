@@ -23,3 +23,4 @@ pub mod sacred_white_deer;
 pub mod hardened_scale_armor;
 pub mod mu_yanling;
 pub mod jiang_yanggu;
+pub mod welkin_tern;

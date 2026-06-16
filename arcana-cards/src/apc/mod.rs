@@ -38,3 +38,4 @@ pub mod manacles_of_decay;
 pub mod foul_presence;
 pub mod putrid_warrior;
 pub mod rakavolver;
+pub mod anavolver;

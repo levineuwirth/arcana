@@ -31,3 +31,4 @@ pub mod daretti_ingenious_iconoclast;
 pub mod volatile_chimera;
 pub mod paliano_vanguard;
 pub mod menagerie_liberator;
+pub mod vertigo_spawn;

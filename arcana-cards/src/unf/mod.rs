@@ -37,3 +37,4 @@ pub mod comet_stellar_pup;
 pub mod space_beleren;
 pub mod quick_fixer;
 pub mod glitterflitter;
+pub mod lineprancers;

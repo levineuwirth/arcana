@@ -77,3 +77,6 @@ pub mod fire_rim_form;
 pub mod wingspan_stride;
 pub mod elspeth_storm_slayer;
 pub mod starry_eyed_skyrider;
+pub mod bearer_of_glory;
+pub mod wayspeaker_bodyguard;
+pub mod tempest_hawk;

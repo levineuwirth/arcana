@@ -11,3 +11,4 @@ pub mod joraga_bard;
 pub mod bloodthrone_vampire;
 pub mod frontier_guide;
 pub mod bloodrite_invoker;
+pub mod graypelt_hunter;

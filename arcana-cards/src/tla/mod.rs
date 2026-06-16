@@ -65,3 +65,4 @@ pub mod honest_work;
 pub mod swampsnare_trap;
 pub mod yue_the_moon_spirit;
 pub mod flopsie_bumi_s_buddy;
+pub mod geyser_leaper;

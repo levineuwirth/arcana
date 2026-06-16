@@ -164,3 +164,6 @@ pub mod swiftblade_vindicator;
 pub mod giant_cindermaw;
 pub mod angel_of_finality;
 pub mod healer_s_hawk;
+pub mod zimone_paradox_sculptor;
+pub mod ghalta_primal_hunger;
+pub mod billowing_shriekmass;

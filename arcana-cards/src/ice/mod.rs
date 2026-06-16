@@ -49,3 +49,4 @@ pub mod seizures;
 pub mod earthlore;
 pub mod aggression;
 pub mod hot_springs;
+pub mod yavimaya_gnats;

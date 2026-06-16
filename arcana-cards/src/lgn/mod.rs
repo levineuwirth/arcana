@@ -27,3 +27,4 @@ pub mod goblin_lookout;
 pub mod magma_sliver;
 pub mod deathmark_prelate;
 pub mod goblin_assassin;
+pub mod zombie_brute;

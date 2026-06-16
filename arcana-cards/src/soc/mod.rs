@@ -132,3 +132,4 @@ pub mod spirit_mantle;
 pub mod chains_of_custody;
 pub mod sentinel_s_eyes;
 pub mod nether_traitor;
+pub mod stormcatch_mentor;

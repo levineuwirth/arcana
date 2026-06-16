@@ -14,3 +14,4 @@ pub mod chicken_egg;
 pub mod blacker_lotus;
 pub mod chaos_confetti;
 pub mod fowl_play;
+pub mod b_f_m_big_furry_monster;

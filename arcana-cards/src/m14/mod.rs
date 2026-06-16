@@ -43,3 +43,5 @@ pub mod garruk_caller_of_beasts;
 pub mod jace_memory_adept;
 pub mod liliana_of_the_dark_realms;
 pub mod colossal_whale;
+pub mod nephalia_seakite;
+pub mod witchstalker;

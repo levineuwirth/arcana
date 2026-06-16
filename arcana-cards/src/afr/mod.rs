@@ -89,3 +89,6 @@ pub mod shessra_death_s_whisper;
 pub mod shambling_ghast;
 pub mod werewolf_pack_leader;
 pub mod arcane_investigator;
+pub mod lightfoot_rogue;
+pub mod djinni_windseer;
+pub mod iymrith_desert_doom;

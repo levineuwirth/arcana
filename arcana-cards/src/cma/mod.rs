@@ -23,3 +23,6 @@ pub mod surveyor_s_scope;
 pub mod righteous_cause;
 pub mod wolfcaller_s_howl;
 pub mod leafdrake_roost;
+pub mod wren_s_run_packmaster;
+pub mod banshee_of_the_dread_choir;
+pub mod cloudthresher;

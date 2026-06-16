@@ -23,3 +23,4 @@ pub mod wrenn_and_one;
 pub mod luxior_ignited;
 pub mod kozilek_compleated;
 pub mod creepy_crawler;
+pub mod omnipresent_impostor;

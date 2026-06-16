@@ -66,3 +66,4 @@ pub mod aminatou_the_fateshifter;
 pub mod hellkite_overlord;
 pub mod magister_sphinx;
 pub mod marchesa_the_black_rose;
+pub mod ghave_guru_of_spores;

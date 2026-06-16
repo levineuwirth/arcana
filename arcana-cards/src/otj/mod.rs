@@ -64,3 +64,4 @@ pub mod stop_cold;
 pub mod oko_the_ringleader;
 pub mod jace_reawakened;
 pub mod roxanne_starfall_savant;
+pub mod cactusfolk_sureshot;

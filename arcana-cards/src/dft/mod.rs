@@ -54,3 +54,5 @@ pub mod chandra_spark_hunter;
 pub mod the_aetherspark;
 pub mod scrounging_skyray;
 pub mod gearseeker_serpent;
+pub mod migrating_ketradon;
+pub mod vnwxt_verbose_host;

@@ -42,3 +42,4 @@ pub mod flight;
 pub mod ice_cage;
 pub mod brink_of_disaster;
 pub mod sorin_markov;
+pub mod aven_fleetwing;

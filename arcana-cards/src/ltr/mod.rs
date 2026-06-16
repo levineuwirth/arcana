@@ -91,3 +91,4 @@ pub mod morgul_knife_wound;
 pub mod fog_on_the_barrow_downs;
 pub mod dunland_crebain;
 pub mod landroval_horizon_witness;
+pub mod frodo_determined_hero;

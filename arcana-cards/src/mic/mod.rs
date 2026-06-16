@@ -18,3 +18,4 @@ pub mod endless_ranks_of_the_dead;
 pub mod death_s_presence;
 pub mod open_the_graves;
 pub mod liliana_death_s_majesty;
+pub mod somberwald_beastmaster;

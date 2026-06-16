@@ -50,3 +50,5 @@ pub mod unquenchable_thirst;
 pub mod nissa_genesis_mage;
 pub mod samut_the_tested;
 pub mod nicol_bolas_the_deceiver;
+pub mod dauntless_aven;
+pub mod spellweaver_eternal;

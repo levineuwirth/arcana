@@ -58,3 +58,5 @@ pub mod caught_in_the_brights;
 pub mod ajani_valiant_protector;
 pub mod tezzeret_the_schemer;
 pub mod tezzeret_master_of_metal;
+pub mod peema_aether_seer;
+pub mod aetherstream_leopard;

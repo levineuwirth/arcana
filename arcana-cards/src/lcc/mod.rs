@@ -44,3 +44,5 @@ pub mod sorin_lord_of_innistrad;
 pub mod oathsworn_vampire;
 pub mod crossway_troublemakers;
 pub mod admiral_brass_unsinkable;
+pub mod mist_dancer;
+pub mod bronzebeak_foragers;

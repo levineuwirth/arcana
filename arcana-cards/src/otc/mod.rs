@@ -32,3 +32,5 @@ pub mod scattered_groves;
 pub mod dunes_of_the_dead;
 pub mod dream_thief_s_bandana;
 pub mod laurine_the_diversion;
+pub mod orochi_soul_reaver;
+pub mod void_attendant;

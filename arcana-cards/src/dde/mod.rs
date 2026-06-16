@@ -10,3 +10,6 @@ pub mod shivan_oasis;
 pub mod phyrexian_vault;
 pub mod puppet_strings;
 pub mod hornet_cannon;
+pub mod charging_troll;
+pub mod treva_the_renewer;
+pub mod thornscape_apprentice;

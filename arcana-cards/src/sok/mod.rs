@@ -48,3 +48,4 @@ pub mod reverence;
 pub mod kagemaro_s_clutch;
 pub mod deathknell_kami;
 pub mod cloudhoof_kirin;
+pub mod sekki_seasons_guide;

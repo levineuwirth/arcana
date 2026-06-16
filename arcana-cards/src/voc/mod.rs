@@ -15,3 +15,5 @@ pub mod field_of_souls;
 pub mod haunted_library;
 pub mod underworld_connections;
 pub mod dovin_grand_arbiter;
+pub mod necropolis_regent;
+pub mod rhoda_geist_avenger;

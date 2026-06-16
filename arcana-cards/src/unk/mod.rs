@@ -63,3 +63,5 @@ pub mod the_multifaceted_phyrexian;
 pub mod x_mystery_racer;
 pub mod phyrexian_cytoshaper;
 pub mod the_master_of_cuisine;
+pub mod the_good_time_sleuth;
+pub mod mister_cheddar_cheese_sliver;

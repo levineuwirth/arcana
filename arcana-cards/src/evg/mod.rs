@@ -9,3 +9,4 @@ pub mod goblin_burrows;
 pub mod wirewood_lodge;
 pub mod slate_of_ancestry;
 pub mod boggart_shenanigans;
+pub mod reckless_one;

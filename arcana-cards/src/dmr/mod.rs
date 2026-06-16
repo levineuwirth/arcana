@@ -71,3 +71,5 @@ pub mod undying_rage;
 pub mod lightning_reflexes;
 pub mod leaden_fists;
 pub mod quicksilver_dagger;
+pub mod icatian_javelineers;
+pub mod pyre_zombie;

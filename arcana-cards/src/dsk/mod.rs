@@ -69,3 +69,5 @@ pub mod unable_to_scream;
 pub mod kaito_bane_of_nightmares;
 pub mod entity_tracker;
 pub mod the_swarmweaver;
+pub mod grasping_longneck;
+pub mod enduring_curiosity;

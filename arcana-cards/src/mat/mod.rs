@@ -6,3 +6,4 @@ pub mod arni_metalbrow;
 pub mod drannith_ruins;
 pub mod training_grounds;
 pub mod leyline_immersion;
+pub mod urborg_scavengers;

@@ -65,3 +65,6 @@ pub mod spiteful_motives;
 pub mod hope_against_hope;
 pub mod ghostly_wings;
 pub mod sorin_grim_nemesis;
+pub mod ember_eye_wolf;
+pub mod rancid_rats;
+pub mod olivia_mobilized_for_war;

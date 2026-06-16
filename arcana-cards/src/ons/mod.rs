@@ -57,3 +57,4 @@ pub mod crown_of_suspicion;
 pub mod crown_of_vigor;
 pub mod pearlspear_courier;
 pub mod doubtless_one;
+pub mod shaleskin_bruiser;

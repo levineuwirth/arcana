@@ -75,3 +75,4 @@ pub mod dramatic_accusation;
 pub mod curious_cadaver;
 pub mod hedge_whisperer;
 pub mod sanctuary_wall;
+pub mod living_conundrum;

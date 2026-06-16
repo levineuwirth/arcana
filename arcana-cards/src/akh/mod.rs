@@ -55,3 +55,4 @@ pub mod cartouche_of_ambition;
 pub mod consuming_fervor;
 pub mod gideon_of_the_trials;
 pub mod gideon_martial_paragon;
+pub mod companion_of_the_trials;

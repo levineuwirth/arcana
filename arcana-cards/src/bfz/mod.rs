@@ -45,3 +45,6 @@ pub mod goblin_war_paint;
 pub mod gideon_ally_of_zendikar;
 pub mod kiora_master_of_the_depths;
 pub mod brood_butcher;
+pub mod forerunner_of_slaughter;
+pub mod undergrowth_champion;
+pub mod drana_s_emissary;

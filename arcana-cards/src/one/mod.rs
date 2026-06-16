@@ -58,3 +58,5 @@ pub mod nahiri_the_unforgiving;
 pub mod koth_fire_of_resistance;
 pub mod lukka_bound_to_ruin;
 pub mod the_eternal_wanderer;
+pub mod migloz_maze_crusher;
+pub mod soulless_jailer;

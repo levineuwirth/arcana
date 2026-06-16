@@ -18,3 +18,4 @@ pub mod brotherhood_headquarters;
 pub mod rooftop_bypass;
 pub mod detained_by_legionnaires;
 pub mod bayek_of_siwa;
+pub mod mary_read_and_anne_bonny;

@@ -21,3 +21,6 @@ pub mod acquired_mutation;
 pub mod nerd_rage;
 pub mod grim_reaper_s_sprint;
 pub mod young_deathclaws;
+pub mod gunner_conscript;
+pub mod raul_trouble_shooter;
+pub mod craig_boone_novac_guard;

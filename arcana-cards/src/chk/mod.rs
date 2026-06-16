@@ -89,3 +89,4 @@ pub mod midnight_covenant;
 pub mod mystic_restraints;
 pub mod vigilance;
 pub mod soratami_mirror_mage;
+pub mod soratami_cloudskater;

@@ -32,3 +32,5 @@ pub mod buried_ruin;
 pub mod mystic_monastery;
 pub mod irrigated_farmland;
 pub mod rocky_tar_pit;
+pub mod crystalline_crawler;
+pub mod multani_yavimaya_s_avatar;

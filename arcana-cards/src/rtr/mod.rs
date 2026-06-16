@@ -57,3 +57,4 @@ pub mod racecourse_fury;
 pub mod deviant_glee;
 pub mod chronic_flooding;
 pub mod sluiceway_scorpion;
+pub mod volatile_rig;

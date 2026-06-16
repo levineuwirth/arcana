@@ -37,3 +37,4 @@ pub mod drake_umbra;
 pub mod lust_for_war;
 pub mod crab_umbra;
 pub mod sarkhan_the_mad;
+pub mod hellcarver_demon;

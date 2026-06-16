@@ -19,3 +19,5 @@ pub mod angelic_gift;
 pub mod indomitable_might;
 pub mod kenrith_s_transformation;
 pub mod fleecemane_lion;
+pub mod shivan_hellkite;
+pub mod hoard_smelter_dragon;

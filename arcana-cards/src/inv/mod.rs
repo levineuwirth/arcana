@@ -69,3 +69,4 @@ pub mod wings_of_hope;
 pub mod mourning;
 pub mod tainted_well;
 pub mod crown_of_flames;
+pub mod voracious_cobra;

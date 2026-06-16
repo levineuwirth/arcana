@@ -67,3 +67,5 @@ pub mod rasaad_monk_of_sel_ne;
 pub mod wyll_pact_bound_duelist;
 pub mod klement_knowledge_acolyte;
 pub mod lulu_curious_hollyphant;
+pub mod skanos_blue_dragon_vassal;
+pub mod sarevok_divine_usurper;

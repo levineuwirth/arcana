@@ -63,3 +63,4 @@ pub mod chosen_by_heliod;
 pub mod fate_foretold;
 pub mod ashiok_nightmare_weaver;
 pub mod colossus_of_akros;
+pub mod agent_of_the_fates;

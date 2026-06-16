@@ -87,3 +87,5 @@ pub mod burning_anger;
 pub mod jeska_thrice_reborn;
 pub mod tevesh_szat_doom_of_fools;
 pub mod gor_muldrak_amphinologist;
+pub mod lightning_rig_crew;
+pub mod kamahl_heart_of_krosa;

@@ -64,3 +64,4 @@ pub mod triclopean_sight;
 pub mod zephyr_net;
 pub mod protective_bubble;
 pub mod squeaking_pie_sneak;
+pub mod nova_chaser;

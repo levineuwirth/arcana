@@ -82,3 +82,4 @@ pub mod noggle_the_mind;
 pub mod ajani_outland_chaperone;
 pub mod reluctant_dounguard;
 pub mod boggart_cursecrafter;
+pub mod mutable_explorer;

@@ -18,3 +18,4 @@ pub mod runed_stalactite;
 pub mod paradise_mantle;
 pub mod elspeth_knight_errant;
 pub mod sarkhan_vol;
+pub mod tidehollow_sculler;

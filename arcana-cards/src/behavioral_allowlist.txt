@@ -45,6 +45,7 @@ Clone Legion
 Cloudpost
 Coffin Puppets
 Commodore Guff
+Companion of the Trials
 Concerted Defense
 Convolute
 Corridor Monitor
@@ -55,6 +56,7 @@ Counterpoint
 Counterspell
 Dack Fayden
 Dark Suspicions
+Dauntless Aven
 Dazzling Denial
 Death Watch
 Delay
@@ -94,6 +96,7 @@ Ghoulsteed
 Glimmerpost
 Goblin Assassin
 Goblin Psychopath
+Godo, Bandit Warlord
 Greenside Watcher
 Groundskeeper
 Gruesome Menagerie
@@ -134,11 +137,13 @@ Kumano Faces Kakkazan
 Lapse of Certainty
 Lay Bare
 Lifeline
+Lightning-Rig Crew
 Lingering Phantom
 Liquify
 Lofty Denial
 Loyal Retainers
 Lunar Force
+Mage-Ring Responder
 Magebane Lizard
 Magewright's Stone
 Mana Crypt
@@ -152,6 +157,7 @@ Master Thief
 Medicine Runner
 Memory Lapse
 Merchant of Many Hats
+Merrow Bonegnawer
 Merrow Commerce
 Midnight Guard
 Mijae Djinn
@@ -275,6 +281,7 @@ Unified Lunge
 Unravel
 Vedalken Plotter
 Voidslime
+Volatile Rig
 Voltaic Construct
 Warren Pilferers
 Wild Wurm

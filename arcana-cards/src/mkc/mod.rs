@@ -40,3 +40,5 @@ pub mod tezzeret_betrayer_of_flesh;
 pub mod elspeth_sun_s_champion;
 pub mod hidden_dragonslayer;
 pub mod alandra_sky_dreamer;
+pub mod master_of_death;
+pub mod shimmer_dragon;

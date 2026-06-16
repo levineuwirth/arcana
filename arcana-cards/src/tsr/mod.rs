@@ -59,3 +59,7 @@ pub mod feebleness;
 pub mod utopia_vow;
 pub mod firemaw_kavu;
 pub mod nantuko_shaman;
+pub mod dralnu_lich_lord;
+pub mod fathom_seer;
+pub mod jaya_ballard_task_mage;
+pub mod bonded_fetch;

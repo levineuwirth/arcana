@@ -55,3 +55,4 @@ pub mod strange_augmentation;
 pub mod choking_restraints;
 pub mod boon_of_emrakul;
 pub mod prophetic_ravings;
+pub mod eternal_scourge;

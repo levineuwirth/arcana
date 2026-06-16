@@ -39,3 +39,6 @@ pub mod grisly_transformation;
 pub mod claim_of_erebos;
 pub mod shrike_harpy;
 pub mod forgestoker_dragon;
+pub mod mindreaver;
+pub mod arbiter_of_the_ideal;
+pub mod pillar_of_war;

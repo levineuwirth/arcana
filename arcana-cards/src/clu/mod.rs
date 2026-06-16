@@ -71,3 +71,4 @@ pub mod predatory_impetus;
 pub mod psychic_impetus;
 pub mod curse_of_chains;
 pub mod incriminating_impetus;
+pub mod lavinia_of_the_tenth;

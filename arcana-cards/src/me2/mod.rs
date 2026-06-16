@@ -70,3 +70,4 @@ pub mod forbidden_lore;
 pub mod funeral_march;
 pub mod armor_of_faith;
 pub mod angel_of_fury;
+pub mod krovikan_horror;

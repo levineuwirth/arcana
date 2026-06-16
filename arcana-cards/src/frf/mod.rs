@@ -37,3 +37,4 @@ pub mod temur_runemark;
 pub mod abzan_runemark;
 pub mod fruit_of_the_first_tree;
 pub mod ancestral_vengeance;
+pub mod sandsteppe_outcast;
