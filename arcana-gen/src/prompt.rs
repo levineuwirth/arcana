@@ -1778,13 +1778,15 @@ ATTACHED-GRANT BUILDERS — constructed inside the ETB effect fn, each wrapped i
 - 'Enchanted creature has [keyword].' → `ContinuousEffect::attached_keyword(trig.source, KeywordAbility::Flying, Duration::WhileSourceOnBattlefield)` — any `KeywordAbility` unit variant from the system-prompt list. 'has [kw1] and [kw2]' → TWO installs.
 - 'Enchanted creature loses [keyword]' / 'can't have its abilities … ' (keyword removal) → `ContinuousEffect::attached_loses_keyword(trig.source, KeywordAbility::Flying, Duration::WhileSourceOnBattlefield)`.
 - 'Enchanted creature can't attack.' → `ContinuousEffect::attached_cant_attack(trig.source, Duration::WhileSourceOnBattlefield)`; '… can't block.' → `attached_cant_block`; 'can't attack OR block' → BOTH (see Pacifism).
+- 'Enchanted creature can't be blocked.' → `ContinuousEffect::attached_cant_be_blocked(trig.source, Duration::WhileSourceOnBattlefield)`. (Conditional 'can't be blocked except by [X]' / 'by more than one' stays GAP.)
+- 'Enchanted creature doesn't untap during its controller's untap step.' → `ContinuousEffect::attached_dont_untap(trig.source, Duration::WhileSourceOnBattlefield)`.
+- 'Enchanted creature has base power and toughness X/Y' / 'is a 0/1' / '~becomes an X/Y creature' (Zendikon animations, Lignify, Ensoul Artifact) → `ContinuousEffect::attached_set_pt(trig.source, X, Y, Duration::WhileSourceOnBattlefield)` — SETS base P/T (vs additive attached_pt). For an animation that also adds types/subtypes/color/keywords (e.g. Zendikon 'becomes a 4/2 red Elemental with haste'), return attached_set_pt + attached_types + attached_subtypes + attached_colors + attached_keyword installs together.
 - 'Enchanted creature is [color] [in addition].' → `ContinuousEffect::attached_colors(trig.source, ColorSet::blue(), Duration::WhileSourceOnBattlefield)` (ADDITIVE).
 - 'Enchanted creature is a(n) [subtype] [in addition to its other types].' → `ContinuousEffect::attached_subtypes(trig.source, {{ let mut s = SubtypeSet::default(); s.0.insert(reg.interner_mut().intern(\"Angel\")); s }}, Duration::WhileSourceOnBattlefield)`. (Intern subtypes BEFORE building the def, store the symbols, and capture them — you cannot call `reg` inside the effect fn. Follow the Holy Strength import/intern structure.) Adding a card TYPE ('is also an artifact') → `attached_types(trig.source, TypeLine::ARTIFACT.into(), Duration::WhileSourceOnBattlefield)`.
 - 'Enchanted creature gets +P/+T AND has [keyword]' (and any combination) → return ALL the matching installs in one vec.
 
 NOT EXPRESSIBLE — emit faithful bones (name/cost/colors/types + Aura subtype + `with_enchant`) and an effect fn returning `Vec::new()` with a `// GAP: <reason>` comment:
 - CONTROL-CHANGE Auras ('You control enchanted creature' — Control Magic, Mind Control). // GAP: control-change aura.
-- P/T SETTING ('Enchanted creature is 0/1' / 'has base power and toughness 1/1' — Lignify, Kasmina's). attached_pt is ADDITIVE only. // GAP: base-P/T-setting aura.
 - conditional 'as long as' clauses, 'enchant creature you don't control'-only-targeting restrictions, and any payoff that fires when the Aura itself enters/leaves. // GAP: <which>.
 
 HOST-TRIGGER and HOST-ACTIVATED grants (NOW SUPPORTED — these are NOT GAPs):

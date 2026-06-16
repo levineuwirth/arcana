@@ -464,6 +464,47 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build an "enchanted/equipped creature doesn't untap" marker
+    /// (Glimmerdust Nap). Follows `source.attached_to`.
+    pub fn attached_dont_untap(source: ObjectId, duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::AttachedCreatureDontUntap,
+        }
+    }
+
+    /// Build an "enchanted/equipped creature can't be blocked" marker
+    /// (Aqueous Form). Follows `source.attached_to`.
+    pub fn attached_cant_be_blocked(source: ObjectId, duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::AttachedCreatureCantBeBlocked,
+        }
+    }
+
+    /// Build an "enchanted creature has base P/T X/Y" / "becomes an
+    /// X/Y creature" effect (Layer 7b, SETS base P/T). Follows
+    /// `source.attached_to`. Pair with [`Duration::WhileSourceOnBattlefield`].
+    pub fn attached_set_pt(source: ObjectId, power: i32, toughness: i32,
+                           duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L7bPTSetting,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::AttachedCreatureSetsPt { power, toughness },
+        }
+    }
+
     /// Build a GLOBAL filtered pump ("[filter] creatures get +P/+T"),
     /// layer 7c. Filter is matched against BASE characteristics from
     /// the source controller's perspective.
@@ -876,6 +917,22 @@ pub enum ContinuousEffectKind {
     AttachedCreatureGrantsActivated {
         ability: crate::registry::ActivatedAbilityDef,
     },
+    /// MARKER — "Enchanted/equipped creature doesn't untap during its
+    /// controller's untap step" (Glimmerdust Nap, Ice Over, Encrust).
+    /// Dynamic sibling of [`Self::DontUntapTarget`]; follows
+    /// `source.attached_to`; consumed by [`GameState::skips_untap`].
+    AttachedCreatureDontUntap,
+    /// MARKER — "Enchanted/equipped creature can't be blocked"
+    /// (Aqueous Form, Aether Tunnel, Cloak of Mists). Dynamic sibling
+    /// of [`Self::CantBeBlocked`]; follows `source.attached_to`;
+    /// consumed by [`GameState::cant_be_blocked`].
+    AttachedCreatureCantBeBlocked,
+    /// Layer 7b — "Enchanted creature has base power and toughness
+    /// X/Y" / Zendikon-style "becomes an X/Y creature" (Ensoul
+    /// Artifact, Lignify, Guardian Zendikon). SETS base P/T (contrast
+    /// the ADDITIVE [`Self::AttachedCreatureGetsPt`]); the targeted
+    /// sibling of [`Self::SetPt`]. Follows `source.attached_to`.
+    AttachedCreatureSetsPt { power: i32, toughness: i32 },
     /// "Equipped/enchanted creature gets +X/+Y where X/Y depend on
     /// board state" (Blackblade Reforged "+1/+1 for each land you
     /// control", Empyrial Armor "+1/+1 for each card in your hand").
@@ -1046,6 +1103,7 @@ impl ContinuousEffectKind {
             | Self::AttachedCreatureAddColors { .. }
             | Self::AttachedCreatureAddTypes { .. }
             | Self::AttachedCreatureEveryCreatureType
+            | Self::AttachedCreatureSetsPt { .. }
             | Self::AttachedCreatureLosesKeyword { .. } => {
                 state.objects.get(source)
                     .and_then(|src| src.attached_to)
@@ -1068,6 +1126,8 @@ impl ContinuousEffectKind {
             | Self::FilteredCantBlock { .. }
             | Self::AttachedCreatureCantAttack
             | Self::AttachedCreatureCantBlock
+            | Self::AttachedCreatureDontUntap
+            | Self::AttachedCreatureCantBeBlocked
             | Self::AttachedCreatureGrantsActivated { .. }
             | Self::FilteredGrantTriggeredAbility { .. }
             | Self::DontUntapTarget { .. }
@@ -1136,6 +1196,8 @@ impl ContinuousEffectKind {
             | Self::FilteredCantBlock { .. }
             | Self::AttachedCreatureCantAttack
             | Self::AttachedCreatureCantBlock
+            | Self::AttachedCreatureDontUntap
+            | Self::AttachedCreatureCantBeBlocked
             | Self::AttachedCreatureGrantsActivated { .. }
             | Self::FilteredGrantTriggeredAbility { .. }
             | Self::DontUntapTarget { .. }
@@ -1148,7 +1210,8 @@ impl ContinuousEffectKind {
             Self::AttachedCreatureAddColors { colors } => {
                 chars.colors = crate::types::ColorSet(chars.colors.0 | colors.0);
             }
-            Self::SetPt { power, toughness, .. } => {
+            Self::SetPt { power, toughness, .. }
+            | Self::AttachedCreatureSetsPt { power, toughness } => {
                 chars.power = Some(PtValue::Fixed(*power));
                 chars.toughness = Some(PtValue::Fixed(*toughness));
             }
@@ -1421,6 +1484,10 @@ impl GameState {
         self.continuous_effects.iter().any(|e| match &e.kind {
             ContinuousEffectKind::DontUntapTarget { target } =>
                 e.is_live(self) && *target == object_id,
+            ContinuousEffectKind::AttachedCreatureDontUntap =>
+                e.is_live(self)
+                    && self.objects.get(e.source)
+                        .and_then(|s| s.attached_to) == Some(object_id),
             ContinuousEffectKind::FilteredDontUntap { filter } => {
                 e.is_live(self)
                     && self.objects.get(e.source)
@@ -1514,8 +1581,14 @@ impl GameState {
     /// Does `object_id` have an active "can't be blocked" restriction?
     /// Consumed by [`crate::combat`]'s `block_constraints`.
     pub fn cant_be_blocked(&self, object_id: ObjectId) -> bool {
-        self.continuous_effects.iter().any(|e| matches!(&e.kind,
-            ContinuousEffectKind::CantBeBlocked { target } if *target == object_id))
+        self.continuous_effects.iter().any(|e| match &e.kind {
+            ContinuousEffectKind::CantBeBlocked { target } => *target == object_id,
+            ContinuousEffectKind::AttachedCreatureCantBeBlocked =>
+                e.is_live(self)
+                    && self.objects.get(e.source)
+                        .and_then(|s| s.attached_to) == Some(object_id),
+            _ => false,
+        })
     }
 
     /// Does `object_id` have an active "can't block" restriction?
@@ -1816,6 +1889,42 @@ mod tests {
         assert!(s.cant_block(creature), "enchanted creature can't block");
         // The Aura itself is unaffected.
         assert!(!s.cant_attack(aura));
+    }
+
+    #[test]
+    fn attached_dont_untap_cant_be_blocked_set_pt_follow_the_host() {
+        // The Wave-2 easy-win attached markers/effects: each resolves
+        // through `source.attached_to` like the cant-attack/block pair.
+        let mut s = GameState::new(2, 0);
+        let creature = put_creature(&mut s, 0, 3, 3);
+        let aura = s.allocate_object_id();
+        s.objects.insert(GameObject::new(
+            aura, 0, Zone::Battlefield, 1, Characteristics {
+                types: TypeLine::ENCHANTMENT.into(),
+                ..Default::default()
+            }));
+
+        s.add_continuous_effect(
+            ContinuousEffect::attached_dont_untap(aura, Duration::WhileSourceOnBattlefield));
+        s.add_continuous_effect(
+            ContinuousEffect::attached_cant_be_blocked(aura, Duration::WhileSourceOnBattlefield));
+        s.add_continuous_effect(
+            ContinuousEffect::attached_set_pt(aura, 0, 1, Duration::WhileSourceOnBattlefield));
+
+        // Unattached: inert (P/T unchanged, no restrictions).
+        assert!(!s.skips_untap(creature));
+        assert!(!s.cant_be_blocked(creature));
+        assert_eq!(s.computed_power(creature), Some(3));
+
+        // Attach: all three bite the host.
+        s.objects.get_mut(aura).unwrap().attached_to = Some(creature);
+        s.objects.get_mut(creature).unwrap().attachments.push(aura);
+        assert!(s.skips_untap(creature), "enchanted creature doesn't untap");
+        assert!(s.cant_be_blocked(creature), "enchanted creature can't be blocked");
+        assert_eq!(s.computed_power(creature), Some(0), "base P/T set to 0/1");
+        assert_eq!(s.computed_toughness(creature), Some(1));
+        // The Aura itself is unaffected.
+        assert!(!s.skips_untap(aura));
     }
 
     #[test]
