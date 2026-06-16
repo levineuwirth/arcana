@@ -100,3 +100,4 @@ pub mod colossal_skyturtle;
 pub mod network_disruptor;
 pub mod hidetsugu_devouring_chaos;
 pub mod a_moon_circuit_hacker;
+pub mod lizard_blades;

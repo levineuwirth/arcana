@@ -46,3 +46,5 @@ pub mod retro_mutation;
 pub mod uneasy_alliance;
 pub mod mondo_gecko;
 pub mod raph_mikey_troublemakers;
+pub mod metalhead;
+pub mod krang_utrom_warlord;

@@ -11,3 +11,4 @@ pub mod slagwurm_armor;
 pub mod coastal_tower;
 pub mod spire_serpent;
 pub mod rot_wolf;
+pub mod plague_myr;

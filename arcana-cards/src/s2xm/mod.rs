@@ -70,3 +70,5 @@ pub mod yavimaya_s_embrace;
 pub mod frogify;
 pub mod karn_liberated;
 pub mod jace_the_mind_sculptor;
+pub mod death_hood_cobra;
+pub mod archangel_of_thune;

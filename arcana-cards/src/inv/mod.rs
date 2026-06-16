@@ -70,3 +70,6 @@ pub mod mourning;
 pub mod tainted_well;
 pub mod crown_of_flames;
 pub mod voracious_cobra;
+pub mod zanam_djinn;
+pub mod sulam_djinn;
+pub mod metathran_aerostat;

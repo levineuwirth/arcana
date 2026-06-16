@@ -71,3 +71,6 @@ pub mod entity_tracker;
 pub mod the_swarmweaver;
 pub mod grasping_longneck;
 pub mod enduring_curiosity;
+pub mod bedhead_beastie;
+pub mod piranha_fly;
+pub mod vile_mutilator;

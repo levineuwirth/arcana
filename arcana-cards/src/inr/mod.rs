@@ -112,3 +112,4 @@ pub mod pack_guardian;
 pub mod edgar_markov;
 pub mod cathar_commando;
 pub mod bloodtithe_harvester;
+pub mod bedlam_reveler;

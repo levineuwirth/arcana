@@ -48,3 +48,4 @@ pub mod skygames;
 pub mod contaminated_ground;
 pub mod way_of_the_thief;
 pub mod debtor_s_pulpit;
+pub mod gateway_shade;

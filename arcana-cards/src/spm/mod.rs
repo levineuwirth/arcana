@@ -46,3 +46,5 @@ pub mod kraven_the_hunter;
 pub mod morlun_devourer_of_spiders;
 pub mod agent_venom;
 pub mod angry_rabble;
+pub mod scorpion_seething_striker;
+pub mod spider_girl_legacy_hero;

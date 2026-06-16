@@ -92,3 +92,5 @@ pub mod arcane_investigator;
 pub mod lightfoot_rogue;
 pub mod djinni_windseer;
 pub mod iymrith_desert_doom;
+pub mod kalain_reclusive_painter;
+pub mod goblin_javelineer;

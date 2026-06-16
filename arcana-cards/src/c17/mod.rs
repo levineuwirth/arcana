@@ -12,3 +12,4 @@ pub mod urborg_volcano;
 pub mod mystifying_maze;
 pub mod elfhame_palace;
 pub mod scalelord_reckoner;
+pub mod licia_sanguine_tribune;

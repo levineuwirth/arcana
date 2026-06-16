@@ -45,3 +45,4 @@ pub mod liliana_of_the_dark_realms;
 pub mod colossal_whale;
 pub mod nephalia_seakite;
 pub mod witchstalker;
+pub mod guardian_of_the_ages;

@@ -87,3 +87,4 @@ pub mod elspeth_undaunted_hero;
 pub mod elspeth_sun_s_nemesis;
 pub mod nylea_keen_eyed;
 pub mod enemy_of_enlightenment;
+pub mod vexing_gull;

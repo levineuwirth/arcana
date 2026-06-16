@@ -21,11 +21,13 @@ Avarice Totem
 Ayara, Widow of the Realm
 Bag Check
 Baldur's Gate
+Ballynock Trapper
 Bane's Contingency
 Basilisk Gate
 Beguiler of Wills
 Biogenic Ooze
 Blinkmoth Well
+Blizzard Elemental
 Bloodtithe Harvester
 Boon of Boseiju
 Bulwark
@@ -48,6 +50,7 @@ Commodore Guff
 Companion of the Trials
 Concerted Defense
 Convolute
+Corpse Cur
 Corridor Monitor
 Corrupted Resolve
 Counterbore
@@ -59,6 +62,7 @@ Dark Suspicions
 Dauntless Aven
 Dazzling Denial
 Death Watch
+Deep-Slumber Titan
 Delay
 Descendant of Masumaro
 Desertion
@@ -101,6 +105,7 @@ Greenside Watcher
 Groundskeeper
 Gruesome Menagerie
 Gumdrop Poisoner
+Gustcloak Cavalier
 Gustcloak Runner
 Gustcloak Sentinel
 Hana Kami
@@ -174,6 +179,7 @@ Nahiri, Heir of the Ancients
 Nanoform Sentinel
 Necrogen Communion
 Negate
+Nemesis Phoenix
 Nether Spirit
 Neutralizing Blast
 Nicol Bolas, Planeswalker
@@ -225,6 +231,7 @@ Sacred Ground
 Salvager of Secrets
 Sanctum of Stone Fangs
 Sanitarium Skeleton
+Savage Firecat
 Scattering Stroke
 Scoria Wurm
 Scroll of Isildur
@@ -284,6 +291,7 @@ Voidslime
 Volatile Rig
 Voltaic Construct
 Warren Pilferers
+Watchful Blisterzoa
 Wild Wurm
 Wirewood Lodge
 Wyll of the Blade Pact

@@ -37,3 +37,4 @@ pub mod abundant_growth;
 pub mod liliana_death_wielder;
 pub mod vraska_betrayal_s_sting;
 pub mod oft_nabbed_goat;
+pub mod glissa_sunslayer;

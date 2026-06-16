@@ -55,3 +55,7 @@ pub mod mossbeard_ancient;
 pub mod mesa_cavalier;
 pub mod bog_badger;
 pub mod clockwork_drawbridge;
+pub mod stenn_paranoid_partisan;
+pub mod tura_kenner_d_skyknight;
+pub mod academy_wall;
+pub mod a_sprouting_goblin;

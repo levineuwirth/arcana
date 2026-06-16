@@ -58,3 +58,4 @@ pub mod crown_of_vigor;
 pub mod pearlspear_courier;
 pub mod doubtless_one;
 pub mod shaleskin_bruiser;
+pub mod snapping_thragg;

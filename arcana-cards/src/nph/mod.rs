@@ -32,3 +32,5 @@ pub mod evil_presence;
 pub mod defensive_stance;
 pub mod vault_skirge;
 pub mod mortis_dogs;
+pub mod dementia_bat;
+pub mod inquisitor_exarch;

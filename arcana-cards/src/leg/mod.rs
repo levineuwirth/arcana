@@ -28,3 +28,4 @@ pub mod life_matrix;
 pub mod tolaria;
 pub mod lifeblood;
 pub mod gravity_sphere;
+pub mod gosta_dirk;

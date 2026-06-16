@@ -60,3 +60,4 @@ pub mod tezzeret_the_schemer;
 pub mod tezzeret_master_of_metal;
 pub mod peema_aether_seer;
 pub mod aetherstream_leopard;
+pub mod hinterland_drake;

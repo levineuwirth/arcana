@@ -26,3 +26,4 @@ pub mod leafdrake_roost;
 pub mod wren_s_run_packmaster;
 pub mod banshee_of_the_dread_choir;
 pub mod cloudthresher;
+pub mod siege_behemoth;

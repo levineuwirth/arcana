@@ -68,3 +68,5 @@ pub mod sinking_feeling;
 pub mod silkbind_faerie;
 pub mod sootstoke_kindler;
 pub mod kithkin_rabble;
+pub mod deep_slumber_titan;
+pub mod reaper_king;

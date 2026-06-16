@@ -54,3 +54,5 @@ pub mod creeping_crystal_coating;
 pub mod lost_in_memories;
 pub mod avatar_kyoshi_earthbender;
 pub mod nyla_shirshu_sleuth;
+pub mod smellerbee_rebel_fighter;
+pub mod longshot_rebel_bowman;

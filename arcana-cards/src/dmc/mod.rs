@@ -18,3 +18,4 @@ pub mod day_of_destiny;
 pub mod dihada_binder_of_wills;
 pub mod sivitri_dragon_master;
 pub mod jared_carthalion;
+pub mod cadric_soul_kindler;

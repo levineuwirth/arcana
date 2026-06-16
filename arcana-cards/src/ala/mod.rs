@@ -51,3 +51,4 @@ pub mod banewasp_affliction;
 pub mod lush_growth;
 pub mod sphinx_sovereign;
 pub mod jund_battlemage;
+pub mod bant_battlemage;

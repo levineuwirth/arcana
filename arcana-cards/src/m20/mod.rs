@@ -101,3 +101,5 @@ pub mod a_sorin_imperious_bloodlord;
 pub mod chandra_flame_s_fury;
 pub mod dungeon_geists;
 pub mod golos_tireless_pilgrim;
+pub mod glint_horn_buccaneer;
+pub mod riddlemaster_sphinx;

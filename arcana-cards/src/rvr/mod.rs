@@ -61,3 +61,5 @@ pub mod karn_the_great_creator;
 pub mod teferi_time_raveler;
 pub mod yeva_nature_s_herald;
 pub mod arclight_phoenix;
+pub mod siege_wurm;
+pub mod sunder_shaman;

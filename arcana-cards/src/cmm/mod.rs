@@ -147,3 +147,6 @@ pub mod torrential_gearhulk;
 pub mod godo_bandit_warlord;
 pub mod dryad_of_the_ilysian_grove;
 pub mod crimson_fleet_commodore;
+pub mod cabal_patriarch;
+pub mod ulamog_s_crusher;
+pub mod phyrexian_triniform;

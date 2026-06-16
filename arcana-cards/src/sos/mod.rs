@@ -59,3 +59,6 @@ pub mod stormcarved_coast;
 pub mod ral_zarek_guest_lecturer;
 pub mod professor_dellian_fel;
 pub mod shattered_acolyte;
+pub mod paradox_surveyor;
+pub mod orysa_tide_choreographer;
+pub mod biblioplex_tomekeeper;

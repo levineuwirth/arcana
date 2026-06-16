@@ -60,3 +60,6 @@ pub mod shiny_impetus;
 pub mod tempest_technique;
 pub mod kaya_geist_hunter;
 pub mod baldin_century_herdmaster;
+pub mod arbor_adherent;
+pub mod deceptive_frostkite;
+pub mod hornet_nest;

@@ -52,3 +52,4 @@ pub mod samut_the_tested;
 pub mod nicol_bolas_the_deceiver;
 pub mod dauntless_aven;
 pub mod spellweaver_eternal;
+pub mod pride_sovereign;

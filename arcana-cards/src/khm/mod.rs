@@ -124,3 +124,4 @@ pub mod tyvar_kell;
 pub mod righteous_valkyrie;
 pub mod spirit_of_the_aldergard;
 pub mod stalwart_valkyrie;
+pub mod guardian_gladewalker;

@@ -26,3 +26,4 @@ pub mod lord_jyscal_guado;
 pub mod alisaie_leveilleur;
 pub mod shadow_mysterious_assassin;
 pub mod papalymo_totolymo;
+pub mod amarant_coral;

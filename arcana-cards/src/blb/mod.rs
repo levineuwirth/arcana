@@ -82,3 +82,5 @@ pub mod maha_its_feathers_night;
 pub mod moonstone_harbinger;
 pub mod frilled_sparkshooter;
 pub mod lifecreed_duo;
+pub mod moonrise_cleric;
+pub mod iridescent_vinelasher;

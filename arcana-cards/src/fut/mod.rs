@@ -18,3 +18,5 @@ pub mod pooling_venom;
 pub mod fatal_attraction;
 pub mod petrified_plating;
 pub mod maelstrom_djinn;
+pub mod augur_of_skulls;
+pub mod spirit_en_dal;

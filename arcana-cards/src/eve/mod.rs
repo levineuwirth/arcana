@@ -50,3 +50,4 @@ pub mod crumbling_ashes;
 pub mod crackleburr;
 pub mod noggle_hedge_mage;
 pub mod merrow_bonegnawer;
+pub mod ballynock_trapper;

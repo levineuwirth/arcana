@@ -66,3 +66,6 @@ pub mod swampsnare_trap;
 pub mod yue_the_moon_spirit;
 pub mod flopsie_bumi_s_buddy;
 pub mod geyser_leaper;
+pub mod firebending_student;
+pub mod raven_eagle;
+pub mod curious_farm_animals;

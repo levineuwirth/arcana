@@ -22,3 +22,5 @@ pub mod saheeli_the_gifted;
 pub mod estrid_the_masked;
 pub mod lord_windgrace;
 pub mod enigma_sphinx;
+pub mod bruna_light_of_alabaster;
+pub mod flameblast_dragon;

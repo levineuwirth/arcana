@@ -59,3 +59,4 @@ pub mod phantom_wings;
 pub mod blessing_of_leeches;
 pub mod pus_kami;
 pub mod skullmane_baku;
+pub mod patron_of_the_moon;

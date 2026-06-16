@@ -48,3 +48,4 @@ pub mod glimmerpost;
 pub mod infiltration_lens;
 pub mod viridian_revel;
 pub mod elspeth_tirel;
+pub mod corpse_cur;

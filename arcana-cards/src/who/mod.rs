@@ -29,3 +29,4 @@ pub mod become_the_pilot;
 pub mod k_9_mark_i;
 pub mod time_beetle;
 pub mod barbara_wright;
+pub mod strax_sontaran_nurse;

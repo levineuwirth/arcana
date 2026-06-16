@@ -88,3 +88,6 @@ pub mod mightstone_s_animation;
 pub mod teferi_temporal_pilgrim;
 pub mod saheeli_filigree_master;
 pub mod a_saheeli_filigree_master;
+pub mod combat_courier;
+pub mod yotian_frontliner;
+pub mod survivor_of_korlis;

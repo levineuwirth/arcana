@@ -37,3 +37,4 @@ pub mod gelid_shackles;
 pub mod surging_might;
 pub mod frozen_solid;
 pub mod adarkar_windform;
+pub mod rimehorn_aurochs;

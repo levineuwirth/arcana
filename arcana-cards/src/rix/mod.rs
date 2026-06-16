@@ -40,3 +40,4 @@ pub mod see_red;
 pub mod vraska_scheming_gorgon;
 pub mod angrath_the_flame_chained;
 pub mod huatli_radiant_champion;
+pub mod siren_reaver;

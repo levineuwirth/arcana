@@ -64,3 +64,5 @@ pub mod fate_foretold;
 pub mod ashiok_nightmare_weaver;
 pub mod colossus_of_akros;
 pub mod agent_of_the_fates;
+pub mod cavern_lampad;
+pub mod deathbellow_raider;

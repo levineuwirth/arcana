@@ -71,3 +71,6 @@ pub mod funeral_march;
 pub mod armor_of_faith;
 pub mod angel_of_fury;
 pub mod krovikan_horror;
+pub mod wind_spirit;
+pub mod order_of_the_white_shield;
+pub mod aurochs;

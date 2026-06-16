@@ -129,3 +129,4 @@ pub mod tiger_claws;
 pub mod ferocity;
 pub mod ramosian_captain;
 pub mod saprazzan_bailiff;
+pub mod rishadan_brigand;

@@ -9,3 +9,4 @@ pub mod military_intelligence;
 pub mod zendikar_s_roil;
 pub mod emeria_shepherd;
 pub mod anowon_the_ruin_thief;
+pub mod sepulchral_primordial;

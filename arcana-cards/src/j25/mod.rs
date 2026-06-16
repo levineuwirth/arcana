@@ -11,3 +11,4 @@ pub mod starnheim_memento;
 pub mod sandstorm_crasher;
 pub mod gornog_the_red_reaper;
 pub mod ivora_insatiable_heir;
+pub mod angelic_cub;

@@ -82,3 +82,5 @@ pub mod kirtar_s_desire;
 pub mod whispering_shade;
 pub mod cantivore;
 pub mod thought_eater;
+pub mod savage_firecat;
+pub mod thought_devourer;

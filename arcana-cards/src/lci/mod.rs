@@ -108,3 +108,4 @@ pub mod zoetic_glyph;
 pub mod hermitic_nautilus;
 pub mod marauding_brinefang;
 pub mod starving_revenant;
+pub mod screaming_phantom;

@@ -31,3 +31,4 @@ pub mod arrest;
 pub mod tezzeret_the_seeker;
 pub mod nobilis_of_war;
 pub mod qumulox;
+pub mod lodestone_myr;

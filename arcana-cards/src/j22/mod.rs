@@ -10,3 +10,5 @@ pub mod infernal_idol;
 pub mod rhystic_study;
 pub mod daring_piracy;
 pub mod hold_for_questioning;
+pub mod kibo_uktabi_prince;
+pub mod conductor_of_cacophony;

@@ -50,3 +50,4 @@ pub mod murder_investigation;
 pub mod weight_of_the_underworld;
 pub mod infectious_bloodlust;
 pub mod mage_ring_responder;
+pub mod akroan_sergeant;

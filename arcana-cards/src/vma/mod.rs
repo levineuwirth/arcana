@@ -54,3 +54,4 @@ pub mod empyrial_armor;
 pub mod gaea_s_embrace;
 pub mod brilliant_halo;
 pub mod armor_of_thorns;
+pub mod phantom_nomad;

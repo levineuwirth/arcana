@@ -11,3 +11,4 @@ pub mod searing_meditation;
 pub mod recumbent_bliss;
 pub mod elder_mastery;
 pub mod ajani_vengeant;
+pub mod nacatl_hunt_pride;

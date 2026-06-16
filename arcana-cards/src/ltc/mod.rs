@@ -13,3 +13,5 @@ pub mod nazg_l_battle_mace;
 pub mod aragorn_king_of_gondor;
 pub mod galadriel_light_of_valinor;
 pub mod omer_king_of_rohan;
+pub mod prize_pig;
+pub mod champions_of_minas_tirith;

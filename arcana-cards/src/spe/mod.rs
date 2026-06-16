@@ -10,3 +10,4 @@ pub mod twisted_spider_clone;
 pub mod doc_ock_evil_inventor;
 pub mod sensational_spider_man;
 pub mod future_flight;
+pub mod venom_deadly_devourer;

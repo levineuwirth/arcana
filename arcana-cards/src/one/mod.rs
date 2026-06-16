@@ -60,3 +60,7 @@ pub mod lukka_bound_to_ruin;
 pub mod the_eternal_wanderer;
 pub mod migloz_maze_crusher;
 pub mod soulless_jailer;
+pub mod phyrexian_obliterator;
+pub mod adaptive_sporesinger;
+pub mod watchful_blisterzoa;
+pub mod basilica_shepherd;

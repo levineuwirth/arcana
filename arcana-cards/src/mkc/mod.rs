@@ -42,3 +42,4 @@ pub mod hidden_dragonslayer;
 pub mod alandra_sky_dreamer;
 pub mod master_of_death;
 pub mod shimmer_dragon;
+pub mod wavesifter;

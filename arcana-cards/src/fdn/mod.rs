@@ -167,3 +167,7 @@ pub mod healer_s_hawk;
 pub mod zimone_paradox_sculptor;
 pub mod ghalta_primal_hunger;
 pub mod billowing_shriekmass;
+pub mod gnarlid_colony;
+pub mod crystal_barricade;
+pub mod strix_lookout;
+pub mod sphinx_of_forgotten_lore;
