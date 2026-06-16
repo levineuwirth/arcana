@@ -1,27 +1,24 @@
-//! Ajani, Sleeper Agent — `{1}{G}{G/W/P}{W}` Legendary Planeswalker — Ajani.
-//! Printed starting loyalty 5 (CR 113.3c). Colors G/W.
+//! Ajani, Sleeper Agent — `{1}{G}{G/W/P}{W}` Legendary Planeswalker — Ajani,
+//! starting loyalty 3. Colors G/W.
 //!
-//! Keyword: Compleated — NOT in the usable keyword surface (the
-//! "enters with two fewer loyalty if life was paid" rider is unbuilt).
-//! `keywords: vec![]`, GAP.
+//! +1: Reveal the top card of your library. If it's a creature or planeswalker
+//!   card, put it into your hand. Otherwise, you may put it on the bottom.
+//!   Modeled with `Effect::DigTopN { count: 1, filter: creature-or-planeswalker,
+//!   rest: BottomRandom }` — the optional pick takes a matching card to hand,
+//!   the rest go to the bottom.
+//! −3: Distribute three +1/+1 counters among up to three target creatures; they
+//!   gain vigilance. GAP: "distribute N counters among up to K targets" has no
+//!   demonstrated Effect surface (no DistributeCounters). Ability shell declared
+//!   with the correct −3 cost; effect GAP'd.
+//! −6: emblem ("Whenever you cast a creature or planeswalker spell, target
+//!   opponent gets two poison counters."). GAP: giving a PLAYER poison counters
+//!   is not expressible (`Effect::AddCounters` targets an object, not a player).
+//!   Emblem shell declared with the cast trigger; effect GAP'd.
 //!
-//! Loyalty abilities (CR 606):
-//! * `+1`: Reveal the top card of your library. If it's a creature or
-//!   planeswalker card, put it into your hand; otherwise you may put it
-//!   on the bottom. — GAP (reveal-and-conditional-route is not a
-//!   demonstrated primitive; DigTopN's filtered take is the nearest but
-//!   its "rest" handling and the reveal differ).
-//! * `−3`: Distribute three +1/+1 counters among up to three target
-//!   creatures. They gain vigilance until end of turn. — the vigilance
-//!   grant is emitted per target; the "distribute three +1/+1 counters"
-//!   half is GAP'd (no divided-counter primitive; only DealDamageDivided
-//!   exists for damage).
-//! * `−6`: You get an emblem with "Whenever you cast a creature or
-//!   planeswalker spell, target opponent gets two poison counters." — GAP
-//!   (emblem with a custom cast-trigger ability).
+//! Compleated ({G/W/P}) is a casting/ETB-loyalty modifier not modeled by the
+//! demonstrated surface; the printed starting loyalty (3) is recorded.
 
-use arcana_core::effects::{Effect, KeywordAbility};
-use arcana_core::layers::Duration;
+use arcana_core::effects::{Effect, EmblemDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -29,16 +26,20 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{
-    TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{
     CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine,
 };
+use arcana_core::effects::{DigRest};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Ajani, Sleeper Agent");
     let ajani = reg.interner_mut().intern("Ajani");
+    let _emblem = reg.interner_mut().intern("Ajani, Sleeper Agent emblem");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(ajani);
 
@@ -49,22 +50,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::PLANESWALKER.into(),
         subtypes,
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
-        loyalty: Some(5),
-        // GAP: Compleated is not in the usable keyword surface.
+        loyalty: Some(3),
         ..Default::default()
     };
 
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "+1: Reveal the top card of your library. If it's a creature \
-                       or planeswalker card, put it into your hand. Otherwise, you \
-                       may put it on the bottom of your library.".into(),
+                text: "+1: Reveal the top card of your library. If it's a \
+                       creature or planeswalker card, put it into your hand. \
+                       Otherwise, you may put it on the bottom of your \
+                       library.".into(),
                 cost: ActivationCost {
                     add_self_counter: Some((CounterKind::Loyalty, 1)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
                 activation_zone: ActivationZone::Battlefield,
@@ -73,33 +74,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: plus_one_reveal,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "−3: Distribute three +1/+1 counters among up to three target \
-                       creatures. They gain vigilance until end of turn.".into(),
+                text: "-3: Distribute three +1/+1 counters among up to three \
+                       target creatures. They gain vigilance until end of \
+                       turn.".into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 3)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
-                    count: TargetCount::UpTo(3),
-                    controller: None,
-                }],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
                 activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: minus_three_vigilance,
+                effect: minus_three_distribute,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "−6: You get an emblem with \"Whenever you cast a creature or \
-                       planeswalker spell, target opponent gets two poison \
+                text: "-6: You get an emblem with \"Whenever you cast a creature \
+                       or planeswalker spell, target opponent gets two poison \
                        counters.\"".into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 6)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
                 activation_zone: ActivationZone::Battlefield,
@@ -110,49 +108,70 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-/// `+1`: reveal-and-route — GAP.
 fn plus_one_reveal(
-    _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "reveal top; if creature/PW to hand, else may bottom" is a
-    // reveal-and-conditional-route shape; no demonstrated primitive
-    // expresses the reveal + the otherwise-may-bottom branch faithfully.
-    Vec::new()
-}
-
-/// `−3`: grant vigilance to each target; the counter distribution is a GAP.
-fn minus_three_vigilance(
     _state: &GameState,
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "distribute three +1/+1 counters" has no divided-counter
-    // primitive (DealDamageDivided is damage-only). The vigilance grant on
-    // the chosen creatures is emitted.
-    ctx.targets
-        .targets
-        .iter()
-        .filter_map(|c| match c {
-            TargetChoice::Object(id) => Some(Effect::GrantKeyword {
-                target: *id,
-                keyword: KeywordAbility::Vigilance,
-                duration: Duration::EndOfTurn,
-            }),
-            _ => None,
-        })
-        .collect()
+    vec![Effect::DigTopN {
+        player: ctx.controller,
+        count: 1,
+        filter: Some(ObjectFilter::new().with_types_any(
+            (TypeLine::CREATURE | TypeLine::PLANESWALKER).into(),
+        )),
+        rest: DigRest::BottomRandom,
+    }]
 }
 
-/// `−6`: emblem — GAP.
-fn minus_six_emblem(
+fn minus_three_distribute(
     _state: &GameState,
     _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: emblem carrying a custom cast-trigger poison ability — building
-    // the EmblemDefinition's triggered ability is beyond the demonstrated
-    // surface for this card.
+    // GAP: distribute three +1/+1 counters among up to three target creatures
+    //      (no DistributeCounters effect; the vigilance grant rides the same
+    //      distribution choice) — ability shell declared with −3 cost.
+    Vec::new()
+}
+
+fn minus_six_emblem(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let emblem_name = reg
+        .interner()
+        .lookup("Ajani, Sleeper Agent emblem")
+        .expect("emblem name interned");
+    vec![Effect::CreateEmblem {
+        controller: ctx.controller,
+        emblem: EmblemDefinition {
+            name: emblem_name,
+            statics: Vec::new(),
+            abilities: vec![TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SpellCast {
+                    filter: Some(ObjectFilter::new().with_types_any(
+                        (TypeLine::CREATURE | TypeLine::PLANESWALKER).into(),
+                    )),
+                    caster: ControllerConstraint::You,
+                },
+                intervening_if: None,
+                effect: emblem_poison,
+                trigger_zones: vec![Zone::Command],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            }],
+        },
+    }]
+}
+
+fn emblem_poison(
+    _state: &GameState,
+    _trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "target opponent gets two poison counters" — giving a PLAYER poison
+    //      counters is not expressible (AddCounters targets an object).
     Vec::new()
 }

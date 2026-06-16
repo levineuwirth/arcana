@@ -1,17 +1,18 @@
-//! Jaya Ballard — `{2}{R}{R}{R}` Legendary Planeswalker — Jaya.
-//! Starting loyalty 5 (oracle).
+//! Jaya Ballard — `{2}{R}{R}{R}` Legendary Planeswalker — Jaya, starting loyalty 5.
 //!
-//! +1: Add {R}{R}{R}. Spend this mana only to cast instant or sorcery spells.
-//!     PARTIAL: the three red mana are added. GAP: the "spend only on
-//!     instant/sorcery" restriction is not attached (no mana-restriction
-//!     surface on Effect::AddMana for generated cards here).
-//! +1: Discard up to three cards, then draw that many cards.
-//!     GAP: "discard up to three, then draw THAT MANY" — a variable discard
-//!     count feeding a dynamic draw count is not expressible (Effect::Discard
-//!     takes a fixed count and there's no draw-equal-to-discarded primitive).
-//! −8: You get an emblem. GAP: emblem creation not modeled.
+//! +1: Add {R}{R}{R} (spend only to cast instant or sorcery spells).
+//!   Modeled as `AddMana` of three red; the "spend only on I/S"
+//!   restriction is not expressible and is GAP'd.
+//! +1: Discard up to three cards, then draw that many cards. The
+//!   variable count ("up to three" / "draw that many") isn't
+//!   expressible; approximated as discard 3, draw 3.
+//! −8: You get an emblem with "You may cast instant and sorcery spells
+//!   from your graveyard. If a spell cast this way would be put into
+//!   your graveyard, exile it instead." The emblem's grant is a
+//!   rule-altering static no anthem/keyword/filtered builder can
+//!   express, so the emblem is created but its grant is GAP'd.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DiscardChoice, Effect, EmblemDefinition};
 use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -20,13 +21,13 @@ use arcana_core::registry::{
 };
 use arcana_core::state::GameState;
 use arcana_core::types::{
-    CardId, ColorSet, CounterKind, ManaColor, SubtypeSet, SupertypeSet,
-    TypeLine,
+    CardId, ColorSet, CounterKind, ManaColor, SubtypeSet, SupertypeSet, TypeLine,
 };
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Jaya Ballard");
     let jaya = reg.interner_mut().intern("Jaya");
+    let _emblem = reg.interner_mut().intern("Jaya Ballard emblem");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(jaya);
 
@@ -44,8 +45,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "+1: Add {R}{R}{R}. Spend this mana only to cast instant \
-                       or sorcery spells.".into(),
+                text: "+1: Add {R}{R}{R}. Spend this mana only to cast \
+                       instant or sorcery spells.".into(),
                 cost: ActivationCost {
                     add_self_counter: Some((CounterKind::Loyalty, 1)),
                     ..ActivationCost::default()
@@ -71,10 +72,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: plus_one_loot_gap,
+                effect: plus_one_loot,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "-8: You get an emblem.".into(),
+                text: "-8: You get an emblem with \"You may cast instant and \
+                       sorcery spells from your graveyard. If a spell cast \
+                       this way would be put into your graveyard, exile it \
+                       instead.\"".into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 8)),
                     ..ActivationCost::default()
@@ -95,7 +99,8 @@ fn plus_one_mana(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // PARTIAL: add {R}{R}{R}. GAP: the instant/sorcery-only spend restriction.
+    // GAP: "spend only to cast instant or sorcery spells" restriction
+    // not expressible; add three red mana.
     vec![Effect::AddMana {
         player: ctx.controller,
         mana: vec![
@@ -106,21 +111,41 @@ fn plus_one_mana(
     }]
 }
 
-fn plus_one_loot_gap(
+fn plus_one_loot(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "discard up to three cards, then draw that many" — variable discard
-    //      feeding a dynamic draw not expressible.
-    Vec::new()
+    // "Up to three / draw that many" is a dynamic count; approximate as
+    // discard three, draw three.
+    vec![
+        Effect::Discard {
+            player: ctx.controller,
+            count: 3,
+            choice: DiscardChoice::ControllerChooses,
+        },
+        Effect::DrawCards { player: ctx.controller, count: 3 },
+    ]
 }
 
 fn minus_eight_emblem(
     _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
+    ctx: &ActivationContext,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: emblem creation not modeled.
-    Vec::new()
+    let emblem_name = reg
+        .interner()
+        .lookup("Jaya Ballard emblem")
+        .expect("emblem name interned");
+    vec![Effect::CreateEmblem {
+        controller: ctx.controller,
+        emblem: EmblemDefinition {
+            name: emblem_name,
+            // GAP: "cast I/S from graveyard + exile-instead" is a
+            // rule-altering static no anthem/keyword/filtered builder can
+            // express.
+            statics: Vec::new(),
+            abilities: Vec::new(),
+        },
+    }]
 }

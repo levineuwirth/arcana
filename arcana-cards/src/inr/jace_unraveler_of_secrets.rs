@@ -4,28 +4,35 @@
 //! +1: Scry 1, then draw a card.
 //! −2: Return target creature to its owner's hand.
 //! −8: You get an emblem with "Whenever an opponent casts their first spell
-//!   each turn, counter that spell."
-//!
-//! GAP: the −8 ultimate creates an emblem — emblem creation is not in the
-//!   demonstrated Effect surface, so the ability is declared with its correct
-//!   −8 loyalty cost but its effect fn returns Vec::new().
+//!   each turn, counter that spell." Modeled via `CreateEmblem` with an
+//!   opponent-spell-cast trigger. The "first spell each turn" gating
+//!   (event-history) and the counter of the just-cast spell are NOT
+//!   expressible — there is no accessor for the triggering spell's object
+//!   id from a `PendingTrigger` — so the trigger effect is GAP'd. The
+//!   emblem shell + trigger condition are modeled.
 
-use arcana_core::effects::Effect;
-use arcana_core::mana::ManaCost;
+use arcana_core::effects::{Effect, EmblemDefinition};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, CardDefinition,
     CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
-use arcana_core::types::{
-    CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine,
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
+use arcana_core::mana::ManaCost;
+use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Jace, Unraveler of Secrets");
     let jace = reg.interner_mut().intern("Jace");
+    let _emblem_name = reg.interner_mut().intern("Jace, Unraveler of Secrets emblem");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(jace);
 
@@ -48,7 +55,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     add_self_counter: Some((CounterKind::Loyalty, 1)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
                 activation_zone: arcana_core::registry::ActivationZone::Battlefield,
@@ -62,7 +69,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     remove_self_counter: Some((CounterKind::Loyalty, 2)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 is_mana_ability: false,
                 is_loyalty_ability: true,
                 activation_zone: arcana_core::registry::ActivationZone::Battlefield,
@@ -77,7 +88,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     remove_self_counter: Some((CounterKind::Loyalty, 8)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
                 activation_zone: arcana_core::registry::ActivationZone::Battlefield,
@@ -88,7 +99,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-/// `+1: Scry 1, then draw a card.`
 fn plus_one_scry_draw(
     _state: &GameState,
     ctx: &ActivationContext,
@@ -100,7 +110,6 @@ fn plus_one_scry_draw(
     ]
 }
 
-/// `−2: Return target creature to its owner's hand.`
 fn minus_two_bounce(
     _state: &GameState,
     ctx: &ActivationContext,
@@ -112,13 +121,43 @@ fn minus_two_bounce(
     vec![Effect::ReturnToHand { target: *id }]
 }
 
-/// `−8: You get an emblem …`
 fn minus_eight_emblem(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let emblem_name = reg
+        .interner()
+        .lookup("Jace, Unraveler of Secrets emblem")
+        .expect("emblem name interned at register");
+    vec![Effect::CreateEmblem {
+        controller: ctx.controller,
+        emblem: EmblemDefinition {
+            name: emblem_name,
+            statics: Vec::new(),
+            abilities: vec![TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SpellCast {
+                    filter: None,
+                    caster: ControllerConstraint::Opponent,
+                },
+                intervening_if: None,
+                effect: emblem_counter_spell,
+                trigger_zones: vec![Zone::Command],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            }],
+        },
+    }]
+}
+
+fn emblem_counter_spell(
+    _state: &GameState,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: emblem creation is not expressible with the demonstrated Effect
-    // surface.
+    // GAP: "first spell each turn" is an event-history gate not expressible
+    //      here, and there is no PendingTrigger accessor for the just-cast
+    //      spell's object id to feed Effect::Counter { target }.
     Vec::new()
 }

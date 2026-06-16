@@ -1,39 +1,46 @@
-//! Will Kenrith — `{4}{U}{U}` Legendary Planeswalker — Will,
-//! starting loyalty 5 — colors U.
+//! Will Kenrith — `{4}{U}{U}` Legendary Planeswalker — Will, starting loyalty 5.
 //!
-//! Oracle text (Partner ignored — not modeled):
-//! * `+2`: Until your next turn, up to two target creatures each have base
-//!   power and toughness 0/3 and lose all abilities. — `SetBasePT` +
-//!   `LoseAllAbilities` per chosen target. "Until your next turn" is
-//!   approximated by `Duration::EndOfTurn`.
-//! * `−2`: Target player draws two cards. Until your next turn, instant,
-//!   sorcery, and planeswalker spells that player casts cost {2} less. —
-//!   `DrawCards` is faithful; the cost-reduction rider is GAP'd.
-//! * `−8`: Target player gets an emblem "Whenever you cast an instant or
-//!   sorcery spell, copy it twice…". — emblem; GAP.
-//!
-//! # Rules references
-//! * CR 606 — loyalty abilities.
+//! Partner with Rowan Kenrith / Partner — not in the usable keyword
+//!   surface, so `keywords: vec![]` (gap noted).
+//! +2: Until your next turn, up to two target creatures each have base
+//!   power and toughness 0/3 and lose all abilities. Modeled as
+//!   `SetBasePT` 0/3 + `LoseAllAbilities`, duration UntilYourNextTurn,
+//!   over up to two targets.
+//! −2: Target player draws two cards. Until your next turn, instant,
+//!   sorcery, and planeswalker spells that player casts cost {2} less.
+//!   Modeled as the draw; the cost-reduction rider is GAP'd.
+//! −8: Target player gets an emblem with "Whenever you cast an instant
+//!   or sorcery spell, copy it. You may choose new targets for the
+//!   copy." The emblem is created under the TARGET player's control with
+//!   an I/S SpellCast trigger; the "copy it" effect references the
+//!   triggering spell's stack entry (not exposed to the trigger effect),
+//!   so the copy is GAP'd.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, EmblemDefinition};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
-    ActivatedAbilityDef, ActivationContext, ActivationCost, CardDefinition,
-    CardRegistry,
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{
     CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine,
 };
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Will Kenrith");
     let will = reg.interner_mut().intern("Will");
+    let _emblem = reg.interner_mut().intern("Will Kenrith emblem");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(will);
 
@@ -45,6 +52,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
         loyalty: Some(5),
+        // GAP: Partner / Partner with are not in the usable keyword surface.
         ..Default::default()
     };
 
@@ -65,15 +73,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 }],
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: plus_two_neutralize,
+                effect: plus_two_neuter,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "−2: Target player draws two cards. Until your next turn, \
-                       instant, sorcery, and planeswalker spells that player \
-                       casts cost {2} less.".into(),
+                text: "-2: Target player draws two cards. Until your next \
+                       turn, instant, sorcery, and planeswalker spells that \
+                       player casts cost {2} less to cast.".into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 2)),
                     ..ActivationCost::default()
@@ -81,23 +89,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement::target_player()],
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
                 effect: minus_two_draw,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "−8: Target player gets an emblem with \"Whenever you cast \
-                       an instant or sorcery spell, copy it twice. You may \
-                       choose new targets for the copies.\"".into(),
+                text: "-8: Target player gets an emblem with \"Whenever you \
+                       cast an instant or sorcery spell, copy it. You may \
+                       choose new targets for the copy.\"".into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 8)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: vec![TargetRequirement::target_player()],
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
                 effect: minus_eight_emblem,
@@ -105,53 +113,87 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-/// `+2`: up to two targets become base 0/3 and lose all abilities.
-fn plus_two_neutralize(
+fn plus_two_neuter(
     _state: &GameState,
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // "Until your next turn" approximated by Duration::EndOfTurn.
-    let mut out = Vec::new();
-    for t in &ctx.targets.targets {
-        if let TargetChoice::Object(id) = t {
-            out.push(Effect::SetBasePT {
+    let dur = Duration::UntilYourNextTurn(ctx.controller);
+    let mut effects = Vec::new();
+    for target in &ctx.targets.targets {
+        if let TargetChoice::Object(id) = target {
+            effects.push(Effect::SetBasePT {
                 target: *id,
                 power: 0,
                 toughness: 3,
-                duration: Duration::EndOfTurn,
+                duration: dur.clone(),
             });
-            out.push(Effect::LoseAllAbilities {
+            effects.push(Effect::LoseAllAbilities {
                 target: *id,
-                duration: Duration::EndOfTurn,
+                duration: dur.clone(),
             });
         }
     }
-    out
+    effects
 }
 
-/// `−2`: target player draws two (cost-reduction rider GAP'd).
 fn minus_two_draw(
     _state: &GameState,
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "instant/sorcery/PW spells that player casts cost {2} less until
-    // your next turn" is not expressible; the draw is faithful.
-    let player = match ctx.targets.targets.first() {
-        Some(TargetChoice::Player(p)) => *p,
-        _ => return Vec::new(),
+    let Some(TargetChoice::Player(p)) = ctx.targets.targets.first() else {
+        return Vec::new();
     };
-    vec![Effect::DrawCards { player, count: 2 }]
+    // GAP: "I/S/PW spells that player casts cost {2} less until your next
+    // turn" cost-reduction rider isn't expressible; the draw is.
+    vec![Effect::DrawCards { player: *p, count: 2 }]
 }
 
-/// `−8`: grant an emblem.
 fn minus_eight_emblem(
     _state: &GameState,
     _ctx: &ActivationContext,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Player(p)) = _ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    let emblem_name = reg
+        .interner()
+        .lookup("Will Kenrith emblem")
+        .expect("emblem name interned");
+    vec![Effect::CreateEmblem {
+        // "Target player gets an emblem" — the emblem is controlled by
+        // the targeted player.
+        controller: *p,
+        emblem: EmblemDefinition {
+            name: emblem_name,
+            statics: Vec::new(),
+            abilities: vec![TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SpellCast {
+                    filter: Some(ObjectFilter {
+                        types_any: Some(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY)),
+                        ..Default::default()
+                    }),
+                    caster: ControllerConstraint::You,
+                },
+                intervening_if: None,
+                effect: emblem_copy,
+                trigger_zones: vec![Zone::Command],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            }],
+        },
+    }]
+}
+
+fn emblem_copy(
+    _state: &GameState,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: emblems (static text granted to a player) are not expressible from
-    // the demonstrated Effect surface.
+    // GAP: "copy it" references the triggering spell's stack entry, which
+    // isn't exposed to the trigger effect.
     Vec::new()
 }

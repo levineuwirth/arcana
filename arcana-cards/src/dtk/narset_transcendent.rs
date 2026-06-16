@@ -1,44 +1,30 @@
-//! Narset Transcendent — `{2}{W}{U}` Legendary Planeswalker — Narset,
-//! starting loyalty 6 — colors U, W.
-//!
-//! Oracle text:
-//! * `+1`: Look at the top card of your library. If it's a noncreature,
-//!   nonland card, you may reveal it and put it into your hand. — `DigTopN` of
-//!   one with a noncreature-nonland filter (the unchosen tail goes to the
-//!   bottom; the printed "leave on top" tail is approximated by
-//!   `DigRest::BottomRandom`).
-//! * `−2`: When you next cast an instant or sorcery spell this turn, it gains
-//!   rebound. — a rebound rider; GAP.
-//! * `−9`: You get an emblem with "Your opponents can't cast noncreature
-//!   spells." — emblem static; GAP.
-//!
-//! # Rules references
-//! * CR 606 — loyalty abilities.
+//! Narset Transcendent — `{2}{W}{U}` Legendary Planeswalker — Narset, starting loyalty 6.
+//! +1: Look at top card; if noncreature/nonland, may reveal + put in hand — GAP (no look-at-top primitive).
+//! -2: Next instant/sorcery you cast gains rebound — GAP (rebound rider not buildable).
+//! -9: Emblem "Your opponents can't cast noncreature spells" — emitted as CreateEmblem with empty
+//!     statics/abilities (rule-altering restriction not buildable by anthem/keyword/filtered).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, EmblemDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
-    ActivatedAbilityDef, ActivationContext, ActivationCost, CardDefinition,
-    CardRegistry,
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardRegistry,
 };
-use arcana_core::effects::DigRest;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
-use arcana_core::types::{
-    CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine,
-};
+use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Narset Transcendent");
-    let narset = reg.interner_mut().intern("Narset");
+    let sub = reg.interner_mut().intern("Narset");
+    let _emblem = reg.interner_mut().intern("Narset Transcendent emblem");
     let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(narset);
+    subtypes.0.insert(sub);
 
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{W}{U}").expect("valid cost")),
-        colors: ColorSet::blue() | ColorSet::white(),
+        colors: ColorSet::white() | ColorSet::blue(),
         types: TypeLine::PLANESWALKER.into(),
         subtypes,
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
@@ -51,45 +37,48 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_activated_ability(ActivatedAbilityDef {
                 text: "+1: Look at the top card of your library. If it's a \
                        noncreature, nonland card, you may reveal it and put it \
-                       into your hand.".into(),
+                       into your hand."
+                    .into(),
                 cost: ActivationCost {
                     add_self_counter: Some((CounterKind::Loyalty, 1)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: plus_one_dig,
+                effect: plus_one_look,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "−2: When you next cast an instant or sorcery spell this \
-                       turn, it gains rebound.".into(),
+                text: "-2: When you next cast an instant or sorcery spell from \
+                       your hand this turn, it gains rebound."
+                    .into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 2)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
                 effect: minus_two_rebound,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "−9: You get an emblem with \"Your opponents can't cast \
-                       noncreature spells.\"".into(),
+                text: "-9: You get an emblem with \"Your opponents can't cast \
+                       noncreature spells.\""
+                    .into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 9)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
                 effect: minus_nine_emblem,
@@ -97,40 +86,45 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-/// `+1`: look at the top card; take it if noncreature, nonland.
-fn plus_one_dig(
+/// `+1` — look at top, may reveal a noncreature/nonland.
+fn plus_one_look(
     _state: &GameState,
-    ctx: &ActivationContext,
+    _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let filter = ObjectFilter::default()
-        .without_types(TypeLine::CREATURE.into())
-        .without_types(TypeLine::LAND.into());
-    vec![Effect::DigTopN {
-        player: ctx.controller,
-        count: 1,
-        filter: Some(filter),
-        rest: DigRest::BottomRandom,
-    }]
+    // GAP: no look-at-top-then-may-reveal primitive in the demonstrated surface.
+    Vec::new()
 }
 
-/// `−2`: next instant/sorcery this turn gains rebound.
+/// `-2` — next instant/sorcery gains rebound.
 fn minus_two_rebound(
     _state: &GameState,
     _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: granting rebound to your next instant/sorcery this turn is not
-    // expressible from the demonstrated Effect surface.
+    // GAP: rebound rider on a future cast is not buildable from the Effect surface.
     Vec::new()
 }
 
-/// `−9`: emblem.
+/// `-9` — emblem: opponents can't cast noncreature spells.
 fn minus_nine_emblem(
     _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
+    ctx: &ActivationContext,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: emblems (static replacement/restriction text) are not expressible.
-    Vec::new()
+    let emblem_name = reg
+        .interner()
+        .lookup("Narset Transcendent emblem")
+        .expect("emblem name interned");
+    vec![Effect::CreateEmblem {
+        controller: ctx.controller,
+        emblem: EmblemDefinition {
+            name: emblem_name,
+            // GAP: rule-altering "your opponents can't cast noncreature spells"
+            // is not expressible via anthem/keyword/filtered statics; emit the
+            // emblem shell so the catalog records it.
+            statics: vec![],
+            abilities: vec![],
+        },
+    }]
 }

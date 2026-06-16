@@ -1,24 +1,23 @@
-//! Tamiyo, Field Researcher — `{1}{G}{W}{U}` Legendary Planeswalker — Tamiyo,
-//! starting loyalty 4.
+//! Tamiyo, Field Researcher — `{1}{G}{W}{U}` Legendary Planeswalker — Tamiyo, starting loyalty 4.
 //!
-//! Loyalty abilities:
-//! * `+1`: Choose up to two target creatures; until your next turn, whenever
-//!   either deals combat damage, you draw a card. GAP — the floating
-//!   "until your next turn, on combat damage draw" rider on chosen creatures is
-//!   not expressible. Ability shell declared.
-//! * `−2`: Tap up to two target nonland permanents. They don't untap during
-//!   their controller's next untap step. PARTIAL — the Tap is wired; the
-//!   "don't untap next untap step" rider is not expressible (documented).
-//! * `−7`: Draw three cards. You get an emblem with "You may cast spells from
-//!   your hand without paying their mana costs." PARTIAL — Draw 3 wired; the
-//!   emblem is a GAP (cast-without-paying static not expressible).
+//! +1: Choose up to two target creatures. Until your next turn, whenever either of
+//!     those creatures deals combat damage, you draw a card. The combat-damage
+//!     delayed draw rider is a granted delayed triggered ability not expressible
+//!     from the demonstrated activated-ability surface — GAP (effect returns empty;
+//!     the up-to-two-creature target shell is preserved).
+//! −2: Tap up to two target nonland permanents. They don't untap during their
+//!     controller's next untap step. The taps are modeled; the "don't untap next
+//!     untap step" rider has no expressible primitive — GAP (taps only).
+//! −7: Draw three cards. You get an emblem with "You may cast spells from your hand
+//!     without paying their mana costs." Draw three is modeled; the free-cast
+//!     emblem static is a rule-altering effect the builders can't express — GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
-    ActivatedAbilityDef, ActivationContext, ActivationCost, CardDefinition,
-    CardRegistry,
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
 use arcana_core::targets::{
@@ -45,75 +44,87 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
+    let nonland_permanent = ObjectFilter::new().without_types(TypeLine::LAND.into());
+
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "+1: Choose up to two target creatures. Until your next \
-                       turn, whenever either of those creatures deals combat \
-                       damage, you draw a card.".into(),
+                text: "+1: Choose up to two target creatures. Until your next turn, \
+                       whenever either of those creatures deals combat damage, you \
+                       draw a card.".into(),
                 cost: ActivationCost {
                     add_self_counter: Some((CounterKind::Loyalty, 1)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::UpTo(2),
+                    controller: None,
+                }],
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: plus_one,
+                effect: plus_one_watch,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "−2: Tap up to two target nonland permanents. They don't \
+                text: "-2: Tap up to two target nonland permanents. They don't \
                        untap during their controller's next untap step.".into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 2)),
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent().without_types(TypeLine::LAND.into()),
-                    ),
+                    filter: TargetFilter::Permanent(nonland_permanent),
                     count: TargetCount::UpTo(2),
                     controller: None,
                 }],
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
                 effect: minus_two_tap,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "−7: Draw three cards. You get an emblem with \"You may \
-                       cast spells from your hand without paying their mana \
-                       costs.\"".into(),
+                text: "-7: Draw three cards. You get an emblem with \"You may cast \
+                       spells from your hand without paying their mana costs.\""
+                    .into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 7)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: ultimate_draw,
+                effect: minus_seven_draw,
             }),
     )
 }
 
-/// `+1`: combat-damage-draw rider on up to two creatures.
-fn plus_one(_state: &GameState, _ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "until your next turn, whenever either chosen creature deals combat
-    // damage, draw a card" — floating per-target rider not expressible here.
+fn plus_one_watch(
+    _state: &GameState,
+    _ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "Until your next turn, whenever either of those creatures deals combat
+    //      damage, you draw a card." — granting a duration-bounded delayed combat-
+    //      damage triggered ability to the chosen creatures is not expressible
+    //      from the demonstrated surface. Targets are still chosen.
     Vec::new()
 }
 
-/// `−2: Tap up to two target nonland permanents.` (Don't-untap rider GAP'd.)
-fn minus_two_tap(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
-    // PARTIAL: the "don't untap during their controller's next untap step"
-    // rider is not expressible; only the Tap is wired.
+fn minus_two_tap(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "They don't untap during their controller's next untap step." — no
+    //      untap-restriction primitive in the demonstrated surface. Taps modeled.
     ctx.targets
         .targets
         .iter()
@@ -124,9 +135,13 @@ fn minus_two_tap(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistr
         .collect()
 }
 
-/// `−7: Draw three cards.` (Emblem GAP'd.)
-fn ultimate_draw(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: emblem "you may cast spells from your hand without paying their mana
-    // costs" — cast-without-paying static not expressible. Draw 3 wired.
+fn minus_seven_draw(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: emblem "You may cast spells from your hand without paying their mana
+    //      costs." — a rule-altering cost-replacement static the builders can't
+    //      express; omitted. Draw three is modeled.
     vec![Effect::DrawCards { player: ctx.controller, count: 3 }]
 }

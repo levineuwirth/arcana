@@ -1,51 +1,43 @@
-//! Tezzeret, Betrayer of Flesh — `{2}{U}{U}` Legendary Planeswalker —
-//! Tezzeret, starting loyalty 5.
+//! Tezzeret, Betrayer of Flesh — `{2}{U}{U}` Legendary Planeswalker — Tezzeret, starting loyalty 5.
 //!
-//! Oracle text:
-//! * Static: "The first activated ability of an artifact you activate
-//!   each turn costs {2} less to activate." (Not a loyalty ability — a
-//!   continuous cost-reduction static; GAP'd, no loyalty cost.)
-//! * `+1`: Draw two cards. Then discard two cards unless you discard an
-//!   artifact card.
-//! * `−2`: Target artifact becomes an artifact creature. If it isn't a
-//!   Vehicle, it has base power and toughness 4/4.
-//! * `−6`: You get an emblem with "Whenever an artifact you control
-//!   becomes tapped, draw a card."
-//!
-//! # Rules references
-//!
-//! * CR 113.3c — enters with loyalty counters equal to printed loyalty.
-//! * CR 606 — loyalty abilities.
-//! * CR 704.5i — 0-loyalty state-based sacrifice.
-//!
-//! # Scope
-//!
-//! * `+1` partially modeled: the "draw two cards" half is expressed via
-//!   `Effect::DrawCards`. The conditional "discard two unless you
-//!   discard an artifact card" rider is not expressible with the
-//!   demonstrated discard surface and is omitted.
-//! * `−2` is GAP'd: granting a continuous "becomes an artifact creature
-//!   with base p/t 4/4 (unless Vehicle)" type/characteristic change is
-//!   not expressible with the demonstrated Effect surface; the ability
-//!   shell with its target is still emitted.
-//! * `−6` is GAP'd: emblem creation is not expressible.
+//! Static (not a loyalty ability): "The first activated ability of an
+//!   artifact you activate each turn costs {2} less." GAP: a passive
+//!   cost-reduction static, not expressible from the loyalty surface.
+//! +1: Draw two cards. Then discard two cards unless you discard an
+//!   artifact card. Modeled as draw two, discard two; the "unless you
+//!   discard an artifact" conditional is GAP'd.
+//! −2: Target artifact becomes an artifact creature; if it isn't a
+//!   Vehicle it has base power and toughness 4/4. Modeled as `SetBasePT`
+//!   4/4 + `AddType` creature on the target artifact; the Vehicle
+//!   exception is GAP'd (approximated by always setting 4/4).
+//! −6: You get an emblem with "Whenever an artifact you control becomes
+//!   tapped, draw a card." Fully implemented as a triggered emblem.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DiscardChoice, Effect, EmblemDefinition};
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
-    ActivatedAbilityDef, ActivationContext, ActivationCost, CardDefinition,
-    CardRegistry,
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{
     CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine,
 };
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Tezzeret, Betrayer of Flesh");
     let tezzeret = reg.interner_mut().intern("Tezzeret");
+    let _emblem = reg.interner_mut().intern("Tezzeret, Betrayer of Flesh emblem");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(tezzeret);
 
@@ -69,46 +61,47 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     add_self_counter: Some((CounterKind::Loyalty, 1)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: plus_one_draw,
+                effect: plus_one_loot,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "−2: Target artifact becomes an artifact creature. If it \
-                       isn't a Vehicle, it has base power and toughness 4/4.".into(),
+                text: "-2: Target artifact becomes an artifact creature. If \
+                       it isn't a Vehicle, it has base power and toughness \
+                       4/4.".into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 2)),
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent().with_types(TypeLine::ARTIFACT.into()),
+                        ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
                     ),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
                 effect: minus_two_animate,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "−6: You get an emblem with \"Whenever an artifact you \
+                text: "-6: You get an emblem with \"Whenever an artifact you \
                        control becomes tapped, draw a card.\"".into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 6)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
                 effect: minus_six_emblem,
@@ -116,39 +109,74 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-/// `+1: Draw two cards. Then discard two cards unless you discard an
-/// artifact card.`
-///
-/// Only the "draw two cards" half is expressed; the conditional discard
-/// rider is omitted (not expressible with the demonstrated surface).
-fn plus_one_draw(
+fn plus_one_loot(
     _state: &GameState,
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::DrawCards {
-        player: ctx.controller,
-        count: 2,
+    // GAP: "unless you discard an artifact card" conditional skip isn't
+    // expressible; model draw two, discard two.
+    vec![
+        Effect::DrawCards { player: ctx.controller, count: 2 },
+        Effect::Discard {
+            player: ctx.controller,
+            count: 2,
+            choice: DiscardChoice::ControllerChooses,
+        },
+    ]
+}
+
+fn minus_two_animate(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    // GAP: the "if it isn't a Vehicle" exception is not expressible;
+    // approximate by always setting base 4/4 and adding the creature type.
+    vec![
+        Effect::AddType { target: *id, types: TypeLine::CREATURE.into(), duration: Duration::Permanent },
+        Effect::SetBasePT { target: *id, power: 4, toughness: 4, duration: Duration::Permanent },
+    ]
+}
+
+fn minus_six_emblem(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let emblem_name = reg
+        .interner()
+        .lookup("Tezzeret, Betrayer of Flesh emblem")
+        .expect("emblem name interned");
+    vec![Effect::CreateEmblem {
+        controller: ctx.controller,
+        emblem: EmblemDefinition {
+            name: emblem_name,
+            statics: Vec::new(),
+            abilities: vec![TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::BecomesTapped {
+                    filter: ObjectFilter::new()
+                        .with_types(TypeLine::ARTIFACT.into())
+                        .controlled_by(ControllerConstraint::You),
+                },
+                intervening_if: None,
+                effect: emblem_draw,
+                trigger_zones: vec![Zone::Command],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            }],
+        },
     }]
 }
 
-/// `−2: Target artifact becomes an artifact creature ...`
-fn minus_two_animate(
+fn emblem_draw(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: continuous "becomes an artifact creature with base p/t 4/4
-    // unless Vehicle" type/characteristic change is not expressible.
-    Vec::new()
-}
-
-/// `−6: You get an emblem ...`
-fn minus_six_emblem(
-    _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: emblem creation is not expressible.
-    Vec::new()
+    vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

@@ -1,36 +1,36 @@
-//! Wrenn and Realmbreaker — `{1}{G}{G}` Legendary Planeswalker — Wrenn,
-//! starting loyalty 5.
+//! Wrenn and Realmbreaker — `{1}{G}{G}` Legendary Planeswalker — Wrenn, loyalty 5.
 //!
-//! Static: "Lands you control have '{T}: Add one mana of any color.'" —
-//! a continuous static ability, not a loyalty ability; not modeled here.
-//!
-//! * `+1`: Up to one target land you control becomes a 3/3 Elemental
-//!   creature with vigilance, hexproof, and haste until your next turn.
-//!   GAP'd: the "until your next turn" duration is not in the demonstrated
-//!   `Duration` surface (only `EndOfTurn` / `WhileSourceOnBattlefield`).
-//! * `−2`: Mill three cards (expressible); the "put a permanent card from
-//!   among the milled cards into your hand" rider is not expressible.
-//! * `−7`: Emblem — GAP'd.
+//! Static: "Lands you control have \"{T}: Add one mana of any color.\"" — an
+//!   ability-granting static (not a loyalty ability); not expressible from the
+//!   demonstrated surface. GAP (static, not modeled).
+//! +1: Up to one target land you control becomes a 3/3 Elemental creature with
+//!     vigilance, hexproof, and haste until your next turn. It's still a land. The
+//!     becomes-a-creature animation with base P/T + keywords until-your-next-turn is
+//!     not expressible here — GAP body, shell kept with correct cost.
+//! −2: Mill three cards. You may put a permanent card from among the milled cards into
+//!     your hand. Mill three is modeled; the "may put a permanent into hand" rider
+//!     keyed on the milled cards is not expressible — GAP that rider.
+//! −7: You get an emblem with "You may play lands and cast permanent spells from your
+//!     graveyard." Rule-altering casting/playing permission; not expressible by
+//!     anthem/keyword/standard triggers. Emblem shell created with the grant GAP'd.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, EmblemDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
-    ActivatedAbilityDef, ActivationContext, ActivationCost, CardDefinition,
-    CardRegistry,
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetCount, TargetFilter,
-    TargetRequirement,
+    ObjectFilter, TargetCount, TargetFilter, TargetRequirement,
 };
-use arcana_core::types::{
-    CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine,
-};
+use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Wrenn and Realmbreaker");
     let wrenn = reg.interner_mut().intern("Wrenn");
+    let _elemental = reg.interner_mut().intern("Elemental");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(wrenn);
 
@@ -42,6 +42,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
         loyalty: Some(5),
+        // GAP: keyword "Mill" — no usable KeywordAbility variant; the only Mill on
+        //      this card is the -2 loyalty ability, which is modeled below.
         ..Default::default()
     };
 
@@ -49,54 +51,55 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "+1: Up to one target land you control becomes a 3/3 \
-                       Elemental creature with vigilance, hexproof, and haste \
-                       until your next turn. It's still a land.".into(),
+                       Elemental creature with vigilance, hexproof, and haste until \
+                       your next turn. It's still a land."
+                    .into(),
                 cost: ActivationCost {
                     add_self_counter: Some((CounterKind::Loyalty, 1)),
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
-                        ObjectFilter::permanent()
-                            .with_types(TypeLine::LAND.into())
-                            .controlled_by(ControllerConstraint::You),
+                        ObjectFilter::permanent().with_types(TypeLine::LAND.into()),
                     ),
                     count: TargetCount::UpTo(1),
                     controller: None,
                 }],
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
                 effect: plus_one_animate,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "−2: Mill three cards. You may put a permanent card from \
-                       among the milled cards into your hand.".into(),
+                text: "-2: Mill three cards. You may put a permanent card from among \
+                       the milled cards into your hand."
+                    .into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 2)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
                 effect: minus_two_mill,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "−7: You get an emblem with \"You may play lands and cast \
-                       permanent spells from your graveyard.\"".into(),
+                text: "-7: You get an emblem with \"You may play lands and cast \
+                       permanent spells from your graveyard.\""
+                    .into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 7)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
                 effect: minus_seven_emblem,
@@ -109,9 +112,10 @@ fn plus_one_animate(
     _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "until your next turn" duration is not in the demonstrated
-    // Duration surface; the animate-land bundle (SetBasePT + AddType +
-    // keyword grants) requires that duration to be faithful.
+    // GAP: "becomes a 3/3 Elemental creature with vigilance, hexproof, and haste
+    //      until your next turn; still a land" — land-animation with base P/T,
+    //      type-add, keyword grant, and until-your-next-turn duration is not
+    //      expressible from the demonstrated surface.
     Vec::new()
 }
 
@@ -120,16 +124,27 @@ fn minus_two_mill(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: the "put a permanent card from among the milled cards into your
-    // hand" rider is not expressible; the mill is.
+    // GAP: "you may put a permanent card from among the milled cards into your hand" —
+    //      the milled-card-conditional return rider is not expressible. Mill three
+    //      modeled.
     vec![Effect::Mill { player: ctx.controller, count: 3 }]
 }
 
 fn minus_seven_emblem(
     _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
+    ctx: &ActivationContext,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: emblem granting graveyard-casting permission.
-    Vec::new()
+    let emblem_name = reg.interner().lookup("Wrenn and Realmbreaker").expect("name interned");
+    // GAP: "You may play lands and cast permanent spells from your graveyard" is a
+    //      rule-altering casting/playing permission, not expressible by
+    //      anthem/keyword/standard triggers. Emblem shell created.
+    vec![Effect::CreateEmblem {
+        controller: ctx.controller,
+        emblem: EmblemDefinition {
+            name: emblem_name,
+            statics: Vec::new(),
+            abilities: Vec::new(),
+        },
+    }]
 }

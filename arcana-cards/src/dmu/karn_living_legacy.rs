@@ -1,23 +1,25 @@
-//! Karn, Living Legacy — `{4}` Legendary Planeswalker — Karn,
-//! starting loyalty 5. Colorless.
+//! Karn, Living Legacy — `{4}` Legendary Planeswalker — Karn, starting
+//! loyalty 5.
 //!
-//! +1: Create a tapped Powerstone token. (Modeled via CreateCommodityToken;
-//!     the "tapped" rider isn't expressible on that variant — the token enters
-//!     untapped.)
-//! −1: Pay any amount of mana. Look at that many cards from the top of your
-//!     library, then put one into your hand and the rest on the bottom in a
-//!     random order. GAP: "pay any amount of mana" is a dynamic-X cost/dig with
-//!     no demonstrated primitive.
+//! +1: Create a tapped Powerstone token. Modeled as a colorless artifact
+//!   token named "Powerstone". The "tapped" entry (no non-attacking
+//!   tapped-token primitive) and the token's intrinsic mana ability
+//!   ("{T}: Add {C}…") are NOT expressible from `TokenDefinition` —
+//!   partially GAP'd; the token is created.
+//! −1: Pay any amount of mana. Look at that many cards… — a dynamic-X
+//!   variable-mana payment whose effect count depends on the amount paid;
+//!   not expressible. GAP (effect returns nothing; correct −1 cost shell).
 //! −7: You get an emblem with "Tap an untapped artifact you control: This
-//!     emblem deals 1 damage to any target." GAP: emblem creation with a
-//!     bespoke activated ability is not expressible.
+//!   emblem deals 1 damage to any target." The emblem's grant is an
+//!   ability-granting activated ability the anthem/keyword/filtered
+//!   builders can't express. GAP the emblem (correct −7 cost shell).
 
-use arcana_core::effects::{CommodityToken, Effect};
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
-    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
-    CardDefinition, CardRegistry,
+    ActivatedAbilityDef, ActivationContext, ActivationCost, CardDefinition,
+    CardRegistry,
 };
 use arcana_core::state::GameState;
 use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine};
@@ -25,6 +27,7 @@ use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Karn, Living Legacy");
     let karn = reg.interner_mut().intern("Karn");
+    let _powerstone = reg.interner_mut().intern("Powerstone");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(karn);
 
@@ -50,10 +53,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: ActivationZone::Battlefield,
+                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: plus_one,
+                effect: plus_one_powerstone,
             })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "-1: Pay any amount of mana. Look at that many cards from \
@@ -67,10 +70,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: ActivationZone::Battlefield,
+                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: minus_one,
+                effect: minus_one_dig,
             })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "-7: You get an emblem with \"Tap an untapped artifact you \
@@ -82,41 +85,60 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: ActivationZone::Battlefield,
+                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: minus_seven,
+                effect: minus_seven_emblem,
             }),
     )
 }
 
-fn plus_one(
+fn plus_one_powerstone(
     _state: &GameState,
     ctx: &ActivationContext,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // "tapped" rider not expressible on CreateCommodityToken; mint a Powerstone.
-    vec![Effect::CreateCommodityToken {
+    // GAP: the token's "enters tapped" state and its intrinsic
+    //      "{T}: Add {C}. This mana can't be spent to cast a nonartifact
+    //      spell." mana ability are not expressible from TokenDefinition;
+    //      the Powerstone artifact token itself is created.
+    let powerstone = reg
+        .interner()
+        .lookup("Powerstone")
+        .expect("Powerstone interned at register");
+    vec![Effect::CreateToken {
         controller: ctx.controller,
-        kind: CommodityToken::Powerstone,
-        count: 1,
+        token: TokenDefinition {
+            name: powerstone,
+            colors: ColorSet::colorless(),
+            types: TypeLine::ARTIFACT.into(),
+            subtypes: SubtypeSet::default(),
+            power: None,
+            toughness: None,
+            keywords: vec![],
+            abilities: vec![],
+        },
     }]
 }
 
-fn minus_one(
+fn minus_one_dig(
     _state: &GameState,
     _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "pay any amount of mana" is a dynamic-X cost feeding a variable dig.
+    // GAP: "Pay any amount of mana. Look at that many cards…" — a dynamic-X
+    //      variable-mana payment whose dug count depends on the amount paid;
+    //      not expressible from the demonstrated surface.
     Vec::new()
 }
 
-fn minus_seven(
+fn minus_seven_emblem(
     _state: &GameState,
     _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: emblem with a bespoke activated ability.
+    // GAP: the emblem grants an activated ability ("Tap an untapped artifact
+    //      you control: deal 1 damage to any target") — an ability-granting
+    //      effect the anthem/keyword/filtered emblem builders can't express.
     Vec::new()
 }

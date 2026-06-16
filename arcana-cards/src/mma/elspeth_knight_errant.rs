@@ -1,44 +1,34 @@
-//! Elspeth, Knight-Errant — `{2}{W}{W}` planeswalker, starting loyalty 4.
-//! Legendary Planeswalker — Elspeth.
+//! Elspeth, Knight-Errant — `{2}{W}{W}` Legendary Planeswalker — Elspeth,
+//! starting loyalty 4.
 //!
-//! Oracle text:
-//! * `+1`: Create a 1/1 white Soldier creature token.
-//! * `+1`: Target creature gets +3/+3 and gains flying until end of turn.
-//! * `−8`: You get an emblem with "Artifacts, creatures, enchantments,
-//!   and lands you control have indestructible."
-//!
-//! # Rules references
-//!
-//! * CR 113.3c — enters with loyalty counters equal to printed loyalty.
-//! * CR 606 — loyalty abilities (activated abilities whose cost is
-//!   adding/removing loyalty counters).
-//! * CR 704.5i — a planeswalker with 0 loyalty is sacrificed (SBA).
-//!
-//! # Scope
-//!
-//! Only the second `+1` ("target creature gets +3/+3 and gains flying
-//! until end of turn") is fully modeled, via `Pump` + `GrantKeyword`.
-//! The first `+1` creates a token (TokenDefinition builder not in the
-//! demonstrated surface) and the `−8` grants an emblem — both have
-//! their loyalty shells declared but GAP'd effect bodies.
+//! +1: Create a 1/1 white Soldier creature token.
+//! +1: Target creature gets +3/+3 and gains flying until end of turn.
+//! −8: You get an emblem with "Artifacts, creatures, enchantments, and lands you
+//!   control have indestructible." Modeled as a STATIC emblem granting
+//!   Indestructible to permanents you control via `filtered_keyword`.
 
-use arcana_core::effects::{Effect, KeywordAbility};
-use arcana_core::layers::Duration;
+use arcana_core::effects::{Effect, EmblemDefinition, KeywordAbility, TokenDefinition};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{
-    ActivatedAbilityDef, ActivationContext, ActivationCost, CardDefinition,
-    CardRegistry,
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::types::{
-    CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine,
+    CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine,
 };
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Elspeth, Knight-Errant");
     let elspeth = reg.interner_mut().intern("Elspeth");
+    let _soldier = reg.interner_mut().intern("Soldier");
+    let _emblem = reg.interner_mut().intern("Elspeth, Knight-Errant emblem");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(elspeth);
 
@@ -61,68 +51,81 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     add_self_counter: Some((CounterKind::Loyalty, 1)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
                 effect: plus_one_token,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "+1: Target creature gets +3/+3 and gains flying \
-                       until end of turn.".into(),
+                text: "+1: Target creature gets +3/+3 and gains flying until end \
+                       of turn.".into(),
                 cost: ActivationCost {
                     add_self_counter: Some((CounterKind::Loyalty, 1)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![TargetRequirement::target_creature()],
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(ObjectFilter::creature()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
                 effect: plus_one_pump,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "−8: You get an emblem with \"Artifacts, creatures, \
+                text: "-8: You get an emblem with \"Artifacts, creatures, \
                        enchantments, and lands you control have \
                        indestructible.\"".into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 8)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![],
+                target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: ultimate_emblem,
+                effect: minus_eight_emblem,
             }),
     )
 }
 
-/// `+1: Create a 1/1 white Soldier creature token.`
 fn plus_one_token(
     _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
+    ctx: &ActivationContext,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: token creation requires a TokenDefinition builder not in the
-    // demonstrated surface.
-    Vec::new()
+    let soldier = reg.interner().lookup("Soldier").expect("Soldier interned at register");
+    let mut token_subtypes = SubtypeSet::default();
+    token_subtypes.0.insert(soldier);
+    vec![Effect::CreateToken {
+        controller: ctx.controller,
+        token: TokenDefinition {
+            name: soldier,
+            colors: ColorSet::white(),
+            types: TypeLine::CREATURE.into(),
+            subtypes: token_subtypes,
+            power: Some(PtValue::Fixed(1)),
+            toughness: Some(PtValue::Fixed(1)),
+            keywords: vec![],
+            abilities: vec![],
+        },
+    }]
 }
 
-/// `+1: Target creature gets +3/+3 and gains flying until end of turn.`
 fn plus_one_pump(
     _state: &GameState,
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
-        return Vec::new();
-    };
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else { return Vec::new(); };
     vec![
         Effect::Pump {
             target: *id,
@@ -139,12 +142,24 @@ fn plus_one_pump(
     ]
 }
 
-/// `−8: You get an emblem with "...indestructible."`
-fn ultimate_emblem(
+fn minus_eight_emblem(
     _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
+    ctx: &ActivationContext,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: emblem creation is not in the demonstrated Effect surface.
-    Vec::new()
+    let emblem_name = reg.interner().lookup("Elspeth, Knight-Errant emblem").expect("name interned");
+    let filter = ObjectFilter::permanent().controlled_by(ControllerConstraint::You);
+    vec![Effect::CreateEmblem {
+        controller: ctx.controller,
+        emblem: EmblemDefinition {
+            name: emblem_name,
+            statics: vec![ContinuousEffect::filtered_keyword(
+                NULL_OBJECT_ID,
+                filter,
+                KeywordAbility::Indestructible,
+                Duration::Permanent,
+            )],
+            abilities: Vec::new(),
+        },
+    }]
 }

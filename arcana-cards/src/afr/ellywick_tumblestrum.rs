@@ -1,35 +1,33 @@
-//! Ellywick Tumblestrum — `{2}{G}{G}` Legendary Planeswalker — Ellywick.
-//! Starting loyalty inferred 4.
-//! +1: Venture into the dungeon.
-//! −2: Look at the top six cards of your library. You may reveal a creature
-//!   card from among them and put it into your hand. If it's legendary, you
-//!   gain 3 life. Put the rest on the bottom of your library in a random order.
-//! −7: You get an emblem with "Creatures you control have trample and haste
-//!   and get +2/+2 for each differently named dungeon you've completed."
+//! Ellywick Tumblestrum — `{2}{G}{G}` Legendary Planeswalker — Ellywick,
+//! starting loyalty 5. Colors G.
 //!
-//! GAP: −2 "if it's legendary, you gain 3 life" — the conditional life-gain
-//!   tied to the revealed card's legendary status is not expressible as a
-//!   rider on DigTopN; the reveal-a-creature-to-hand portion is modeled.
-//! GAP: −7 emblem grants a dynamic +2/+2-per-completed-dungeon anthem plus
-//!   trample/haste; that emblem's static body is not expressible from the
-//!   TriggeredAbilityDef-only EmblemDefinition surface. Declared, body GAP'd.
+//! +1: Venture into the dungeon (`Effect::Venture`).
+//! −2: Look at the top six cards of your library; you may reveal a creature card
+//!   and put it into your hand; rest on the bottom in a random order. Modeled
+//!   with `Effect::DigTopN { count: 6, filter: creature, rest: BottomRandom }`.
+//!   GAP: "if it's legendary, you gain 3 life" rider (no conditional hook on the
+//!   chosen card).
+//! −7: emblem ("Creatures you control have trample and haste and get +2/+2 for
+//!   each differently named dungeon you've completed."). Static emblem: trample
+//!   and haste keyword anthems are installed; GAP: the dynamic "+2/+2 for each
+//!   differently named dungeon completed" pump is not expressible (dynamic-X).
 
-use arcana_core::effects::{DigRest, Effect};
+use arcana_core::effects::{Effect, EmblemDefinition, KeywordAbility, DigRest};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
 use arcana_core::targets::ObjectFilter;
-use arcana_core::types::{
-    CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine,
-};
+use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Ellywick Tumblestrum");
     let ellywick = reg.interner_mut().intern("Ellywick");
+    let _emblem = reg.interner_mut().intern("Ellywick Tumblestrum emblem");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(ellywick);
 
@@ -40,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::PLANESWALKER.into(),
         subtypes,
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
-        loyalty: Some(4),
+        loyalty: Some(5),
         ..Default::default()
     };
 
@@ -61,10 +59,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: plus_one_venture,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "-2: Look at the top six cards of your library. You may reveal a \
-                       creature card from among them and put it into your hand. If it's \
-                       legendary, you gain 3 life. Put the rest on the bottom of your \
-                       library in a random order.".into(),
+                text: "-2: Look at the top six cards of your library. You may \
+                       reveal a creature card from among them and put it into \
+                       your hand. If it's legendary, you gain 3 life. Put the \
+                       rest on the bottom of your library in a random \
+                       order.".into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 2)),
                     ..ActivationCost::default()
@@ -78,9 +77,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: minus_two_dig,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                text: "-7: You get an emblem with \"Creatures you control have trample \
-                       and haste and get +2/+2 for each differently named dungeon \
-                       you've completed.\"".into(),
+                text: "-7: You get an emblem with \"Creatures you control have \
+                       trample and haste and get +2/+2 for each differently \
+                       named dungeon you've completed.\"".into(),
                 cost: ActivationCost {
                     remove_self_counter: Some((CounterKind::Loyalty, 7)),
                     ..ActivationCost::default()
@@ -109,21 +108,38 @@ fn minus_two_dig(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "if it's legendary, you gain 3 life" rider not expressible.
+    // GAP: "if it's legendary, you gain 3 life" rider on the chosen card.
     vec![Effect::DigTopN {
         player: ctx.controller,
         count: 6,
-        filter: Some(ObjectFilter::creature()),
+        filter: Some(ObjectFilter::new().with_types(TypeLine::CREATURE.into())),
         rest: DigRest::BottomRandom,
     }]
 }
 
 fn minus_seven_emblem(
     _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
+    ctx: &ActivationContext,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: emblem with a dynamic per-completed-dungeon anthem + trample/haste
-    // static; EmblemDefinition only carries triggered abilities, not statics.
-    Vec::new()
+    let emblem_name = reg.interner().lookup("Ellywick Tumblestrum emblem").expect("emblem interned");
+    // GAP: "+2/+2 for each differently named dungeon you've completed" (dynamic-X
+    //      anthem). The trample and haste keyword anthems ARE installed.
+    vec![Effect::CreateEmblem {
+        controller: ctx.controller,
+        emblem: EmblemDefinition {
+            name: emblem_name,
+            statics: vec![
+                ContinuousEffect::keyword_anthem(
+                    NULL_OBJECT_ID, ctx.controller, KeywordAbility::Trample,
+                    Duration::Permanent,
+                ),
+                ContinuousEffect::keyword_anthem(
+                    NULL_OBJECT_ID, ctx.controller, KeywordAbility::Haste,
+                    Duration::Permanent,
+                ),
+            ],
+            abilities: Vec::new(),
+        },
+    }]
 }
