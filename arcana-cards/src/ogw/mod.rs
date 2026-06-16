@@ -37,3 +37,4 @@ pub mod iona_s_blessing;
 pub mod eldrazi_aggressor;
 pub mod vampire_envoy;
 pub mod thought_knot_seer;
+pub mod cliffhaven_vampire;

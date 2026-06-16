@@ -70,3 +70,4 @@ pub mod ghave_guru_of_spores;
 pub mod boartusk_liege;
 pub mod fireblade_artist;
 pub mod elsha_of_the_infinite;
+pub mod scion_of_darkness;

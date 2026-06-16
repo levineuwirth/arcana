@@ -106,3 +106,4 @@ pub mod demon_wall;
 pub mod il_mheg_pixie;
 pub mod barret_wallace;
 pub mod noctis_prince_of_lucis;
+pub mod black_waltz_no_3;

@@ -94,3 +94,4 @@ pub mod landroval_horizon_witness;
 pub mod frodo_determined_hero;
 pub mod bilbo_retired_burglar;
 pub mod a_orcish_bowmasters;
+pub mod omer_marshal_of_rohan;

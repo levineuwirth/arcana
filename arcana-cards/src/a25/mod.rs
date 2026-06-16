@@ -46,3 +46,4 @@ pub mod fortune_thief;
 pub mod nezumi_cutthroat;
 pub mod will_o_the_wisp;
 pub mod nettle_sentinel;
+pub mod fallen_angel;

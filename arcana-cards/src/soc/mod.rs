@@ -134,3 +134,5 @@ pub mod sentinel_s_eyes;
 pub mod nether_traitor;
 pub mod stormcatch_mentor;
 pub mod solemn_simulacrum;
+pub mod gorma_the_gullet;
+pub mod primordial_hydra;

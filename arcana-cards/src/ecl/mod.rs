@@ -87,3 +87,7 @@ pub mod kinscaer_sentry;
 pub mod stratosoarer;
 pub mod boldwyr_aggressor;
 pub mod sunderflock;
+pub mod burdened_stoneback;
+pub mod omni_changeling;
+pub mod glen_elendra_guardian;
+pub mod goliath_daydreamer;

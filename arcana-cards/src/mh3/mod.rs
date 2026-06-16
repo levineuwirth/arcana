@@ -66,3 +66,4 @@ pub mod propagator_drone;
 pub mod corrupted_shapeshifter;
 pub mod six;
 pub mod emissary_of_soulfire;
+pub mod cyclops_superconductor;

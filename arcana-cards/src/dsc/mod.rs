@@ -57,3 +57,4 @@ pub mod ob_nixilis_reignited;
 pub mod professor_onyx;
 pub mod demolisher_spawn;
 pub mod mogis_god_of_slaughter;
+pub mod star_athlete;

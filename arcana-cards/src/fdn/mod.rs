@@ -178,3 +178,6 @@ pub mod herald_of_faith;
 pub mod aggressive_mammoth;
 pub mod corsair_captain;
 pub mod ruby_daring_tracker;
+pub mod ramos_dragon_engine;
+pub mod heroes_bane;
+pub mod kellan_planar_trailblazer;

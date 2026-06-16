@@ -13,3 +13,4 @@ pub mod journeyer_s_kite;
 pub mod venser_the_sojourner;
 pub mod koth_of_the_hammer;
 pub mod neurok_invisimancer;
+pub mod vulshok_sorcerer;

@@ -66,3 +66,4 @@ pub mod watchful_blisterzoa;
 pub mod basilica_shepherd;
 pub mod mite_overseer;
 pub mod malcator_purity_overseer;
+pub mod charforger;

@@ -31,3 +31,5 @@ pub mod nettling_curse;
 pub mod plumes_of_peace;
 pub mod rakdos_the_defiler;
 pub mod kill_suit_cultist;
+pub mod cytospawn_shambler;
+pub mod cytoplast_manipulator;

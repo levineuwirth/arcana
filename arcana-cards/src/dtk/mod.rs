@@ -58,3 +58,4 @@ pub mod minister_of_pain;
 pub mod vulturous_aven;
 pub mod sabertooth_outrider;
 pub mod arashin_foremost;
+pub mod crater_elemental;

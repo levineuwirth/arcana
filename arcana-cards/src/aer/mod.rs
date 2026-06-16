@@ -63,3 +63,5 @@ pub mod aetherstream_leopard;
 pub mod hinterland_drake;
 pub mod aether_inspector;
 pub mod narnam_renegade;
+pub mod ajani_s_comrade;
+pub mod exquisite_archangel;

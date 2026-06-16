@@ -15,3 +15,4 @@ pub mod evolutionary_escalation;
 pub mod yidris_maelstrom_wielder;
 pub mod saskia_the_unyielding;
 pub mod nath_of_the_gilt_leaf;
+pub mod thrasios_triton_hero;

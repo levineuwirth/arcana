@@ -131,3 +131,4 @@ pub mod ramosian_captain;
 pub mod saprazzan_bailiff;
 pub mod rishadan_brigand;
 pub mod cateran_slaver;
+pub mod extravagant_spirit;

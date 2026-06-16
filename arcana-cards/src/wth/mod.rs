@@ -43,3 +43,5 @@ pub mod dingus_staff;
 pub mod coils_of_the_medusa;
 pub mod briar_shield;
 pub mod nature_s_kiss;
+pub mod arctic_wolves;
+pub mod roc_hatchling;

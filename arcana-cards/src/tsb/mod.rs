@@ -20,3 +20,5 @@ pub mod claws_of_gix;
 pub mod war_barge;
 pub mod consecrate_land;
 pub mod fire_whip;
+pub mod scragnoth;
+pub mod stormscape_familiar;

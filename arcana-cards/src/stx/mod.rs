@@ -82,3 +82,4 @@ pub mod kasmina_enigma_sage;
 pub mod stonerise_spirit;
 pub mod dragonsguard_elite;
 pub mod hall_monitor;
+pub mod waterfall_aerialist;

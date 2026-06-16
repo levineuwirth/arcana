@@ -71,3 +71,6 @@ pub mod skanos_blue_dragon_vassal;
 pub mod sarevok_divine_usurper;
 pub mod imoen_honorable_trickster;
 pub mod viconia_disciple_of_violence;
+pub mod karlach_raging_tiefling;
+pub mod wilson_ardent_bear;
+pub mod imoen_occult_trickster;

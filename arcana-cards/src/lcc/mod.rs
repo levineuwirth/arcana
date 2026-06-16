@@ -47,3 +47,4 @@ pub mod admiral_brass_unsinkable;
 pub mod mist_dancer;
 pub mod bronzebeak_foragers;
 pub mod carmen_cruel_skymarcher;
+pub mod vona_butcher_of_magan;

@@ -78,3 +78,6 @@ pub mod jace_arcane_strategist;
 pub mod jaya_venerated_firemage;
 pub mod vraska_swarm_s_eminence;
 pub mod centaur_nurturer;
+pub mod tolsimir_friend_to_wolves;
+pub mod saheeli_s_silverwing;
+pub mod thundering_ceratok;

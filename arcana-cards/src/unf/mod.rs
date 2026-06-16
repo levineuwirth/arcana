@@ -41,3 +41,6 @@ pub mod lineprancers;
 pub mod minotaur_de_force;
 pub mod focused_funambulist;
 pub mod celebr_8000;
+pub mod haberthrasher;
+pub mod grand_marshal_macie;
+pub mod centaur_of_attention;

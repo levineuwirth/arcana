@@ -91,3 +91,4 @@ pub mod a_high_rise_sawjack;
 pub mod errant_street_artist;
 pub mod brazen_upstart;
 pub mod all_seeing_arbiter;
+pub mod rakish_revelers;

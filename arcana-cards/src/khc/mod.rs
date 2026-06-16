@@ -24,3 +24,4 @@ pub mod prowess_of_the_fair;
 pub mod pride_of_the_perfect;
 pub mod geist_honored_monk;
 pub mod ethereal_valkyrie;
+pub mod poison_tip_archer;

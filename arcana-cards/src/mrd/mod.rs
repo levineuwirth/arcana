@@ -74,3 +74,4 @@ pub mod inertia_bubble;
 pub mod clockwork_dragon;
 pub mod looming_hoverguard;
 pub mod mirror_golem;
+pub mod clockwork_vorrac;

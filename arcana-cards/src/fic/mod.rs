@@ -29,3 +29,4 @@ pub mod papalymo_totolymo;
 pub mod amarant_coral;
 pub mod lyse_hext;
 pub mod gatta_and_luzzu;
+pub mod tataru_taru;

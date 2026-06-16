@@ -63,3 +63,5 @@ pub mod dralnu_lich_lord;
 pub mod fathom_seer;
 pub mod jaya_ballard_task_mage;
 pub mod bonded_fetch;
+pub mod mire_boa;
+pub mod serra_avenger;

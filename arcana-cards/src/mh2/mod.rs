@@ -69,3 +69,4 @@ pub mod archfiend_of_sorrows;
 pub mod chrome_courier;
 pub mod slag_strider;
 pub mod bottle_golems;
+pub mod ravenous_squirrel;

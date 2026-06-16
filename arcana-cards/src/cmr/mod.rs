@@ -92,3 +92,6 @@ pub mod kamahl_heart_of_krosa;
 pub mod rograkh_son_of_rohgahh;
 pub mod glacian_powerstone_engineer;
 pub mod kangee_sky_warden;
+pub mod esior_wardwing_familiar;
+pub mod molder_beast;
+pub mod rakshasa_debaser;

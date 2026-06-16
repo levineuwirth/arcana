@@ -107,3 +107,4 @@ pub mod armguard_familiar;
 pub mod acquisition_octopus;
 pub mod spring_leaf_avenger;
 pub mod inkrise_infiltrator;
+pub mod a_asari_captain;

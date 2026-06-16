@@ -76,3 +76,8 @@ pub mod the_brewing_chef;
 pub mod azra_matchthrower;
 pub mod stormscale_wurm;
 pub mod seer_of_the_bright_side;
+pub mod monet_sensei_of_the_sewers;
+pub mod your_favorite_missing_character;
+pub mod the_judge_of_height;
+pub mod blu_mansion_prince;
+pub mod the_bringer_of_the_red_beard;

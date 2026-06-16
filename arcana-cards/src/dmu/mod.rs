@@ -64,3 +64,5 @@ pub mod defiler_of_dreams;
 pub mod shield_wall_sentinel;
 pub mod nishoba_brawler;
 pub mod a_nael_avizoa_aeronaut;
+pub mod nael_avizoa_aeronaut;
+pub mod battlewing_mystic;

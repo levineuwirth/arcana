@@ -21,3 +21,4 @@ pub mod sarkhan_vol;
 pub mod tidehollow_sculler;
 pub mod arcbound_ravager;
 pub mod dreamspoiler_witches;
+pub mod thallid;

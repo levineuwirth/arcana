@@ -61,3 +61,7 @@ pub mod greenbelt_guardian;
 pub mod brightfield_mustang;
 pub mod embalmed_ascendant;
 pub mod coalstoke_gearhulk;
+pub mod keen_buccaneer;
+pub mod lotusguard_disciple;
+pub mod slick_imitator;
+pub mod pit_automaton;

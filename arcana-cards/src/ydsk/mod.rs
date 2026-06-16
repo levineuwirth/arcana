@@ -2,3 +2,4 @@
 pub mod anguished_recollection;
 pub mod housemeld;
 pub mod valiant_emberkin;
+pub mod effie_fast_learner;

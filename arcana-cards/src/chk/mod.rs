@@ -92,3 +92,4 @@ pub mod soratami_mirror_mage;
 pub mod soratami_cloudskater;
 pub mod ronin_houndmaster;
 pub mod villainous_ogre;
+pub mod brutal_deceiver;

@@ -54,3 +54,4 @@ pub mod dauntless_aven;
 pub mod spellweaver_eternal;
 pub mod pride_sovereign;
 pub mod magmaroth;
+pub mod oasis_ritualist;

@@ -42,3 +42,5 @@ pub mod bold_plagiarist;
 pub mod ruxa_patient_professor;
 pub mod defiant_bloodlord;
 pub mod sapling_of_colfenor;
+pub mod teysa_envoy_of_ghosts;
+pub mod sproutback_trudge;

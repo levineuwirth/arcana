@@ -65,3 +65,4 @@ pub mod urza_academy_headmaster;
 pub mod socketed_sprocketer;
 pub mod the_big_idea;
 pub mod garbage_elemental;
+pub mod earl_of_squirrel;

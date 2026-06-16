@@ -73,3 +73,6 @@ pub mod tractor_beam;
 pub mod tezzeret_cruel_captain;
 pub mod icetill_explorer;
 pub mod steelswarm_operator;
+pub mod tapestry_warden;
+pub mod famished_worldsire;
+pub mod genemorph_imago;

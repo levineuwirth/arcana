@@ -6,3 +6,4 @@ pub mod brokers_safeguard;
 pub mod obscura_polymorphist;
 pub mod agent_of_raffine;
 pub mod loose_in_the_park;
+pub mod effluence_devourer;

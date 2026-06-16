@@ -37,3 +37,4 @@ pub mod sinstriker_s_will;
 pub mod shadow_lance;
 pub mod witch_maw_nephilim;
 pub mod torch_drake;
+pub mod restless_bones;

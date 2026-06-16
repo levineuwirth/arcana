@@ -33,3 +33,4 @@ pub mod cunning;
 pub mod predatory_hunger;
 pub mod welkin_hawk;
 pub mod soltari_visionary;
+pub mod spike_rogue;

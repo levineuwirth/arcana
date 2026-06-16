@@ -28,3 +28,4 @@ pub mod tyranid_prime;
 pub mod mawloc;
 pub mod imotekh_the_stormlord;
 pub mod sautekh_immortal;
+pub mod company_commander;

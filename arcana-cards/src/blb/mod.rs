@@ -87,3 +87,5 @@ pub mod iridescent_vinelasher;
 pub mod darkstar_augur;
 pub mod the_infamous_cruelclaw;
 pub mod splash_lasher;
+pub mod glidedive_duo;
+pub mod kindlespark_duo;

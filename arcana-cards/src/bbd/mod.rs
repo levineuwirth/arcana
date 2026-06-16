@@ -72,3 +72,4 @@ pub mod karametra_s_favor;
 pub mod vigor;
 pub mod fan_favorite;
 pub mod battle_rampart;
+pub mod gorm_the_great;

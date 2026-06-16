@@ -93,3 +93,4 @@ pub mod the_royal_scions;
 pub mod embereth_paladin;
 pub mod savvy_hunter;
 pub mod archon_of_absolution;
+pub mod fervent_champion;

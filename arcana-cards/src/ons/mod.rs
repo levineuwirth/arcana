@@ -62,3 +62,4 @@ pub mod snapping_thragg;
 pub mod thoughtbound_primoc;
 pub mod aven_brigadier;
 pub mod shieldmage_elder;
+pub mod whipcorder;

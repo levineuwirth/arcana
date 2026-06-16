@@ -31,3 +31,4 @@ pub mod chant_of_the_skifsang;
 pub mod spiteful_shadows;
 pub mod talons_of_falkenrath;
 pub mod burden_of_guilt;
+pub mod strangleroot_geist;

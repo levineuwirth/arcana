@@ -61,6 +61,7 @@ Counterbore
 Counterlash
 Counterpoint
 Counterspell
+Cytoplast Manipulator
 Dack Fayden
 Dark Suspicions
 Dauntless Aven
@@ -141,6 +142,7 @@ Jaded Response
 Jandor's Saddlebags
 Jaws of Defeat
 Jungle Creeper
+Kindlespark Duo
 Kindred Denial
 Kiora's Follower
 Kiora, Behemoth Beckoner
@@ -168,6 +170,7 @@ Mandate of Abaddon
 Marchesa, the Black Rose
 Master Thief
 Medicine Runner
+Medomai the Ageless
 Memory Lapse
 Merchant of Many Hats
 Merrow Bonegnawer
@@ -232,6 +235,7 @@ Revive
 Revolutionary Rebuff
 Rime Tender
 Rishadan Port
+Roc Hatchling
 Rogues' Gallery
 Rona, Herald of Invasion
 Rootwater Matriarch
@@ -251,6 +255,7 @@ Second Chance
 Second Guess
 Seeker of Skybreak
 Seer of the Bright Side
+Sengir Autocrat
 Serene Heart
 Shard Phoenix
 Silkenfist Fighter
@@ -283,6 +288,7 @@ Thassa's Rebuff
 The Akroan War
 The Legend of Yangchen
 The Modern Age
+The Reaper, King No More
 Thing in the Ice
 Thistledown Players
 Thoughtbind

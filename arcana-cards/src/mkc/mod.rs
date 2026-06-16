@@ -46,3 +46,4 @@ pub mod wavesifter;
 pub mod akroma_angel_of_fury;
 pub mod sphinx_of_the_second_sun;
 pub mod otherworldly_escort;
+pub mod jolrael_mwonvuli_recluse;

@@ -5,3 +5,4 @@ pub mod hourglass_of_the_lost;
 pub mod trenchpost;
 pub mod infested_thrinax;
 pub mod angelic_aberration;
+pub mod broodmate_tyrant;

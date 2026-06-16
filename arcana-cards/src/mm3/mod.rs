@@ -34,3 +34,5 @@ pub mod golgari_germination;
 pub mod gift_of_orzhova;
 pub mod madcap_skills;
 pub mod kathari_bomber;
+pub mod corpse_connoisseur;
+pub mod spire_monitor;

@@ -3,3 +3,4 @@ pub mod mutational_advantage;
 pub mod rin_and_seri_inseparable;
 pub mod the_wise_mothman;
 pub mod captain_america_first_avenger;
+pub mod fluttershy;

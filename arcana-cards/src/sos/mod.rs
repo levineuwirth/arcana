@@ -62,3 +62,5 @@ pub mod shattered_acolyte;
 pub mod paradox_surveyor;
 pub mod orysa_tide_choreographer;
 pub mod biblioplex_tomekeeper;
+pub mod stirring_hopesinger;
+pub mod postmortem_professor;

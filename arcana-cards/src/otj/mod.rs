@@ -69,3 +69,4 @@ pub mod bruse_tarl_roving_rancher;
 pub mod akul_the_unrepentant;
 pub mod boneyard_desecrator;
 pub mod bristly_bill_spine_sower;
+pub mod the_gitrog_ravenous_ride;

@@ -49,3 +49,5 @@ pub mod forerunner_of_slaughter;
 pub mod undergrowth_champion;
 pub mod drana_s_emissary;
 pub mod brood_monitor;
+pub mod salvage_drone;
+pub mod drowner_of_hope;
