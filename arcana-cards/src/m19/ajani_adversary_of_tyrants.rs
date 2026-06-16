@@ -146,6 +146,7 @@ fn minus_seven_emblem(
         controller: ctx.controller,
         emblem: EmblemDefinition {
             name: emblem_name,
+            statics: Vec::new(),
             abilities: vec![TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::StepBegins {

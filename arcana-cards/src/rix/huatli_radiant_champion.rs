@@ -153,6 +153,7 @@ fn minus_eight_emblem(
         ObjectFilter::creature().controlled_by(ControllerConstraint::You);
     let emblem = EmblemDefinition {
         name: emblem_name,
+        statics: Vec::new(),
         abilities: vec![TriggeredAbilityDef {
             id: 1,
             trigger_condition: TriggerCondition::ZoneChange {

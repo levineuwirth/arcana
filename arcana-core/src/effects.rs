@@ -2467,10 +2467,24 @@ pub enum CommodityToken {
 
 /// Definition for [`Effect::CreateEmblem`]. Emblems are objects in
 /// the command zone with no characteristics beyond a name — their
-/// behavior is entirely their `abilities` vector.
-#[derive(Clone, Debug)]
+/// behavior is entirely their `statics` + `abilities`.
+///
+/// * `statics` — continuous effects the emblem installs (the anthem
+///   class: "Creatures you control get +2/+2", "have flying"). Build
+///   them with `source: NULL_OBJECT_ID` (or any placeholder) and the
+///   correct `controller` — [`create_emblem`] overwrites `.source`
+///   with the freshly-minted emblem id before installing. Use
+///   `Duration::Permanent` (emblems never leave the command zone).
+/// * `abilities` — triggered abilities ("At the beginning of your end
+///   step, …"). [`create_emblem`] stores them on the emblem object's
+///   `granted_triggered_abilities` with ids remapped into the granted
+///   range and `trigger_zones` forced to `Command`, so the existing
+///   trigger collection + resolution fire them (the emblem has no
+///   registry def — same dispatch as `Effect::GrantTriggeredAbility`).
+#[derive(Clone, Debug, Default)]
 pub struct EmblemDefinition {
     pub name: SmallString,
+    pub statics: Vec<crate::layers::ContinuousEffect>,
     pub abilities: Vec<crate::triggers::TriggeredAbilityDef>,
 }
 
@@ -3405,12 +3419,41 @@ fn create_emblem(
     let obj = GameObject::new(
         id, controller, Zone::Command, /*card_id=*/ 0, chars);
     state.objects.insert(obj);
-    // TODO(events): add a dedicated `EmblemCreated` event once
-    // triggers that watch for emblem creation land. For Phase 1 the
-    // emblem is silent — its abilities register their own triggers.
-    let _ = &emblem.abilities; // placeholder; ability registration
-                                // happens through the trigger system
-                                // when it grows an emblem path.
+
+    // Static abilities (anthems): install each continuous effect with
+    // its source pointed at the freshly-minted emblem. The emblem never
+    // leaves the command zone, so a `Duration::Permanent` effect lasts
+    // the rest of the game (CR 114.3). Anthems key on the stored
+    // `controller`, not the source's zone, so a command-zone source is
+    // fine.
+    for eff in &emblem.statics {
+        let mut eff = eff.clone();
+        eff.source = id;
+        state.add_continuous_effect(eff);
+    }
+
+    // Triggered abilities: park them on the emblem's
+    // `granted_triggered_abilities`, remapping each id into the granted
+    // range and forcing `trigger_zones` to `Command` (the emblem's only
+    // zone) so `should_fire`'s zone gate passes. Collection
+    // (collect_pending_triggers) and resolution (the GRANTED_TRIGGER_ID
+    // dispatch) both already handle this path — the emblem has no
+    // registry def, exactly like `Effect::GrantTriggeredAbility`.
+    if !emblem.abilities.is_empty() {
+        if let Some(obj) = state.objects.get_mut(id) {
+            for (i, ability) in emblem.abilities.iter().enumerate() {
+                let mut def = ability.clone();
+                def.id = crate::triggers::GRANTED_TRIGGER_ID_BASE
+                    + 1 + i as crate::types::TriggerId;
+                def.trigger_zones = vec![Zone::Command];
+                obj.granted_triggered_abilities.push(
+                    crate::triggers::GrantedTrigger {
+                        def,
+                        duration: crate::layers::Duration::Permanent,
+                    });
+            }
+        }
+    }
 }
 
 /// Push a copy of `target` onto the stack. If the original has any
@@ -6476,6 +6519,66 @@ mod tests {
     }
 
     #[test]
+    fn emblem_static_anthem_buffs_controllers_creatures() {
+        // "You get an emblem with 'Creatures you control get +2/+2.'"
+        // (Elspeth, Gideon class). The static is installed sourced on
+        // the command-zone emblem and applies the rest of the game.
+        use crate::layers::{ContinuousEffect, Duration};
+        let mut s = GameState::new(2, 0);
+        let mine = put_creature(&mut s, 0, Zone::Battlefield, 1, 1);
+        let theirs = put_creature(&mut s, 1, Zone::Battlefield, 1, 1);
+        Effect::CreateEmblem {
+            controller: 0,
+            emblem: EmblemDefinition {
+                name: 0,
+                statics: vec![ContinuousEffect::anthem(
+                    crate::objects::NULL_OBJECT_ID, 0, 2, 2, Duration::Permanent)],
+                abilities: Vec::new(),
+            },
+        }.execute(&mut s);
+        assert_eq!(s.computed_power(mine), Some(3), "emblem anthem buffs your creature");
+        assert_eq!(s.computed_power(theirs), Some(1), "opponent's creature untouched");
+    }
+
+    #[test]
+    fn emblem_triggered_ability_is_registered_in_command_zone() {
+        // Triggered emblem abilities are parked on the emblem's granted
+        // list with an id in the granted range and Command in their
+        // trigger_zones, so the engine's collection + resolution fire
+        // them despite the emblem having no registry def.
+        use crate::triggers::{
+            TriggerCondition, TriggerFrequency, TriggeredAbilityDef, GRANTED_TRIGGER_ID_BASE,
+        };
+        fn noop(_: &GameState, _: &crate::triggers::PendingTrigger,
+                _: &crate::registry::CardRegistry) -> Vec<Effect> { Vec::new() }
+        let mut s = GameState::new(2, 0);
+        Effect::CreateEmblem {
+            controller: 0,
+            emblem: EmblemDefinition {
+                name: 0,
+                statics: Vec::new(),
+                abilities: vec![TriggeredAbilityDef {
+                    id: 1,
+                    trigger_condition: TriggerCondition::StepBegins {
+                        step: crate::turn::Step::End,
+                        whose: crate::targets::ControllerConstraint::You,
+                    },
+                    intervening_if: None,
+                    effect: noop,
+                    trigger_zones: vec![Zone::Battlefield], // forced to Command at creation
+                    frequency: TriggerFrequency::EachTime,
+                    target_requirements: Vec::new(),
+                }],
+            },
+        }.execute(&mut s);
+        let emblem = s.objects.objects_in_zone(Zone::Command).next().unwrap();
+        assert_eq!(emblem.granted_triggered_abilities.len(), 1);
+        let g = &emblem.granted_triggered_abilities[0];
+        assert!(g.def.id >= GRANTED_TRIGGER_ID_BASE, "id remapped into granted range");
+        assert_eq!(g.def.trigger_zones, vec![Zone::Command], "fires from the command zone");
+    }
+
+    #[test]
     fn empty_mana_pool_clears_all_colors() {
         let mut s = GameState::new(2, 0);
         s.player_mut(0).mana_pool.add_mana(ManaColor::Red, 3, 0);
@@ -6493,6 +6596,7 @@ mod tests {
             controller: 0,
             emblem: EmblemDefinition {
                 name: 0,
+                statics: Vec::new(),
                 abilities: Vec::new(),
             },
         }.execute(&mut s);
