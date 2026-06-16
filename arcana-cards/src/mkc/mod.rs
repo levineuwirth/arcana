@@ -35,3 +35,4 @@ pub mod smuggler_s_share;
 pub mod search_the_premises;
 pub mod duelist_s_heritage;
 pub mod vow_of_lightning;
+pub mod vow_of_duty;

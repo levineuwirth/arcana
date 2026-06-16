@@ -8,3 +8,4 @@ pub mod icatian_priest;
 pub mod demon_s_horn;
 pub mod angel_s_feather;
 pub mod unholy_strength;
+pub mod serra_s_embrace;

@@ -36,3 +36,4 @@ pub mod scepter_of_insight;
 pub mod scepter_of_dominance;
 pub mod mark_of_asylum;
 pub mod corrupted_roots;
+pub mod controlled_instincts;

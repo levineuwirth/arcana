@@ -26,3 +26,5 @@ pub mod predatory_advantage;
 pub mod trace_of_abundance;
 pub mod magefire_wings;
 pub mod sangrite_backlash;
+pub mod crystallization;
+pub mod sigil_of_the_nayan_gods;

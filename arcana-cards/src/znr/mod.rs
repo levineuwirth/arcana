@@ -57,3 +57,5 @@ pub mod drana_s_silencer;
 pub mod rockslide_sorcerer;
 pub mod a_base_camp;
 pub mod bubble_snare;
+pub mod lithoform_blight;
+pub mod nissa_s_zendikon;

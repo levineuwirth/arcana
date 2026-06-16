@@ -67,3 +67,4 @@ pub mod boon_reflection;
 pub mod tempered_steel;
 pub mod rage_reflection;
 pub mod yavimaya_s_embrace;
+pub mod frogify;

@@ -24,3 +24,4 @@ pub mod reito_lantern;
 pub mod uncontrollable_anger;
 pub mod traveler_s_cloak;
 pub mod guardian_zendikon;
+pub mod power_of_fire;

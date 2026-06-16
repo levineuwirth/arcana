@@ -111,3 +111,6 @@ pub mod valor_of_the_worthy;
 pub mod rune_of_speed;
 pub mod rune_of_sustenance;
 pub mod rune_of_might;
+pub mod rune_of_flight;
+pub mod arachnoform;
+pub mod bound_in_gold;

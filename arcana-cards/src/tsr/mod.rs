@@ -56,3 +56,4 @@ pub mod bound_in_silence;
 pub mod temporal_isolation;
 pub mod enslave;
 pub mod feebleness;
+pub mod utopia_vow;

@@ -44,3 +44,6 @@ pub mod back_to_basics;
 pub mod spider_umbra;
 pub mod flight_of_fancy;
 pub mod daybreak_coronet;
+pub mod pattern_of_rebirth;
+pub mod boar_umbra;
+pub mod conviction;

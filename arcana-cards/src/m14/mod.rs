@@ -36,3 +36,6 @@ pub mod sensory_deprivation;
 pub mod illusionary_armor;
 pub mod trollhide;
 pub mod dark_favor;
+pub mod shiv_s_embrace;
+pub mod indestructibility;
+pub mod blessing;

@@ -95,3 +95,5 @@ pub mod stensia_uprising;
 pub mod sigarda_s_summons;
 pub mod nurturing_presence;
 pub mod fear_of_death;
+pub mod cradle_of_safety;
+pub mod supernatural_rescue;

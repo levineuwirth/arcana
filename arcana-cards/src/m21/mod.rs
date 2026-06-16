@@ -80,3 +80,5 @@ pub mod sanctum_of_stone_fangs;
 pub mod sanctum_of_fruitful_harvest;
 pub mod furor_of_the_bitten;
 pub mod infernal_scarring;
+pub mod demonic_embrace;
+pub mod rousing_read;

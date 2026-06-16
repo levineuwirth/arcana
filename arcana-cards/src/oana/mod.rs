@@ -10,3 +10,4 @@ pub mod inspiring_commander;
 pub mod spiritual_guardian;
 pub mod angelic_reward;
 pub mod knight_s_pledge;
+pub mod river_s_favor;

@@ -36,3 +36,4 @@ pub mod electropotence;
 pub mod savage_silhouette;
 pub mod mire_blight;
 pub mod nimbus_wings;
+pub mod spreading_seas;

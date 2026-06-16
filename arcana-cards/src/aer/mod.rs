@@ -51,3 +51,5 @@ pub mod thopter_arrest;
 pub mod pia_s_revolution;
 pub mod consulate_crackdown;
 pub mod gremlin_infestation;
+pub mod siege_modification;
+pub mod aerial_modification;

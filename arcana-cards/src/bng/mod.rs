@@ -33,3 +33,4 @@ pub mod eternity_snare;
 pub mod fearsome_temper;
 pub mod ephara_s_enlightenment;
 pub mod thunderous_might;
+pub mod evanescent_intellect;

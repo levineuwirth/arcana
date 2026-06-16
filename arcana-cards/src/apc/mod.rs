@@ -32,3 +32,6 @@ pub mod ana_sanctuary;
 pub mod mask_of_intolerance;
 pub mod raka_sanctuary;
 pub mod bloodfire_infusion;
+pub mod squee_s_embrace;
+pub mod coalition_flag;
+pub mod manacles_of_decay;

@@ -45,3 +45,5 @@ pub mod protomatter_powder;
 pub mod courier_s_capsule;
 pub mod onyx_goblet;
 pub mod vicious_shadows;
+pub mod savage_hunger;
+pub mod coma_veil;

@@ -102,3 +102,5 @@ pub mod deeproot_pilgrimage;
 pub mod might_of_the_ancestors;
 pub mod etali_s_favor;
 pub mod fungal_fortitude;
+pub mod dead_weight;
+pub mod petrify;

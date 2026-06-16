@@ -69,3 +69,4 @@ pub mod due_diligence;
 pub mod curious_inquiry;
 pub mod airtight_alibi;
 pub mod convenient_target;
+pub mod fae_flight;

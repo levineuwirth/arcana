@@ -16,3 +16,4 @@ pub mod haunted_fengraf;
 pub mod ever_watching_threshold;
 pub mod epic_proportions;
 pub mod spawning_grounds;
+pub mod righteous_authority;

@@ -40,3 +40,4 @@ pub mod lifelink;
 pub mod firebreathing;
 pub mod flight;
 pub mod ice_cage;
+pub mod brink_of_disaster;

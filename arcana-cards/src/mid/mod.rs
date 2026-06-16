@@ -84,3 +84,5 @@ pub mod borrowed_time;
 pub mod ominous_roost;
 pub mod immolation;
 pub mod howl_of_the_hunt;
+pub mod locked_in_the_cemetery;
+pub mod candletrap;

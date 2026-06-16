@@ -128,3 +128,6 @@ pub mod vastwood_zendikon;
 pub mod indomitable_will;
 pub mod sky_tether;
 pub mod forced_worship;
+pub mod death_s_approach;
+pub mod lightning_diadem;
+pub mod face_of_divinity;

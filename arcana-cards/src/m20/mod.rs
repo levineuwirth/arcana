@@ -87,3 +87,5 @@ pub mod oakenform;
 pub mod unholy_indenture;
 pub mod glaring_aegis;
 pub mod maniacal_rage;
+pub mod hard_cover;
+pub mod sleep_paralysis;

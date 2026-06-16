@@ -25,3 +25,4 @@ pub mod thunder_totem;
 pub mod opal_guardian;
 pub mod ghitu_firebreathing;
 pub mod aspect_of_mongoose;
+pub mod aether_web;

@@ -35,3 +35,4 @@ pub mod orzhov_locket;
 pub mod fractured_powerstone;
 pub mod field_of_ruin;
 pub mod flameshadow_conjuring;
+pub mod teferi_s_talent;

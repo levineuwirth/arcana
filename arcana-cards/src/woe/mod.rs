@@ -105,3 +105,4 @@ pub mod collector_s_vault;
 pub mod glass_casket;
 pub mod food_coma;
 pub mod up_the_beanstalk;
+pub mod cooped_up;

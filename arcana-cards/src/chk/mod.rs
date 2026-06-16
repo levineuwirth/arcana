@@ -85,3 +85,5 @@ pub mod cloudcrest_lake;
 pub mod nature_s_will;
 pub mod serpent_skin;
 pub mod ragged_veins;
+pub mod midnight_covenant;
+pub mod mystic_restraints;

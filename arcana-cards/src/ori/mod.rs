@@ -47,3 +47,4 @@ pub mod mantle_of_webs;
 pub mod consecrated_by_blood;
 pub mod suppression_bonds;
 pub mod murder_investigation;
+pub mod weight_of_the_underworld;

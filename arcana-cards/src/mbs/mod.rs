@@ -38,3 +38,4 @@ pub mod decimator_web;
 pub mod silverskin_armor;
 pub mod magnetic_mine;
 pub mod phyresis;
+pub mod corrupted_conscience;

@@ -65,3 +65,7 @@ pub mod seton_s_desire;
 pub mod griffin_guide;
 pub mod hermetic_study;
 pub mod improvised_armor;
+pub mod twisted_experiment;
+pub mod sun_clasp;
+pub mod undying_rage;
+pub mod lightning_reflexes;

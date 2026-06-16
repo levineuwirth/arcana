@@ -29,3 +29,4 @@ pub mod subversion;
 pub mod second_chance;
 pub mod cessation;
 pub mod sleeper_s_guile;
+pub mod sluggishness;

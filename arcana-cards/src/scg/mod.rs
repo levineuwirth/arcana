@@ -14,3 +14,5 @@ pub mod goblin_psychopath;
 pub mod ark_of_blight;
 pub mod pyrostatic_pillar;
 pub mod dragon_shadow;
+pub mod pemmin_s_aura;
+pub mod dragon_fangs;

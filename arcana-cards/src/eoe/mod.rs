@@ -67,3 +67,5 @@ pub mod seam_rip;
 pub mod weapons_manufacturing;
 pub mod requiem_monolith;
 pub mod cryoshatter;
+pub mod hardlight_containment;
+pub mod pain_for_all;

@@ -114,3 +114,4 @@ pub mod grave_pact;
 pub mod furious_rise;
 pub mod explorer_s_scope;
 pub mod smothering_tithe;
+pub mod song_of_the_dryads;

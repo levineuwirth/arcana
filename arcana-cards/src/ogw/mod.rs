@@ -32,3 +32,4 @@ pub mod holdout_settlement;
 pub mod bone_saw;
 pub mod pyromancer_s_assault;
 pub mod isolation_zone;
+pub mod visions_of_brutality;

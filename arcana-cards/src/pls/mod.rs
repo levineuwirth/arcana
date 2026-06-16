@@ -27,3 +27,5 @@ pub mod meteor_crater;
 pub mod dark_suspicions;
 pub mod destructive_flow;
 pub mod keldon_mantle;
+pub mod sisay_s_ingenuity;
+pub mod hobble;

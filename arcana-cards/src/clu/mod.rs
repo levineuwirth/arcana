@@ -68,3 +68,4 @@ pub mod dimir_signet;
 pub mod gruul_signet;
 pub mod colossal_majesty;
 pub mod predatory_impetus;
+pub mod psychic_impetus;

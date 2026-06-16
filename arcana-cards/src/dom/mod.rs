@@ -64,3 +64,6 @@ pub mod shield_of_the_realm;
 pub mod bloodtallow_candle;
 pub mod arcane_flight;
 pub mod demonic_vigor;
+pub mod deep_freeze;
+pub mod curator_s_ward;
+pub mod frenzied_rage;

@@ -25,3 +25,4 @@ pub mod gang_of_devils;
 pub mod spy_kit;
 pub mod horn_of_greed;
 pub mod dread_statuary;
+pub mod ghostly_possession;

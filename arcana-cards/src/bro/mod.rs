@@ -80,3 +80,5 @@ pub mod thran_vigil;
 pub mod take_flight;
 pub mod prison_sentence;
 pub mod a_mightstone_s_animation;
+pub mod weakstone_s_subjugation;
+pub mod audacity;

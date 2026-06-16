@@ -122,3 +122,5 @@ pub mod flaming_sword;
 pub mod buoyancy;
 pub mod soul_channeling;
 pub mod cave_sense;
+pub mod stamina;
+pub mod maggot_therapy;

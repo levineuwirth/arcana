@@ -152,3 +152,5 @@ pub mod gratuitous_violence;
 pub mod unflinching_courage;
 pub mod ordeal_of_nylea;
 pub mod twinblade_blessing;
+pub mod eaten_by_piranhas;
+pub mod starlight_snare;

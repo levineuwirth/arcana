@@ -75,3 +75,6 @@ pub mod ichthyomorphosis;
 pub mod mire_s_grasp;
 pub mod aspect_of_manticore;
 pub mod iroas_s_blessing;
+pub mod staggering_insight;
+pub mod escape_velocity;
+pub mod starlit_mantle;
