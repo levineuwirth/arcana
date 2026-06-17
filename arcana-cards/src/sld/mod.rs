@@ -11,3 +11,6 @@ pub mod atreus_impulsive_son;
 pub mod miles_tails_prower;
 pub mod the_celestial_toymaker;
 pub mod rose_noble;
+pub mod the_meep;
+pub mod aloy_savior_of_meridian;
+pub mod deadpool_trading_card;

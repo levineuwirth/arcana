@@ -55,3 +55,5 @@ pub mod ancient_stone_idol;
 pub mod saryth_the_viper_s_fang;
 pub mod hooded_hydra;
 pub mod innocuous_researcher;
+pub mod tangletrove_kelp;
+pub mod broodhatch_nantuko;

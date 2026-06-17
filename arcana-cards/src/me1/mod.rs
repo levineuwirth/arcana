@@ -64,3 +64,5 @@ pub mod elder_land_wurm;
 pub mod m_rton_stromgald;
 pub mod angry_mob;
 pub mod time_elemental;
+pub mod illusionary_wall;
+pub mod mountain_yeti;

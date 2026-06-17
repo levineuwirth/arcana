@@ -74,3 +74,4 @@ pub mod scourge_wolf;
 pub mod olivia_s_bloodsworn;
 pub mod manic_scribe;
 pub mod mindwrack_demon;
+pub mod watcher_in_the_web;

@@ -158,3 +158,6 @@ pub mod archon_of_justice;
 pub mod blighted_bat;
 pub mod dragon_hatchling;
 pub mod minotaur_skullcleaver;
+pub mod signpost_scarecrow;
+pub mod wall_of_vines;
+pub mod spiteful_prankster;

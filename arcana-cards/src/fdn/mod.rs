@@ -207,3 +207,6 @@ pub mod sphinx_of_the_final_word;
 pub mod vampire_soulcaller;
 pub mod scrawling_crawler;
 pub mod mischievous_pup;
+pub mod icewind_elemental;
+pub mod wildwood_scourge;
+pub mod dragon_mage;

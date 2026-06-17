@@ -57,3 +57,4 @@ pub mod plague_engineer;
 pub mod ingenious_infiltrator;
 pub mod lesser_masticore;
 pub mod twin_silk_spider;
+pub mod sling_gang_lieutenant;

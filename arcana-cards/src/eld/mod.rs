@@ -105,3 +105,5 @@ pub mod fierce_witchstalker;
 pub mod shinechaser;
 pub mod lochmere_serpent;
 pub mod bog_naughty;
+pub mod embereth_skyblazer;
+pub mod gadwick_the_wizened;

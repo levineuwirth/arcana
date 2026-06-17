@@ -48,3 +48,5 @@ pub mod auriok_champion;
 pub mod indulgent_tormentor;
 pub mod jugan_the_rising_star;
 pub mod elesh_norn_grand_cenobite;
+pub mod vent_sentinel;
+pub mod bladewing_the_risen;

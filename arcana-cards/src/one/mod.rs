@@ -85,3 +85,7 @@ pub mod jor_kadeen_first_goldwarden;
 pub mod gitaxian_raptor;
 pub mod vindictive_flamestoker;
 pub mod sawblade_scamp;
+pub mod crawling_chorus;
+pub mod furnace_strider;
+pub mod duelist_of_deep_faith;
+pub mod axiom_engraver;

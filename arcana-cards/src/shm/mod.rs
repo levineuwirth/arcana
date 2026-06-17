@@ -79,3 +79,5 @@ pub mod chainbreaker;
 pub mod rune_cervin_rider;
 pub mod painter_s_servant;
 pub mod blazethorn_scarecrow;
+pub mod boggart_ram_gang;
+pub mod juvenile_gloomwidow;

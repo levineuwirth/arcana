@@ -144,3 +144,5 @@ pub mod referee_squad;
 pub mod boon_bringer_valkyrie;
 pub mod seer_of_stolen_sight;
 pub mod etched_host_doombringer;
+pub mod ghalta_and_mavren;
+pub mod grafted_butcher;

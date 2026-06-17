@@ -15,6 +15,7 @@ Access Denied
 Admiral Beckett Brass
 Aladdin
 All Suns' Dawn
+Altar Golem
 Altar of the Wretched
 Ambling Stormshell
 Amulet of Vigor
@@ -136,6 +137,7 @@ Glimmerpost
 Goblin Assassin
 Goblin Psychopath
 Godo, Bandit Warlord
+Grafted Butcher
 Greater Morphling
 Greenside Watcher
 Groundskeeper

@@ -55,3 +55,4 @@ pub mod zameck_guildmage;
 pub mod angelic_skirmisher;
 pub mod molten_primordial;
 pub mod deathpact_angel;
+pub mod wrecking_ogre;

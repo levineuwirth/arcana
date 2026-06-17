@@ -139,3 +139,5 @@ pub mod sigrid_god_favored;
 pub mod cosmos_charger;
 pub mod surtland_elementalist;
 pub mod cleaving_reaper;
+pub mod mistwalker;
+pub mod a_cosmos_charger;

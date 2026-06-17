@@ -80,3 +80,5 @@ pub mod prowcatcher_specialist;
 pub mod ketramose_the_new_dawn;
 pub mod gas_guzzler;
 pub mod waxen_shapethief;
+pub mod mutant_surveyor;
+pub mod mimeoplasm_revered_one;

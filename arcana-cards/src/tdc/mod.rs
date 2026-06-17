@@ -88,3 +88,4 @@ pub mod rapacious_dragon;
 pub mod vengeful_ancestor;
 pub mod kotis_sibsig_champion;
 pub mod indulging_patrician;
+pub mod zurgo_stormrender;

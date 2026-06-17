@@ -22,3 +22,4 @@ pub mod motivated_pony;
 pub mod merry_warden_of_isengard;
 pub mod radagast_wizard_of_wilds;
 pub mod lossarnach_captain;
+pub mod pippin_warden_of_isengard;

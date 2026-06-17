@@ -114,3 +114,4 @@ pub mod baylen_the_haymaker;
 pub mod brazen_collector;
 pub mod long_river_lurker;
 pub mod coruscation_mage;
+pub mod starscape_cleric;

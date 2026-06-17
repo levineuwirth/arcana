@@ -15,3 +15,5 @@ pub mod goblin_razerunners;
 pub mod whiptongue_hydra;
 pub mod ascendant_acolyte;
 pub mod kami_of_celebration;
+pub mod research_thief;
+pub mod arcanist_s_owl;

@@ -57,3 +57,5 @@ pub mod jeweled_spirit;
 pub mod glittering_lion;
 pub mod windscouter;
 pub mod vintara_elephant;
+pub mod squirrel_wrangler;
+pub mod ribbon_snake;

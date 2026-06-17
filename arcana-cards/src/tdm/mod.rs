@@ -113,3 +113,5 @@ pub mod ambling_stormshell;
 pub mod flamehold_grappler;
 pub mod craterhoof_behemoth;
 pub mod eshki_dragonclaw;
+pub mod yathan_tombguard;
+pub mod dusyut_earthcarver;

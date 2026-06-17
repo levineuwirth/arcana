@@ -42,3 +42,4 @@ pub mod synth_infiltrator;
 pub mod preston_garvey_minuteman;
 pub mod strong_the_brutish_thespian;
 pub mod vexing_radgull;
+pub mod crimson_caravaneer;

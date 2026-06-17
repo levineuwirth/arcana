@@ -72,3 +72,4 @@ pub mod swift_warkite;
 pub mod warbringer;
 pub mod stormcrag_elemental;
 pub mod misthoof_kirin;
+pub mod shaman_of_forgotten_ways;

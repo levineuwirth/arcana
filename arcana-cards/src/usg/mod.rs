@@ -80,3 +80,4 @@ pub mod cradle_guard;
 pub mod spire_owl;
 pub mod child_of_gaea;
 pub mod vebulid;
+pub mod gilded_drake;

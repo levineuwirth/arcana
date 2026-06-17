@@ -28,3 +28,4 @@ pub mod bureau_headmaster;
 pub mod cleopatra_exiled_pharaoh;
 pub mod ratonhnhak_ton;
 pub mod towering_viewpoint;
+pub mod palazzo_archers;

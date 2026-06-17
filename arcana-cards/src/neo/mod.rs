@@ -123,3 +123,5 @@ pub mod kodama_of_the_west_tree;
 pub mod heiko_yamazaki_the_general;
 pub mod bronzeplate_boar;
 pub mod bamboo_grove_archer;
+pub mod a_nezumi_prowler;
+pub mod sky_blessed_samurai;

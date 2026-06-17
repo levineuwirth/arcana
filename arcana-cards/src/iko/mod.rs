@@ -82,3 +82,7 @@ pub mod jubilant_skybonder;
 pub mod zirda_the_dawnwaker;
 pub mod drannith_stinger;
 pub mod frillscare_mentor;
+pub mod skycat_sovereign;
+pub mod ivy_elemental;
+pub mod obosh_the_preypiercer;
+pub mod fiend_artisan;

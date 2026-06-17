@@ -70,3 +70,4 @@ pub mod rosemane_centaur;
 pub mod wee_dragonauts;
 pub mod runaway_steam_kin;
 pub mod loxodon_restorer;
+pub mod light_of_the_legion;

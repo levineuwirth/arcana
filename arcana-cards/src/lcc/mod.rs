@@ -65,3 +65,4 @@ pub mod regisaur_alpha;
 pub mod bloodtracker;
 pub mod apex_altisaur;
 pub mod thundering_spineback;
+pub mod xolatoyac_the_smiling_flood;

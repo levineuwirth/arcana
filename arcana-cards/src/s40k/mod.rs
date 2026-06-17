@@ -58,3 +58,5 @@ pub mod tzaangor_shaman;
 pub mod sister_of_silence;
 pub mod vanguard_suppressor;
 pub mod primaris_chaplain;
+pub mod celestine_the_living_saint;
+pub mod canoptek_scarab_swarm;

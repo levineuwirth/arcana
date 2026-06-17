@@ -62,3 +62,4 @@ pub mod dusk_feaster;
 pub mod spirit_of_the_hunt;
 pub mod mournwillow;
 pub mod insatiable_gorgers;
+pub mod vampire_cutthroat;

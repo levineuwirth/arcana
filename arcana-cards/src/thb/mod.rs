@@ -96,3 +96,5 @@ pub mod tymaret_chosen_from_death;
 pub mod voracious_typhon;
 pub mod eidolon_of_obstruction;
 pub mod dalakos_crafter_of_wonders;
+pub mod warden_of_the_chained;
+pub mod taranika_akroan_veteran;

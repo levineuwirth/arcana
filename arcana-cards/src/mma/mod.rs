@@ -24,3 +24,4 @@ pub mod dreamspoiler_witches;
 pub mod thallid;
 pub mod meadowboon;
 pub mod hammerheim_deadeye;
+pub mod thieving_sprite;

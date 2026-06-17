@@ -78,3 +78,5 @@ pub mod geth_lord_of_the_vault;
 pub mod atraxa_praetors_voice;
 pub mod skithiryx_the_blight_dragon;
 pub mod tuktuk_the_explorer;
+pub mod esperzoa;
+pub mod riku_of_two_reflections;

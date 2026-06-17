@@ -80,3 +80,4 @@ pub mod nim_devourer;
 pub mod clockwork_beetle;
 pub mod needlebug;
 pub mod glissa_sunseeker;
+pub mod woebearer;

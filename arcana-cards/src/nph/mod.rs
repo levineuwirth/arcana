@@ -40,3 +40,4 @@ pub mod invader_parasite;
 pub mod porcelain_legionnaire;
 pub mod razor_swine;
 pub mod toxic_nim;
+pub mod moltensteel_dragon;

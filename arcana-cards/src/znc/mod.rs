@@ -12,3 +12,4 @@ pub mod anowon_the_ruin_thief;
 pub mod sepulchral_primordial;
 pub mod oona_s_blackguard;
 pub mod sylvan_advocate;
+pub mod admonition_angel;

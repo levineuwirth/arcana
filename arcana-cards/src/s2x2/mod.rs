@@ -88,3 +88,4 @@ pub mod greater_gargadon;
 pub mod consecrated_sphinx;
 pub mod ulamog_the_infinite_gyre;
 pub mod skullbriar_the_walking_grave;
+pub mod arachnus_spinner;

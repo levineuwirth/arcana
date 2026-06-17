@@ -133,3 +133,4 @@ pub mod faerie_dreamthief;
 pub mod barrow_naughty;
 pub mod lord_skitter_s_butcher;
 pub mod sharae_of_numbing_depths;
+pub mod scarecrow_guide;

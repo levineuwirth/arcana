@@ -70,3 +70,4 @@ pub mod cryptborn_horror;
 pub mod runewing;
 pub mod rakdos_ringleader;
 pub mod chaos_imps;
+pub mod dark_revenant;

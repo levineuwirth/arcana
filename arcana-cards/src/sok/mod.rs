@@ -56,3 +56,5 @@ pub mod matsu_tribe_birdstalker;
 pub mod skull_collector;
 pub mod glitterfang;
 pub mod araba_mothrider;
+pub mod elder_pine_of_jukai;
+pub mod iname_as_one;

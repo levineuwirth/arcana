@@ -30,3 +30,5 @@ pub mod balthor_the_stout;
 pub mod nantuko_calmer;
 pub mod gurzigost;
 pub mod soul_scourge;
+pub mod possessed_centaur;
+pub mod possessed_barbarian;

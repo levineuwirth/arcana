@@ -82,3 +82,4 @@ pub mod tin_street_dodger;
 pub mod deathrite_shaman;
 pub mod birds_of_paradise;
 pub mod gruul_guildmage;
+pub mod rakdos_pit_dragon;

@@ -33,3 +33,4 @@ pub mod anathemancer;
 pub mod bant_sojourners;
 pub mod illusory_demon;
 pub mod grixis_sojourners;
+pub mod jund_sojourners;

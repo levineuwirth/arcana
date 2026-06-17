@@ -69,3 +69,6 @@ pub mod dream_eater;
 pub mod florian_voldaren_scion;
 pub mod massacre_girl;
 pub mod winter_cynical_opportunist;
+pub mod body_of_knowledge;
+pub mod the_master_of_keys;
+pub mod brash_taunter;

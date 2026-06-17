@@ -16,3 +16,4 @@ pub mod brittle_effigy;
 pub mod blighted_gorge;
 pub mod merfolk_wayfinder;
 pub mod battle_squadron;
+pub mod streambed_aquitects;

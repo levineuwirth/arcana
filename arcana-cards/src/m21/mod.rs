@@ -110,3 +110,4 @@ pub mod skyscanner;
 pub mod anointed_chorister;
 pub mod kinetic_augur;
 pub mod aven_gagglemaster;
+pub mod warden_of_the_woods;

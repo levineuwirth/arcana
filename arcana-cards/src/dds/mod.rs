@@ -9,3 +9,4 @@ pub mod zo_zu_the_punisher;
 pub mod rubblebelt_raiders;
 pub mod spellheart_chimera;
 pub mod kamahl_pit_fighter;
+pub mod skarrgan_pit_skulk;

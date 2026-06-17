@@ -54,3 +54,4 @@ pub mod goro_goro_and_satoru;
 pub mod moira_and_teshar;
 pub mod managorger_hydra;
 pub mod brawn;
+pub mod shattered_angel;

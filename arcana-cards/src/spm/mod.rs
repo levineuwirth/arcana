@@ -63,3 +63,6 @@ pub mod morbius_the_living_vampire;
 pub mod spider_man_india;
 pub mod tombstone_career_criminal;
 pub mod spider_ham_peter_porker;
+pub mod madame_web_clairvoyant;
+pub mod spider_bot;
+pub mod rhino_barreling_brute;

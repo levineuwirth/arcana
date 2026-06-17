@@ -46,3 +46,6 @@ pub mod wingspan_mentor;
 pub mod perrie_the_pulverizer;
 pub mod park_heights_maverick;
 pub mod angelic_sleuth;
+pub mod the_beamtown_bullies;
+pub mod cephalid_facetaker;
+pub mod skyship_plunderer;

@@ -177,3 +177,5 @@ pub mod astarion_the_decadent;
 pub mod ghastly_death_tyrant;
 pub mod stirring_bard;
 pub mod end_raze_forerunners;
+pub mod rilsa_rael_kingpin;
+pub mod nefarious_imp;

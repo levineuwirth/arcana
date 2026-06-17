@@ -48,3 +48,5 @@ pub mod triplicate_titan;
 pub mod naru_meha_master_wizard;
 pub mod silversmote_ghoul;
 pub mod crafty_cutpurse;
+pub mod thopter_engineer;
+pub mod inferno_project;

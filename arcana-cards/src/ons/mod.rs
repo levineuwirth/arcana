@@ -77,3 +77,5 @@ pub mod aphetto_vulture;
 pub mod ghosthelm_courier;
 pub mod disciple_of_grace;
 pub mod snarling_undorak;
+pub mod embermage_goblin;
+pub mod birchlore_rangers;

@@ -32,3 +32,4 @@ pub mod lurking_automaton;
 pub mod marchesa_s_emissary;
 pub mod cogwork_grinder;
 pub mod agent_of_acquisitions;
+pub mod minamo_scrollkeeper;

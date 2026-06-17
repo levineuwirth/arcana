@@ -99,3 +99,4 @@ pub mod crimson_manticore;
 pub mod palladia_mors;
 pub mod wandering_mage;
 pub mod rohgahh_of_kher_keep;
+pub mod wall_of_light;

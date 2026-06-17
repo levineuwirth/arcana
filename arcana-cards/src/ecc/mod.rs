@@ -45,3 +45,5 @@ pub mod horde_of_notions;
 pub mod incandescent_soulstoke;
 pub mod cavalier_of_thorns;
 pub mod kulrath_knight;
+pub mod belonging;
+pub mod tree_of_perdition;

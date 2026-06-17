@@ -34,3 +34,5 @@ pub mod bebop_skull_crossbones;
 pub mod michelangelo_on_the_scene;
 pub mod michelangelo_the_heart;
 pub mod donatello_the_brains;
+pub mod casey_jones_asphalt_hooligan;
+pub mod casey_raph_hotheads;

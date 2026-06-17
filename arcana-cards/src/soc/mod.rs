@@ -156,3 +156,4 @@ pub mod quintorius_field_historian;
 pub mod killian_ink_duelist;
 pub mod remorseful_cleric;
 pub mod vanguard_of_the_restless;
+pub mod goldspan_dragon;

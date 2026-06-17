@@ -44,3 +44,4 @@ pub mod sprouting_goblin;
 pub mod phyrexian_metamorph;
 pub mod patrolling_peacemaker;
 pub mod moraug_fury_of_akoum;
+pub mod centaur_vinecrasher;

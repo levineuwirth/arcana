@@ -117,3 +117,4 @@ pub mod silver_raven;
 pub mod keen_eared_sentry;
 pub mod blink_dog;
 pub mod half_elf_monk;
+pub mod arborea_pegasus;

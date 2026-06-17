@@ -111,3 +111,6 @@ pub mod jaxis_the_troublemaker;
 pub mod a_rakish_revelers;
 pub mod extraction_specialist;
 pub mod midnight_assassin;
+pub mod ledger_shredder;
+pub mod jewel_thief;
+pub mod metropolis_angel;

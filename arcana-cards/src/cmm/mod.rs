@@ -190,3 +190,6 @@ pub mod abstruse_archaic;
 pub mod morophon_the_boundless;
 pub mod blood_aspirant;
 pub mod matter_reshaper;
+pub mod sidisi_brood_tyrant;
+pub mod oviya_pashiri_sage_lifecrafter;
+pub mod quick_sliver;

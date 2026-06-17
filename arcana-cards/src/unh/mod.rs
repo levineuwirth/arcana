@@ -35,3 +35,4 @@ pub mod man_of_measure;
 pub mod the_fallen_apart;
 pub mod double_header;
 pub mod moniker_mage;
+pub mod assquatch;

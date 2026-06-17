@@ -93,3 +93,4 @@ pub mod ebon_dragon;
 pub mod dread_reaper;
 pub mod living_wall;
 pub mod cloud_spirit;
+pub mod wild_aesthir;

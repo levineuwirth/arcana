@@ -85,3 +85,4 @@ pub mod blooming_stinger;
 pub mod swarm_culler;
 pub mod brightspear_zealot;
 pub mod mouth_of_the_storm;
+pub mod harmonious_grovestrider;
