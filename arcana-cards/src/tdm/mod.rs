@@ -102,3 +102,4 @@ pub mod marshal_of_the_lost;
 pub mod delta_bloodflies;
 pub mod sarkhan_dragon_ascendant;
 pub mod reigning_victor;
+pub mod naga_fleshcrafter;

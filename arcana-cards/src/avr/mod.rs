@@ -59,3 +59,4 @@ pub mod diregraf_escort;
 pub mod geist_trappers;
 pub mod nearheath_pilgrim;
 pub mod druid_s_familiar;
+pub mod stern_mentor;

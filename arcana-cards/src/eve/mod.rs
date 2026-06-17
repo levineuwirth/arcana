@@ -56,3 +56,4 @@ pub mod suture_spirit;
 pub mod kithkin_spellduster;
 pub mod deity_of_scars;
 pub mod voracious_hatchling;
+pub mod belligerent_hatchling;

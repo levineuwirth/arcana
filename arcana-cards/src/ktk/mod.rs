@@ -64,3 +64,5 @@ pub mod archers_parapet;
 pub mod dragon_style_twins;
 pub mod ponyback_brigade;
 pub mod heir_of_the_wilds;
+pub mod sagu_archer;
+pub mod valley_dasher;

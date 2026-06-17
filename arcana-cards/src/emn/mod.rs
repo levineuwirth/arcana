@@ -61,3 +61,4 @@ pub mod desperate_sentry;
 pub mod dusk_feaster;
 pub mod spirit_of_the_hunt;
 pub mod mournwillow;
+pub mod insatiable_gorgers;

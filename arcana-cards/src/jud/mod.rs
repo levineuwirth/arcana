@@ -35,3 +35,4 @@ pub mod cagemail;
 pub mod infectious_rage;
 pub mod lost_in_thought;
 pub mod masked_gorgon;
+pub mod anurid_swarmsnapper;

@@ -8,3 +8,4 @@ pub mod life_finds_a_way;
 pub mod swooping_pteranodon;
 pub mod ravenous_tyrannosaurus;
 pub mod blue_loyal_raptor;
+pub mod ian_malcolm_chaotician;

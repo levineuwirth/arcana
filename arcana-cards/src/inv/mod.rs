@@ -82,3 +82,4 @@ pub mod ruby_leech;
 pub mod stormscape_master;
 pub mod blurred_mongoose;
 pub mod goham_djinn;
+pub mod crimson_acolyte;

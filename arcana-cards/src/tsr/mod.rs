@@ -72,3 +72,5 @@ pub mod cloudseeder;
 pub mod dunerider_outlaw;
 pub mod keldon_halberdier;
 pub mod mycologist;
+pub mod deathspore_thallid;
+pub mod gathan_raiders;

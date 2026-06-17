@@ -82,3 +82,6 @@ pub mod biomechan_engineer;
 pub mod kav_landseeker;
 pub mod tannuk_steadfast_second;
 pub mod blooming_stinger;
+pub mod swarm_culler;
+pub mod brightspear_zealot;
+pub mod mouth_of_the_storm;

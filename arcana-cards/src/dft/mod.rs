@@ -75,3 +75,5 @@ pub mod lagorin_soul_of_alacria;
 pub mod endrider_catalyzer;
 pub mod pride_of_the_road;
 pub mod memory_guardian;
+pub mod skyserpent_seeker;
+pub mod prowcatcher_specialist;

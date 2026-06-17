@@ -114,3 +114,4 @@ pub mod cruel_witness;
 pub mod cloaked_cadet;
 pub mod thalia_guardian_of_thraben;
 pub mod blood_hypnotist;
+pub mod undead_butler;

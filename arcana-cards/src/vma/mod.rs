@@ -57,3 +57,6 @@ pub mod armor_of_thorns;
 pub mod phantom_nomad;
 pub mod arrogant_wurm;
 pub mod flowstone_hellion;
+pub mod drakestown_forgotten;
+pub mod fledgling_djinn;
+pub mod karn_silver_golem;

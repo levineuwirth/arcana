@@ -81,3 +81,4 @@ pub mod shadowborn_apostle;
 pub mod sedraxis_specter;
 pub mod sensor_splicer;
 pub mod ashen_rider;
+pub mod thraximundar;

@@ -91,3 +91,5 @@ pub mod dirty_wererat;
 pub mod aboshan_cephalid_emperor;
 pub mod cephalid_scout;
 pub mod pardic_firecat;
+pub mod balshan_beguiler;
+pub mod phantatog;

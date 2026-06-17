@@ -86,3 +86,8 @@ pub mod kardum_patron_of_flames;
 pub mod a_circle_of_the_land_druid;
 pub mod chaos_balor;
 pub mod wilson_fearsome_bear;
+pub mod ambergris_agent_of_tyranny;
+pub mod imoen_wily_trickster;
+pub mod skanos_red_dragon_vassal;
+pub mod imoen_chaotic_trickster;
+pub mod viconia_disciple_of_arcana;

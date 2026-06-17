@@ -64,3 +64,4 @@ pub mod moldgraf_monstrosity;
 pub mod stormfist_crusader;
 pub mod demon_of_fate_s_design;
 pub mod yavimaya_elder;
+pub mod persistent_constrictor;

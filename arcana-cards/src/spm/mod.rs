@@ -58,3 +58,4 @@ pub mod arachne_psionic_weaver;
 pub mod beetle_legacy_criminal;
 pub mod shocker_unshakable;
 pub mod spider_gwen_free_spirit;
+pub mod starling_aerial_ally;

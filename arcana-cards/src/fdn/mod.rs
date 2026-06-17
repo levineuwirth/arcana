@@ -195,3 +195,4 @@ pub mod spinner_of_souls;
 pub mod eager_trufflesnout;
 pub mod brineborn_cutthroat;
 pub mod vanguard_seraph;
+pub mod koma_world_eater;

@@ -181,3 +181,4 @@ pub mod windrider_wizard;
 pub mod nemata_grove_guardian;
 pub mod balan_wandering_knight;
 pub mod angelic_field_marshal;
+pub mod taigam_sidisi_s_hand;

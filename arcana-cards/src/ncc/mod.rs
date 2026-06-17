@@ -40,3 +40,6 @@ pub mod syrix_carrier_of_the_flame;
 pub mod first_responder;
 pub mod dragonlord_ojutai;
 pub mod bess_soul_nourisher;
+pub mod avenging_huntbonder;
+pub mod treeshaker_chimera;
+pub mod wingspan_mentor;

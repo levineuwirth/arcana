@@ -83,3 +83,4 @@ pub mod petrifying_meddler;
 pub mod sarpadian_simulacrum;
 pub mod nyxborn_hydra;
 pub mod nadu_winged_wisdom;
+pub mod eldrazi_repurposer;

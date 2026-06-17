@@ -150,3 +150,5 @@ pub mod faerie_mastermind;
 pub mod smothering_abomination;
 pub mod zimone_infinite_analyst;
 pub mod pest_rescuer;
+pub mod claim_jumper;
+pub mod drumbellower;

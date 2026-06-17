@@ -125,3 +125,5 @@ pub mod wandering_mind;
 pub mod thermo_alchemist;
 pub mod hullbreaker_horror;
 pub mod grimgrin_corpse_born;
+pub mod vilespawn_spider;
+pub mod torens_fist_of_the_angels;

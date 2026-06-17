@@ -17,3 +17,4 @@ pub mod mizzix_replica_rider;
 pub mod kenessos_priest_of_thassa;
 pub mod disciple_of_perdition;
 pub mod lita_mechanical_engineer;
+pub mod agrus_kos_eternal_soldier;

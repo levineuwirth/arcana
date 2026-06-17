@@ -28,6 +28,7 @@ Ballynock Trapper
 Bane's Contingency
 Basilisk Gate
 Beguiler of Wills
+Belligerent Hatchling
 Biogenic Ooze
 Blinkmoth Well
 Blizzard Elemental
@@ -74,6 +75,7 @@ Cybermat
 Cytoplast Manipulator
 Dack Fayden
 Dark Suspicions
+Daru Stinger
 Dauntless Aven
 Dazzling Denial
 Death Watch
@@ -228,6 +230,7 @@ Nimbleclaw Adept
 Nix
 No More Lies
 Noise Marine
+Odunos River Trawler
 Old Man of the Sea
 Onakke Oathkeeper
 Open the Vaults
@@ -281,6 +284,7 @@ Sacred Ground
 Salvager of Secrets
 Sanctum of Stone Fangs
 Sanitarium Skeleton
+Saryth, the Viper's Fang
 Savage Firecat
 Scattering Stroke
 Scoria Wurm

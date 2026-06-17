@@ -72,3 +72,6 @@ pub mod silent_specter;
 pub mod crude_rampart;
 pub mod blistering_firecat;
 pub mod airdrop_condor;
+pub mod ebonblade_reaper;
+pub mod aphetto_vulture;
+pub mod ghosthelm_courier;

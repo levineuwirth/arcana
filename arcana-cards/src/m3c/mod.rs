@@ -8,3 +8,4 @@ pub mod angelic_aberration;
 pub mod broodmate_tyrant;
 pub mod sphinx_of_the_revelation;
 pub mod coram_the_undertaker;
+pub mod rampant_frogantua;

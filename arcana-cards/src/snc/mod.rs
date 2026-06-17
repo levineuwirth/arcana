@@ -103,3 +103,5 @@ pub mod a_revel_ruiner;
 pub mod toluz_clever_conductor;
 pub mod a_paragon_of_modernity;
 pub mod workshop_warchief;
+pub mod gala_greeters;
+pub mod caldaia_strongarm;

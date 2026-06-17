@@ -77,3 +77,4 @@ pub mod blaring_captain;
 pub mod chakram_retriever;
 pub mod nimbus_champion;
 pub mod consulate_skygate;
+pub mod impetuous_protege;

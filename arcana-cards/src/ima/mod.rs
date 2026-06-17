@@ -44,3 +44,4 @@ pub mod phantom_tiger;
 pub mod sustainer_of_the_realm;
 pub mod jin_gitaxias_core_augur;
 pub mod malfegor;
+pub mod auriok_champion;

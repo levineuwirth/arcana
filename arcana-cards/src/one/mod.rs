@@ -81,3 +81,6 @@ pub mod bladed_ambassador;
 pub mod cinderslash_ravager;
 pub mod paladin_of_predation;
 pub mod copper_longlegs;
+pub mod jor_kadeen_first_goldwarden;
+pub mod gitaxian_raptor;
+pub mod vindictive_flamestoker;

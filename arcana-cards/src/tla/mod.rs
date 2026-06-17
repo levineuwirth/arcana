@@ -87,3 +87,5 @@ pub mod benevolent_river_spirit;
 pub mod mai_jaded_edge;
 pub mod jet_freedom_fighter;
 pub mod platypus_bear;
+pub mod sokka_lateral_strategist;
+pub mod mai_scornful_striker;

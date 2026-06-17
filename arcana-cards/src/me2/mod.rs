@@ -79,3 +79,4 @@ pub mod sibilant_spirit;
 pub mod soldevi_simulacrum;
 pub mod feral_thallid;
 pub mod phantasmal_fiend;
+pub mod orcish_conscripts;

@@ -36,3 +36,4 @@ pub mod dementia_bat;
 pub mod inquisitor_exarch;
 pub mod chancellor_of_the_annex;
 pub mod chancellor_of_the_forge;
+pub mod invader_parasite;

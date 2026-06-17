@@ -18,3 +18,4 @@ pub mod shardless_outlander;
 pub mod thurid_mare_of_destiny;
 pub mod cleon_merry_champion;
 pub mod scourge_of_the_undercity;
+pub mod evereth_viceroy_of_plunder;

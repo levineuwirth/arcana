@@ -49,3 +49,6 @@ pub mod nyxborn_wolf;
 pub mod graverobber_spider;
 pub mod satyr_nyx_smith;
 pub mod akroan_skyguard;
+pub mod ornitharch;
+pub mod odunos_river_trawler;
+pub mod vanguard_of_brimaz;

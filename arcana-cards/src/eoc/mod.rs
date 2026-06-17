@@ -38,3 +38,4 @@ pub mod juri_master_of_the_revue;
 pub mod depthshaker_titan;
 pub mod the_gitrog_monster;
 pub mod tireless_tracker;
+pub mod coretapper;

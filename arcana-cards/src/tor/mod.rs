@@ -28,3 +28,5 @@ pub mod cabal_torturer;
 pub mod gravegouger;
 pub mod balthor_the_stout;
 pub mod nantuko_calmer;
+pub mod gurzigost;
+pub mod soul_scourge;

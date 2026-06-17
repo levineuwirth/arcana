@@ -19,3 +19,4 @@ pub mod necropolis_regent;
 pub mod rhoda_geist_avenger;
 pub mod doom_weaver;
 pub mod thundering_mightmare;
+pub mod shacklegeist;

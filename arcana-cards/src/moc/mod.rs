@@ -47,3 +47,4 @@ pub mod darksteel_splicer;
 pub mod abzan_battle_priest;
 pub mod valiant_knight;
 pub mod conclave_mentor;
+pub mod kalonian_hydra;

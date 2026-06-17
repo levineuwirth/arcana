@@ -104,3 +104,7 @@ pub mod slumbering_walker;
 pub mod silvergill_mentor;
 pub mod soulbright_seeker;
 pub mod flamekin_gildweaver;
+pub mod vinebred_brawler;
+pub mod aurora_awakener;
+pub mod heirloom_auntie;
+pub mod flitterwing_nuisance;

@@ -50,3 +50,5 @@ pub mod peacekeeper;
 pub mod mwonvuli_ooze;
 pub mod ertai_s_familiar;
 pub mod odylic_wraith;
+pub mod avizoa;
+pub mod tolarian_drake;

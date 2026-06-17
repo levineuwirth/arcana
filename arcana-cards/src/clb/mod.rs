@@ -160,3 +160,6 @@ pub mod oji_the_exquisite_blade;
 pub mod solemn_recruit;
 pub mod uchuulon;
 pub mod mocking_doppelganger;
+pub mod durnan_of_the_yawning_portal;
+pub mod dream_pillager;
+pub mod ancient_silver_dragon;

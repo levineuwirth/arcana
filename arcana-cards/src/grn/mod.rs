@@ -68,3 +68,5 @@ pub mod barging_sergeant;
 pub mod kraul_swarm;
 pub mod rosemane_centaur;
 pub mod wee_dragonauts;
+pub mod runaway_steam_kin;
+pub mod loxodon_restorer;

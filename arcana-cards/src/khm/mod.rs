@@ -133,3 +133,5 @@ pub mod icebreaker_kraken;
 pub mod thornmantle_striker;
 pub mod moritte_of_the_frost;
 pub mod canopy_tactician;
+pub mod magda_brazen_outlaw;
+pub mod littjara_kinseekers;

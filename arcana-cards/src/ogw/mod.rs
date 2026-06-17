@@ -45,3 +45,4 @@ pub mod essence_depleter;
 pub mod walker_of_the_wastes;
 pub mod stalking_drone;
 pub mod deceiver_of_form;
+pub mod zada_s_commando;

@@ -95,3 +95,4 @@ pub mod fire_sprites;
 pub mod killer_bees;
 pub mod old_man_of_the_sea;
 pub mod rasputin_dreamweaver;
+pub mod crimson_manticore;

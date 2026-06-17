@@ -28,3 +28,4 @@ pub mod eternal_dragon;
 pub mod clay_golem;
 pub mod galea_kindler_of_hope;
 pub mod nihiloor;
+pub mod bogardan_hellkite;

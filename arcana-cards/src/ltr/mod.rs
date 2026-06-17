@@ -107,3 +107,6 @@ pub mod gandalf_the_white;
 pub mod denethor_ruling_steward;
 pub mod aragorn_the_uniter;
 pub mod shire_shirriff;
+pub mod gorbag_of_minas_morgul;
+pub mod delighted_halfling;
+pub mod gl_in_dwarf_emissary;

@@ -100,3 +100,4 @@ pub mod sunrise_cavalier;
 pub mod mounted_dreadknight;
 pub mod morkrut_behemoth;
 pub mod hobbling_zombie;
+pub mod a_shipwreck_sifters;

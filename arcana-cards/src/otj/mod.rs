@@ -86,3 +86,4 @@ pub mod hellspur_brute;
 pub mod doc_aurlock_grizzled_genius;
 pub mod stoic_sphinx;
 pub mod rooftop_assassin;
+pub mod hellspur_posse_boss;

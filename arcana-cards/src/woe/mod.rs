@@ -124,3 +124,6 @@ pub mod provisions_merchant;
 pub mod hamlet_glutton;
 pub mod harried_spearguard;
 pub mod totentanz_swarm_piper;
+pub mod tough_cookie;
+pub mod experimental_confectioner;
+pub mod scream_puff;

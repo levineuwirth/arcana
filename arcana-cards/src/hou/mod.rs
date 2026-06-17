@@ -60,3 +60,5 @@ pub mod unraveling_mummy;
 pub mod burning_fist_minotaur;
 pub mod obelisk_spider;
 pub mod ramunap_hydra;
+pub mod moaning_wall;
+pub mod vile_manifestation;

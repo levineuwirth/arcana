@@ -154,3 +154,4 @@ pub mod serendib_efreet;
 pub mod angelic_page;
 pub mod affa_guard_hound;
 pub mod nyxathid;
+pub mod archon_of_justice;

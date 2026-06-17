@@ -48,3 +48,4 @@ pub mod toxicrene;
 pub mod exocrine;
 pub mod skorpekh_destroyer;
 pub mod keeper_of_secrets;
+pub mod sister_repentia;

@@ -13,3 +13,4 @@ pub mod hazel_s_brewmaster;
 pub mod arthur_marigold_knight;
 pub mod the_odd_acorn_gang;
 pub mod jacked_rabbit;
+pub mod scurry_of_squirrels;

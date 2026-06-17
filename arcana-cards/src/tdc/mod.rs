@@ -79,3 +79,7 @@ pub mod sidar_kondo_of_jamuraa;
 pub mod hero_of_bladehold;
 pub mod sarkhan_soul_aflame;
 pub mod legion_warboss;
+pub mod towering_titan;
+pub mod wonder;
+pub mod glorybringer;
+pub mod diviner_of_mist;

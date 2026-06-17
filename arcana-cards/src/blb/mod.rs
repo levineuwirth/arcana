@@ -105,3 +105,7 @@ pub mod shoreline_looter;
 pub mod valley_questcaller;
 pub mod clifftop_lookout;
 pub mod a_heartfire_hero;
+pub mod starseer_mentor;
+pub mod gev_scaled_scorch;
+pub mod starlit_soothsayer;
+pub mod mind_drill_assailant;

@@ -94,3 +94,5 @@ pub mod pharika_s_spawn;
 pub mod daxos_blessed_by_the_sun;
 pub mod tymaret_chosen_from_death;
 pub mod voracious_typhon;
+pub mod eidolon_of_obstruction;
+pub mod dalakos_crafter_of_wonders;

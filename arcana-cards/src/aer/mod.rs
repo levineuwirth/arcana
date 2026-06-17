@@ -68,3 +68,4 @@ pub mod exquisite_archangel;
 pub mod aether_herder;
 pub mod lightning_runner;
 pub mod aetherwind_basker;
+pub mod midnight_entourage;

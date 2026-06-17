@@ -33,3 +33,6 @@ pub mod kinsbaile_borderguard;
 pub mod grimoire_thief;
 pub mod lightning_crafter;
 pub mod supreme_exemplar;
+pub mod vengeful_firebrand;
+pub mod stenchskipper;
+pub mod brighthearth_banneret;

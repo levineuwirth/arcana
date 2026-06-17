@@ -116,3 +116,5 @@ pub mod celestial_messenger;
 pub mod tomebound_lich;
 pub mod goblin_ringleader;
 pub mod barkhide_troll;
+pub mod cerulean_drake;
+pub mod anvilwrought_raptor;

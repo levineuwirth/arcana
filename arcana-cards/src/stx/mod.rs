@@ -90,3 +90,4 @@ pub mod overgrown_arch;
 pub mod prismari_pledgemage;
 pub mod daemogoth_woe_eater;
 pub mod returned_pastcaller;
+pub mod excavated_wall;

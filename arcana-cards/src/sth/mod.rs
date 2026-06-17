@@ -18,3 +18,4 @@ pub mod furnace_spirit;
 pub mod spike_soldier;
 pub mod gliding_licid;
 pub mod shifting_wall;
+pub mod lancers_en_kor;

@@ -137,3 +137,5 @@ pub mod voldaren_thrillseeker;
 pub mod knight_errant_of_eos;
 pub mod oracle_of_tragedy;
 pub mod surrak_and_goreclaw;
+pub mod rampaging_raptor;
+pub mod zurgo_and_ojutai;
