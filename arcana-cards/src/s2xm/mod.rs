@@ -86,3 +86,4 @@ pub mod salvage_titan;
 pub mod vish_kal_blood_arbiter;
 pub mod wurmcoil_engine;
 pub mod liege_of_the_tangle;
+pub mod cloudreader_sphinx;

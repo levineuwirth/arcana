@@ -151,3 +151,6 @@ pub mod thrashing_frontliner;
 pub mod cragsmasher_yeti;
 pub mod alabaster_host_intercessor;
 pub mod zephyr_winder;
+pub mod zimone_and_dina;
+pub mod attentive_skywarden;
+pub mod golden_scale_aeronaut;

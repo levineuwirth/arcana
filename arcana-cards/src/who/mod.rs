@@ -50,3 +50,4 @@ pub mod dalek_squadron;
 pub mod graham_o_brien;
 pub mod danny_pink;
 pub mod ashad_the_lone_cyberman;
+pub mod rose_tyler;

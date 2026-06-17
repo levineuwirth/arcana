@@ -94,3 +94,5 @@ pub mod shattergang_brothers;
 pub mod dragonlord_silumgar;
 pub mod lotleth_troll;
 pub mod wasitora_nekoru_queen;
+pub mod reveillark;
+pub mod wingsteed_rider;

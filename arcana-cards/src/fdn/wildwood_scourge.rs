@@ -32,10 +32,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    // The trigger watches +1/+1 counters placed on creatures you control.
-    // GAP DETAIL: the "non-Hydra" and "another" exclusions aren't expressible
-    // with the listed ObjectFilter builders, so the filter is broadened to
-    // "creature you control" (slight over-fire on Hydras / itself).
+    // The trigger watches +1/+1 counters placed on ANOTHER creature you
+    // control (TriggerSelf::AnotherMatching excludes the source). Self-
+    // exclusion is mandatory: this ability's resolution adds a +1/+1 counter
+    // to itself, so AnyMatching (which includes the source) re-fires on its
+    // own counter forever (random-game harness seed 295). GAP DETAIL: the
+    // "non-Hydra" exclusion still isn't expressible (minor over-fire on other
+    // Hydras you control).
     reg.register(
         CardDefinition::new(name, chars)
             .with_enters_with(EntersWithSpec::CountersFromX {
@@ -44,7 +47,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::CounterAdded {
-                    on: TriggerSelf::AnyMatching(
+                    on: TriggerSelf::AnotherMatching(
                         ObjectFilter::creature().controlled_by(ControllerConstraint::You),
                     ),
                     kind: Some(CounterKind::PlusOnePlusOne),

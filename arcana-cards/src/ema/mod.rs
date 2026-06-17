@@ -33,3 +33,4 @@ pub mod sengir_autocrat;
 pub mod nekrataal;
 pub mod xantid_swarm;
 pub mod wildfire_emissary;
+pub mod welkin_guide;

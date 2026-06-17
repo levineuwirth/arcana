@@ -117,3 +117,5 @@ pub mod metropolis_angel;
 pub mod speakeasy_server;
 pub mod wingshield_agent;
 pub mod ziatora_the_incinerator;
+pub mod glamorous_outlaw;
+pub mod scheming_fence;

@@ -62,3 +62,4 @@ pub mod moonwing_moth;
 pub mod akuta_born_of_ash;
 pub mod ghost_lit_nourisher;
 pub mod stampeding_serow;
+pub mod nikko_onna;

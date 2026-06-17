@@ -12,3 +12,4 @@ pub mod rampant_frogantua;
 pub mod bismuth_mindrender;
 pub mod bloodbraid_challenger;
 pub mod barrowgoyf;
+pub mod blaster_hulk;

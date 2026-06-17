@@ -89,3 +89,4 @@ pub mod ragefire_hellkite;
 pub mod gibbering_barricade;
 pub mod haunting_figment;
 pub mod tyrannical_pitlord;
+pub mod rundvelt_hordemaster;

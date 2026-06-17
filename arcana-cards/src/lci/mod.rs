@@ -124,3 +124,6 @@ pub mod miner_s_guidewing;
 pub mod cavern_stomper;
 pub mod dinotomaton;
 pub mod hoverstone_pilgrim;
+pub mod hotfoot_gnome;
+pub mod roaming_throne;
+pub mod the_ancient_one;

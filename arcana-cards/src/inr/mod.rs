@@ -135,3 +135,4 @@ pub mod ulrich_s_kindred;
 pub mod apothecary_geist;
 pub mod asylum_visitor;
 pub mod ambush_viper;
+pub mod deadeye_navigator;

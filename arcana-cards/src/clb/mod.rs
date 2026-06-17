@@ -181,3 +181,6 @@ pub mod rilsa_rael_kingpin;
 pub mod nefarious_imp;
 pub mod aarakocra_sneak;
 pub mod sprite_dragon;
+pub mod lae_zel_vlaakith_s_champion;
+pub mod balor;
+pub mod archpriest_of_iona;

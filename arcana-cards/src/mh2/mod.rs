@@ -97,3 +97,6 @@ pub mod priest_of_fell_rites;
 pub mod vedalken_infiltrator;
 pub mod phantasmal_dreadmaw;
 pub mod chainer_nightmare_adept;
+pub mod arcbound_whelp;
+pub mod cabal_initiate;
+pub mod thraben_watcher;

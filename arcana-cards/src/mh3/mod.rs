@@ -96,3 +96,4 @@ pub mod basking_broodscale;
 pub mod envoy_of_the_ancestors;
 pub mod electrozoa;
 pub mod scurrilous_sentry;
+pub mod temperamental_oozewagg;

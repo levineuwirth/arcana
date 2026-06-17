@@ -608,6 +608,14 @@ pub enum TriggerSelf {
     Source,
     /// Any object matching the filter counts.
     AnyMatching(ObjectFilter),
+    /// Any object matching the filter EXCEPT the triggered ability's own
+    /// source — MTG's "another" (e.g. "whenever another creature you
+    /// control ..."). Excluding the source is not just fidelity: for
+    /// triggers whose effect re-creates the watched event on the source
+    /// itself (Wildwood Scourge: counter added → add a counter to self),
+    /// `AnyMatching` would re-fire forever. `AnotherMatching` breaks that
+    /// loop (random-game harness seed 295).
+    AnotherMatching(ObjectFilter),
 }
 
 impl TriggerSelf {
@@ -622,6 +630,9 @@ impl TriggerSelf {
             TriggerSelf::Source => event_object == source,
             TriggerSelf::AnyMatching(f) =>
                 match_filter_on(state, event_object, f, source_controller),
+            TriggerSelf::AnotherMatching(f) =>
+                event_object != source
+                    && match_filter_on(state, event_object, f, source_controller),
         }
     }
 }
@@ -1919,6 +1930,23 @@ mod tests {
 
         let ts = TriggerSelf::AnyMatching(ObjectFilter::creature());
         assert!(ts.matches(c, 0, 0, &s));
+    }
+
+    #[test]
+    fn trigger_self_another_matching_excludes_source() {
+        // Regression (random-game harness seed 295): Wildwood Scourge watches
+        // "+1/+1 counter put on ANOTHER creature you control" and its effect
+        // adds a counter to itself. AnyMatching would re-fire on the source's
+        // own counter forever; AnotherMatching must exclude the source.
+        let mut s = GameState::new(2, 0);
+        let a = put_creature(&mut s, 0, Zone::Battlefield);
+        let b = put_creature(&mut s, 0, Zone::Battlefield);
+        let ts = TriggerSelf::AnotherMatching(ObjectFilter::creature());
+        // Event on a DIFFERENT creature (b) with source=a → fires.
+        assert!(ts.matches(b, a, 0, &s));
+        // Event on the SOURCE itself (a) with source=a → must NOT fire
+        // (this is the loop-breaker).
+        assert!(!ts.matches(a, a, 0, &s));
     }
 
     // --- PendingTrigger accessors ------------------------------------------

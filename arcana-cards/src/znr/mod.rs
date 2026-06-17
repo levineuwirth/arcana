@@ -88,3 +88,5 @@ pub mod cleric_of_life_s_bond;
 pub mod nimana_skydancer;
 pub mod umara_mystic;
 pub mod hagra_constrictor;
+pub mod acquisitions_expert;
+pub mod verazol_the_split_current;

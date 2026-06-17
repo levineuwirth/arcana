@@ -123,3 +123,4 @@ pub mod faerie_miscreant;
 pub mod bishop_of_wings;
 pub mod ethereal_elk;
 pub mod loyal_pegasus;
+pub mod steadfast_sentry;

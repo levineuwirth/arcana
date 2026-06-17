@@ -113,3 +113,4 @@ pub mod aven_gagglemaster;
 pub mod warden_of_the_woods;
 pub mod archfiend_s_vessel;
 pub mod gnarled_sage;
+pub mod garruk_s_warsteed;

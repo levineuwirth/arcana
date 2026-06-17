@@ -87,3 +87,6 @@ pub mod ivy_elemental;
 pub mod obosh_the_preypiercer;
 pub mod fiend_artisan;
 pub mod kogla_the_titan_ape;
+pub mod glimmerbell;
+pub mod adaptive_shimmerer;
+pub mod keensight_mentor;

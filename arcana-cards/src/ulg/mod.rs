@@ -35,3 +35,4 @@ pub mod defender_of_law;
 pub mod tethered_skirge;
 pub mod yavimaya_granger;
 pub mod shivan_phoenix;
+pub mod thran_war_machine;

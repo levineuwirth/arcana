@@ -32,3 +32,4 @@ pub mod palazzo_archers;
 pub mod sigurd_jarl_of_ravensthorpe;
 pub mod shao_jun;
 pub mod basim_ibn_ishaq;
+pub mod ad_wal_breaker_of_chains;

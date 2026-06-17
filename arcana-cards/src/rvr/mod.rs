@@ -84,3 +84,6 @@ pub mod birds_of_paradise;
 pub mod gruul_guildmage;
 pub mod rakdos_pit_dragon;
 pub mod deputy_of_acquittals;
+pub mod keymaster_rogue;
+pub mod sphinx_of_new_prahv;
+pub mod crocanura;

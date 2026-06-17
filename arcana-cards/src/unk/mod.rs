@@ -125,3 +125,8 @@ pub mod demon_detective;
 pub mod the_miniaturizer;
 pub mod phila_unsealed;
 pub mod the_zonian_brawler;
+pub mod myojin_of_night_s_reach_and_grim_betrayal;
+pub mod cinnamon_seasoned_steed;
+pub mod oilskelion;
+pub mod the_sad_creaturez;
+pub mod the_charitable_drafter;

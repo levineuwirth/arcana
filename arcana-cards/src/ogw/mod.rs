@@ -47,3 +47,4 @@ pub mod stalking_drone;
 pub mod deceiver_of_form;
 pub mod zada_s_commando;
 pub mod jwar_isle_avenger;
+pub mod wall_of_resurgence;

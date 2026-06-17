@@ -41,3 +41,5 @@ pub mod tidus_yuna_s_guardian;
 pub mod hermes_overseer_of_elpis;
 pub mod g_raha_tia_scion_reborn;
 pub mod y_shtola_night_s_blessed;
+pub mod hraesvelgr_of_the_first_brood;
+pub mod mog_moogle_warrior;

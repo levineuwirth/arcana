@@ -44,3 +44,5 @@ pub mod silhana_starfletcher;
 pub mod burning_tree_bloodscale;
 pub mod graven_dominator;
 pub mod battering_wurm;
+pub mod crystal_seer;
+pub mod gatherer_of_graces;

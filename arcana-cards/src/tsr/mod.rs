@@ -87,3 +87,4 @@ pub mod cautery_sliver;
 pub mod gossamer_phantasm;
 pub mod pallid_mycoderm;
 pub mod sporesower_thallid;
+pub mod crovax_ascendant_hero;

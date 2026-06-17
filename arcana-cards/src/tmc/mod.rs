@@ -36,3 +36,6 @@ pub mod michelangelo_the_heart;
 pub mod donatello_the_brains;
 pub mod casey_jones_asphalt_hooligan;
 pub mod casey_raph_hotheads;
+pub mod donatello_rad_scientist;
+pub mod raphael_the_muscle;
+pub mod april_o_neil_live_on_the_scene;

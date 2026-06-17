@@ -78,3 +78,4 @@ pub mod hearthcage_giant;
 pub mod turtleshell_changeling;
 pub mod battlewand_oak;
 pub mod sentry_oak;
+pub mod changeling_hero;

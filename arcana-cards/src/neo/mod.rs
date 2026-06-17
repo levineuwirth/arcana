@@ -127,3 +127,5 @@ pub mod a_nezumi_prowler;
 pub mod sky_blessed_samurai;
 pub mod gloomshrieker;
 pub mod mirrorshell_crab;
+pub mod reito_sentinel;
+pub mod a_raiyuu_storm_s_edge;

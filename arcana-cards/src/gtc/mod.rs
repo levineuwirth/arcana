@@ -58,3 +58,5 @@ pub mod deathpact_angel;
 pub mod wrecking_ogre;
 pub mod simic_fluxmage;
 pub mod shambleshark;
+pub mod foundry_champion;
+pub mod kingpin_s_pet;

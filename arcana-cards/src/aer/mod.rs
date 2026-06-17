@@ -72,3 +72,5 @@ pub mod midnight_entourage;
 pub mod sly_requisitioner;
 pub mod hope_of_ghirapur;
 pub mod shielded_aether_thief;
+pub mod dawnfeather_eagle;
+pub mod enraged_giant;

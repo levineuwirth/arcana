@@ -75,3 +75,5 @@ pub mod olivia_s_bloodsworn;
 pub mod manic_scribe;
 pub mod mindwrack_demon;
 pub mod watcher_in_the_web;
+pub mod geralf_s_masterpiece;
+pub mod topplegeist;

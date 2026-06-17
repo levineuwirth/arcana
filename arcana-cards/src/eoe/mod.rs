@@ -86,3 +86,6 @@ pub mod swarm_culler;
 pub mod brightspear_zealot;
 pub mod mouth_of_the_storm;
 pub mod harmonious_grovestrider;
+pub mod dawnstrike_vanguard;
+pub mod alpharael_dreaming_acolyte;
+pub mod ragost_deft_gastronaut;

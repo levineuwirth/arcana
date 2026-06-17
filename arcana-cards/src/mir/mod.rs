@@ -84,3 +84,4 @@ pub mod canopy_dragon;
 pub mod spirit_of_the_night;
 pub mod searing_spear_askari;
 pub mod jolrael_s_centaur;
+pub mod zhalfirin_knight;

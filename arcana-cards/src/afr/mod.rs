@@ -124,3 +124,7 @@ pub mod purple_worm;
 pub mod ranger_s_hawk;
 pub mod a_shessra_death_s_whisper;
 pub mod manticore;
+pub mod prosperous_innkeeper;
+pub mod targ_nar_demon_fang_gnoll;
+pub mod froghemoth;
+pub mod lurking_roper;

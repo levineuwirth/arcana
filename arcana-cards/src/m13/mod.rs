@@ -33,3 +33,5 @@ pub mod arctic_aven;
 pub mod aven_squire;
 pub mod shimian_specter;
 pub mod nefarox_overlord_of_grixis;
+pub mod duty_bound_dead;
+pub mod reckless_brute;

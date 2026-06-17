@@ -20,3 +20,4 @@ pub mod holy_armor;
 pub mod wall_of_water;
 pub mod goblin_rock_sled;
 pub mod mishra_s_war_machine;
+pub mod wall_of_dust;

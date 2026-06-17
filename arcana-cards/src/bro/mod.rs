@@ -107,3 +107,4 @@ pub mod myrel_shield_of_argive;
 pub mod siege_veteran;
 pub mod evangel_of_synthesis;
 pub mod junkyard_genius;
+pub mod geology_enthusiast;

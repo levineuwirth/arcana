@@ -4,3 +4,4 @@ pub mod lightning_angel;
 pub mod swift_justice;
 pub mod leonin_snarecaster;
 pub mod sparkmage_apprentice;
+pub mod hell_s_thunder;

@@ -98,3 +98,6 @@ pub mod erratic_apparition;
 pub mod flesh_burrower;
 pub mod overlord_of_the_mistmoors;
 pub mod patchwork_beastie;
+pub mod the_mindskinner;
+pub mod osseous_sticktwister;
+pub mod fear_of_isolation;

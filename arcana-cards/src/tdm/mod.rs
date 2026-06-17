@@ -116,3 +116,5 @@ pub mod eshki_dragonclaw;
 pub mod yathan_tombguard;
 pub mod dusyut_earthcarver;
 pub mod severance_priest;
+pub mod dragonologist;
+pub mod tersa_lightshatter;

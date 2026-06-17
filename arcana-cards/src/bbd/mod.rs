@@ -84,3 +84,4 @@ pub mod bloodborn_scoundrels;
 pub mod gwafa_hazid_profiteer;
 pub mod generous_patron;
 pub mod magma_hellion;
+pub mod daggerdrome_imp;

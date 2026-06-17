@@ -24,3 +24,4 @@ pub mod radagast_wizard_of_wilds;
 pub mod lossarnach_captain;
 pub mod pippin_warden_of_isengard;
 pub mod banquet_guests;
+pub mod gr_ma_saruman_s_footman;

@@ -89,3 +89,5 @@ pub mod arborback_stomper;
 pub mod voltaic_brawler;
 pub mod depala_pilot_exemplar;
 pub mod electrostatic_pummeler;
+pub mod janjeet_sentry;
+pub mod spontaneous_artist;

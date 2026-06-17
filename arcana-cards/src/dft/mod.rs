@@ -83,3 +83,4 @@ pub mod waxen_shapethief;
 pub mod mutant_surveyor;
 pub mod mimeoplasm_revered_one;
 pub mod leonin_surveyor;
+pub mod oviya_automech_artisan;

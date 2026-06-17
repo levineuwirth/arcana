@@ -126,3 +126,6 @@ pub mod garnet_princess_of_alexandria;
 pub mod vaan_street_thief;
 pub mod the_wandering_minstrel;
 pub mod cid_timeless_artificer;
+pub mod ultros_obnoxious_octopus;
+pub mod dragoon_s_wyvern;
+pub mod freya_crescent;

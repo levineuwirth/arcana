@@ -10,6 +10,7 @@
 # un-triaged baseline — mine it for real bugs (like subtype_filter) and SHRINK
 # it; never grow without confirming the card is a genuine false-positive.
 A-Llanowar Greenwidow
+A-Raiyuu, Storm's Edge
 Absorb Energy
 Access Denied
 Admiral Beckett Brass
@@ -22,6 +23,7 @@ Amulet of Vigor
 Arbiter of Knollridge
 Armed Response
 Ashcoat of the Shadow Swarm
+Attentive Skywarden
 Auriok Transfixer
 Avarice Totem
 Ayara, Widow of the Realm
@@ -88,6 +90,7 @@ Daru Stinger
 Dauntless Aven
 Dazzling Denial
 Death Watch
+Deathless Behemoth
 Decimator Beetle
 Deep-Slumber Titan
 Defiant Greatmaw
@@ -136,7 +139,9 @@ Frillscare Mentor
 Fuel for the Cause
 Fyndhorn Brownie
 Gates Ablaze
+Geralf's Masterpiece
 Ghoulsteed
+Glimmerbell
 Glimmerpost
 Goblin Assassin
 Goblin Psychopath
@@ -183,6 +188,7 @@ Jaded Response
 Jandor's Saddlebags
 Jaws of Defeat
 Jungle Creeper
+Karlach, Tiefling Spellrager
 Kellogg, Dangerous Mind
 Keruga, the Macrosage
 Kindlespark Duo
@@ -194,6 +200,7 @@ Kjeldoran Javelineer
 Koh, the Face Stealer
 Kraul Swarm
 Kumano Faces Kakkazan
+Kydele, Chosen of Kruphix
 Lapse of Certainty
 Lay Bare
 Leonin Battlemage
@@ -205,6 +212,7 @@ Lita, Mechanical Engineer
 Lofty Denial
 Loyal Retainers
 Lunar Force
+Lurking Roper
 Mage-Ring Responder
 Magebane Lizard
 Magewright's Stone
@@ -284,6 +292,7 @@ Put Away
 Quench
 Radagast the Brown
 Raggadragga, Goreguts Boss
+Ragost, Deft Gastronaut
 Rakshasa's Disdain
 Ral Zarek
 Raph & Leo, Sibling Rivals

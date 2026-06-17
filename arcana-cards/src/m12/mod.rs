@@ -49,3 +49,4 @@ pub mod skinshifter;
 pub mod dungrove_elder;
 pub mod peregrine_griffin;
 pub mod skywinder_drake;
+pub mod vengeful_pharaoh;

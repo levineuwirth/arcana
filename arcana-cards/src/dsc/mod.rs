@@ -77,3 +77,5 @@ pub mod deathcap_cultivator;
 pub mod ishkanah_grafwidow;
 pub mod verge_rangers;
 pub mod ashaya_soul_of_the_wild;
+pub mod rampaging_ferocidon;
+pub mod thunderfoot_baloth;

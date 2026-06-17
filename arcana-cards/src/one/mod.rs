@@ -93,3 +93,6 @@ pub mod annex_sentry;
 pub mod cacophony_scamp;
 pub mod exuberant_fuseling;
 pub mod vivisection_evangelist;
+pub mod drivnod_carnage_dominus;
+pub mod malcator_s_watcher;
+pub mod venomous_brutalizer;

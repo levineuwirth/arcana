@@ -52,3 +52,4 @@ pub mod ancient_hydra;
 pub mod cloudskate;
 pub mod rathi_fiend;
 pub mod lin_sivvi_defiant_hero;
+pub mod rootwater_thief;

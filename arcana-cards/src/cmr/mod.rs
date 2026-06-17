@@ -125,3 +125,5 @@ pub mod stormtide_leviathan;
 pub mod prava_of_the_steel_legion;
 pub mod nezahal_primal_tide;
 pub mod trove_tracker;
+pub mod gilanra_caller_of_wirewood;
+pub mod armix_filigree_thrasher;

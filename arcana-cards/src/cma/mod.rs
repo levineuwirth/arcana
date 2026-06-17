@@ -38,3 +38,5 @@ pub mod gwyllion_hedge_mage;
 pub mod joraga_warcaller;
 pub mod lu_xun_scholar_general;
 pub mod mana_charged_dragon;
+pub mod wolfbriar_elemental;
+pub mod creeperhulk;

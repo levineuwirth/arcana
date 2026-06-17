@@ -53,3 +53,4 @@ pub mod mindshrieker;
 pub mod feral_ridgewolf;
 pub mod gallows_warden;
 pub mod mirror_mad_phantasm;
+pub mod angelic_overseer;

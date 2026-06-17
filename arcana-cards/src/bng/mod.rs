@@ -56,3 +56,5 @@ pub mod stormcaller_of_keranos;
 pub mod spiteful_returned;
 pub mod forlorn_pseudamma;
 pub mod griffin_dreamfinder;
+pub mod nyxborn_rollicker;
+pub mod nessian_wilds_ravager;

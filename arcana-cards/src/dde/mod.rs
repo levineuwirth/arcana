@@ -14,3 +14,4 @@ pub mod charging_troll;
 pub mod treva_the_renewer;
 pub mod thornscape_apprentice;
 pub mod phyrexian_negator;
+pub mod sanguine_guard;

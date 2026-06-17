@@ -79,3 +79,4 @@ pub mod ulna_alley_shopkeep;
 pub mod prismari_the_inspiration;
 pub mod rancorous_archaic;
 pub mod hydro_channeler;
+pub mod pest_mascot;

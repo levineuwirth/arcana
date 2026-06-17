@@ -145,3 +145,4 @@ pub mod crenellated_wall;
 pub mod chameleon_spirit;
 pub mod kyren_legate;
 pub mod indentured_djinn;
+pub mod cho_arrim_legate;

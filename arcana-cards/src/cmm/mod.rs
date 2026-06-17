@@ -199,3 +199,6 @@ pub mod shimmer_myr;
 pub mod stonehoof_chieftain;
 pub mod xantcha_sleeper_agent;
 pub mod nekusar_the_mindrazer;
+pub mod slimefoot_the_stowaway;
+pub mod duplicant;
+pub mod rafiq_of_the_many;

@@ -63,3 +63,6 @@ pub mod courier_griffin;
 pub mod geyserfield_stalker;
 pub mod void_winnower;
 pub mod angel_of_renewal;
+pub mod sire_of_stagnation;
+pub mod sludge_crawler;
+pub mod deathless_behemoth;

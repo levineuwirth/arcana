@@ -56,3 +56,4 @@ pub mod screeching_silcaw;
 pub mod necropede;
 pub mod plague_stinger;
 pub mod kemba_s_skyguard;
+pub mod blackcleave_goblin;

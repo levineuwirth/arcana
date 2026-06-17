@@ -61,3 +61,4 @@ pub mod drakestown_forgotten;
 pub mod fledgling_djinn;
 pub mod karn_silver_golem;
 pub mod morphling;
+pub mod lightning_dragon;

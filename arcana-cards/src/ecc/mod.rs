@@ -48,3 +48,6 @@ pub mod kulrath_knight;
 pub mod belonging;
 pub mod tree_of_perdition;
 pub mod selvala_heart_of_the_wilds;
+pub mod dusk_urchins;
+pub mod maelstrom_wanderer;
+pub mod endurance;

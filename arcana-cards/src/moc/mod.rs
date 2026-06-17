@@ -60,3 +60,4 @@ pub mod kasla_the_broken_halo;
 pub mod locthwain_lancer;
 pub mod enduring_scalelord;
 pub mod master_of_etherium;
+pub mod chasm_skulker;
