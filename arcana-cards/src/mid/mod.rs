@@ -105,3 +105,4 @@ pub mod a_hobbling_zombie;
 pub mod sigardian_savior;
 pub mod dawnhart_rejuvenator;
 pub mod slaughter_specialist;
+pub mod dawnhart_wardens;

@@ -82,3 +82,5 @@ pub mod ravenous_vampire;
 pub mod emberwilde_djinn;
 pub mod canopy_dragon;
 pub mod spirit_of_the_night;
+pub mod searing_spear_askari;
+pub mod jolrael_s_centaur;

@@ -118,3 +118,6 @@ pub mod keen_eared_sentry;
 pub mod blink_dog;
 pub mod half_elf_monk;
 pub mod arborea_pegasus;
+pub mod swarming_goblins;
+pub mod a_triumphant_adventurer;
+pub mod purple_worm;

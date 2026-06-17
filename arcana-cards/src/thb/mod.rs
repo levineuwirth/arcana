@@ -98,3 +98,7 @@ pub mod eidolon_of_obstruction;
 pub mod dalakos_crafter_of_wonders;
 pub mod warden_of_the_chained;
 pub mod taranika_akroan_veteran;
+pub mod renata_called_to_the_hunt;
+pub mod heroes_of_the_revel;
+pub mod nessian_boar;
+pub mod atris_oracle_of_half_truths;

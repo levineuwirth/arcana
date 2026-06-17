@@ -141,3 +141,5 @@ pub mod surtland_elementalist;
 pub mod cleaving_reaper;
 pub mod mistwalker;
 pub mod a_cosmos_charger;
+pub mod starnheim_courser;
+pub mod maja_bretagard_protector;

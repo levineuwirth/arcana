@@ -131,3 +131,5 @@ pub mod metallic_mimic;
 pub mod blood_petal_celebrant;
 pub mod markov_waltzer;
 pub mod nebelgast_herald;
+pub mod ulrich_s_kindred;
+pub mod apothecary_geist;

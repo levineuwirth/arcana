@@ -95,3 +95,5 @@ pub mod a_baleful_beholder;
 pub mod skanos_black_dragon_vassal;
 pub mod lae_zel_illithid_thrall;
 pub mod wilson_urbane_bear;
+pub mod moradin_s_disciples;
+pub mod skanos_dragon_vassal;

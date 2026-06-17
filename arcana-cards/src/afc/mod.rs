@@ -30,3 +30,4 @@ pub mod galea_kindler_of_hope;
 pub mod nihiloor;
 pub mod bogardan_hellkite;
 pub mod curator_of_mysteries;
+pub mod death_tyrant;

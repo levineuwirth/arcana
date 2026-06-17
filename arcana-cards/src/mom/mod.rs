@@ -146,3 +146,6 @@ pub mod seer_of_stolen_sight;
 pub mod etched_host_doombringer;
 pub mod ghalta_and_mavren;
 pub mod grafted_butcher;
+pub mod tidal_terror;
+pub mod thrashing_frontliner;
+pub mod cragsmasher_yeti;

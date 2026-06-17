@@ -68,3 +68,6 @@ pub mod sagu_archer;
 pub mod valley_dasher;
 pub mod pearl_lake_ancient;
 pub mod mardu_skullhunter;
+pub mod monastery_flock;
+pub mod longshot_squad;
+pub mod dazzling_ramparts;

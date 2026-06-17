@@ -45,3 +45,6 @@ pub mod phyrexian_metamorph;
 pub mod patrolling_peacemaker;
 pub mod moraug_fury_of_akoum;
 pub mod centaur_vinecrasher;
+pub mod korvold_fae_cursed_king;
+pub mod augur_of_autumn;
+pub mod kappa_cannoneer;

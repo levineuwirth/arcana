@@ -60,3 +60,4 @@ pub mod bosco_just_a_bear;
 pub mod earthbending_student;
 pub mod elephant_mandrill;
 pub mod purple_pentapus;
+pub mod katara_heroic_healer;

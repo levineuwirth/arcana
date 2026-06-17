@@ -60,3 +60,5 @@ pub mod vestige_of_emrakul;
 pub mod halimar_tidecaller;
 pub mod nettle_drone;
 pub mod courier_griffin;
+pub mod geyserfield_stalker;
+pub mod void_winnower;

@@ -116,3 +116,5 @@ pub mod kallist_rhoka;
 pub mod groaaaaag_hungry_monster;
 pub mod the_paradise_bird;
 pub mod unclaimed_tanadon;
+pub mod catch_up_mechanic;
+pub mod the_caffeinated_runner;

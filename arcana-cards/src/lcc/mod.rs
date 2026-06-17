@@ -66,3 +66,4 @@ pub mod bloodtracker;
 pub mod apex_altisaur;
 pub mod thundering_spineback;
 pub mod xolatoyac_the_smiling_flood;
+pub mod order_of_sacred_dusk;

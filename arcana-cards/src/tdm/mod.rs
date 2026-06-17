@@ -115,3 +115,4 @@ pub mod craterhoof_behemoth;
 pub mod eshki_dragonclaw;
 pub mod yathan_tombguard;
 pub mod dusyut_earthcarver;
+pub mod severance_priest;

@@ -24,3 +24,6 @@ pub mod dark_impostor;
 pub mod breathkeeper_seraph;
 pub mod geist_of_saint_traft;
 pub mod millicent_restless_revenant;
+pub mod oyobi_who_split_the_heavens;
+pub mod custodi_soulbinders;
+pub mod spectral_arcanist;

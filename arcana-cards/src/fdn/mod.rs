@@ -210,3 +210,4 @@ pub mod mischievous_pup;
 pub mod icewind_elemental;
 pub mod wildwood_scourge;
 pub mod dragon_mage;
+pub mod flamewake_phoenix;

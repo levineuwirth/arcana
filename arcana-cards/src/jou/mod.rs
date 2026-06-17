@@ -44,3 +44,5 @@ pub mod bloodcrazed_hoplite;
 pub mod fleetfeather_cockatrice;
 pub mod crystalline_nautilus;
 pub mod felhide_petrifier;
+pub mod battlefield_thaumaturge;
+pub mod athreos_god_of_passage;

@@ -19,3 +19,5 @@ pub mod shivan_wumpus;
 pub mod molten_firebird;
 pub mod pouncing_wurm;
 pub mod vitaspore_thallid;
+pub mod groundbreaker;
+pub mod malach_of_the_dawn;

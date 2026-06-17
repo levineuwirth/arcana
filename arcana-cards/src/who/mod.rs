@@ -45,3 +45,6 @@ pub mod davros_dalek_creator;
 pub mod the_master_mesmerist;
 pub mod the_second_doctor;
 pub mod lunar_hatchling;
+pub mod thijarian_witness;
+pub mod dalek_squadron;
+pub mod graham_o_brien;

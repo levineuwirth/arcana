@@ -79,3 +79,5 @@ pub mod rat_colony;
 pub mod kazarov_sengir_pureblood;
 pub mod academy_journeymage;
 pub mod goblin_warchief;
+pub mod windgrace_acolyte;
+pub mod aesthir_glider;

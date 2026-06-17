@@ -88,3 +88,4 @@ pub mod phlage_titan_of_fire_s_fury;
 pub mod proud_pack_rhino;
 pub mod skoa_embermage;
 pub mod rosecot_knight;
+pub mod snapping_voidcraw;

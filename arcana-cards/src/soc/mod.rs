@@ -157,3 +157,6 @@ pub mod killian_ink_duelist;
 pub mod remorseful_cleric;
 pub mod vanguard_of_the_restless;
 pub mod goldspan_dragon;
+pub mod augusta_order_returned;
+pub mod lifeblood_hydra;
+pub mod haywire_mite;

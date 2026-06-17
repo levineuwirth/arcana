@@ -93,3 +93,6 @@ pub mod nurturing_pixie;
 pub mod trained_arynx;
 pub mod railway_brawler;
 pub mod rictus_robber;
+pub mod riku_of_many_paths;
+pub mod archangel_of_tithes;
+pub mod vraska_the_silencer;

@@ -86,3 +86,4 @@ pub mod skycat_sovereign;
 pub mod ivy_elemental;
 pub mod obosh_the_preypiercer;
 pub mod fiend_artisan;
+pub mod kogla_the_titan_ape;

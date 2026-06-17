@@ -67,3 +67,4 @@ pub mod angel_of_grace;
 pub mod charging_war_boar;
 pub mod gruul_spellbreaker;
 pub mod gruul_beastmaster;
+pub mod faerie_duelist;

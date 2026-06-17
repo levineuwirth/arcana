@@ -71,3 +71,5 @@ pub mod runewing;
 pub mod rakdos_ringleader;
 pub mod chaos_imps;
 pub mod dark_revenant;
+pub mod tower_drake;
+pub mod azor_s_elocutors;

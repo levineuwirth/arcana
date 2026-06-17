@@ -56,3 +56,5 @@ pub mod angelic_skirmisher;
 pub mod molten_primordial;
 pub mod deathpact_angel;
 pub mod wrecking_ogre;
+pub mod simic_fluxmage;
+pub mod shambleshark;

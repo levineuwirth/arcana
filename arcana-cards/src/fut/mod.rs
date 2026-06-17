@@ -24,3 +24,4 @@ pub mod augur_il_vec;
 pub mod skizzik_surger;
 pub mod soultether_golem;
 pub mod linessa_zephyr_mage;
+pub mod oriss_samite_guardian;

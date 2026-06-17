@@ -61,3 +61,4 @@ pub mod ramroller;
 pub mod mage_ring_bully;
 pub mod honored_hierarch;
 pub mod firefiend_elemental;
+pub mod mizzium_meddler;

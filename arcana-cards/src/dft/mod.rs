@@ -82,3 +82,4 @@ pub mod gas_guzzler;
 pub mod waxen_shapethief;
 pub mod mutant_surveyor;
 pub mod mimeoplasm_revered_one;
+pub mod leonin_surveyor;

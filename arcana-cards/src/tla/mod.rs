@@ -96,3 +96,5 @@ pub mod earth_kingdom_general;
 pub mod hakoda_selfless_commander;
 pub mod the_unagi_of_kyoshi_island;
 pub mod toph_hardheaded_teacher;
+pub mod giant_koi;
+pub mod fire_sages;

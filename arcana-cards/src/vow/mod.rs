@@ -118,3 +118,6 @@ pub mod undead_butler;
 pub mod a_cobbled_lancer;
 pub mod apprentice_sharpshooter;
 pub mod a_dreamshackle_geist;
+pub mod unholy_officiant;
+pub mod packsong_pup;
+pub mod cemetery_illuminator;

@@ -84,3 +84,5 @@ pub mod cult_conscript;
 pub mod shadow_rite_priest;
 pub mod floriferous_vinewall;
 pub mod evolved_sleeper;
+pub mod yavimaya_steelcrusher;
+pub mod ragefire_hellkite;

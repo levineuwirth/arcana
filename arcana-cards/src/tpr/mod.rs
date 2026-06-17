@@ -96,3 +96,4 @@ pub mod mawcor;
 pub mod screeching_harpy;
 pub mod thalakos_seer;
 pub mod renegade_warlord;
+pub mod dungeon_shade;

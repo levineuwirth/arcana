@@ -55,3 +55,4 @@ pub mod hero_of_iroas;
 pub mod angel_of_despair;
 pub mod penumbra_wurm;
 pub mod iridescent_drake;
+pub mod skyspear_cavalry;

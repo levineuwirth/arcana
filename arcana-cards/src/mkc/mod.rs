@@ -57,3 +57,5 @@ pub mod hooded_hydra;
 pub mod innocuous_researcher;
 pub mod tangletrove_kelp;
 pub mod broodhatch_nantuko;
+pub mod doom_whisperer;
+pub mod final_word_phantom;

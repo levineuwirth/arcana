@@ -82,3 +82,8 @@ pub mod char_rumbler;
 pub mod henchfiend_of_ukor;
 pub mod stonecloaker;
 pub mod lost_auramancers;
+pub mod shivan_sand_mage;
+pub mod cautery_sliver;
+pub mod gossamer_phantasm;
+pub mod pallid_mycoderm;
+pub mod sporesower_thallid;

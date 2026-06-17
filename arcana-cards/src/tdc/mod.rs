@@ -89,3 +89,5 @@ pub mod vengeful_ancestor;
 pub mod kotis_sibsig_champion;
 pub mod indulging_patrician;
 pub mod zurgo_stormrender;
+pub mod wall_of_omens;
+pub mod meren_of_clan_nel_toth;

@@ -77,3 +77,4 @@ pub mod nath_s_elite;
 pub mod hearthcage_giant;
 pub mod turtleshell_changeling;
 pub mod battlewand_oak;
+pub mod sentry_oak;

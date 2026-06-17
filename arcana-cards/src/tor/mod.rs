@@ -32,3 +32,4 @@ pub mod gurzigost;
 pub mod soul_scourge;
 pub mod possessed_centaur;
 pub mod possessed_barbarian;
+pub mod anurid_scavenger;

@@ -13,3 +13,4 @@ pub mod ayara_s_oathsworn;
 pub mod karn_legacy_reforged;
 pub mod harnessed_snubhorn;
 pub mod metropolis_reformer;
+pub mod kiora_sovereign_of_the_deep;

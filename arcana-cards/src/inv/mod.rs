@@ -86,3 +86,5 @@ pub mod crimson_acolyte;
 pub mod tolarian_emissary;
 pub mod kangee_aerie_keeper;
 pub mod faerie_squadron;
+pub mod obsidian_acolyte;
+pub mod stalking_assassin;

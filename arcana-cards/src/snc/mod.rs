@@ -114,3 +114,4 @@ pub mod midnight_assassin;
 pub mod ledger_shredder;
 pub mod jewel_thief;
 pub mod metropolis_angel;
+pub mod speakeasy_server;

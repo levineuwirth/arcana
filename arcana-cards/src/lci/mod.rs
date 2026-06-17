@@ -120,3 +120,4 @@ pub mod digsite_conservator;
 pub mod ruin_lurker_bat;
 pub mod uchbenbak_the_great_mistake;
 pub mod deep_goblin_skulltaker;
+pub mod miner_s_guidewing;

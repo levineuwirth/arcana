@@ -49,3 +49,4 @@ pub mod angelic_sleuth;
 pub mod the_beamtown_bullies;
 pub mod cephalid_facetaker;
 pub mod skyship_plunderer;
+pub mod alela_artful_provocateur;

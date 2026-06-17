@@ -39,3 +39,4 @@ pub mod umaro_raging_yeti;
 pub mod siegfried_famed_swordsman;
 pub mod tidus_yuna_s_guardian;
 pub mod hermes_overseer_of_elpis;
+pub mod g_raha_tia_scion_reborn;

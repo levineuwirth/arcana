@@ -82,3 +82,4 @@ pub mod urborg_drake;
 pub mod toothy_imaginary_friend;
 pub mod bloodborn_scoundrels;
 pub mod gwafa_hazid_profiteer;
+pub mod generous_patron;

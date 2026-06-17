@@ -72,3 +72,5 @@ pub mod winter_cynical_opportunist;
 pub mod body_of_knowledge;
 pub mod the_master_of_keys;
 pub mod brash_taunter;
+pub mod titania_nature_s_force;
+pub mod deathcap_cultivator;

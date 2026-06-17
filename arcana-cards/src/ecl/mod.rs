@@ -115,3 +115,5 @@ pub mod unwelcome_sprite;
 pub mod lluwen_imperfect_naturalist;
 pub mod illusion_spinners;
 pub mod brambleback_brute;
+pub mod graveshifter;
+pub mod high_perfect_morcant;

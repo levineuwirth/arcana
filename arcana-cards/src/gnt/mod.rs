@@ -10,3 +10,4 @@ pub mod nissa_s_revelation;
 pub mod manalith;
 pub mod favorable_winds;
 pub mod always_watching;
+pub mod soulblade_djinn;

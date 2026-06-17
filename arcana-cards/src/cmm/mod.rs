@@ -193,3 +193,4 @@ pub mod matter_reshaper;
 pub mod sidisi_brood_tyrant;
 pub mod oviya_pashiri_sage_lifecrafter;
 pub mod quick_sliver;
+pub mod mizzix_of_the_izmagnus;

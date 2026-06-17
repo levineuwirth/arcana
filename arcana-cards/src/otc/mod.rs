@@ -52,3 +52,5 @@ pub mod shadowmage_infiltrator;
 pub mod stella_lee_wild_card;
 pub mod ukkima_stalking_shadow;
 pub mod niv_mizzet_parun;
+pub mod fallen_shinobi;
+pub mod whirler_rogue;

@@ -55,3 +55,6 @@ pub mod moira_and_teshar;
 pub mod managorger_hydra;
 pub mod brawn;
 pub mod shattered_angel;
+pub mod saint_traft_and_rem_karolus;
+pub mod kasla_the_broken_halo;
+pub mod locthwain_lancer;

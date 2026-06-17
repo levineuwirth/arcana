@@ -85,3 +85,5 @@ pub mod architect_of_the_untamed;
 pub mod bomat_courier;
 pub mod thriving_ibex;
 pub mod fretwork_colony;
+pub mod arborback_stomper;
+pub mod voltaic_brawler;

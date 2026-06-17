@@ -30,3 +30,4 @@ pub mod maverick_thopterist;
 pub mod charnelhoard_wurm;
 pub mod gyrus_waker_of_corpses;
 pub mod conundrum_sphinx;
+pub mod sphinx_of_jwar_isle;

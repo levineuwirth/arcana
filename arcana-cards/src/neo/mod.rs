@@ -125,3 +125,4 @@ pub mod bronzeplate_boar;
 pub mod bamboo_grove_archer;
 pub mod a_nezumi_prowler;
 pub mod sky_blessed_samurai;
+pub mod gloomshrieker;

@@ -67,3 +67,4 @@ pub mod zenith_seeker;
 pub mod decimator_beetle;
 pub mod wasteland_scorpion;
 pub mod river_serpent;
+pub mod trueheart_duelist;

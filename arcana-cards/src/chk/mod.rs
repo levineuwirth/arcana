@@ -107,3 +107,4 @@ pub mod samurai_of_the_pale_curtain;
 pub mod kitsune_healer;
 pub mod myojin_of_life_s_web;
 pub mod innocence_kami;
+pub mod kumano_master_yamabushi;

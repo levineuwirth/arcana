@@ -89,3 +89,5 @@ pub mod crawling_chorus;
 pub mod furnace_strider;
 pub mod duelist_of_deep_faith;
 pub mod axiom_engraver;
+pub mod annex_sentry;
+pub mod cacophony_scamp;

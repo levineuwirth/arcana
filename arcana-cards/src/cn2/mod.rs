@@ -34,3 +34,4 @@ pub mod menagerie_liberator;
 pub mod vertigo_spawn;
 pub mod archdemon_of_paliano;
 pub mod shipwreck_singer;
+pub mod wings_of_the_guard;

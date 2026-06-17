@@ -7,3 +7,4 @@ pub mod elder_cathar;
 pub mod champion_of_the_parish;
 pub mod thraben_heretic;
 pub mod goldnight_redeemer;
+pub mod scrapskin_drake;

@@ -25,6 +25,7 @@ Ashcoat of the Shadow Swarm
 Auriok Transfixer
 Avarice Totem
 Ayara, Widow of the Realm
+Azor's Elocutors
 Bag Check
 Baldur's Gate
 Ballynock Trapper
@@ -302,6 +303,7 @@ Rootwater Matriarch
 Rubblebelt Braggart
 Rune Snag
 Sacred Ground
+Saint Traft and Rem Karolus
 Salvager of Secrets
 Sanctum of Stone Fangs
 Sandstorm Salvager
@@ -321,6 +323,7 @@ Seer of the Bright Side
 Sengir Autocrat
 Serene Heart
 Shard Phoenix
+Shivan Sand-Mage
 Silkenfist Fighter
 Silkenfist Order
 Simic Ragworm

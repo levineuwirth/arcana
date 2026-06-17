@@ -50,3 +50,4 @@ pub mod bitterheart_witch;
 pub mod one_eyed_scarecrow;
 pub mod sturmgeist;
 pub mod mindshrieker;
+pub mod feral_ridgewolf;

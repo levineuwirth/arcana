@@ -119,3 +119,4 @@ pub mod squad_captain;
 pub mod krark_the_thumbless;
 pub mod slinn_voda_the_rising_deep;
 pub mod sakashima_s_protege;
+pub mod nadier_agent_of_the_duskenel;

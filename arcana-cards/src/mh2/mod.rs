@@ -87,3 +87,7 @@ pub mod rishadan_dockhand;
 pub mod steel_dromedary;
 pub mod piru_the_volatile;
 pub mod bannerhide_krushok;
+pub mod asmoranomardicadaistinaculdacar;
+pub mod wren_s_run_hydra;
+pub mod gouged_zealot;
+pub mod urban_daggertooth;

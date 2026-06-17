@@ -115,3 +115,6 @@ pub mod brazen_collector;
 pub mod long_river_lurker;
 pub mod coruscation_mage;
 pub mod starscape_cleric;
+pub mod stormsplitter;
+pub mod bushy_bodyguard;
+pub mod burrowguard_mentor;
