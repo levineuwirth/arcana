@@ -10,3 +10,4 @@ pub mod lara_croft_tomb_raider;
 pub mod atreus_impulsive_son;
 pub mod miles_tails_prower;
 pub mod the_celestial_toymaker;
+pub mod rose_noble;

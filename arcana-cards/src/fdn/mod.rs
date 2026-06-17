@@ -200,3 +200,4 @@ pub mod drake_hatcher;
 pub mod progenitus;
 pub mod kykar_zephyr_awakener;
 pub mod dawnwing_marshal;
+pub mod massacre_wurm;

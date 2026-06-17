@@ -79,3 +79,5 @@ pub mod lavabrink_venturer;
 pub mod keruga_the_macrosage;
 pub mod cunning_nightbonder;
 pub mod jubilant_skybonder;
+pub mod zirda_the_dawnwaker;
+pub mod drannith_stinger;

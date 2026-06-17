@@ -39,3 +39,5 @@ pub mod yes_man_personal_securitron;
 pub mod lumbering_megasloth;
 pub mod gary_clone;
 pub mod synth_infiltrator;
+pub mod preston_garvey_minuteman;
+pub mod strong_the_brutish_thespian;

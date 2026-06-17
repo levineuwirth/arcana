@@ -111,3 +111,5 @@ pub mod lathiel_the_bounteous_dawn;
 pub mod biowaste_blob;
 pub mod halana_kessig_ranger;
 pub mod horizon_scholar;
+pub mod radiant_serra_archangel;
+pub mod hullbreacher;

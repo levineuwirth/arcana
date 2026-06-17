@@ -107,3 +107,6 @@ pub mod constrictor_sage;
 pub mod devoted_duelist;
 pub mod sagu_pummeler;
 pub mod avenger_of_the_fallen;
+pub mod rainveil_rejuvenator;
+pub mod dalkovan_packbeasts;
+pub mod ambling_stormshell;

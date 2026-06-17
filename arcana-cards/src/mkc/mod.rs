@@ -54,3 +54,4 @@ pub mod feather_radiant_arbiter;
 pub mod ancient_stone_idol;
 pub mod saryth_the_viper_s_fang;
 pub mod hooded_hydra;
+pub mod innocuous_researcher;

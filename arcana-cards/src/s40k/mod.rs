@@ -52,3 +52,5 @@ pub mod sister_repentia;
 pub mod malanthrope;
 pub mod deathleaper_terror_weapon;
 pub mod magus_lucea_kane;
+pub mod helbrute;
+pub mod hormagaunt_horde;

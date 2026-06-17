@@ -82,3 +82,6 @@ pub mod ragavan_nimble_pilferer;
 pub mod skophos_reaver;
 pub mod scion_of_draco;
 pub mod funnel_web_recluse;
+pub mod aeromoeba;
+pub mod rishadan_dockhand;
+pub mod steel_dromedary;

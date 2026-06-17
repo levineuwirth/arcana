@@ -67,3 +67,5 @@ pub mod frog_butler;
 pub mod michelangelo_improviser;
 pub mod triceraton_commander;
 pub mod mutagen_man_living_ooze;
+pub mod mutant_town_musicians;
+pub mod ray_fillet_man_ray;

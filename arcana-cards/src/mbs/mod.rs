@@ -44,3 +44,4 @@ pub mod myr_welder;
 pub mod tine_shrike;
 pub mod mirran_spy;
 pub mod glissa_the_traitor;
+pub mod core_prowler;

@@ -82,3 +82,4 @@ pub mod attended_healer;
 pub mod living_tempest;
 pub mod murasa_sproutling;
 pub mod sure_footed_infiltrator;
+pub mod zulaport_duelist;

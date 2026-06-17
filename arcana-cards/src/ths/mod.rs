@@ -69,3 +69,4 @@ pub mod deathbellow_raider;
 pub mod medomai_the_ageless;
 pub mod mistcutter_hydra;
 pub mod tormented_hero;
+pub mod soldier_of_the_pantheon;

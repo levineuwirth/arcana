@@ -48,3 +48,5 @@ pub mod kirri_talented_sprout;
 pub mod charred_graverobber;
 pub mod crackling_spellslinger;
 pub mod changeling_outcast;
+pub mod shadowmage_infiltrator;
+pub mod stella_lee_wild_card;

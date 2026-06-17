@@ -75,3 +75,5 @@ pub mod airdrop_condor;
 pub mod ebonblade_reaper;
 pub mod aphetto_vulture;
 pub mod ghosthelm_courier;
+pub mod disciple_of_grace;
+pub mod snarling_undorak;

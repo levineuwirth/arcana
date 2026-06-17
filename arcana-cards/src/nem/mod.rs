@@ -50,3 +50,4 @@ pub mod rathi_intimidator;
 pub mod stronghold_zeppelin;
 pub mod ancient_hydra;
 pub mod cloudskate;
+pub mod rathi_fiend;

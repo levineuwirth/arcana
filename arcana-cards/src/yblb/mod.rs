@@ -5,3 +5,4 @@ pub mod putrefying_rotboar;
 pub mod recruit_instructor;
 pub mod brave_meadowguard;
 pub mod euru_acorn_scrounger;
+pub mod tempest_trapper;

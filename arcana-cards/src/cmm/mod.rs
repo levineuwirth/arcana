@@ -187,3 +187,6 @@ pub mod titan_of_littjara;
 pub mod razaketh_the_foulblooded;
 pub mod yuriko_the_tiger_s_shadow;
 pub mod abstruse_archaic;
+pub mod morophon_the_boundless;
+pub mod blood_aspirant;
+pub mod matter_reshaper;

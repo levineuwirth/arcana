@@ -41,3 +41,4 @@ pub mod sycorax_commander;
 pub mod astrid_peth;
 pub mod cybermat;
 pub mod idris_soul_of_the_tardis;
+pub mod davros_dalek_creator;

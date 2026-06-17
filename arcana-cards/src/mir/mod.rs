@@ -80,3 +80,4 @@ pub mod basalt_golem;
 pub mod civic_guildmage;
 pub mod ravenous_vampire;
 pub mod emberwilde_djinn;
+pub mod canopy_dragon;

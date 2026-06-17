@@ -121,3 +121,4 @@ pub mod hope_estheim;
 pub mod tifa_lockhart;
 pub mod xande_dark_mage;
 pub mod minwu_white_mage;
+pub mod relentless_x_atm092;

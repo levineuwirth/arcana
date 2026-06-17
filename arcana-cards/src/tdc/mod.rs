@@ -86,3 +86,5 @@ pub mod diviner_of_mist;
 pub mod nogi_draco_zealot;
 pub mod rapacious_dragon;
 pub mod vengeful_ancestor;
+pub mod kotis_sibsig_champion;
+pub mod indulging_patrician;

@@ -16,6 +16,7 @@ Admiral Beckett Brass
 Aladdin
 All Suns' Dawn
 Altar of the Wretched
+Ambling Stormshell
 Amulet of Vigor
 Arbiter of Knollridge
 Armed Response
@@ -74,6 +75,7 @@ Counterbore
 Counterlash
 Counterpoint
 Counterspell
+Cult Conscript
 Cybermat
 Cytoplast Manipulator
 Dack Fayden
@@ -150,8 +152,10 @@ Huatli, Dinosaur Knight
 Hyperion Blacksmith
 Hyrax Tower Scout
 Imaryll, Elfhame Elite
+Incandescent Soulstoke
 Induce Paranoia
 Initiate's Companion
+Innocence Kami
 Inspired Sprite
 Intervene
 Into the Night
@@ -228,6 +232,7 @@ Necrogen Communion
 Negate
 Nemesis Phoenix
 Nether Spirit
+Nettle Drone
 Nettle Sentinel
 Neutralizing Blast
 Nicol Bolas, Planeswalker
@@ -235,6 +240,7 @@ Nimbleclaw Adept
 Nix
 No More Lies
 Noise Marine
+Noxious Hatchling
 Odunos River Trawler
 Old Man of the Sea
 Onakke Oathkeeper
@@ -278,6 +284,7 @@ Resurrected Cultist
 Revive
 Revolutionary Rebuff
 Rime Tender
+Rishadan Dockhand
 Rishadan Port
 Roc Hatchling
 Rogues' Gallery
@@ -348,6 +355,7 @@ Thistledown Players
 Thoughtbind
 Tibalt's Trickery
 Ticking Mime Bomb
+Tideforce Elemental
 Tombstone, Career Criminal
 Torchling
 Touchstone

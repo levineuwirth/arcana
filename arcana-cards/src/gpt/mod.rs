@@ -43,3 +43,4 @@ pub mod order_of_the_stars;
 pub mod silhana_starfletcher;
 pub mod burning_tree_bloodscale;
 pub mod graven_dominator;
+pub mod battering_wurm;

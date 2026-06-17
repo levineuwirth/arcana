@@ -102,3 +102,4 @@ pub mod mishra_tamer_of_mak_fawa;
 pub mod thran_spider;
 pub mod cityscape_leveler;
 pub mod drafna_founder_of_lat_nam;
+pub mod gnawing_vermin;

@@ -79,3 +79,5 @@ pub mod argivian_phalanx;
 pub mod electrostatic_infantry;
 pub mod a_llanowar_greenwidow;
 pub mod quirion_beastcaller;
+pub mod griffin_protector;
+pub mod cult_conscript;

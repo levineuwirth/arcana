@@ -68,3 +68,4 @@ pub mod salt_road_quartermasters;
 pub mod lightning_berserker;
 pub mod custodian_of_the_trove;
 pub mod sidisi_undead_vizier;
+pub mod swift_warkite;

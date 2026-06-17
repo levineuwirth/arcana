@@ -170,3 +170,7 @@ pub mod tabaxi_toucaneers;
 pub mod elturel_survivors;
 pub mod bloodsoaked_champion;
 pub mod wilson_refined_grizzly;
+pub mod hoarding_ogre;
+pub mod ravenloft_adventurer;
+pub mod erinis_gloom_stalker;
+pub mod astarion_the_decadent;

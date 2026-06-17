@@ -97,3 +97,4 @@ pub mod old_man_of_the_sea;
 pub mod rasputin_dreamweaver;
 pub mod crimson_manticore;
 pub mod palladia_mors;
+pub mod wandering_mage;

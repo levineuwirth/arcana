@@ -42,3 +42,5 @@ pub mod the_reaper_king_no_more;
 pub mod impulsivity;
 pub mod puppeteer_clique;
 pub mod horde_of_notions;
+pub mod incandescent_soulstoke;
+pub mod cavalier_of_thorns;

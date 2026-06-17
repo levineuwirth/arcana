@@ -83,3 +83,5 @@ pub mod guardian_of_the_great_conduit;
 pub mod riparian_tiger;
 pub mod architect_of_the_untamed;
 pub mod bomat_courier;
+pub mod thriving_ibex;
+pub mod fretwork_colony;

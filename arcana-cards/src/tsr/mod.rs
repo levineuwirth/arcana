@@ -76,3 +76,7 @@ pub mod deathspore_thallid;
 pub mod gathan_raiders;
 pub mod teferi_mage_of_zhalfir;
 pub mod blightspeaker;
+pub mod uktabi_drake;
+pub mod ith_high_arcanist;
+pub mod char_rumbler;
+pub mod henchfiend_of_ukor;

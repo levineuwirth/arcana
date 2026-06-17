@@ -67,3 +67,4 @@ pub mod heir_of_the_wilds;
 pub mod sagu_archer;
 pub mod valley_dasher;
 pub mod pearl_lake_ancient;
+pub mod mardu_skullhunter;

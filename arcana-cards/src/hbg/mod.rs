@@ -91,3 +91,5 @@ pub mod imoen_wily_trickster;
 pub mod skanos_red_dragon_vassal;
 pub mod imoen_chaotic_trickster;
 pub mod viconia_disciple_of_arcana;
+pub mod a_baleful_beholder;
+pub mod skanos_black_dragon_vassal;

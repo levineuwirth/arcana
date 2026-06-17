@@ -109,3 +109,4 @@ pub mod tarkiran_towelsbane;
 pub mod the_keeper_of_the_yellow_hat;
 pub mod the_unknown_wizard;
 pub mod the_playful_winners;
+pub mod char_dog;

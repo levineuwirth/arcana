@@ -90,3 +90,4 @@ pub mod hellspur_posse_boss;
 pub mod tinybones_the_pickpocket;
 pub mod gila_courser;
 pub mod nurturing_pixie;
+pub mod trained_arynx;

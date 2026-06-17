@@ -88,3 +88,8 @@ pub mod popular_egotist;
 pub mod enduring_courage;
 pub mod unstoppable_slasher;
 pub mod balustrade_wurm;
+pub mod twitching_doll;
+pub mod skullsnap_nuisance;
+pub mod infernal_phantom;
+pub mod daggermaw_megalodon;
+pub mod overlord_of_the_balemurk;

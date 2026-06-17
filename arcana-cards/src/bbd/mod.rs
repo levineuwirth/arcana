@@ -80,3 +80,5 @@ pub mod consulate_skygate;
 pub mod impetuous_protege;
 pub mod urborg_drake;
 pub mod toothy_imaginary_friend;
+pub mod bloodborn_scoundrels;
+pub mod gwafa_hazid_profiteer;

@@ -118,3 +118,6 @@ pub mod goblin_ringleader;
 pub mod barkhide_troll;
 pub mod cerulean_drake;
 pub mod anvilwrought_raptor;
+pub mod elvish_reclaimer;
+pub mod faerie_miscreant;
+pub mod bishop_of_wings;

@@ -113,3 +113,5 @@ pub mod acererak_the_archlich;
 pub mod grim_wanderer;
 pub mod a_acererak_the_archlich;
 pub mod icingdeath_frost_tyrant;
+pub mod silver_raven;
+pub mod keen_eared_sentry;

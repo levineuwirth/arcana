@@ -85,3 +85,6 @@ pub mod syndicate_messenger;
 pub mod glorifier_of_dusk;
 pub mod ecstatic_electromancer;
 pub mod gorging_vulture;
+pub mod furious_spinesplitter;
+pub mod whisper_agent;
+pub mod dimir_guildmage;

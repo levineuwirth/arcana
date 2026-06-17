@@ -95,3 +95,4 @@ pub mod wall_of_diffusion;
 pub mod mawcor;
 pub mod screeching_harpy;
 pub mod thalakos_seer;
+pub mod renegade_warlord;

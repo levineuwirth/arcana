@@ -61,3 +61,4 @@ pub mod lurking_informant;
 pub mod goblin_fire_fiend;
 pub mod torpid_moloch;
 pub mod wizened_snitches;
+pub mod sewerdreg;

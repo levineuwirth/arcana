@@ -108,3 +108,4 @@ pub mod speaker_of_the_heavens;
 pub mod skyway_sniper;
 pub mod skyscanner;
 pub mod anointed_chorister;
+pub mod kinetic_augur;

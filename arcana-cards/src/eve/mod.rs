@@ -58,3 +58,4 @@ pub mod deity_of_scars;
 pub mod voracious_hatchling;
 pub mod belligerent_hatchling;
 pub mod cinder_pyromancer;
+pub mod noxious_hatchling;

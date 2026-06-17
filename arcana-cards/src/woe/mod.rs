@@ -131,3 +131,4 @@ pub mod dutiful_griffin;
 pub mod lady_of_laughter;
 pub mod faerie_dreamthief;
 pub mod barrow_naughty;
+pub mod lord_skitter_s_butcher;

@@ -11,3 +11,4 @@ pub mod unholy_strength;
 pub mod serra_s_embrace;
 pub mod demon_s_jester;
 pub mod stinkweed_imp;
+pub mod kuro_pitlord;

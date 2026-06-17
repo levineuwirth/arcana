@@ -62,3 +62,4 @@ pub mod skill_borrower;
 pub mod esper_battlemage;
 pub mod fatestitcher;
 pub mod sigiled_paladin;
+pub mod exuberant_firestoker;

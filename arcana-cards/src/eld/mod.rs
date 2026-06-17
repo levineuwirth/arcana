@@ -104,3 +104,4 @@ pub mod syr_gwyn_hero_of_ashvale;
 pub mod fierce_witchstalker;
 pub mod shinechaser;
 pub mod lochmere_serpent;
+pub mod bog_naughty;

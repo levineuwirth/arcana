@@ -128,3 +128,6 @@ pub mod grimgrin_corpse_born;
 pub mod vilespawn_spider;
 pub mod torens_fist_of_the_angels;
 pub mod metallic_mimic;
+pub mod blood_petal_celebrant;
+pub mod markov_waltzer;
+pub mod nebelgast_herald;

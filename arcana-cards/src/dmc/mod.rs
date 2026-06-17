@@ -24,3 +24,5 @@ pub mod rosnakht_heir_of_rohgahh;
 pub mod archelos_lagoon_mystic;
 pub mod tajic_blade_of_the_legion;
 pub mod atla_palani_nest_tender;
+pub mod tetsuo_imperial_champion;
+pub mod activated_sleeper;

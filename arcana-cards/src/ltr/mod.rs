@@ -112,3 +112,6 @@ pub mod delighted_halfling;
 pub mod gl_in_dwarf_emissary;
 pub mod willow_wind;
 pub mod merry_esquire_of_rohan;
+pub mod elanor_gardner;
+pub mod orcish_bowmasters;
+pub mod gr_ma_wormtongue;

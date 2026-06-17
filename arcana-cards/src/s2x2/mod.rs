@@ -84,3 +84,4 @@ pub mod ashen_rider;
 pub mod thraximundar;
 pub mod anointer_of_valor;
 pub mod dreg_mangler;
+pub mod greater_gargadon;

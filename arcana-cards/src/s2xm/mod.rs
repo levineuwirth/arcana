@@ -76,3 +76,4 @@ pub mod blightsteel_colossus;
 pub mod iron_bully;
 pub mod geth_lord_of_the_vault;
 pub mod atraxa_praetors_voice;
+pub mod skithiryx_the_blight_dragon;

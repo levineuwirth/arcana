@@ -39,3 +39,8 @@ pub mod depthshaker_titan;
 pub mod the_gitrog_monster;
 pub mod tireless_tracker;
 pub mod coretapper;
+pub mod chrome_host_seedshark;
+pub mod sprouting_goblin;
+pub mod phyrexian_metamorph;
+pub mod patrolling_peacemaker;
+pub mod moraug_fury_of_akoum;

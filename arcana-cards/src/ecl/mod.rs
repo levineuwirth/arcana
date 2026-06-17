@@ -109,3 +109,6 @@ pub mod aurora_awakener;
 pub mod heirloom_auntie;
 pub mod flitterwing_nuisance;
 pub mod champions_of_the_shoal;
+pub mod bitterbloom_bearer;
+pub mod vibrance;
+pub mod unwelcome_sprite;

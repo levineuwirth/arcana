@@ -20,3 +20,4 @@ pub mod rhoda_geist_avenger;
 pub mod doom_weaver;
 pub mod thundering_mightmare;
 pub mod shacklegeist;
+pub mod dark_impostor;

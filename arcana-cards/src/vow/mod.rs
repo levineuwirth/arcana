@@ -117,3 +117,4 @@ pub mod blood_hypnotist;
 pub mod undead_butler;
 pub mod a_cobbled_lancer;
 pub mod apprentice_sharpshooter;
+pub mod a_dreamshackle_geist;

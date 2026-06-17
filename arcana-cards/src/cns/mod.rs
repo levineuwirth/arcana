@@ -31,3 +31,4 @@ pub mod skitter_of_lizards;
 pub mod lurking_automaton;
 pub mod marchesa_s_emissary;
 pub mod cogwork_grinder;
+pub mod agent_of_acquisitions;

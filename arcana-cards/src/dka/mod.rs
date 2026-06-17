@@ -33,3 +33,4 @@ pub mod talons_of_falkenrath;
 pub mod burden_of_guilt;
 pub mod strangleroot_geist;
 pub mod niblis_of_the_mist;
+pub mod geralf_s_mindcrusher;

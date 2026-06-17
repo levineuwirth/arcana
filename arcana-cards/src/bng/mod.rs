@@ -52,3 +52,6 @@ pub mod akroan_skyguard;
 pub mod ornitharch;
 pub mod odunos_river_trawler;
 pub mod vanguard_of_brimaz;
+pub mod stormcaller_of_keranos;
+pub mod spiteful_returned;
+pub mod forlorn_pseudamma;

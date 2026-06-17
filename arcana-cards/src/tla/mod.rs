@@ -91,3 +91,6 @@ pub mod sokka_lateral_strategist;
 pub mod mai_scornful_striker;
 pub mod june_bounty_hunter;
 pub mod rough_rhino_cavalry;
+pub mod hei_bai_spirit_of_balance;
+pub mod earth_kingdom_general;
+pub mod hakoda_selfless_commander;

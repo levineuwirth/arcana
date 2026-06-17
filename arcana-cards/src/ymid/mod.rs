@@ -20,3 +20,5 @@ pub mod citystalker_connoisseur;
 pub mod captain_eberhart;
 pub mod veteran_ghoulcaller;
 pub mod predatory_sludge;
+pub mod geist_of_regret;
+pub mod frenzied_geistblaster;

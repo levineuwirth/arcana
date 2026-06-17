@@ -122,3 +122,4 @@ pub mod selfless_samurai;
 pub mod kodama_of_the_west_tree;
 pub mod heiko_yamazaki_the_general;
 pub mod bronzeplate_boar;
+pub mod bamboo_grove_archer;

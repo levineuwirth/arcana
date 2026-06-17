@@ -35,3 +35,4 @@ pub mod ghastly_remains;
 pub mod goblin_dynamo;
 pub mod daru_stinger;
 pub mod primoc_escapee;
+pub mod root_sliver;

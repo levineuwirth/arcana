@@ -32,3 +32,4 @@ pub mod wind_zendikon;
 pub mod scrib_nibblers;
 pub mod perimeter_captain;
 pub mod akoum_battlesinger;
+pub mod tideforce_elemental;

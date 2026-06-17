@@ -37,3 +37,4 @@ pub mod illuminated_wings;
 pub mod disappear;
 pub mod plague_dogs;
 pub mod blizzard_elemental;
+pub mod colos_yearling;

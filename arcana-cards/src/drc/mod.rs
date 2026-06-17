@@ -7,3 +7,4 @@ pub mod saheeli_radiant_creator;
 pub mod priest_of_the_crossing;
 pub mod lost_monarch_of_ifnir;
 pub mod peema_trailblazer;
+pub mod nissa_worldsoul_speaker;

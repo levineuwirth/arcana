@@ -42,3 +42,4 @@ pub mod sinister_possession;
 pub mod maze_abomination;
 pub mod woodlot_crawler;
 pub mod maze_glider;
+pub mod hired_torturer;

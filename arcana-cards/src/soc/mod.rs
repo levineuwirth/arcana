@@ -154,3 +154,4 @@ pub mod claim_jumper;
 pub mod drumbellower;
 pub mod quintorius_field_historian;
 pub mod killian_ink_duelist;
+pub mod remorseful_cleric;
