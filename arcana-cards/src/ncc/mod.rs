@@ -45,3 +45,4 @@ pub mod treeshaker_chimera;
 pub mod wingspan_mentor;
 pub mod perrie_the_pulverizer;
 pub mod park_heights_maverick;
+pub mod angelic_sleuth;

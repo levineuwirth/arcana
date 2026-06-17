@@ -79,3 +79,4 @@ pub mod skyserpent_seeker;
 pub mod prowcatcher_specialist;
 pub mod ketramose_the_new_dawn;
 pub mod gas_guzzler;
+pub mod waxen_shapethief;

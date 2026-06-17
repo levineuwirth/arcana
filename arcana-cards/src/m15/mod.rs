@@ -67,3 +67,5 @@ pub mod kalonian_twingrove;
 pub mod preeminent_captain;
 pub mod jorubai_murk_lurker;
 pub mod paragon_of_eternal_wilds;
+pub mod paragon_of_gathering_mists;
+pub mod soul_of_theros;

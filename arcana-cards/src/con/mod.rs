@@ -39,3 +39,4 @@ pub mod corrupted_roots;
 pub mod controlled_instincts;
 pub mod frontline_sage;
 pub mod meglonoth;
+pub mod paragon_of_the_amesha;

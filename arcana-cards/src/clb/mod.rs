@@ -174,3 +174,6 @@ pub mod hoarding_ogre;
 pub mod ravenloft_adventurer;
 pub mod erinis_gloom_stalker;
 pub mod astarion_the_decadent;
+pub mod ghastly_death_tyrant;
+pub mod stirring_bard;
+pub mod end_raze_forerunners;

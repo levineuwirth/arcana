@@ -10,3 +10,4 @@ pub mod oran_rief_invoker;
 pub mod jaddi_lifestrider;
 pub mod gilt_leaf_seer;
 pub mod nissa_voice_of_zendikar;
+pub mod despoiler_of_souls;

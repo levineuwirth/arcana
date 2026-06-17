@@ -69,3 +69,4 @@ pub mod aether_herder;
 pub mod lightning_runner;
 pub mod aetherwind_basker;
 pub mod midnight_entourage;
+pub mod sly_requisitioner;

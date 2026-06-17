@@ -52,3 +52,4 @@ pub mod corpse_cur;
 pub mod lumengrid_drake;
 pub mod abuna_acolyte;
 pub mod bellowing_tanglewurm;
+pub mod screeching_silcaw;

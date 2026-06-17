@@ -85,3 +85,5 @@ pub mod funnel_web_recluse;
 pub mod aeromoeba;
 pub mod rishadan_dockhand;
 pub mod steel_dromedary;
+pub mod piru_the_volatile;
+pub mod bannerhide_krushok;

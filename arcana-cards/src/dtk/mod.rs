@@ -69,3 +69,6 @@ pub mod lightning_berserker;
 pub mod custodian_of_the_trove;
 pub mod sidisi_undead_vizier;
 pub mod swift_warkite;
+pub mod warbringer;
+pub mod stormcrag_elemental;
+pub mod misthoof_kirin;

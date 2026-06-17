@@ -48,3 +48,4 @@ pub mod gruesome_deformity;
 pub mod manor_gargoyle;
 pub mod bitterheart_witch;
 pub mod one_eyed_scarecrow;
+pub mod sturmgeist;

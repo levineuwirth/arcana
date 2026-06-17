@@ -44,3 +44,4 @@ pub mod puppeteer_clique;
 pub mod horde_of_notions;
 pub mod incandescent_soulstoke;
 pub mod cavalier_of_thorns;
+pub mod kulrath_knight;

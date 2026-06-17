@@ -23,3 +23,4 @@ pub mod spirit_en_dal;
 pub mod augur_il_vec;
 pub mod skizzik_surger;
 pub mod soultether_golem;
+pub mod linessa_zephyr_mage;

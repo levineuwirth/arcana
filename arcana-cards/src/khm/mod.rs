@@ -136,3 +136,6 @@ pub mod canopy_tactician;
 pub mod magda_brazen_outlaw;
 pub mod littjara_kinseekers;
 pub mod sigrid_god_favored;
+pub mod cosmos_charger;
+pub mod surtland_elementalist;
+pub mod cleaving_reaper;

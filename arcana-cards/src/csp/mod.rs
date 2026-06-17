@@ -44,3 +44,4 @@ pub mod kjeldoran_javelineer;
 pub mod bull_aurochs;
 pub mod zombie_musher;
 pub mod j_tun_owl_keeper;
+pub mod surging_sentinels;

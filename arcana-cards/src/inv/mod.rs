@@ -84,3 +84,4 @@ pub mod blurred_mongoose;
 pub mod goham_djinn;
 pub mod crimson_acolyte;
 pub mod tolarian_emissary;
+pub mod kangee_aerie_keeper;

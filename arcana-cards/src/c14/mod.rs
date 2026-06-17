@@ -13,3 +13,4 @@ pub mod dulcet_sirens;
 pub mod frost_titan;
 pub mod requiem_angel;
 pub mod flesh_carver;
+pub mod riptide_survivor;

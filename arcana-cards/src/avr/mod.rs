@@ -62,3 +62,4 @@ pub mod druid_s_familiar;
 pub mod stern_mentor;
 pub mod archwing_dragon;
 pub mod heirs_of_stromkirk;
+pub mod wolfir_avenger;

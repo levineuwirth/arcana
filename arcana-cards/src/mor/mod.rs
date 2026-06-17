@@ -36,3 +36,4 @@ pub mod supreme_exemplar;
 pub mod vengeful_firebrand;
 pub mod stenchskipper;
 pub mod brighthearth_banneret;
+pub mod cenn_s_tactician;

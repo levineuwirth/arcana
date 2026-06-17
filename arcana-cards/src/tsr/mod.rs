@@ -80,3 +80,4 @@ pub mod uktabi_drake;
 pub mod ith_high_arcanist;
 pub mod char_rumbler;
 pub mod henchfiend_of_ukor;
+pub mod stonecloaker;

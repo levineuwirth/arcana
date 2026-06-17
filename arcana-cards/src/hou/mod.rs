@@ -65,3 +65,5 @@ pub mod vile_manifestation;
 pub mod khenra_scrapper;
 pub mod djeru_with_eyes_open;
 pub mod aerial_guide;
+pub mod fervent_paincaster;
+pub mod adorned_pouncer;

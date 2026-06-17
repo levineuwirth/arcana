@@ -95,3 +95,4 @@ pub mod case_file_auditor;
 pub mod lumbering_laundry;
 pub mod izoni_center_of_the_web;
 pub mod rakdos_patron_of_chaos;
+pub mod forensic_researcher;

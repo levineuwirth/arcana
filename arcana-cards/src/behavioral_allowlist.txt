@@ -58,6 +58,7 @@ Cinder Pyromancer
 Cinderhaze Wretch
 City of Traitors
 Civic Gardener
+Cleaving Reaper
 Clever Conjurer
 Clockwork Beast
 Clockwork Steed
@@ -90,6 +91,7 @@ Defiant Greatmaw
 Delay
 Descendant of Masumaro
 Desertion
+Despoiler of Souls
 Devious Cover-Up
 Dispersal Shield
 Dissipate
@@ -104,6 +106,7 @@ Drownyard Temple
 Dumb Ass
 Durable Coilbug
 Dutiful Griffin
+Ebon Praetor
 Elder Druid
 Eldrazi Ravager
 Electrosiphon
@@ -121,8 +124,10 @@ Fickle Efreet
 Flaccify
 Floodwater Dam
 Force Spike
+Forensic Researcher
 Frazzle
 Freyalise, Skyshroud Partisan
+Frillscare Mentor
 Fuel for the Cause
 Fyndhorn Brownie
 Gates Ablaze
@@ -137,6 +142,7 @@ Groundskeeper
 Gruesome Menagerie
 Gumdrop Poisoner
 Gustcloak Cavalier
+Gustcloak Harrier
 Gustcloak Runner
 Gustcloak Sentinel
 Hana Kami
@@ -209,6 +215,7 @@ Medicine Runner
 Medomai the Ageless
 Memory Lapse
 Merchant of Many Hats
+Merieke Ri Berit
 Merrow Bonegnawer
 Merrow Commerce
 Metalwork Colossus

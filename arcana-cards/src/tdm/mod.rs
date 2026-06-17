@@ -110,3 +110,6 @@ pub mod avenger_of_the_fallen;
 pub mod rainveil_rejuvenator;
 pub mod dalkovan_packbeasts;
 pub mod ambling_stormshell;
+pub mod flamehold_grappler;
+pub mod craterhoof_behemoth;
+pub mod eshki_dragonclaw;

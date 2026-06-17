@@ -27,3 +27,4 @@ pub mod sigarda_s_vanguard;
 pub mod heron_s_grace_champion;
 pub mod eater_of_hope;
 pub mod herald_of_war;
+pub mod shadow_kin;

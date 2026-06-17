@@ -65,3 +65,4 @@ pub mod honored_hydra;
 pub mod prowling_serpopard;
 pub mod zenith_seeker;
 pub mod decimator_beetle;
+pub mod wasteland_scorpion;

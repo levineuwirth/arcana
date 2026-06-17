@@ -55,3 +55,4 @@ pub mod sokenzan_spellblade;
 pub mod matsu_tribe_birdstalker;
 pub mod skull_collector;
 pub mod glitterfang;
+pub mod araba_mothrider;

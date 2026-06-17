@@ -63,3 +63,5 @@ pub mod timothar_baron_of_bats;
 pub mod ghost_of_ramirez_depietro;
 pub mod regisaur_alpha;
 pub mod bloodtracker;
+pub mod apex_altisaur;
+pub mod thundering_spineback;

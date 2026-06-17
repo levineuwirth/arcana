@@ -39,3 +39,4 @@ pub mod gnarlid_pack;
 pub mod restless_apparition;
 pub mod algae_gharial;
 pub mod waxmane_baku;
+pub mod surrakar_spellblade;

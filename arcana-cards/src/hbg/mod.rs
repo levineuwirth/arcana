@@ -93,3 +93,5 @@ pub mod imoen_chaotic_trickster;
 pub mod viconia_disciple_of_arcana;
 pub mod a_baleful_beholder;
 pub mod skanos_black_dragon_vassal;
+pub mod lae_zel_illithid_thrall;
+pub mod wilson_urbane_bear;

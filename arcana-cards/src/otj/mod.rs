@@ -91,3 +91,5 @@ pub mod tinybones_the_pickpocket;
 pub mod gila_courser;
 pub mod nurturing_pixie;
 pub mod trained_arynx;
+pub mod railway_brawler;
+pub mod rictus_robber;

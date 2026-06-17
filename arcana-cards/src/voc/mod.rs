@@ -21,3 +21,6 @@ pub mod doom_weaver;
 pub mod thundering_mightmare;
 pub mod shacklegeist;
 pub mod dark_impostor;
+pub mod breathkeeper_seraph;
+pub mod geist_of_saint_traft;
+pub mod millicent_restless_revenant;

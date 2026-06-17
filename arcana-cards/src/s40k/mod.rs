@@ -54,3 +54,7 @@ pub mod deathleaper_terror_weapon;
 pub mod magus_lucea_kane;
 pub mod helbrute;
 pub mod hormagaunt_horde;
+pub mod tzaangor_shaman;
+pub mod sister_of_silence;
+pub mod vanguard_suppressor;
+pub mod primaris_chaplain;

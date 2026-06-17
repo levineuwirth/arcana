@@ -66,3 +66,6 @@ pub mod demon_of_fate_s_design;
 pub mod yavimaya_elder;
 pub mod persistent_constrictor;
 pub mod dream_eater;
+pub mod florian_voldaren_scion;
+pub mod massacre_girl;
+pub mod winter_cynical_opportunist;

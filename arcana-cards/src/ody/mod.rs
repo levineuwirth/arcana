@@ -93,3 +93,4 @@ pub mod cephalid_scout;
 pub mod pardic_firecat;
 pub mod balshan_beguiler;
 pub mod phantatog;
+pub mod wayward_angel;

@@ -51,3 +51,6 @@ pub mod kalonian_hydra;
 pub mod slimefoot_and_squee;
 pub mod flight_of_equenauts;
 pub mod goro_goro_and_satoru;
+pub mod moira_and_teshar;
+pub mod managorger_hydra;
+pub mod brawn;

@@ -47,3 +47,5 @@ pub mod centaur_of_attention;
 pub mod devil_k_nevil;
 pub mod o_saurus;
 pub mod meet_and_greet_sisay;
+pub mod xenosquirrels;
+pub mod proficient_pyrodancer;

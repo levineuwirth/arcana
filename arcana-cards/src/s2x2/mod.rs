@@ -85,3 +85,6 @@ pub mod thraximundar;
 pub mod anointer_of_valor;
 pub mod dreg_mangler;
 pub mod greater_gargadon;
+pub mod consecrated_sphinx;
+pub mod ulamog_the_infinite_gyre;
+pub mod skullbriar_the_walking_grave;

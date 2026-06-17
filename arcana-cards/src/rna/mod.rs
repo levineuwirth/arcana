@@ -65,3 +65,5 @@ pub mod ghor_clan_wrecker;
 pub mod syndicate_guildmage;
 pub mod angel_of_grace;
 pub mod charging_war_boar;
+pub mod gruul_spellbreaker;
+pub mod gruul_beastmaster;

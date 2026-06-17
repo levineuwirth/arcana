@@ -93,3 +93,6 @@ pub mod skullsnap_nuisance;
 pub mod infernal_phantom;
 pub mod daggermaw_megalodon;
 pub mod overlord_of_the_balemurk;
+pub mod fear_of_burning_alive;
+pub mod erratic_apparition;
+pub mod flesh_burrower;

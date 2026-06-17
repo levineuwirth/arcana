@@ -56,3 +56,4 @@ pub mod cabal_therapist;
 pub mod plague_engineer;
 pub mod ingenious_infiltrator;
 pub mod lesser_masticore;
+pub mod twin_silk_spider;

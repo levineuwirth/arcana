@@ -65,3 +65,5 @@ pub mod patron_of_the_orochi;
 pub mod ronin_cliffrider;
 pub mod body_of_jukai;
 pub mod matsu_tribe_sniper;
+pub mod traproot_kami;
+pub mod kentaro_the_smiling_cat;

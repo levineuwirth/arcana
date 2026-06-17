@@ -14,3 +14,4 @@ pub mod infernius_spawnington_iii_esq;
 pub mod syr_cadian_knight_owl;
 pub mod boomstacker;
 pub mod wall_of_fortune;
+pub mod knight_of_the_hokey_pokey;

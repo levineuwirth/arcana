@@ -111,3 +111,6 @@ pub mod starlit_soothsayer;
 pub mod mind_drill_assailant;
 pub mod tender_wildguide;
 pub mod baylen_the_haymaker;
+pub mod brazen_collector;
+pub mod long_river_lurker;
+pub mod coruscation_mage;

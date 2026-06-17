@@ -112,3 +112,6 @@ pub mod champions_of_the_shoal;
 pub mod bitterbloom_bearer;
 pub mod vibrance;
 pub mod unwelcome_sprite;
+pub mod lluwen_imperfect_naturalist;
+pub mod illusion_spinners;
+pub mod brambleback_brute;

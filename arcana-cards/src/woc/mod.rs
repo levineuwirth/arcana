@@ -3,3 +3,4 @@ pub mod liberated_livestock;
 pub mod giant_inheritance;
 pub mod timber_paladin;
 pub mod malleable_impostor;
+pub mod korvold_gleeful_glutton;

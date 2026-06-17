@@ -88,3 +88,5 @@ pub mod gorging_vulture;
 pub mod furious_spinesplitter;
 pub mod whisper_agent;
 pub mod dimir_guildmage;
+pub mod deputized_protester;
+pub mod kraul_harpooner;

@@ -109,3 +109,4 @@ pub mod skyway_sniper;
 pub mod skyscanner;
 pub mod anointed_chorister;
 pub mod kinetic_augur;
+pub mod aven_gagglemaster;

@@ -72,3 +72,4 @@ pub mod ascendant_dustspeaker;
 pub mod rubble_rouser;
 pub mod lorehold_the_historian;
 pub mod conciliator_s_duelist;
+pub mod soaring_stoneglider;

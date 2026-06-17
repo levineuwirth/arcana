@@ -76,3 +76,4 @@ pub mod boggart_mob;
 pub mod nath_s_elite;
 pub mod hearthcage_giant;
 pub mod turtleshell_changeling;
+pub mod battlewand_oak;

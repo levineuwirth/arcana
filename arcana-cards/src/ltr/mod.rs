@@ -115,3 +115,4 @@ pub mod merry_esquire_of_rohan;
 pub mod elanor_gardner;
 pub mod orcish_bowmasters;
 pub mod gr_ma_wormtongue;
+pub mod shire_scarecrow;

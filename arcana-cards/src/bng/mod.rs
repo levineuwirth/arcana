@@ -55,3 +55,4 @@ pub mod vanguard_of_brimaz;
 pub mod stormcaller_of_keranos;
 pub mod spiteful_returned;
 pub mod forlorn_pseudamma;
+pub mod griffin_dreamfinder;

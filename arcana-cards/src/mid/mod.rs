@@ -102,3 +102,5 @@ pub mod morkrut_behemoth;
 pub mod hobbling_zombie;
 pub mod a_shipwreck_sifters;
 pub mod a_hobbling_zombie;
+pub mod sigardian_savior;
+pub mod dawnhart_rejuvenator;

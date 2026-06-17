@@ -109,3 +109,5 @@ pub mod a_speakeasy_server;
 pub mod ognis_the_dragon_s_lash;
 pub mod jaxis_the_troublemaker;
 pub mod a_rakish_revelers;
+pub mod extraction_specialist;
+pub mod midnight_assassin;

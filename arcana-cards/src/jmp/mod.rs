@@ -155,3 +155,6 @@ pub mod angelic_page;
 pub mod affa_guard_hound;
 pub mod nyxathid;
 pub mod archon_of_justice;
+pub mod blighted_bat;
+pub mod dragon_hatchling;
+pub mod minotaur_skullcleaver;

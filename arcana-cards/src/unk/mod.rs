@@ -110,3 +110,8 @@ pub mod the_keeper_of_the_yellow_hat;
 pub mod the_unknown_wizard;
 pub mod the_playful_winners;
 pub mod char_dog;
+pub mod bram_baguette_brawler;
+pub mod the_bird_champion;
+pub mod kallist_rhoka;
+pub mod groaaaaag_hungry_monster;
+pub mod the_paradise_bird;
