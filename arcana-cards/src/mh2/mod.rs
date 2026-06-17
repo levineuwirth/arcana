@@ -91,3 +91,7 @@ pub mod asmoranomardicadaistinaculdacar;
 pub mod wren_s_run_hydra;
 pub mod gouged_zealot;
 pub mod urban_daggertooth;
+pub mod necrogoyf;
+pub mod ghost_lit_drifter;
+pub mod priest_of_fell_rites;
+pub mod vedalken_infiltrator;

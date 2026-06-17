@@ -115,3 +115,4 @@ pub mod ledger_shredder;
 pub mod jewel_thief;
 pub mod metropolis_angel;
 pub mod speakeasy_server;
+pub mod wingshield_agent;

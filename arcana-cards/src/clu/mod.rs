@@ -93,3 +93,4 @@ pub mod kraul_harpooner;
 pub mod scuttling_sentinel;
 pub mod roaming_ghostlight;
 pub mod commander_mustard;
+pub mod unruly_krasis;

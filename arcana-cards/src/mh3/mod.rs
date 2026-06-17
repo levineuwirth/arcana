@@ -89,3 +89,7 @@ pub mod proud_pack_rhino;
 pub mod skoa_embermage;
 pub mod rosecot_knight;
 pub mod snapping_voidcraw;
+pub mod etched_slith;
+pub mod triton_wavebreaker;
+pub mod expanding_ooze;
+pub mod basking_broodscale;

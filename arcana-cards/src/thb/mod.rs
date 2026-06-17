@@ -102,3 +102,4 @@ pub mod renata_called_to_the_hunt;
 pub mod heroes_of_the_revel;
 pub mod nessian_boar;
 pub mod atris_oracle_of_half_truths;
+pub mod alirios_enraptured;

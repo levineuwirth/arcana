@@ -15,3 +15,5 @@ pub mod the_odd_acorn_gang;
 pub mod jacked_rabbit;
 pub mod scurry_of_squirrels;
 pub mod octomancer;
+pub mod evercoat_ursine;
+pub mod hazel_of_the_rootbloom;

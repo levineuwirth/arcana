@@ -76,3 +76,5 @@ pub mod contaminated_bond;
 pub mod scalpelexis;
 pub mod avatar_of_might;
 pub mod tangle_spider;
+pub mod rhox;
+pub mod cloud_sprite;

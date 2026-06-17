@@ -61,3 +61,4 @@ pub mod primaris_chaplain;
 pub mod celestine_the_living_saint;
 pub mod canoptek_scarab_swarm;
 pub mod plague_drone;
+pub mod vexilus_praetor;

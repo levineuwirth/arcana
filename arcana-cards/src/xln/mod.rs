@@ -84,3 +84,5 @@ pub mod emissary_of_sunrise;
 pub mod brazen_buccaneers;
 pub mod dire_fleet_interloper;
 pub mod rowdy_crew;
+pub mod imperial_aerosaur;
+pub mod fire_shrine_keeper;

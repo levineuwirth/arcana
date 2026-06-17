@@ -162,3 +162,4 @@ pub mod signpost_scarecrow;
 pub mod wall_of_vines;
 pub mod spiteful_prankster;
 pub mod minotaur_sureshot;
+pub mod fell_specter;

@@ -62,3 +62,4 @@ pub mod nettle_drone;
 pub mod courier_griffin;
 pub mod geyserfield_stalker;
 pub mod void_winnower;
+pub mod angel_of_renewal;

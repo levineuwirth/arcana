@@ -61,3 +61,5 @@ pub mod earthbending_student;
 pub mod elephant_mandrill;
 pub mod purple_pentapus;
 pub mod katara_heroic_healer;
+pub mod katara_seeking_revenge;
+pub mod baboon_spirit;

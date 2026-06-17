@@ -101,6 +101,7 @@ Divert Disaster
 Don't Make a Sound
 Donal, Herald of Wings
 Double Negative
+Dragonlord Silumgar
 Dread Slaver
 Drooling Ogre
 Drover of the Swine
@@ -356,6 +357,7 @@ Teferi, Master of Time
 Teferi, Temporal Archmage
 Teferi, Timebender
 Tezzeret, Cruel Captain
+Thalakos Deceiver
 Thassa's Rebuff
 The Akroan War
 The Legend of Yangchen
@@ -364,6 +366,7 @@ The Reaper, King No More
 Thermo-Alchemist
 Thing in the Ice
 Thistledown Players
+Thought Gorger
 Thoughtbind
 Tibalt's Trickery
 Ticking Mime Bomb
@@ -386,6 +389,7 @@ Unified Lunge
 Unravel
 Urtet, Remnant of Memnarch
 Vedalken Plotter
+Vivien's Jaguar
 Vogar, Necropolis Tyrant
 Voidslime
 Volatile Rig
@@ -400,3 +404,4 @@ Ydwen Efreet
 Yomiji, Who Bars the Way
 Zareth San, the Trickster
 Zephyr Scribe
+Zephyr Winder

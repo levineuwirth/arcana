@@ -68,3 +68,4 @@ pub mod charging_war_boar;
 pub mod gruul_spellbreaker;
 pub mod gruul_beastmaster;
 pub mod faerie_duelist;
+pub mod gatebreaker_ram;

@@ -108,3 +108,5 @@ pub mod kitsune_healer;
 pub mod myojin_of_life_s_web;
 pub mod innocence_kami;
 pub mod kumano_master_yamabushi;
+pub mod soratami_mirror_guard;
+pub mod numai_outcast;

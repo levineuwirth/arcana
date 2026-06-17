@@ -118,3 +118,4 @@ pub mod the_paradise_bird;
 pub mod unclaimed_tanadon;
 pub mod catch_up_mechanic;
 pub mod the_caffeinated_runner;
+pub mod devoted_temur;

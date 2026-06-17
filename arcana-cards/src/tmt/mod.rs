@@ -74,3 +74,6 @@ pub mod leonardo_cutting_edge;
 pub mod east_wind_avatar;
 pub mod zog_triceraton_castaway;
 pub mod michelangelo_weirdness_to_11;
+pub mod leatherhead_swamp_stalker;
+pub mod krang_master_mind;
+pub mod turncoat_kunoichi;

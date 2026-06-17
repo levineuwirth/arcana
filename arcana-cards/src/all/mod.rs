@@ -23,3 +23,4 @@ pub mod kjeldoran_pride;
 pub mod soldevi_steam_beast;
 pub mod balduvian_war_makers;
 pub mod diseased_vermin;
+pub mod gorilla_berserkers;

@@ -31,3 +31,5 @@ pub mod chandra_the_firebrand;
 pub mod battleflight_eagle;
 pub mod arctic_aven;
 pub mod aven_squire;
+pub mod shimian_specter;
+pub mod nefarox_overlord_of_grixis;

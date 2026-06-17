@@ -25,3 +25,6 @@ pub mod vitu_ghazi_guildmage;
 pub mod rayami_first_of_the_fallen;
 pub mod ghired_conclave_exile;
 pub mod trostani_selesnya_s_voice;
+pub mod archfiend_of_spite;
+pub mod sevinne_the_chronoclasm;
+pub mod sagu_mauler;

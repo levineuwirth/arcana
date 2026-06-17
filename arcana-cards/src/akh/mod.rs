@@ -68,3 +68,6 @@ pub mod decimator_beetle;
 pub mod wasteland_scorpion;
 pub mod river_serpent;
 pub mod trueheart_duelist;
+pub mod exemplar_of_strength;
+pub mod aven_wind_guide;
+pub mod anointer_priest;

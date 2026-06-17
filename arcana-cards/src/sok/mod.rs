@@ -59,3 +59,4 @@ pub mod araba_mothrider;
 pub mod elder_pine_of_jukai;
 pub mod iname_as_one;
 pub mod moonwing_moth;
+pub mod akuta_born_of_ash;

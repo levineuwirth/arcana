@@ -68,3 +68,4 @@ pub mod aerial_guide;
 pub mod fervent_paincaster;
 pub mod adorned_pouncer;
 pub mod dreamstealer;
+pub mod merciless_eternal;

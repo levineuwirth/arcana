@@ -149,3 +149,5 @@ pub mod grafted_butcher;
 pub mod tidal_terror;
 pub mod thrashing_frontliner;
 pub mod cragsmasher_yeti;
+pub mod alabaster_host_intercessor;
+pub mod zephyr_winder;

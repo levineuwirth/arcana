@@ -117,3 +117,4 @@ pub mod illusion_spinners;
 pub mod brambleback_brute;
 pub mod graveshifter;
 pub mod high_perfect_morcant;
+pub mod rhys_the_evermore;

@@ -54,3 +54,4 @@ pub mod ukkima_stalking_shadow;
 pub mod niv_mizzet_parun;
 pub mod fallen_shinobi;
 pub mod whirler_rogue;
+pub mod angelic_sell_sword;

@@ -90,3 +90,6 @@ pub mod ulamog_the_infinite_gyre;
 pub mod skullbriar_the_walking_grave;
 pub mod arachnus_spinner;
 pub mod tariel_reckoner_of_souls;
+pub mod shattergang_brothers;
+pub mod dragonlord_silumgar;
+pub mod lotleth_troll;

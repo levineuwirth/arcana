@@ -27,3 +27,4 @@ pub mod ethereal_valkyrie;
 pub mod poison_tip_archer;
 pub mod soulherder;
 pub mod inspired_sphinx;
+pub mod ranar_the_ever_watchful;

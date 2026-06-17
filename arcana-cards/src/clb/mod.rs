@@ -179,3 +179,4 @@ pub mod stirring_bard;
 pub mod end_raze_forerunners;
 pub mod rilsa_rael_kingpin;
 pub mod nefarious_imp;
+pub mod aarakocra_sneak;

@@ -120,3 +120,8 @@ pub mod krark_the_thumbless;
 pub mod slinn_voda_the_rising_deep;
 pub mod sakashima_s_protege;
 pub mod nadier_agent_of_the_duskenel;
+pub mod ich_tekik_salvage_splicer;
+pub mod stormtide_leviathan;
+pub mod prava_of_the_steel_legion;
+pub mod nezahal_primal_tide;
+pub mod trove_tracker;

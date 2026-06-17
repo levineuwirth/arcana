@@ -58,3 +58,5 @@ pub mod shattered_angel;
 pub mod saint_traft_and_rem_karolus;
 pub mod kasla_the_broken_halo;
 pub mod locthwain_lancer;
+pub mod enduring_scalelord;
+pub mod master_of_etherium;

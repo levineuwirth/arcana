@@ -48,3 +48,4 @@ pub mod lunar_hatchling;
 pub mod thijarian_witness;
 pub mod dalek_squadron;
 pub mod graham_o_brien;
+pub mod danny_pink;

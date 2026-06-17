@@ -123,3 +123,4 @@ pub mod xande_dark_mage;
 pub mod minwu_white_mage;
 pub mod relentless_x_atm092;
 pub mod garnet_princess_of_alexandria;
+pub mod vaan_street_thief;

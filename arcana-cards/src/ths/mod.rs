@@ -72,3 +72,4 @@ pub mod tormented_hero;
 pub mod soldier_of_the_pantheon;
 pub mod firedrinker_satyr;
 pub mod abhorrent_overlord;
+pub mod hopeful_eidolon;

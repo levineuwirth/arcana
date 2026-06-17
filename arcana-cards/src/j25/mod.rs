@@ -21,3 +21,6 @@ pub mod scourge_of_the_undercity;
 pub mod evereth_viceroy_of_plunder;
 pub mod nazar_the_velvet_fang;
 pub mod phantasmal_shieldback;
+pub mod brigone_soldier_of_meletis;
+pub mod qala_ajani_s_pridemate;
+pub mod scythecat_cub;

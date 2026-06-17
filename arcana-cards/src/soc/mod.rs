@@ -160,3 +160,7 @@ pub mod goldspan_dragon;
 pub mod augusta_order_returned;
 pub mod lifeblood_hydra;
 pub mod haywire_mite;
+pub mod transcendent_envoy;
+pub mod teshar_ancestor_s_apostle;
+pub mod ohran_frostfang;
+pub mod white_orchid_phantom;

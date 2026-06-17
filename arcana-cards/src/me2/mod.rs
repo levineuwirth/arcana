@@ -81,3 +81,4 @@ pub mod feral_thallid;
 pub mod phantasmal_fiend;
 pub mod orcish_conscripts;
 pub mod ebon_praetor;
+pub mod drift_of_the_dead;

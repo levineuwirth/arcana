@@ -33,3 +33,5 @@ pub mod soul_scourge;
 pub mod possessed_centaur;
 pub mod possessed_barbarian;
 pub mod anurid_scavenger;
+pub mod krosan_constrictor;
+pub mod possessed_aven;

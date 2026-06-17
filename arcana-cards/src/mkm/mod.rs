@@ -97,3 +97,5 @@ pub mod izoni_center_of_the_web;
 pub mod rakdos_patron_of_chaos;
 pub mod forensic_researcher;
 pub mod defenestrated_phantom;
+pub mod teysa_opulent_oligarch;
+pub mod loxodon_eavesdropper;

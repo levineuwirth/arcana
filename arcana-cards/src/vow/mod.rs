@@ -121,3 +121,5 @@ pub mod a_dreamshackle_geist;
 pub mod unholy_officiant;
 pub mod packsong_pup;
 pub mod cemetery_illuminator;
+pub mod anje_maid_of_dishonor;
+pub mod gryffwing_cavalry;

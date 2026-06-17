@@ -91,3 +91,5 @@ pub mod duelist_of_deep_faith;
 pub mod axiom_engraver;
 pub mod annex_sentry;
 pub mod cacophony_scamp;
+pub mod exuberant_fuseling;
+pub mod vivisection_evangelist;

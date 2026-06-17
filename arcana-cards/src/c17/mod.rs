@@ -21,3 +21,4 @@ pub mod kolaghan_the_storm_s_fury;
 pub mod etherium_horn_sorcerer;
 pub mod raksha_golden_cub;
 pub mod qasali_slingers;
+pub mod broodmate_dragon;

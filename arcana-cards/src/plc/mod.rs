@@ -21,3 +21,4 @@ pub mod pouncing_wurm;
 pub mod vitaspore_thallid;
 pub mod groundbreaker;
 pub mod malach_of_the_dawn;
+pub mod chronozoa;

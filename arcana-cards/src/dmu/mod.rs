@@ -86,3 +86,5 @@ pub mod floriferous_vinewall;
 pub mod evolved_sleeper;
 pub mod yavimaya_steelcrusher;
 pub mod ragefire_hellkite;
+pub mod gibbering_barricade;
+pub mod haunting_figment;

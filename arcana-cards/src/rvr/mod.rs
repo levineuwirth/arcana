@@ -83,3 +83,4 @@ pub mod deathrite_shaman;
 pub mod birds_of_paradise;
 pub mod gruul_guildmage;
 pub mod rakdos_pit_dragon;
+pub mod deputy_of_acquittals;

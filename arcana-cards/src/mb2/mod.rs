@@ -36,3 +36,4 @@ pub mod toralf_s_disciple;
 pub mod flavor_disaster;
 pub mod knight_of_lost_causes;
 pub mod hish_of_the_snake_cult;
+pub mod panglacial_shinobi;

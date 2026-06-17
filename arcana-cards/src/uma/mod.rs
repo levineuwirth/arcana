@@ -56,3 +56,4 @@ pub mod angel_of_despair;
 pub mod penumbra_wurm;
 pub mod iridescent_drake;
 pub mod skyspear_cavalry;
+pub mod lotus_eye_mystics;

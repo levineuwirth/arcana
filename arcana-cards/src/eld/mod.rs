@@ -107,3 +107,4 @@ pub mod lochmere_serpent;
 pub mod bog_naughty;
 pub mod embereth_skyblazer;
 pub mod gadwick_the_wizened;
+pub mod deathless_knight;

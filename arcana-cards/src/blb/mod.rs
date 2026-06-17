@@ -118,3 +118,7 @@ pub mod starscape_cleric;
 pub mod stormsplitter;
 pub mod bushy_bodyguard;
 pub mod burrowguard_mentor;
+pub mod fecund_greenshell;
+pub mod cindering_cutthroat;
+pub mod hugs_grisly_guardian;
+pub mod eluge_the_shoreless_sea;

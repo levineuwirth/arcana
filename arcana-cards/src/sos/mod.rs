@@ -74,3 +74,6 @@ pub mod lorehold_the_historian;
 pub mod conciliator_s_duelist;
 pub mod soaring_stoneglider;
 pub mod thunderdrum_soloist;
+pub mod rehearsed_debater;
+pub mod ulna_alley_shopkeep;
+pub mod prismari_the_inspiration;

@@ -26,3 +26,5 @@ pub mod liliana_s_specter;
 pub mod celestial_ancient;
 pub mod dimir_infiltrator;
 pub mod sakashima_s_student;
+pub mod okiba_gang_shinobi;
+pub mod kathari_remnant;

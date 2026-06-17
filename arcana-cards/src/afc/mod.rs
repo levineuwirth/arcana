@@ -31,3 +31,5 @@ pub mod nihiloor;
 pub mod bogardan_hellkite;
 pub mod curator_of_mysteries;
 pub mod death_tyrant;
+pub mod sefris_of_the_hidden_ways;
+pub mod wulfgar_of_icewind_dale;

@@ -87,3 +87,4 @@ pub mod thriving_ibex;
 pub mod fretwork_colony;
 pub mod arborback_stomper;
 pub mod voltaic_brawler;
+pub mod depala_pilot_exemplar;

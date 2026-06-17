@@ -66,3 +66,6 @@ pub mod spider_ham_peter_porker;
 pub mod madame_web_clairvoyant;
 pub mod spider_bot;
 pub mod rhino_barreling_brute;
+pub mod prowler_clawed_thief;
+pub mod venomized_cat;
+pub mod raging_goblinoids;

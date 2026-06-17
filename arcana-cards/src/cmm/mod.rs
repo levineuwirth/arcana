@@ -194,3 +194,7 @@ pub mod sidisi_brood_tyrant;
 pub mod oviya_pashiri_sage_lifecrafter;
 pub mod quick_sliver;
 pub mod mizzix_of_the_izmagnus;
+pub mod raff_capashen_ship_s_mage;
+pub mod shimmer_myr;
+pub mod stonehoof_chieftain;
+pub mod xantcha_sleeper_agent;

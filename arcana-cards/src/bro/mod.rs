@@ -105,3 +105,5 @@ pub mod drafna_founder_of_lat_nam;
 pub mod gnawing_vermin;
 pub mod myrel_shield_of_argive;
 pub mod siege_veteran;
+pub mod evangel_of_synthesis;
+pub mod junkyard_genius;

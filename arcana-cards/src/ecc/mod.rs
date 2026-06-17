@@ -47,3 +47,4 @@ pub mod cavalier_of_thorns;
 pub mod kulrath_knight;
 pub mod belonging;
 pub mod tree_of_perdition;
+pub mod selvala_heart_of_the_wilds;
