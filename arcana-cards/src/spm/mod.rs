@@ -59,3 +59,7 @@ pub mod beetle_legacy_criminal;
 pub mod shocker_unshakable;
 pub mod spider_gwen_free_spirit;
 pub mod starling_aerial_ally;
+pub mod morbius_the_living_vampire;
+pub mod spider_man_india;
+pub mod tombstone_career_criminal;
+pub mod spider_ham_peter_porker;

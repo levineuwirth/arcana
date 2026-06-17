@@ -105,3 +105,7 @@ pub mod a_paragon_of_modernity;
 pub mod workshop_warchief;
 pub mod gala_greeters;
 pub mod caldaia_strongarm;
+pub mod a_speakeasy_server;
+pub mod ognis_the_dragon_s_lash;
+pub mod jaxis_the_troublemaker;
+pub mod a_rakish_revelers;

@@ -110,3 +110,5 @@ pub mod shire_shirriff;
 pub mod gorbag_of_minas_morgul;
 pub mod delighted_halfling;
 pub mod gl_in_dwarf_emissary;
+pub mod willow_wind;
+pub mod merry_esquire_of_rohan;

@@ -25,3 +25,4 @@ pub mod dearly_departed;
 pub mod kyler_sigardian_emissary;
 pub mod sigarda_s_vanguard;
 pub mod heron_s_grace_champion;
+pub mod eater_of_hope;

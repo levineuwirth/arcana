@@ -17,3 +17,5 @@ pub mod ana_battlemage;
 pub mod voidstone_gargoyle;
 pub mod shivan_wumpus;
 pub mod molten_firebird;
+pub mod pouncing_wurm;
+pub mod vitaspore_thallid;

@@ -89,3 +89,5 @@ pub mod jet_freedom_fighter;
 pub mod platypus_bear;
 pub mod sokka_lateral_strategist;
 pub mod mai_scornful_striker;
+pub mod june_bounty_hunter;
+pub mod rough_rhino_cavalry;

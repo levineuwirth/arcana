@@ -77,3 +77,4 @@ pub mod palladia_mors_the_ruiner;
 pub mod ravenous_harpy;
 pub mod thorn_lieutenant;
 pub mod court_cleric;
+pub mod chromium_the_mutable;

@@ -119,3 +119,5 @@ pub mod jenova_ancient_calamity;
 pub mod g_raha_tia;
 pub mod hope_estheim;
 pub mod tifa_lockhart;
+pub mod xande_dark_mage;
+pub mod minwu_white_mage;

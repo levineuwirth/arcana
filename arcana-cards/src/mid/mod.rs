@@ -101,3 +101,4 @@ pub mod mounted_dreadknight;
 pub mod morkrut_behemoth;
 pub mod hobbling_zombie;
 pub mod a_shipwreck_sifters;
+pub mod a_hobbling_zombie;

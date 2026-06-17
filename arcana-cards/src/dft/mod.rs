@@ -77,3 +77,5 @@ pub mod pride_of_the_road;
 pub mod memory_guardian;
 pub mod skyserpent_seeker;
 pub mod prowcatcher_specialist;
+pub mod ketramose_the_new_dawn;
+pub mod gas_guzzler;

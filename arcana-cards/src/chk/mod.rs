@@ -105,3 +105,4 @@ pub mod masako_the_humorless;
 pub mod frostwielder;
 pub mod samurai_of_the_pale_curtain;
 pub mod kitsune_healer;
+pub mod myojin_of_life_s_web;

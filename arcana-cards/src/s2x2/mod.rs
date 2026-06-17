@@ -82,3 +82,5 @@ pub mod sedraxis_specter;
 pub mod sensor_splicer;
 pub mod ashen_rider;
 pub mod thraximundar;
+pub mod anointer_of_valor;
+pub mod dreg_mangler;

@@ -49,3 +49,6 @@ pub mod exocrine;
 pub mod skorpekh_destroyer;
 pub mod keeper_of_secrets;
 pub mod sister_repentia;
+pub mod malanthrope;
+pub mod deathleaper_terror_weapon;
+pub mod magus_lucea_kane;

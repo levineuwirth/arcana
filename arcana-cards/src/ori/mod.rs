@@ -57,3 +57,5 @@ pub mod rabid_bloodsucker;
 pub mod terra_stomper;
 pub mod acolyte_of_the_inferno;
 pub mod rhox_maulers;
+pub mod ramroller;
+pub mod mage_ring_bully;

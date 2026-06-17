@@ -103,3 +103,7 @@ pub mod delta_bloodflies;
 pub mod sarkhan_dragon_ascendant;
 pub mod reigning_victor;
 pub mod naga_fleshcrafter;
+pub mod constrictor_sage;
+pub mod devoted_duelist;
+pub mod sagu_pummeler;
+pub mod avenger_of_the_fallen;

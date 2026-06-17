@@ -2,3 +2,4 @@
 pub mod sheoldred_s_assimilator;
 pub mod norn_s_fetchling;
 pub mod quicksilver_servitor;
+pub mod ghalma_the_shaper;

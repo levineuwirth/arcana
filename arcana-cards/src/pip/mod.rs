@@ -37,3 +37,5 @@ pub mod veronica_dissident_scribe;
 pub mod curie_emergent_intelligence;
 pub mod yes_man_personal_securitron;
 pub mod lumbering_megasloth;
+pub mod gary_clone;
+pub mod synth_infiltrator;

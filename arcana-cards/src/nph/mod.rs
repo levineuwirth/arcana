@@ -37,3 +37,6 @@ pub mod inquisitor_exarch;
 pub mod chancellor_of_the_annex;
 pub mod chancellor_of_the_forge;
 pub mod invader_parasite;
+pub mod porcelain_legionnaire;
+pub mod razor_swine;
+pub mod toxic_nim;

@@ -41,3 +41,6 @@ pub mod rimehorn_aurochs;
 pub mod ursine_fylgja;
 pub mod goblin_rimerunner;
 pub mod kjeldoran_javelineer;
+pub mod bull_aurochs;
+pub mod zombie_musher;
+pub mod j_tun_owl_keeper;

@@ -115,3 +115,5 @@ pub mod cloaked_cadet;
 pub mod thalia_guardian_of_thraben;
 pub mod blood_hypnotist;
 pub mod undead_butler;
+pub mod a_cobbled_lancer;
+pub mod apprentice_sharpshooter;

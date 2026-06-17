@@ -127,3 +127,4 @@ pub mod hullbreaker_horror;
 pub mod grimgrin_corpse_born;
 pub mod vilespawn_spider;
 pub mod torens_fist_of_the_angels;
+pub mod metallic_mimic;

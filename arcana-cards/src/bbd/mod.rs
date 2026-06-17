@@ -78,3 +78,5 @@ pub mod chakram_retriever;
 pub mod nimbus_champion;
 pub mod consulate_skygate;
 pub mod impetuous_protege;
+pub mod urborg_drake;
+pub mod toothy_imaginary_friend;

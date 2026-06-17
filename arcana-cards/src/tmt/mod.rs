@@ -63,3 +63,7 @@ pub mod koya_death_from_above;
 pub mod lita_little_orphan_amphibian;
 pub mod shark_shredder_killer_clone;
 pub mod splinter_radical_rat;
+pub mod frog_butler;
+pub mod michelangelo_improviser;
+pub mod triceraton_commander;
+pub mod mutagen_man_living_ooze;

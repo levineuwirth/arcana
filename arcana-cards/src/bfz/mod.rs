@@ -55,3 +55,6 @@ pub mod tide_drifter;
 pub mod eyeless_watcher;
 pub mod dominator_drone;
 pub mod beastcaller_savant;
+pub mod catacomb_sifter;
+pub mod vestige_of_emrakul;
+pub mod halimar_tidecaller;

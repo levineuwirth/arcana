@@ -19,3 +19,4 @@ pub mod c_rdan_the_shipwright;
 pub mod treebeard_gracious_host;
 pub mod riders_of_rohan;
 pub mod motivated_pony;
+pub mod merry_warden_of_isengard;

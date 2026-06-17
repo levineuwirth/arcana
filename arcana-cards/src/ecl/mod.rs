@@ -108,3 +108,4 @@ pub mod vinebred_brawler;
 pub mod aurora_awakener;
 pub mod heirloom_auntie;
 pub mod flitterwing_nuisance;
+pub mod champions_of_the_shoal;

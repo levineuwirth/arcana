@@ -109,3 +109,4 @@ pub mod starseer_mentor;
 pub mod gev_scaled_scorch;
 pub mod starlit_soothsayer;
 pub mod mind_drill_assailant;
+pub mod tender_wildguide;

@@ -34,3 +34,4 @@ pub mod mistform_seaswift;
 pub mod ghastly_remains;
 pub mod goblin_dynamo;
 pub mod daru_stinger;
+pub mod primoc_escapee;

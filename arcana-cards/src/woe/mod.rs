@@ -127,3 +127,7 @@ pub mod totentanz_swarm_piper;
 pub mod tough_cookie;
 pub mod experimental_confectioner;
 pub mod scream_puff;
+pub mod dutiful_griffin;
+pub mod lady_of_laughter;
+pub mod faerie_dreamthief;
+pub mod barrow_naughty;

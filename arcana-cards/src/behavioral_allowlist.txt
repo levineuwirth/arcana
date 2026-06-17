@@ -9,6 +9,7 @@
 # future ForEach/subtype_filter-class bug) fails CI. The trigger block is an
 # un-triaged baseline — mine it for real bugs (like subtype_filter) and SHRINK
 # it; never grow without confirming the card is a genuine false-positive.
+A-Llanowar Greenwidow
 Absorb Energy
 Access Denied
 Admiral Beckett Brass
@@ -33,6 +34,7 @@ Biogenic Ooze
 Blinkmoth Well
 Blizzard Elemental
 Bloodcrazed Hoplite
+Bloodsoaked Champion
 Bloodtithe Harvester
 Boon of Boseiju
 Bulwark
@@ -51,6 +53,7 @@ Chandra, Gremlin Wrangler
 Chandra, Legacy of Fire
 Charge Across the Araba
 Cid, Freeflier Pilot
+Cinder Pyromancer
 Cinderhaze Wretch
 City of Traitors
 Civic Gardener
@@ -98,6 +101,7 @@ Drover of the Swine
 Drownyard Temple
 Dumb Ass
 Durable Coilbug
+Dutiful Griffin
 Elder Druid
 Eldrazi Ravager
 Electrosiphon
@@ -214,6 +218,7 @@ Mirran Spy
 Mirror Universe
 Mishra's Helix
 Moonstone Harbinger
+Morphling
 Mu Yanling
 Mystic Genesis
 Nahiri, Heir of the Ancients
@@ -283,6 +288,7 @@ Rune Snag
 Sacred Ground
 Salvager of Secrets
 Sanctum of Stone Fangs
+Sandstorm Salvager
 Sanitarium Skeleton
 Saryth, the Viper's Fang
 Savage Firecat
@@ -342,9 +348,11 @@ Thistledown Players
 Thoughtbind
 Tibalt's Trickery
 Ticking Mime Bomb
+Tombstone, Career Criminal
 Torchling
 Touchstone
 Trampled Lotus
+Triceraton Commander
 Trickster Mage
 Tunnel Rats
 Turn Aside

@@ -182,3 +182,8 @@ pub mod nemata_grove_guardian;
 pub mod balan_wandering_knight;
 pub mod angelic_field_marshal;
 pub mod taigam_sidisi_s_hand;
+pub mod loyal_drake;
+pub mod titan_of_littjara;
+pub mod razaketh_the_foulblooded;
+pub mod yuriko_the_tiger_s_shadow;
+pub mod abstruse_archaic;

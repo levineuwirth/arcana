@@ -139,3 +139,4 @@ pub mod megatherium;
 pub mod stinging_barrier;
 pub mod vine_dryad;
 pub mod sand_squid;
+pub mod alabaster_wall;

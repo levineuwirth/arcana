@@ -25,3 +25,4 @@ pub mod preyseizer_dragon;
 pub mod liliana_s_specter;
 pub mod celestial_ancient;
 pub mod dimir_infiltrator;
+pub mod sakashima_s_student;

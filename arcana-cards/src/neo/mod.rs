@@ -120,3 +120,5 @@ pub mod goro_goro_disciple_of_ryusei;
 pub mod a_silver_fur_master;
 pub mod selfless_samurai;
 pub mod kodama_of_the_west_tree;
+pub mod heiko_yamazaki_the_general;
+pub mod bronzeplate_boar;

@@ -37,3 +37,5 @@ pub mod somber_hoverguard;
 pub mod scavenger_drake;
 pub mod gnarlid_pack;
 pub mod restless_apparition;
+pub mod algae_gharial;
+pub mod waxmane_baku;

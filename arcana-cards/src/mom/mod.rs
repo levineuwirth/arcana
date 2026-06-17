@@ -139,3 +139,6 @@ pub mod oracle_of_tragedy;
 pub mod surrak_and_goreclaw;
 pub mod rampaging_raptor;
 pub mod zurgo_and_ojutai;
+pub mod saiba_cryptomancer;
+pub mod referee_squad;
+pub mod boon_bringer_valkyrie;

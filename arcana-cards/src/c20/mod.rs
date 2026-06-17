@@ -27,3 +27,4 @@ pub mod wydwen_the_biting_gale;
 pub mod cairn_wanderer;
 pub mod niv_mizzet_the_firemind;
 pub mod fumiko_the_lowblood;
+pub mod niblis_of_frost;

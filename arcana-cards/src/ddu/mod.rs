@@ -11,3 +11,4 @@ pub mod kujar_seedsculptor;
 pub mod barrage_ogre;
 pub mod neurok_replica;
 pub mod elvish_branchbender;
+pub mod talara_s_battalion;

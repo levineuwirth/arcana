@@ -28,3 +28,5 @@ pub mod vorosh_the_hunter;
 pub mod extractor_demon;
 pub mod slipstream_eel;
 pub mod tyrant_s_familiar;
+pub mod jareth_leonine_titan;
+pub mod reyhan_last_of_the_abzan;

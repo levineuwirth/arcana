@@ -62,3 +62,5 @@ pub mod obelisk_spider;
 pub mod ramunap_hydra;
 pub mod moaning_wall;
 pub mod vile_manifestation;
+pub mod khenra_scrapper;
+pub mod djeru_with_eyes_open;

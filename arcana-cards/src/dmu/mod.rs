@@ -77,3 +77,5 @@ pub mod defiler_of_faith;
 pub mod aether_channeler;
 pub mod argivian_phalanx;
 pub mod electrostatic_infantry;
+pub mod a_llanowar_greenwidow;
+pub mod quirion_beastcaller;

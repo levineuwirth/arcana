@@ -106,3 +106,8 @@ pub mod patron_of_the_valiant;
 pub mod anara_wolvid_familiar;
 pub mod sparktongue_dragon;
 pub mod fin_clade_fugitives;
+pub mod siani_eye_of_the_storm;
+pub mod lathiel_the_bounteous_dawn;
+pub mod biowaste_blob;
+pub mod halana_kessig_ranger;
+pub mod horizon_scholar;

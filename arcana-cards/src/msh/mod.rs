@@ -2,3 +2,4 @@
 pub mod world_war_hulk;
 pub mod bruce_banner_the_incredible_hulk;
 pub mod doctor_doom;
+pub mod the_sentry_golden_guardian;

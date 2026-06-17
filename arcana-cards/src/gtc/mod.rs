@@ -54,3 +54,4 @@ pub mod bane_alley_broker;
 pub mod zameck_guildmage;
 pub mod angelic_skirmisher;
 pub mod molten_primordial;
+pub mod deathpact_angel;

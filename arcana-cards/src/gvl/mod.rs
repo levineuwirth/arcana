@@ -10,3 +10,4 @@ pub mod lignify;
 pub mod stampeding_wildebeests;
 pub mod wall_of_bone;
 pub mod keening_banshee;
+pub mod ghost_lit_stalker;

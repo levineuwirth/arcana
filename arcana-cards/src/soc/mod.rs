@@ -152,3 +152,5 @@ pub mod zimone_infinite_analyst;
 pub mod pest_rescuer;
 pub mod claim_jumper;
 pub mod drumbellower;
+pub mod quintorius_field_historian;
+pub mod killian_ink_duelist;

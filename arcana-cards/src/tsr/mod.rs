@@ -74,3 +74,5 @@ pub mod keldon_halberdier;
 pub mod mycologist;
 pub mod deathspore_thallid;
 pub mod gathan_raiders;
+pub mod teferi_mage_of_zhalfir;
+pub mod blightspeaker;

@@ -41,3 +41,4 @@ pub mod krasis_incubation;
 pub mod sinister_possession;
 pub mod maze_abomination;
 pub mod woodlot_crawler;
+pub mod maze_glider;

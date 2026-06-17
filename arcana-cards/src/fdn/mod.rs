@@ -196,3 +196,7 @@ pub mod eager_trufflesnout;
 pub mod brineborn_cutthroat;
 pub mod vanguard_seraph;
 pub mod koma_world_eater;
+pub mod drake_hatcher;
+pub mod progenitus;
+pub mod kykar_zephyr_awakener;
+pub mod dawnwing_marshal;

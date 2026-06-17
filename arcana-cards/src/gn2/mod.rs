@@ -15,3 +15,5 @@ pub mod claustrophobia;
 pub mod torgaar_famine_incarnate;
 pub mod akoum_hellkite;
 pub mod highcliff_felidar;
+pub mod kytheon_s_irregulars;
+pub mod aven_wind_mage;

@@ -87,3 +87,6 @@ pub mod doc_aurlock_grizzled_genius;
 pub mod stoic_sphinx;
 pub mod rooftop_assassin;
 pub mod hellspur_posse_boss;
+pub mod tinybones_the_pickpocket;
+pub mod gila_courser;
+pub mod nurturing_pixie;
