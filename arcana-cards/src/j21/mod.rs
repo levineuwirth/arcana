@@ -9,3 +9,4 @@ pub mod sarkhan_wanderer_to_shiv;
 pub mod davriel_soul_broker;
 pub mod skyshroud_lookout;
 pub mod subversive_acolyte;
+pub mod shoreline_scout;

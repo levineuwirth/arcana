@@ -32,3 +32,4 @@ pub mod lich_lord_of_unx;
 pub mod anathemancer;
 pub mod bant_sojourners;
 pub mod illusory_demon;
+pub mod grixis_sojourners;

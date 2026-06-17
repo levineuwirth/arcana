@@ -2,3 +2,4 @@
 pub mod liberated_livestock;
 pub mod giant_inheritance;
 pub mod timber_paladin;
+pub mod malleable_impostor;

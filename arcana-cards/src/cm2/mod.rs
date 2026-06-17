@@ -26,3 +26,4 @@ pub mod troll_ascetic;
 pub mod arbiter_of_knollridge;
 pub mod vorosh_the_hunter;
 pub mod extractor_demon;
+pub mod slipstream_eel;

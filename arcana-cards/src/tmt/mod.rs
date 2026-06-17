@@ -59,3 +59,5 @@ pub mod primordial_pachyderm;
 pub mod high_flying_ace;
 pub mod old_hob_alleycat_blues;
 pub mod super_shredder;
+pub mod koya_death_from_above;
+pub mod lita_little_orphan_amphibian;

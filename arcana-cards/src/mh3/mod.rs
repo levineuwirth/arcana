@@ -81,3 +81,5 @@ pub mod golden_tail_trainer;
 pub mod eldrazi_ravager;
 pub mod petrifying_meddler;
 pub mod sarpadian_simulacrum;
+pub mod nyxborn_hydra;
+pub mod nadu_winged_wisdom;

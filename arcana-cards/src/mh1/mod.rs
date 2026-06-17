@@ -54,3 +54,4 @@ pub mod martyr_s_soul;
 pub mod vengeful_devil;
 pub mod cabal_therapist;
 pub mod plague_engineer;
+pub mod ingenious_infiltrator;

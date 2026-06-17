@@ -83,3 +83,6 @@ pub mod ambergris_agent_of_destruction;
 pub mod sarevok_ferocious_usurper;
 pub mod water_weird;
 pub mod kardum_patron_of_flames;
+pub mod a_circle_of_the_land_druid;
+pub mod chaos_balor;
+pub mod wilson_fearsome_bear;

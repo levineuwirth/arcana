@@ -23,3 +23,5 @@ pub mod kadena_slinking_sorcerer;
 pub mod pramikon_sky_rampart;
 pub mod vitu_ghazi_guildmage;
 pub mod rayami_first_of_the_fallen;
+pub mod ghired_conclave_exile;
+pub mod trostani_selesnya_s_voice;

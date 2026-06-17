@@ -158,3 +158,5 @@ pub mod ancient_bronze_dragon;
 pub mod ancient_brass_dragon;
 pub mod oji_the_exquisite_blade;
 pub mod solemn_recruit;
+pub mod uchuulon;
+pub mod mocking_doppelganger;

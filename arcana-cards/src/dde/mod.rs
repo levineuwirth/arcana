@@ -13,3 +13,4 @@ pub mod hornet_cannon;
 pub mod charging_troll;
 pub mod treva_the_renewer;
 pub mod thornscape_apprentice;
+pub mod phyrexian_negator;

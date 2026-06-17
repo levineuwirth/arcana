@@ -7,3 +7,4 @@ pub mod greymond_avacyn_s_stalwart;
 pub mod the_howling_abomination;
 pub mod tadeas_juniper_ascendant;
 pub mod elmar_ulvenwald_informant;
+pub mod rashel_fist_of_torm;

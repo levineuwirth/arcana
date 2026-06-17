@@ -43,3 +43,5 @@ pub mod stormchaser_mage;
 pub mod cyclone_sire;
 pub mod essence_depleter;
 pub mod walker_of_the_wastes;
+pub mod stalking_drone;
+pub mod deceiver_of_form;

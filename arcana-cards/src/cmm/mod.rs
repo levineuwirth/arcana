@@ -179,3 +179,5 @@ pub mod rishkar_peema_renegade;
 pub mod purphoros_god_of_the_forge;
 pub mod windrider_wizard;
 pub mod nemata_grove_guardian;
+pub mod balan_wandering_knight;
+pub mod angelic_field_marshal;

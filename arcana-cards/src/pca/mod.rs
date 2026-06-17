@@ -24,3 +24,4 @@ pub mod pollenbright_wings;
 pub mod preyseizer_dragon;
 pub mod liliana_s_specter;
 pub mod celestial_ancient;
+pub mod dimir_infiltrator;

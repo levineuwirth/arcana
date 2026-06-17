@@ -26,3 +26,5 @@ pub mod storvald_frost_giant_jarl;
 pub mod obsessive_stitcher;
 pub mod eternal_dragon;
 pub mod clay_golem;
+pub mod galea_kindler_of_hope;
+pub mod nihiloor;

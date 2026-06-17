@@ -59,3 +59,4 @@ pub mod daring_saboteur;
 pub mod admiral_beckett_brass;
 pub mod elenda_the_dusk_rose;
 pub mod ramirez_depietro_pillager;
+pub mod timothar_baron_of_bats;

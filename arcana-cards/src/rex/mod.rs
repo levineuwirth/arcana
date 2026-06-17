@@ -7,3 +7,4 @@ pub mod welcome_to_jurassic_park;
 pub mod life_finds_a_way;
 pub mod swooping_pteranodon;
 pub mod ravenous_tyrannosaurus;
+pub mod blue_loyal_raptor;

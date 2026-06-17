@@ -56,3 +56,5 @@ pub mod spider_woman_stunning_savior;
 pub mod sun_spider_nimble_webber;
 pub mod arachne_psionic_weaver;
 pub mod beetle_legacy_criminal;
+pub mod shocker_unshakable;
+pub mod spider_gwen_free_spirit;

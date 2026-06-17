@@ -68,3 +68,5 @@ pub mod loxodon_smiter;
 pub mod ash_zealot;
 pub mod cryptborn_horror;
 pub mod runewing;
+pub mod rakdos_ringleader;
+pub mod chaos_imps;

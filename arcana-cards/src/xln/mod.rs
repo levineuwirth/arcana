@@ -79,3 +79,4 @@ pub mod huatli_dinosaur_knight;
 pub mod snapping_sailback;
 pub mod headstrong_brute;
 pub mod priest_of_the_wakening_sun;
+pub mod carnage_tyrant;

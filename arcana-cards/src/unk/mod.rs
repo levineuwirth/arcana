@@ -103,3 +103,7 @@ pub mod gingerbehemoth;
 pub mod the_crafter;
 pub mod the_ice_dancer;
 pub mod the_wise_sable;
+pub mod drop_bear;
+pub mod the_gunky_runner;
+pub mod tarkiran_towelsbane;
+pub mod the_keeper_of_the_yellow_hat;

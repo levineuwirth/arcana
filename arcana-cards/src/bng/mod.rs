@@ -47,3 +47,5 @@ pub mod nyxborn_eidolon;
 pub mod archetype_of_endurance;
 pub mod nyxborn_wolf;
 pub mod graverobber_spider;
+pub mod satyr_nyx_smith;
+pub mod akroan_skyguard;

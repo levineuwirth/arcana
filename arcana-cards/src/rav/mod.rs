@@ -59,3 +59,5 @@ pub mod guardian_of_vitu_ghazi;
 pub mod undercity_shade;
 pub mod lurking_informant;
 pub mod goblin_fire_fiend;
+pub mod torpid_moloch;
+pub mod wizened_snitches;

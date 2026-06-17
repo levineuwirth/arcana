@@ -37,3 +37,4 @@ pub mod kathari_bomber;
 pub mod corpse_connoisseur;
 pub mod spire_monitor;
 pub mod abyssal_specter;
+pub mod wing_splicer;

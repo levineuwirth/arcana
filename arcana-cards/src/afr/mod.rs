@@ -110,3 +110,4 @@ pub mod triumphant_adventurer;
 pub mod ochre_jelly;
 pub mod red_dragon;
 pub mod acererak_the_archlich;
+pub mod grim_wanderer;

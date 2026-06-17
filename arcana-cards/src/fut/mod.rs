@@ -21,3 +21,4 @@ pub mod maelstrom_djinn;
 pub mod augur_of_skulls;
 pub mod spirit_en_dal;
 pub mod augur_il_vec;
+pub mod skizzik_surger;

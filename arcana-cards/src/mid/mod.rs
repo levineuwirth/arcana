@@ -97,3 +97,6 @@ pub mod sungold_sentinel;
 pub mod shipwreck_sifters;
 pub mod duelcraft_trainer;
 pub mod sunrise_cavalier;
+pub mod mounted_dreadknight;
+pub mod morkrut_behemoth;
+pub mod hobbling_zombie;

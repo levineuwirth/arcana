@@ -32,3 +32,4 @@ pub mod aetherflame_wall;
 pub mod brass_gnat;
 pub mod d_avenant_healer;
 pub mod pentarch_paladin;
+pub mod zealot_il_vec;

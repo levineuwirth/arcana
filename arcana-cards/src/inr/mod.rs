@@ -124,3 +124,4 @@ pub mod noose_constrictor;
 pub mod wandering_mind;
 pub mod thermo_alchemist;
 pub mod hullbreaker_horror;
+pub mod grimgrin_corpse_born;

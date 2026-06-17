@@ -77,6 +77,7 @@ Dark Suspicions
 Dauntless Aven
 Dazzling Denial
 Death Watch
+Decimator Beetle
 Deep-Slumber Titan
 Defiant Greatmaw
 Delay
@@ -166,6 +167,7 @@ Kindred Denial
 Kiora's Follower
 Kiora, Behemoth Beckoner
 Kiora, the Tide's Fury
+Kjeldoran Javelineer
 Koh, the Face Stealer
 Kraul Swarm
 Kumano Faces Kakkazan
@@ -345,6 +347,7 @@ Turn Aside
 Two-Headed Giant
 Tyvar, Jubilant Brawler
 Unbender Tine
+Undead Gladiator
 Undersimplify
 Unholy Indenture
 Unified Lunge

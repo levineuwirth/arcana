@@ -79,3 +79,4 @@ pub mod wasteland_viper;
 pub mod moroii;
 pub mod simic_guildmage;
 pub mod tin_street_dodger;
+pub mod deathrite_shaman;

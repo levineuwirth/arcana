@@ -66,3 +66,4 @@ pub mod reckless_imp;
 pub mod scaleguard_sentinels;
 pub mod salt_road_quartermasters;
 pub mod lightning_berserker;
+pub mod custodian_of_the_trove;

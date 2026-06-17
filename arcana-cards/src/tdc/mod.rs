@@ -76,3 +76,6 @@ pub mod hammerhead_tyrant;
 pub mod dragonlord_dromoka;
 pub mod wall_of_limbs;
 pub mod sidar_kondo_of_jamuraa;
+pub mod hero_of_bladehold;
+pub mod sarkhan_soul_aflame;
+pub mod legion_warboss;

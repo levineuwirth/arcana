@@ -83,3 +83,7 @@ pub mod ran_and_shaw;
 pub mod rabaroo_troop;
 pub mod foggy_swamp_vinebender;
 pub mod earthen_ally;
+pub mod benevolent_river_spirit;
+pub mod mai_jaded_edge;
+pub mod jet_freedom_fighter;
+pub mod platypus_bear;

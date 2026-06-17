@@ -80,3 +80,4 @@ pub mod chimney_rabble;
 pub mod bladed_ambassador;
 pub mod cinderslash_ravager;
 pub mod paladin_of_predation;
+pub mod copper_longlegs;

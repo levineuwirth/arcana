@@ -43,3 +43,5 @@ pub mod skullwinder;
 pub mod gonti_lord_of_luxury;
 pub mod scaretiller;
 pub mod rumbleweed;
+pub mod marshland_bloodcaster;
+pub mod kirri_talented_sprout;

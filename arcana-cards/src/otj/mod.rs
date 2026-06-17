@@ -81,3 +81,8 @@ pub mod djinn_of_fool_s_fall;
 pub mod oasis_gardener;
 pub mod deadeye_duelist;
 pub mod outlaw_medic;
+pub mod malcolm_the_eyes;
+pub mod hellspur_brute;
+pub mod doc_aurlock_grizzled_genius;
+pub mod stoic_sphinx;
+pub mod rooftop_assassin;

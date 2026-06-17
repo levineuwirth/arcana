@@ -84,3 +84,4 @@ pub mod owl_familiar;
 pub mod syndicate_messenger;
 pub mod glorifier_of_dusk;
 pub mod ecstatic_electromancer;
+pub mod gorging_vulture;

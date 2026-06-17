@@ -18,3 +18,4 @@ pub mod aladdin_s_lamp;
 pub mod fortified_area;
 pub mod holy_armor;
 pub mod wall_of_water;
+pub mod goblin_rock_sled;

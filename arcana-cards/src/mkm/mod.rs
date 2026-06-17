@@ -91,3 +91,5 @@ pub mod voja_jaws_of_the_conclave;
 pub mod topiary_panther;
 pub mod vein_ripper;
 pub mod perimeter_enforcer;
+pub mod case_file_auditor;
+pub mod lumbering_laundry;

@@ -101,3 +101,6 @@ pub mod tam_mindful_first_year;
 pub mod wistfulness;
 pub mod prideful_feastling;
 pub mod slumbering_walker;
+pub mod silvergill_mentor;
+pub mod soulbright_seeker;
+pub mod flamekin_gildweaver;

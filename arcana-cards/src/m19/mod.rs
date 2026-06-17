@@ -75,3 +75,5 @@ pub mod plague_mare;
 pub mod brawl_bash_ogre;
 pub mod palladia_mors_the_ruiner;
 pub mod ravenous_harpy;
+pub mod thorn_lieutenant;
+pub mod court_cleric;

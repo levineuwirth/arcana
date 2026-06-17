@@ -102,3 +102,5 @@ pub mod marrow_gnawer;
 pub mod venerable_kumo;
 pub mod nagao_bound_by_honor;
 pub mod masako_the_humorless;
+pub mod frostwielder;
+pub mod samurai_of_the_pale_curtain;

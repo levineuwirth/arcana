@@ -48,3 +48,4 @@ pub mod flowstone_wall;
 pub mod belbe_s_percher;
 pub mod rathi_intimidator;
 pub mod stronghold_zeppelin;
+pub mod ancient_hydra;

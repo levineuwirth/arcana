@@ -98,3 +98,7 @@ pub mod monastery_messenger;
 pub mod temur_devotee;
 pub mod effortless_master;
 pub mod sinkhole_surveyor;
+pub mod marshal_of_the_lost;
+pub mod delta_bloodflies;
+pub mod sarkhan_dragon_ascendant;
+pub mod reigning_victor;

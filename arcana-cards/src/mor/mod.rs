@@ -31,3 +31,5 @@ pub mod fencer_clique;
 pub mod nightshade_schemers;
 pub mod kinsbaile_borderguard;
 pub mod grimoire_thief;
+pub mod lightning_crafter;
+pub mod supreme_exemplar;

@@ -40,3 +40,4 @@ pub mod adarkar_windform;
 pub mod rimehorn_aurochs;
 pub mod ursine_fylgja;
 pub mod goblin_rimerunner;
+pub mod kjeldoran_javelineer;

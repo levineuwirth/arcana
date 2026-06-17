@@ -27,3 +27,4 @@ pub mod flameblast_dragon;
 pub mod night_incarnate;
 pub mod boon_satyr;
 pub mod maverick_thopterist;
+pub mod charnelhoard_wurm;

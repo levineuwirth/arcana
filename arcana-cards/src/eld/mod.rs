@@ -102,3 +102,4 @@ pub mod faerie_formation;
 pub mod rowan_s_battleguard;
 pub mod syr_gwyn_hero_of_ashvale;
 pub mod fierce_witchstalker;
+pub mod shinechaser;

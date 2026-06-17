@@ -49,3 +49,4 @@ pub mod morinfen;
 pub mod peacekeeper;
 pub mod mwonvuli_ooze;
 pub mod ertai_s_familiar;
+pub mod odylic_wraith;

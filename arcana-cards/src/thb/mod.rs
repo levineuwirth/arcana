@@ -93,3 +93,4 @@ pub mod thassa_deep_dwelling;
 pub mod pharika_s_spawn;
 pub mod daxos_blessed_by_the_sun;
 pub mod tymaret_chosen_from_death;
+pub mod voracious_typhon;

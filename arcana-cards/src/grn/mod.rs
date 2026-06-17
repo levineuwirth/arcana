@@ -67,3 +67,4 @@ pub mod muse_drake;
 pub mod barging_sergeant;
 pub mod kraul_swarm;
 pub mod rosemane_centaur;
+pub mod wee_dragonauts;

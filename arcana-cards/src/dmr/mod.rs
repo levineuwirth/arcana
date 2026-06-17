@@ -84,3 +84,5 @@ pub mod radha_heir_to_keld;
 pub mod wild_dogs;
 pub mod arcades_sabboth;
 pub mod nightscape_familiar;
+pub mod undead_gladiator;
+pub mod thieving_magpie;

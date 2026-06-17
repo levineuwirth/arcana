@@ -101,3 +101,5 @@ pub mod a_masked_bandits;
 pub mod rigo_streetwise_mentor;
 pub mod a_revel_ruiner;
 pub mod toluz_clever_conductor;
+pub mod a_paragon_of_modernity;
+pub mod workshop_warchief;

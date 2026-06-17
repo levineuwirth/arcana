@@ -104,3 +104,4 @@ pub mod boarding_party;
 pub mod gilt_leaf_winnower;
 pub mod patron_of_the_valiant;
 pub mod anara_wolvid_familiar;
+pub mod sparktongue_dragon;

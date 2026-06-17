@@ -6,3 +6,5 @@ pub mod captain_america_first_avenger;
 pub mod fluttershy;
 pub mod maximus_knight_apparent;
 pub mod sonic_the_hedgehog;
+pub mod lara_croft_tomb_raider;
+pub mod atreus_impulsive_son;

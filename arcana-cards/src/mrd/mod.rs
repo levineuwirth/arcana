@@ -77,3 +77,4 @@ pub mod mirror_golem;
 pub mod clockwork_vorrac;
 pub mod flayed_nim;
 pub mod nim_devourer;
+pub mod clockwork_beetle;

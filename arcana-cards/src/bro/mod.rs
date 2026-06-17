@@ -100,3 +100,5 @@ pub mod skystrike_officer;
 pub mod tyrant_of_kher_ridges;
 pub mod mishra_tamer_of_mak_fawa;
 pub mod thran_spider;
+pub mod cityscape_leveler;
+pub mod drafna_founder_of_lat_nam;

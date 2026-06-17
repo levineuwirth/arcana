@@ -118,3 +118,4 @@ pub mod kain_traitorous_dragoon;
 pub mod jenova_ancient_calamity;
 pub mod g_raha_tia;
 pub mod hope_estheim;
+pub mod tifa_lockhart;

@@ -47,3 +47,4 @@ pub mod aberrant;
 pub mod toxicrene;
 pub mod exocrine;
 pub mod skorpekh_destroyer;
+pub mod keeper_of_secrets;

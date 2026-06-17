@@ -17,3 +17,4 @@ pub mod torment;
 pub mod furnace_spirit;
 pub mod spike_soldier;
 pub mod gliding_licid;
+pub mod shifting_wall;
