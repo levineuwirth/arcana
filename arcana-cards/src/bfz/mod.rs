@@ -66,3 +66,4 @@ pub mod angel_of_renewal;
 pub mod sire_of_stagnation;
 pub mod sludge_crawler;
 pub mod deathless_behemoth;
+pub mod fathom_feeder;

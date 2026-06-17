@@ -108,3 +108,7 @@ pub mod siege_veteran;
 pub mod evangel_of_synthesis;
 pub mod junkyard_genius;
 pub mod geology_enthusiast;
+pub mod phalanx_vanguard;
+pub mod urza_prince_of_kroog;
+pub mod gnarlroot_pallbearer;
+pub mod bladecoil_serpent;

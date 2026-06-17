@@ -97,3 +97,6 @@ pub mod unruly_krasis;
 pub mod battlefront_krushok;
 pub mod suppressor_skyguard;
 pub mod sunhome_stalwart;
+pub mod underrealm_lich;
+pub mod trostani_discordant;
+pub mod cloudkin_seer;

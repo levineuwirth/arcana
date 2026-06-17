@@ -124,3 +124,4 @@ pub mod hugs_grisly_guardian;
 pub mod eluge_the_shoreless_sea;
 pub mod salvation_swan;
 pub mod helga_skittish_seer;
+pub mod lumra_bellow_of_the_woods;

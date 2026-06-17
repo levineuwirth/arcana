@@ -101,3 +101,4 @@ pub mod daring_thunder_thief;
 pub mod slickshot_show_off;
 pub mod stingerback_terror;
 pub mod jem_lightfoote_sky_explorer;
+pub mod sheriff_of_safe_passage;

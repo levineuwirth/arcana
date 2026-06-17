@@ -62,3 +62,5 @@ pub mod fledgling_djinn;
 pub mod karn_silver_golem;
 pub mod morphling;
 pub mod lightning_dragon;
+pub mod cloud_djinn;
+pub mod krosan_vorine;

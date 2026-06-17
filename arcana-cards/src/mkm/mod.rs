@@ -99,3 +99,4 @@ pub mod forensic_researcher;
 pub mod defenestrated_phantom;
 pub mod teysa_opulent_oligarch;
 pub mod loxodon_eavesdropper;
+pub mod cold_case_cracker;

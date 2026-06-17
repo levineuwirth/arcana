@@ -122,3 +122,4 @@ pub mod twinflame_travelers;
 pub mod wildvine_pummeler;
 pub mod shimmercreep;
 pub mod kinsbaile_aspirant;
+pub mod moonshadow;

@@ -59,3 +59,5 @@ pub mod lesser_masticore;
 pub mod twin_silk_spider;
 pub mod sling_gang_lieutenant;
 pub mod endling;
+pub mod venomous_changeling;
+pub mod eyekite;

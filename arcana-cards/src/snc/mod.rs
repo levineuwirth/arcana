@@ -119,3 +119,7 @@ pub mod wingshield_agent;
 pub mod ziatora_the_incinerator;
 pub mod glamorous_outlaw;
 pub mod scheming_fence;
+pub mod crew_captain;
+pub mod cleanup_crew;
+pub mod faerie_vandal;
+pub mod a_queza_augur_of_agonies;

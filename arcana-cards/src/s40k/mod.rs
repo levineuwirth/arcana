@@ -64,3 +64,4 @@ pub mod plague_drone;
 pub mod vexilus_praetor;
 pub mod tyrant_guard;
 pub mod commissar_severina_raine;
+pub mod skorpekh_lord;

@@ -184,3 +184,4 @@ pub mod sprite_dragon;
 pub mod lae_zel_vlaakith_s_champion;
 pub mod balor;
 pub mod archpriest_of_iona;
+pub mod sludge_monster;

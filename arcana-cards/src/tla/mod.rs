@@ -98,3 +98,6 @@ pub mod the_unagi_of_kyoshi_island;
 pub mod toph_hardheaded_teacher;
 pub mod giant_koi;
 pub mod fire_sages;
+pub mod the_mechanist_aerial_artisan;
+pub mod messenger_hawk;
+pub mod invasion_reinforcements;

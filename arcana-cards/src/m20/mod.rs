@@ -124,3 +124,5 @@ pub mod bishop_of_wings;
 pub mod ethereal_elk;
 pub mod loyal_pegasus;
 pub mod steadfast_sentry;
+pub mod dread_presence;
+pub mod yanling_s_harbinger;

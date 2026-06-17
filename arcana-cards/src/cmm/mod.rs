@@ -202,3 +202,5 @@ pub mod nekusar_the_mindrazer;
 pub mod slimefoot_the_stowaway;
 pub mod duplicant;
 pub mod rafiq_of_the_many;
+pub mod endbringer;
+pub mod it_that_betrays;

@@ -13,3 +13,4 @@ pub mod elder_mastery;
 pub mod ajani_vengeant;
 pub mod nacatl_hunt_pride;
 pub mod wild_nacatl;
+pub mod loxodon_hierarch;

@@ -130,3 +130,6 @@ pub mod cinnamon_seasoned_steed;
 pub mod oilskelion;
 pub mod the_sad_creaturez;
 pub mod the_charitable_drafter;
+pub mod the_milling_runner;
+pub mod nim_mongoose;
+pub mod the_knight_of_land_drops;

@@ -22,3 +22,4 @@ pub mod lancers_en_kor;
 pub mod convulsing_licid;
 pub mod thalakos_deceiver;
 pub mod spindrift_drake;
+pub mod skeleton_scavengers;

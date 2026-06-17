@@ -61,3 +61,4 @@ pub mod locthwain_lancer;
 pub mod enduring_scalelord;
 pub mod master_of_etherium;
 pub mod chasm_skulker;
+pub mod pain_distributor;

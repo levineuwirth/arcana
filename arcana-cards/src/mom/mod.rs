@@ -154,3 +154,5 @@ pub mod zephyr_winder;
 pub mod zimone_and_dina;
 pub mod attentive_skywarden;
 pub mod golden_scale_aeronaut;
+pub mod guardian_of_ghirapur;
+pub mod enduring_bondwarden;

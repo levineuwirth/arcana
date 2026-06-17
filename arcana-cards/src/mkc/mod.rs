@@ -63,3 +63,4 @@ pub mod keeper_of_the_accord;
 pub mod adrix_and_nev_twincasters;
 pub mod toski_bearer_of_secrets;
 pub mod detective_of_the_month;
+pub mod fiendish_duo;

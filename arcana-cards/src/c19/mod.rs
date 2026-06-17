@@ -28,3 +28,5 @@ pub mod trostani_selesnya_s_voice;
 pub mod archfiend_of_spite;
 pub mod sevinne_the_chronoclasm;
 pub mod sagu_mauler;
+pub mod marisi_breaker_of_the_coil;
+pub mod volrath_the_shapestealer;

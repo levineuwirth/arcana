@@ -39,3 +39,5 @@ pub mod casey_raph_hotheads;
 pub mod donatello_rad_scientist;
 pub mod raphael_the_muscle;
 pub mod april_o_neil_live_on_the_scene;
+pub mod leonardo_the_balance;
+pub mod rocksteady_mutant_marauder;

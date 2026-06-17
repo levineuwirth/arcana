@@ -77,3 +77,6 @@ pub mod michelangelo_weirdness_to_11;
 pub mod leatherhead_swamp_stalker;
 pub mod krang_master_mind;
 pub mod turncoat_kunoichi;
+pub mod karai_future_of_the_foot;
+pub mod raphael_most_attitude;
+pub mod ice_cream_kitty;

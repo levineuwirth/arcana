@@ -49,3 +49,6 @@ pub mod relentless_raptor;
 pub mod tilonalli_s_summoner;
 pub mod tomb_robber;
 pub mod sun_crested_pterodon;
+pub mod silvergill_adept;
+pub mod tetzimoc_primal_death;
+pub mod dire_fleet_poisoner;

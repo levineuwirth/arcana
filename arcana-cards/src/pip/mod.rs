@@ -47,3 +47,5 @@ pub mod commander_sofia_daguerre;
 pub mod legate_lanius_caesar_s_ace;
 pub mod butch_deloria_tunnel_snake;
 pub mod cathedral_acolyte;
+pub mod elder_owyn_lyons;
+pub mod arcade_gannon;

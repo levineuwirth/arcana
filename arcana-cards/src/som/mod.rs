@@ -57,3 +57,4 @@ pub mod necropede;
 pub mod plague_stinger;
 pub mod kemba_s_skyguard;
 pub mod blackcleave_goblin;
+pub mod sky_eel_school;

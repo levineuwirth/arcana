@@ -68,3 +68,4 @@ pub mod thundering_spineback;
 pub mod xolatoyac_the_smiling_flood;
 pub mod order_of_sacred_dusk;
 pub mod rampaging_brontodon;
+pub mod warkite_marauder;

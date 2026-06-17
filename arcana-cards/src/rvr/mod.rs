@@ -87,3 +87,5 @@ pub mod deputy_of_acquittals;
 pub mod keymaster_rogue;
 pub mod sphinx_of_new_prahv;
 pub mod crocanura;
+pub mod mindleech_mass;
+pub mod utvara_hellkite;

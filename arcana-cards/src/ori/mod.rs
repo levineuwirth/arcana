@@ -64,3 +64,4 @@ pub mod firefiend_elemental;
 pub mod mizzium_meddler;
 pub mod war_oracle;
 pub mod alhammarret_high_arbiter;
+pub mod gnarlroot_trapper;

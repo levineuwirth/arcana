@@ -63,3 +63,4 @@ pub mod torpid_moloch;
 pub mod wizened_snitches;
 pub mod sewerdreg;
 pub mod boros_recruit;
+pub mod centaur_safeguard;

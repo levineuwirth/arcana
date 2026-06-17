@@ -36,3 +36,4 @@ pub mod soltari_visionary;
 pub mod spike_rogue;
 pub mod workhorse;
 pub mod dauthi_cutthroat;
+pub mod mirozel;

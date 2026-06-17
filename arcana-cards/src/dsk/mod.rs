@@ -101,3 +101,4 @@ pub mod patchwork_beastie;
 pub mod the_mindskinner;
 pub mod osseous_sticktwister;
 pub mod fear_of_isolation;
+pub mod friendly_ghost;

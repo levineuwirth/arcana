@@ -97,3 +97,7 @@ pub mod envoy_of_the_ancestors;
 pub mod electrozoa;
 pub mod scurrilous_sentry;
 pub mod temperamental_oozewagg;
+pub mod riddle_gate_gargoyle;
+pub mod distinguished_conjurer;
+pub mod molten_gatekeeper;
+pub mod devourer_of_destiny;

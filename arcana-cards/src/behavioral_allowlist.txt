@@ -20,6 +20,7 @@ Altar Golem
 Altar of the Wretched
 Ambling Stormshell
 Amulet of Vigor
+Aphetto Alchemist
 Arbiter of Knollridge
 Armed Response
 Ashcoat of the Shadow Swarm
@@ -46,6 +47,7 @@ Boon of Boseiju
 Bulwark
 Burst of Energy
 Calamitous Cave-In
+Callous Oppressor
 Cancel
 Captivating Vampire
 Ceremonious Rejection
@@ -121,6 +123,7 @@ Electrosiphon
 Elvish Scout
 Elvish Vatkeeper
 Empress Galina
+Endbringer
 Ertai's Trickery
 Eternal Dragon
 Ethersworn Adjudicator
@@ -158,6 +161,7 @@ Gustcloak Runner
 Gustcloak Sentinel
 Hana Kami
 Haunted Dead
+Heartmender
 Hinder
 Hisoka's Defiance
 Honden of Cleansing Fire
@@ -190,6 +194,7 @@ Jaws of Defeat
 Jungle Creeper
 Karlach, Tiefling Spellrager
 Kellogg, Dangerous Mind
+Kelpie Guide
 Keruga, the Macrosage
 Kindlespark Duo
 Kindred Denial
@@ -243,6 +248,7 @@ Minor Misstep
 Mirran Spy
 Mirror Universe
 Mishra's Helix
+Moonshadow
 Moonstone Harbinger
 Morphling
 Mu Yanling
@@ -304,6 +310,7 @@ Reluctant Dounguard
 Render Silent
 Repeat Offender
 Resurrected Cultist
+Revered Unicorn
 Revive
 Revolutionary Rebuff
 Rime Tender

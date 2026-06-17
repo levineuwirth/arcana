@@ -46,3 +46,4 @@ pub mod crystalline_nautilus;
 pub mod felhide_petrifier;
 pub mod battlefield_thaumaturge;
 pub mod athreos_god_of_passage;
+pub mod mogis_s_warhound;

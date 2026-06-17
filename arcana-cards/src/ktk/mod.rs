@@ -72,3 +72,4 @@ pub mod monastery_flock;
 pub mod longshot_squad;
 pub mod dazzling_ramparts;
 pub mod siege_rhino;
+pub mod shambling_attendants;

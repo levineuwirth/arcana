@@ -14,3 +14,6 @@ pub mod rose_noble;
 pub mod the_meep;
 pub mod aloy_savior_of_meridian;
 pub mod deadpool_trading_card;
+pub mod ellie_vengeful_hunter;
+pub mod shadow_the_hedgehog;
+pub mod storm_force_of_nature;

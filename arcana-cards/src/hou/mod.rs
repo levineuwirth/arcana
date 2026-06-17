@@ -72,3 +72,5 @@ pub mod merciless_eternal;
 pub mod crested_sunmare;
 pub mod manticore_eternal;
 pub mod ominous_sphinx;
+pub mod eternal_of_harsh_truths;
+pub mod resilient_khenra;

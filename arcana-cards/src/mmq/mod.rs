@@ -146,3 +146,5 @@ pub mod chameleon_spirit;
 pub mod kyren_legate;
 pub mod indentured_djinn;
 pub mod cho_arrim_legate;
+pub mod flailing_soldier;
+pub mod molting_harpy;

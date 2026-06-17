@@ -129,3 +129,4 @@ pub mod gloomshrieker;
 pub mod mirrorshell_crab;
 pub mod reito_sentinel;
 pub mod a_raiyuu_storm_s_edge;
+pub mod walking_skyscraper;

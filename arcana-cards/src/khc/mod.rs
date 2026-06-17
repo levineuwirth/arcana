@@ -28,3 +28,4 @@ pub mod poison_tip_archer;
 pub mod soulherder;
 pub mod inspired_sphinx;
 pub mod ranar_the_ever_watchful;
+pub mod cloudgoat_ranger;

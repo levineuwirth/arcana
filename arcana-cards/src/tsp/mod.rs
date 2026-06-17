@@ -36,3 +36,4 @@ pub mod zealot_il_vec;
 pub mod lim_d_l_the_necromancer;
 pub mod drudge_reavers;
 pub mod voidmage_husher;
+pub mod blazing_blade_askari;

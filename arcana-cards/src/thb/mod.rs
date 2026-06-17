@@ -105,3 +105,4 @@ pub mod atris_oracle_of_half_truths;
 pub mod alirios_enraptured;
 pub mod devourer_of_memory;
 pub mod sunlit_hoplite;
+pub mod scavenging_harpy;

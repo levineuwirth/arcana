@@ -84,3 +84,6 @@ pub mod juvenile_gloomwidow;
 pub mod isleback_spawn;
 pub mod gravelgill_duo;
 pub mod faerie_swarm;
+pub mod grief_tyrant;
+pub mod heartmender;
+pub mod rustrazor_butcher;

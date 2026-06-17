@@ -214,3 +214,7 @@ pub mod flamewake_phoenix;
 pub mod balmor_battlemage_captain;
 pub mod prideful_parent;
 pub mod arcanis_the_omnipotent;
+pub mod stromkirk_noble;
+pub mod twinblade_paladin;
+pub mod sire_of_seven_deaths;
+pub mod redcap_gutter_dweller;

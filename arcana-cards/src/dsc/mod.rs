@@ -79,3 +79,4 @@ pub mod verge_rangers;
 pub mod ashaya_soul_of_the_wild;
 pub mod rampaging_ferocidon;
 pub mod thunderfoot_baloth;
+pub mod fear_of_sleep_paralysis;

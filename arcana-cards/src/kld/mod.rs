@@ -91,3 +91,4 @@ pub mod depala_pilot_exemplar;
 pub mod electrostatic_pummeler;
 pub mod janjeet_sentry;
 pub mod spontaneous_artist;
+pub mod highspire_artisan;

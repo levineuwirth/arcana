@@ -84,3 +84,5 @@ pub mod mutant_surveyor;
 pub mod mimeoplasm_revered_one;
 pub mod leonin_surveyor;
 pub mod oviya_automech_artisan;
+pub mod caradora_heart_of_alacria;
+pub mod bulwark_ox;

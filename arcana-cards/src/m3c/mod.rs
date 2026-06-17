@@ -13,3 +13,4 @@ pub mod bismuth_mindrender;
 pub mod bloodbraid_challenger;
 pub mod barrowgoyf;
 pub mod blaster_hulk;
+pub mod chittering_dispatcher;

@@ -34,3 +34,4 @@ pub mod cogwork_grinder;
 pub mod agent_of_acquisitions;
 pub mod minamo_scrollkeeper;
 pub mod ignition_team;
+pub mod cogwork_tracker;

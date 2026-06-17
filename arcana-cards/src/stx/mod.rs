@@ -96,3 +96,6 @@ pub mod a_symmetry_sage;
 pub mod specter_of_the_fens;
 pub mod biblioplex_assistant;
 pub mod master_symmetrist;
+pub mod sedgemoor_witch;
+pub mod kelpie_guide;
+pub mod lorehold_pledgemage;

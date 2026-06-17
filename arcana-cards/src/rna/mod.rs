@@ -69,3 +69,5 @@ pub mod gruul_spellbreaker;
 pub mod gruul_beastmaster;
 pub mod faerie_duelist;
 pub mod gatebreaker_ram;
+pub mod clan_guildmage;
+pub mod wrecking_beast;

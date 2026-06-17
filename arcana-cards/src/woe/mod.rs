@@ -135,3 +135,6 @@ pub mod lord_skitter_s_butcher;
 pub mod sharae_of_numbing_depths;
 pub mod scarecrow_guide;
 pub mod specter_of_mortality;
+pub mod charmed_clothier;
+pub mod rootrider_faun;
+pub mod slumbering_keepguard;

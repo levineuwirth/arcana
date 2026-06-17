@@ -118,3 +118,5 @@ pub mod dusyut_earthcarver;
 pub mod severance_priest;
 pub mod dragonologist;
 pub mod tersa_lightshatter;
+pub mod teval_arbiter_of_virtue;
+pub mod highspire_bell_ringer;

@@ -90,3 +90,4 @@ pub mod kogla_the_titan_ape;
 pub mod glimmerbell;
 pub mod adaptive_shimmerer;
 pub mod keensight_mentor;
+pub mod gyruda_doom_of_depths;

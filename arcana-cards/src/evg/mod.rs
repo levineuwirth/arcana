@@ -13,3 +13,4 @@ pub mod reckless_one;
 pub mod akki_coalflinger;
 pub mod allosaurus_rider;
 pub mod clickslither;
+pub mod heedless_one;

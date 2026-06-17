@@ -124,3 +124,4 @@ pub mod cemetery_illuminator;
 pub mod anje_maid_of_dishonor;
 pub mod gryffwing_cavalry;
 pub mod fell_stinger;
+pub mod stormchaser_drake;

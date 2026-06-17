@@ -11,3 +11,4 @@ pub mod experimental_pilot;
 pub mod saiba_syphoner;
 pub mod swarm_saboteur;
 pub mod chronicler_of_worship;
+pub mod artillery_enthusiast;

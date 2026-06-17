@@ -96,3 +96,6 @@ pub mod vivisection_evangelist;
 pub mod drivnod_carnage_dominus;
 pub mod malcator_s_watcher;
 pub mod venomous_brutalizer;
+pub mod armored_scrapgorger;
+pub mod indoctrination_attendant;
+pub mod zopandrel_hunger_dominus;

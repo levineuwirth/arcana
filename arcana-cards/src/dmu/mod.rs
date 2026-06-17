@@ -90,3 +90,6 @@ pub mod gibbering_barricade;
 pub mod haunting_figment;
 pub mod tyrannical_pitlord;
 pub mod rundvelt_hordemaster;
+pub mod sheoldred_the_apocalypse;
+pub mod a_radha_s_firebrand;
+pub mod balduvian_berserker;

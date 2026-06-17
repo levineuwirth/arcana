@@ -136,3 +136,6 @@ pub mod apothecary_geist;
 pub mod asylum_visitor;
 pub mod ambush_viper;
 pub mod deadeye_navigator;
+pub mod grizzly_ghoul;
+pub mod furyblade_vampire;
+pub mod subjugator_angel;

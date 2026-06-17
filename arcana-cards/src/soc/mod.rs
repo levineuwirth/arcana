@@ -167,3 +167,4 @@ pub mod white_orchid_phantom;
 pub mod starfield_mystic;
 pub mod witch_of_the_moors;
 pub mod ribtruss_roaster;
+pub mod benevolent_hydra;

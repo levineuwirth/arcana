@@ -44,3 +44,4 @@ pub mod woodlot_crawler;
 pub mod maze_glider;
 pub mod hired_torturer;
 pub mod fluxcharger;
+pub mod maze_behemoth;

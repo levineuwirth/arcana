@@ -128,3 +128,4 @@ pub mod prosperous_innkeeper;
 pub mod targ_nar_demon_fang_gnoll;
 pub mod froghemoth;
 pub mod lurking_roper;
+pub mod drizzt_do_urden;

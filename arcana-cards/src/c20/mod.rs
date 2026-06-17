@@ -32,3 +32,4 @@ pub mod tidal_barracuda;
 pub mod species_specialist;
 pub mod soul_of_innistrad;
 pub mod boneyard_mycodrax;
+pub mod haldan_avid_arcanist;

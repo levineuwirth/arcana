@@ -78,3 +78,4 @@ pub mod avatar_of_might;
 pub mod tangle_spider;
 pub mod rhox;
 pub mod cloud_sprite;
+pub mod benalish_knight;
