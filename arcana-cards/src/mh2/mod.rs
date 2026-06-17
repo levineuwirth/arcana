@@ -95,3 +95,5 @@ pub mod necrogoyf;
 pub mod ghost_lit_drifter;
 pub mod priest_of_fell_rites;
 pub mod vedalken_infiltrator;
+pub mod phantasmal_dreadmaw;
+pub mod chainer_nightmare_adept;

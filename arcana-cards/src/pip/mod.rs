@@ -43,3 +43,5 @@ pub mod preston_garvey_minuteman;
 pub mod strong_the_brutish_thespian;
 pub mod vexing_radgull;
 pub mod crimson_caravaneer;
+pub mod commander_sofia_daguerre;
+pub mod legate_lanius_caesar_s_ace;

@@ -81,3 +81,4 @@ pub mod academy_journeymage;
 pub mod goblin_warchief;
 pub mod windgrace_acolyte;
 pub mod aesthir_glider;
+pub mod kwende_pride_of_femeref;

@@ -82,3 +82,4 @@ pub mod blazethorn_scarecrow;
 pub mod boggart_ram_gang;
 pub mod juvenile_gloomwidow;
 pub mod isleback_spawn;
+pub mod gravelgill_duo;

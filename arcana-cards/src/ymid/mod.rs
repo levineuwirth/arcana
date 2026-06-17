@@ -23,3 +23,4 @@ pub mod predatory_sludge;
 pub mod geist_of_regret;
 pub mod frenzied_geistblaster;
 pub mod angel_of_unity;
+pub mod fearsome_whelp;

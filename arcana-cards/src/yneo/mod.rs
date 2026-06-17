@@ -9,3 +9,4 @@ pub mod forceful_cultivator;
 pub mod futurist_spellthief;
 pub mod experimental_pilot;
 pub mod saiba_syphoner;
+pub mod swarm_saboteur;

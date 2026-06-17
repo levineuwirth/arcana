@@ -74,3 +74,5 @@ pub mod stormcrag_elemental;
 pub mod misthoof_kirin;
 pub mod shaman_of_forgotten_ways;
 pub mod dragonlord_kolaghan;
+pub mod herald_of_dromoka;
+pub mod zurgo_bellstriker;

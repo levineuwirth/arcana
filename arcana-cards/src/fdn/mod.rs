@@ -213,3 +213,4 @@ pub mod dragon_mage;
 pub mod flamewake_phoenix;
 pub mod balmor_battlemage_captain;
 pub mod prideful_parent;
+pub mod arcanis_the_omnipotent;

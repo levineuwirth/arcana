@@ -17,3 +17,4 @@ pub mod scurry_of_squirrels;
 pub mod octomancer;
 pub mod evercoat_ursine;
 pub mod hazel_of_the_rootbloom;
+pub mod ms_bumbleflower;

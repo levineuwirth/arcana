@@ -95,3 +95,4 @@ pub mod spiteful_squad;
 pub mod a_symmetry_sage;
 pub mod specter_of_the_fens;
 pub mod biblioplex_assistant;
+pub mod master_symmetrist;

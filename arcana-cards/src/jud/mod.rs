@@ -37,3 +37,4 @@ pub mod lost_in_thought;
 pub mod masked_gorgon;
 pub mod anurid_swarmsnapper;
 pub mod mirror_wall;
+pub mod phantom_centaur;

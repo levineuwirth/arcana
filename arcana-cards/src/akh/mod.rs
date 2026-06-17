@@ -71,3 +71,5 @@ pub mod trueheart_duelist;
 pub mod exemplar_of_strength;
 pub mod aven_wind_guide;
 pub mod anointer_priest;
+pub mod hazoret_the_fervent;
+pub mod dread_wanderer;

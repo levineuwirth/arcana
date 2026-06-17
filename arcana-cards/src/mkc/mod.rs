@@ -59,3 +59,6 @@ pub mod tangletrove_kelp;
 pub mod broodhatch_nantuko;
 pub mod doom_whisperer;
 pub mod final_word_phantom;
+pub mod keeper_of_the_accord;
+pub mod adrix_and_nev_twincasters;
+pub mod toski_bearer_of_secrets;

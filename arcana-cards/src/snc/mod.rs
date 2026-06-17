@@ -116,3 +116,4 @@ pub mod jewel_thief;
 pub mod metropolis_angel;
 pub mod speakeasy_server;
 pub mod wingshield_agent;
+pub mod ziatora_the_incinerator;

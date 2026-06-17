@@ -198,3 +198,4 @@ pub mod raff_capashen_ship_s_mage;
 pub mod shimmer_myr;
 pub mod stonehoof_chieftain;
 pub mod xantcha_sleeper_agent;
+pub mod nekusar_the_mindrazer;

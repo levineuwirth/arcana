@@ -93,3 +93,4 @@ pub mod tariel_reckoner_of_souls;
 pub mod shattergang_brothers;
 pub mod dragonlord_silumgar;
 pub mod lotleth_troll;
+pub mod wasitora_nekoru_queen;

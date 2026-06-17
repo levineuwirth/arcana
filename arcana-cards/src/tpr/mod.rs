@@ -98,3 +98,4 @@ pub mod thalakos_seer;
 pub mod renegade_warlord;
 pub mod dungeon_shade;
 pub mod skyshroud_vampire;
+pub mod thopter_squadron;

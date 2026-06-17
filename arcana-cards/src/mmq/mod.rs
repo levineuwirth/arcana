@@ -142,3 +142,6 @@ pub mod sand_squid;
 pub mod alabaster_wall;
 pub mod rappelling_scouts;
 pub mod crenellated_wall;
+pub mod chameleon_spirit;
+pub mod kyren_legate;
+pub mod indentured_djinn;

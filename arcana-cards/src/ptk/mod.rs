@@ -63,3 +63,4 @@ pub mod cao_cao_lord_of_wei;
 pub mod zhuge_jin_wu_strategist;
 pub mod yuan_shao_s_infantry;
 pub mod wu_scout;
+pub mod yellow_scarves_cavalry;

@@ -81,3 +81,8 @@ pub mod tuktuk_the_explorer;
 pub mod esperzoa;
 pub mod riku_of_two_reflections;
 pub mod skullmulcher;
+pub mod glassdust_hulk;
+pub mod salvage_titan;
+pub mod vish_kal_blood_arbiter;
+pub mod wurmcoil_engine;
+pub mod liege_of_the_tangle;

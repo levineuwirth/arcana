@@ -25,3 +25,5 @@ pub mod mammoth_harness;
 pub mod ghost_hounds;
 pub mod cemetery_gate;
 pub mod timmerian_fiends;
+pub mod trade_caravan;
+pub mod black_carriage;

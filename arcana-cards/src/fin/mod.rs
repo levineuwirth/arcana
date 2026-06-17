@@ -124,3 +124,5 @@ pub mod minwu_white_mage;
 pub mod relentless_x_atm092;
 pub mod garnet_princess_of_alexandria;
 pub mod vaan_street_thief;
+pub mod the_wandering_minstrel;
+pub mod cid_timeless_artificer;

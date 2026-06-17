@@ -81,3 +81,5 @@ pub mod clockwork_beetle;
 pub mod needlebug;
 pub mod glissa_sunseeker;
 pub mod woebearer;
+pub mod myr_prototype;
+pub mod slith_predator;

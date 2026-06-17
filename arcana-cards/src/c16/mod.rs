@@ -18,3 +18,4 @@ pub mod nath_of_the_gilt_leaf;
 pub mod thrasios_triton_hero;
 pub mod sydri_galvanic_genius;
 pub mod zhur_taa_druid;
+pub mod iroas_god_of_victory;

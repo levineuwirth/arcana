@@ -95,3 +95,4 @@ pub mod balshan_beguiler;
 pub mod phantatog;
 pub mod wayward_angel;
 pub mod lithatog;
+pub mod childhood_horror;

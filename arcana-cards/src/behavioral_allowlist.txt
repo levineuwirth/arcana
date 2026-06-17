@@ -34,6 +34,7 @@ Basilisk Gate
 Beguiler of Wills
 Belligerent Hatchling
 Biogenic Ooze
+Black Carriage
 Blinkmoth Well
 Blizzard Elemental
 Bloodcrazed Hoplite
@@ -103,6 +104,7 @@ Donal, Herald of Wings
 Double Negative
 Dragonlord Silumgar
 Dread Slaver
+Dread Wanderer
 Drooling Ogre
 Drover of the Swine
 Drownyard Temple
@@ -175,6 +177,7 @@ Ire of Kaminari
 It'll Quench Ya!
 Iwamori of the Open Fist
 Ixidor's Will
+J. Jonah Jameson
 Jace, Ingenious Mind-Mage
 Jaded Response
 Jandor's Saddlebags
@@ -361,8 +364,10 @@ Thalakos Deceiver
 Thassa's Rebuff
 The Akroan War
 The Legend of Yangchen
+The Miniaturizer
 The Modern Age
 The Reaper, King No More
+The Wandering Minstrel
 Thermo-Alchemist
 Thing in the Ice
 Thistledown Players

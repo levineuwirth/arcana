@@ -63,3 +63,4 @@ pub mod purple_pentapus;
 pub mod katara_heroic_healer;
 pub mod katara_seeking_revenge;
 pub mod baboon_spirit;
+pub mod chong_and_lily_nomads;

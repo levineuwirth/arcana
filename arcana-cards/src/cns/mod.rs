@@ -33,3 +33,4 @@ pub mod marchesa_s_emissary;
 pub mod cogwork_grinder;
 pub mod agent_of_acquisitions;
 pub mod minamo_scrollkeeper;
+pub mod ignition_team;

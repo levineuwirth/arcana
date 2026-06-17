@@ -46,3 +46,4 @@ pub mod dauthi_mindripper;
 pub mod knight_of_dawn;
 pub mod watchdog;
 pub mod dauthi_ghoul;
+pub mod spike_drone;

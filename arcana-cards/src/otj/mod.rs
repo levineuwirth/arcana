@@ -99,3 +99,4 @@ pub mod vraska_the_silencer;
 pub mod nimble_brigand;
 pub mod daring_thunder_thief;
 pub mod slickshot_show_off;
+pub mod stingerback_terror;

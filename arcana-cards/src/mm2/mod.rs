@@ -42,3 +42,5 @@ pub mod waxmane_baku;
 pub mod surrakar_spellblade;
 pub mod ghost_council_of_orzhova;
 pub mod worldheart_phoenix;
+pub mod moonlit_strider;
+pub mod conclave_phalanx;

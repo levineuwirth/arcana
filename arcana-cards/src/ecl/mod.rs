@@ -118,3 +118,6 @@ pub mod brambleback_brute;
 pub mod graveshifter;
 pub mod high_perfect_morcant;
 pub mod rhys_the_evermore;
+pub mod twinflame_travelers;
+pub mod wildvine_pummeler;
+pub mod shimmercreep;

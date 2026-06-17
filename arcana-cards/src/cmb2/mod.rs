@@ -32,3 +32,4 @@ pub mod witty_demon;
 pub mod underdark_beholder;
 pub mod slivdrazi_monstrosity;
 pub mod squidnapper;
+pub mod everlasting_lich;

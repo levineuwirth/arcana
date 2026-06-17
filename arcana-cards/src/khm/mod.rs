@@ -143,3 +143,4 @@ pub mod mistwalker;
 pub mod a_cosmos_charger;
 pub mod starnheim_courser;
 pub mod maja_bretagard_protector;
+pub mod svella_ice_shaper;

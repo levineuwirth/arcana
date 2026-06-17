@@ -32,3 +32,4 @@ pub mod jareth_leonine_titan;
 pub mod reyhan_last_of_the_abzan;
 pub mod dawnbreak_reclaimer;
 pub mod hunted_dragon;
+pub mod desecrator_hag;

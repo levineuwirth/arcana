@@ -80,3 +80,4 @@ pub mod snarling_undorak;
 pub mod embermage_goblin;
 pub mod birchlore_rangers;
 pub mod venomspout_brackus;
+pub mod thrashing_mudspawn;

@@ -60,3 +60,5 @@ pub mod elder_pine_of_jukai;
 pub mod iname_as_one;
 pub mod moonwing_moth;
 pub mod akuta_born_of_ash;
+pub mod ghost_lit_nourisher;
+pub mod stampeding_serow;

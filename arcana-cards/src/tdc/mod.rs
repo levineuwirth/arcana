@@ -93,3 +93,4 @@ pub mod wall_of_omens;
 pub mod meren_of_clan_nel_toth;
 pub mod angel_of_invention;
 pub mod noxious_gearhulk;
+pub mod canopy_gargantuan;

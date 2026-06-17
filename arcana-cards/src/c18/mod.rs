@@ -31,3 +31,6 @@ pub mod charnelhoard_wurm;
 pub mod gyrus_waker_of_corpses;
 pub mod conundrum_sphinx;
 pub mod sphinx_of_jwar_isle;
+pub mod rubblehulk;
+pub mod djinn_of_wishes;
+pub mod tawnos_urza_s_apprentice;

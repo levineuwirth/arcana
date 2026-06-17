@@ -80,3 +80,4 @@ pub mod court_cleric;
 pub mod chromium_the_mutable;
 pub mod gallant_cavalry;
 pub mod vivien_s_jaguar;
+pub mod dismissive_pyromancer;

@@ -122,3 +122,4 @@ pub mod fecund_greenshell;
 pub mod cindering_cutthroat;
 pub mod hugs_grisly_guardian;
 pub mod eluge_the_shoreless_sea;
+pub mod salvation_swan;

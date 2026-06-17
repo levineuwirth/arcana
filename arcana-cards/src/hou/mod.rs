@@ -69,3 +69,6 @@ pub mod fervent_paincaster;
 pub mod adorned_pouncer;
 pub mod dreamstealer;
 pub mod merciless_eternal;
+pub mod crested_sunmare;
+pub mod manticore_eternal;
+pub mod ominous_sphinx;

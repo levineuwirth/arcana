@@ -87,3 +87,4 @@ pub mod linvala_shield_of_sea_gate;
 pub mod cleric_of_life_s_bond;
 pub mod nimana_skydancer;
 pub mod umara_mystic;
+pub mod hagra_constrictor;

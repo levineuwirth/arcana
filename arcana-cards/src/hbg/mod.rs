@@ -98,3 +98,6 @@ pub mod wilson_urbane_bear;
 pub mod moradin_s_disciples;
 pub mod skanos_dragon_vassal;
 pub mod a_manticore;
+pub mod lukamina_scorpion_form;
+pub mod klement_life_acolyte;
+pub mod skanos_green_dragon_vassal;

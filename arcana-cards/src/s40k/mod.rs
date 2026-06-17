@@ -62,3 +62,5 @@ pub mod celestine_the_living_saint;
 pub mod canoptek_scarab_swarm;
 pub mod plague_drone;
 pub mod vexilus_praetor;
+pub mod tyrant_guard;
+pub mod commissar_severina_raine;

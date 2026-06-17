@@ -51,3 +51,5 @@ pub mod one_eyed_scarecrow;
 pub mod sturmgeist;
 pub mod mindshrieker;
 pub mod feral_ridgewolf;
+pub mod gallows_warden;
+pub mod mirror_mad_phantasm;

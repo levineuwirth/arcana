@@ -28,3 +28,5 @@ pub mod tetsuo_imperial_champion;
 pub mod activated_sleeper;
 pub mod surrak_dragonclaw;
 pub mod rohgahh_kher_keep_overlord;
+pub mod maelstrom_archangel;
+pub mod bladewing_deathless_tyrant;

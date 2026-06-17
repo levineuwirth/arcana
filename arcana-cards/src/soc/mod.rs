@@ -164,3 +164,5 @@ pub mod transcendent_envoy;
 pub mod teshar_ancestor_s_apostle;
 pub mod ohran_frostfang;
 pub mod white_orchid_phantom;
+pub mod starfield_mystic;
+pub mod witch_of_the_moors;

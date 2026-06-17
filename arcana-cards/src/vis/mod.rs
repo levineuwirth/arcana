@@ -37,3 +37,4 @@ pub mod kookus;
 pub mod bogardan_phoenix;
 pub mod knight_of_the_mists;
 pub mod aku_djinn;
+pub mod suq_ata_assassin;

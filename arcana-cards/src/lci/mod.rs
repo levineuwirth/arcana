@@ -123,3 +123,4 @@ pub mod deep_goblin_skulltaker;
 pub mod miner_s_guidewing;
 pub mod cavern_stomper;
 pub mod dinotomaton;
+pub mod hoverstone_pilgrim;

@@ -94,3 +94,6 @@ pub mod scuttling_sentinel;
 pub mod roaming_ghostlight;
 pub mod commander_mustard;
 pub mod unruly_krasis;
+pub mod battlefront_krushok;
+pub mod suppressor_skyguard;
+pub mod sunhome_stalwart;

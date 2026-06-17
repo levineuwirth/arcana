@@ -59,3 +59,4 @@ pub mod windscouter;
 pub mod vintara_elephant;
 pub mod squirrel_wrangler;
 pub mod ribbon_snake;
+pub mod avatar_of_will;

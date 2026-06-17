@@ -88,3 +88,4 @@ pub mod yavimaya_steelcrusher;
 pub mod ragefire_hellkite;
 pub mod gibbering_barricade;
 pub mod haunting_figment;
+pub mod tyrannical_pitlord;

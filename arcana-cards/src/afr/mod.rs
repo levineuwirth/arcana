@@ -122,3 +122,5 @@ pub mod swarming_goblins;
 pub mod a_triumphant_adventurer;
 pub mod purple_worm;
 pub mod ranger_s_hawk;
+pub mod a_shessra_death_s_whisper;
+pub mod manticore;

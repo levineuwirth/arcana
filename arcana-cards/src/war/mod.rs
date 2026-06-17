@@ -85,3 +85,4 @@ pub mod dreadhorde_twins;
 pub mod ugin_s_conjurant;
 pub mod charmed_stray;
 pub mod niv_mizzet_reborn;
+pub mod aven_eternal;

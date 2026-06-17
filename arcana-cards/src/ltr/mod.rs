@@ -119,3 +119,4 @@ pub mod shire_scarecrow;
 pub mod aragorn_and_arwen_wed;
 pub mod riders_of_the_mark;
 pub mod bill_ferny_bree_swindler;
+pub mod oliphaunt;

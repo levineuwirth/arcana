@@ -69,3 +69,6 @@ pub mod rhino_barreling_brute;
 pub mod prowler_clawed_thief;
 pub mod venomized_cat;
 pub mod raging_goblinoids;
+pub mod damage_control_crew;
+pub mod lady_octopus_inspired_inventor;
+pub mod j_jonah_jameson;

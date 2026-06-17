@@ -24,3 +24,4 @@ pub mod soldevi_steam_beast;
 pub mod balduvian_war_makers;
 pub mod diseased_vermin;
 pub mod gorilla_berserkers;
+pub mod carrier_pigeons;

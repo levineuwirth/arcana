@@ -35,3 +35,4 @@ pub mod possessed_barbarian;
 pub mod anurid_scavenger;
 pub mod krosan_constrictor;
 pub mod possessed_aven;
+pub mod grotesque_hybrid;
