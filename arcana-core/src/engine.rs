@@ -1320,9 +1320,9 @@ pub(crate) fn apply_resolution_choice(
             if *pay {
                 apply_optional_cost_payment(
                     state, pending.choosing_player, cost);
-                then_eff.execute(state);
+                execute_optional_branch(state, then_eff);
             } else if let Some(eff) = else_eff {
-                eff.execute(state);
+                execute_optional_branch(state, eff);
             }
         }
 
@@ -3319,6 +3319,34 @@ fn execute_effects_or_park(
         state.finalize_resolved_spell(entry);
     } else {
         state.finalize_resolved_ability(entry);
+    }
+}
+
+/// Execute an [`Effect::OptionalPayment`] `then`/`else` branch with the
+/// same park-between-choices discipline as a top-level resolution.
+///
+/// The branch may be a `Sequence`/`ForEach` whose children each post a
+/// choice — e.g. Rankle, Pitiless Trickster: "you may pay 1 life. When
+/// you do, each player discards a card AND sacrifices a creature." Running
+/// the branch straight-line via `Effect::execute` posts the second choice
+/// while the first is still pending and trips the single-slot invariant
+/// (`push_pending_choice`). The top-level park loop's `flatten_sequences`
+/// never sees these because they're nested behind the OptionalCost choice.
+///
+/// Fix: PREPEND the branch onto the parent resolution's parked
+/// `remaining_effects`. After this handler returns, `resume_parked_resolution`
+/// drives the parked list through `execute_effects_or_park`, which flattens
+/// and parks between every choice-posting child. The branch runs ahead of
+/// the parent's later effects (CR: the "when you do" effects happen as part
+/// of resolving this effect). If there is no parked parent resolution (the
+/// branch was reached outside the normal resolution loop), fall back to a
+/// straight-line execute — single-choice branches are safe there and the
+/// multi-choice case is not reachable from current call sites.
+fn execute_optional_branch(state: &mut GameState, branch: crate::effects::Effect) {
+    if let Some(parked) = state.pending_resolution.as_mut() {
+        parked.remaining_effects.insert(0, branch);
+    } else {
+        branch.execute(state);
     }
 }
 
@@ -5400,6 +5428,82 @@ mod resolution_choice_framework_tests {
             "else-effect (LoseLife 2) ran; then-effect did NOT");
         assert!(s.pending_choice.is_none());
         assert!(s.pending_choice_follow_up.is_none());
+    }
+
+    #[test]
+    fn optional_payment_then_with_two_choices_parks_between_them() {
+        // Regression (random-game harness seed 73, state.rs:864). Rankle,
+        // Pitiless Trickster: "you may pay 1 life. When you do, each player
+        // discards AND sacrifices a creature." The `then` branch is a
+        // Sequence whose children EACH post a player choice. The OptionalCost
+        // dispatch used to run `then.execute()` straight-line, posting the
+        // second choice while the first was still pending → push_pending_choice
+        // single-slot panic. The fix prepends the branch onto the parked
+        // parent resolution so the park loop pauses between every
+        // choice-posting child.
+        use crate::actions::{ChoiceContext, ChoiceFollowUp, ChoiceKind,
+                             ChoiceResponse, OptionalPaymentKind, PendingResolution};
+        use crate::stack::StackEntry;
+        use crate::zones::Zone;
+        use crate::effects::Effect;
+
+        let mut s = GameState::new(2, 0);
+        // Two sacrificeable creatures per player so each Sacrifice posts a
+        // real choice (a single candidate would auto-resolve, no choice).
+        let p0a = put_creature_in_zone(&mut s, 0, Zone::Battlefield, 1, 1);
+        let _p0b = put_creature_in_zone(&mut s, 0, Zone::Battlefield, 2, 2);
+        let p1a = put_creature_in_zone(&mut s, 1, Zone::Battlefield, 1, 1);
+        let _p1b = put_creature_in_zone(&mut s, 1, Zone::Battlefield, 2, 2);
+
+        let entry = StackEntry::new_spell(
+            s.allocate_object_id(), 0, 0,
+            Characteristics { types: TypeLine::INSTANT.into(), ..Default::default() },
+            Default::default(), Vec::new(), None);
+        let resolving = entry.id;
+        s.currently_resolving = Some(resolving);
+        // Parent resolution parked on the OptionalCost choice (no trailing
+        // effects — keep the focus on the branch's two choices).
+        s.pending_resolution = Some(PendingResolution {
+            entry, remaining_effects: Vec::new(), is_spell: true,
+        });
+        let then = Effect::Sequence(vec![
+            Effect::Sacrifice { player: 0,
+                filter: crate::targets::ObjectFilter::creature(), count: 1 },
+            Effect::Sacrifice { player: 1,
+                filter: crate::targets::ObjectFilter::creature(), count: 1 },
+        ]);
+        s.pending_choice_follow_up = Some(ChoiceFollowUp::OptionalPaymentBranch {
+            then, else_effect: None });
+        let pc_id = s.push_pending_choice(0,
+            ChoiceContext::ResolvingStack(resolving),
+            ChoiceKind::OptionalCost { cost: OptionalPaymentKind::Life(1) });
+
+        // Pay the cost. OLD behavior: panic here. NEW: only the FIRST
+        // sacrifice choice posts; the second stays parked.
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
+            ChoiceResponse::OptionalCost { pay: true });
+        assert!(s.pending_choice.is_some(),
+            "first sacrifice choice must be posted (not double-posted)");
+        assert!(s.pending_resolution.is_some(),
+            "the second sacrifice stays parked behind the first");
+
+        // Answer sacrifice #1 (player 0 picks one of its two creatures).
+        let id1 = s.pending_choice.as_ref().unwrap().id;
+        apply_resolution_choice(&mut s, &CardRegistry::new(), id1,
+            ChoiceResponse::PickCards { picked: vec![p0a] });
+
+        // Resume must post sacrifice #2 (player 1) — NOT panic.
+        assert!(s.pending_choice.is_some(),
+            "second sacrifice choice posts once the first is answered");
+        let id2 = s.pending_choice.as_ref().unwrap().id;
+        apply_resolution_choice(&mut s, &CardRegistry::new(), id2,
+            ChoiceResponse::PickCards { picked: vec![p1a] });
+
+        // Both sacrifices resolved; resolution fully drained.
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1, "player 0 sacrificed one");
+        assert_eq!(s.zone_count(Zone::Graveyard(1)), 1, "player 1 sacrificed one");
+        assert!(s.pending_choice.is_none());
+        assert!(s.pending_resolution.is_none(), "parked resolution drained");
     }
 
     #[test]

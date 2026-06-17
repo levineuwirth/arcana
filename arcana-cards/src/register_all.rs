@@ -14345,15 +14345,16 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::ddu::elvish_branchbender::register(reg); n += 1;
     crate::ddu::talara_s_battalion::register(reg); n += 1;
     // --- yotj ---
-    crate::yotj::cathartic_operation::register(reg); n += 1;
-    crate::yotj::intruder_s_inquisition::register(reg); n += 1;
-    crate::yotj::emperor_apatzec_intli_iv::register(reg); n += 1;
     crate::yotj::albiorix_goose_tyrant_wild_goose_chase::register(reg); n += 1;
-    crate::yotj::wagon_wrecker::register(reg); n += 1;
-    crate::yotj::switchgrass_grazer::register(reg); n += 1;
+    crate::yotj::cathartic_operation::register(reg); n += 1;
+    crate::yotj::emperor_apatzec_intli_iv::register(reg); n += 1;
+    crate::yotj::intruder_s_inquisition::register(reg); n += 1;
     crate::yotj::jessie_zane_fangbringer::register(reg); n += 1;
     crate::yotj::prairie_survivalist::register(reg); n += 1;
+    crate::yotj::rankle_pitiless_trickster::register(reg); n += 1;
     crate::yotj::stalwart_realmwarden::register(reg); n += 1;
+    crate::yotj::switchgrass_grazer::register(reg); n += 1;
+    crate::yotj::wagon_wrecker::register(reg); n += 1;
     // --- w16 ---
     crate::w16::cone_of_flame::register(reg); n += 1;
     crate::w16::incremental_growth::register(reg); n += 1;
