@@ -60,3 +60,5 @@ pub mod belligerent_hatchling;
 pub mod cinder_pyromancer;
 pub mod noxious_hatchling;
 pub mod altar_golem;
+pub mod hag_hedge_mage;
+pub mod selkie_hedge_mage;

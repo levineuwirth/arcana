@@ -86,3 +86,5 @@ pub mod generous_patron;
 pub mod magma_hellion;
 pub mod daggerdrome_imp;
 pub mod expedition_raptor;
+pub mod spellweaver_duo;
+pub mod sower_of_temptation;

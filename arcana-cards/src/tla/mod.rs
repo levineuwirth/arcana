@@ -102,3 +102,5 @@ pub mod the_mechanist_aerial_artisan;
 pub mod messenger_hawk;
 pub mod invasion_reinforcements;
 pub mod hermitic_herbalist;
+pub mod gran_gran;
+pub mod the_earth_king;

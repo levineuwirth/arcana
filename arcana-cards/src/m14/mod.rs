@@ -49,3 +49,4 @@ pub mod guardian_of_the_ages;
 pub mod capashen_knight;
 pub mod messenger_drake;
 pub mod shadowborn_demon;
+pub mod briarpack_alpha;

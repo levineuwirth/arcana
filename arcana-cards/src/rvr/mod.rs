@@ -90,3 +90,7 @@ pub mod crocanura;
 pub mod mindleech_mass;
 pub mod utvara_hellkite;
 pub mod conclave_equenaut;
+pub mod rakdos_guildmage;
+pub mod cloudfin_raptor;
+pub mod experiment_one;
+pub mod bloodfray_giant;

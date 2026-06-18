@@ -140,3 +140,4 @@ pub mod rootrider_faun;
 pub mod slumbering_keepguard;
 pub mod skybeast_tracker;
 pub mod redtooth_vanguard;
+pub mod lord_skitter_sewer_king;

@@ -218,3 +218,8 @@ pub mod stromkirk_noble;
 pub mod twinblade_paladin;
 pub mod sire_of_seven_deaths;
 pub mod redcap_gutter_dweller;
+pub mod archway_angel;
+pub mod fog_bank;
+pub mod aurelia_the_warleader;
+pub mod high_fae_trickster;
+pub mod syr_alin_the_lion_s_claw;

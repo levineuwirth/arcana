@@ -89,3 +89,4 @@ pub mod harmonious_grovestrider;
 pub mod dawnstrike_vanguard;
 pub mod alpharael_dreaming_acolyte;
 pub mod ragost_deft_gastronaut;
+pub mod survey_mechan;

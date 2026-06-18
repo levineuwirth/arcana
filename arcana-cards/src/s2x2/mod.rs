@@ -97,3 +97,4 @@ pub mod wasitora_nekoru_queen;
 pub mod reveillark;
 pub mod wingsteed_rider;
 pub mod uril_the_miststalker;
+pub mod ashenmoor_liege;

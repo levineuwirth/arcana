@@ -45,3 +45,4 @@ pub mod hraesvelgr_of_the_first_brood;
 pub mod mog_moogle_warrior;
 pub mod tromell_seymour_s_butler;
 pub mod sephiroth_fallen_hero;
+pub mod locke_treasure_hunter;

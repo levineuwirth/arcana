@@ -83,3 +83,4 @@ pub mod orcish_conscripts;
 pub mod ebon_praetor;
 pub mod drift_of_the_dead;
 pub mod sustaining_spirit;
+pub mod phantasmal_mount;

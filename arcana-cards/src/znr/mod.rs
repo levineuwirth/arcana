@@ -92,3 +92,4 @@ pub mod acquisitions_expert;
 pub mod verazol_the_split_current;
 pub mod taunting_arbormage;
 pub mod vine_gecko;
+pub mod kor_blademaster;

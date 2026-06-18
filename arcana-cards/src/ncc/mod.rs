@@ -52,3 +52,4 @@ pub mod skyship_plunderer;
 pub mod alela_artful_provocateur;
 pub mod champion_of_wits;
 pub mod thragtusk;
+pub mod fathom_mage;

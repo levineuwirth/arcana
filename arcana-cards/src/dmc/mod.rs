@@ -33,3 +33,4 @@ pub mod bladewing_deathless_tyrant;
 pub mod adriana_captain_of_the_guard;
 pub mod kothophed_soul_hoarder;
 pub mod robaran_mercenaries;
+pub mod chromanticore;

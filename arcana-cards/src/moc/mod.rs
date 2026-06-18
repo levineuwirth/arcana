@@ -62,3 +62,6 @@ pub mod enduring_scalelord;
 pub mod master_of_etherium;
 pub mod chasm_skulker;
 pub mod pain_distributor;
+pub mod abzan_falconer;
+pub mod champion_of_lambholt;
+pub mod infernal_sovereign;

@@ -41,3 +41,6 @@ pub mod raphael_the_muscle;
 pub mod april_o_neil_live_on_the_scene;
 pub mod leonardo_the_balance;
 pub mod rocksteady_mutant_marauder;
+pub mod dimension_x_pizzasaur;
+pub mod leonardo_worldly_warrior;
+pub mod splinter_leo_father_son;

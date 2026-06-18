@@ -76,3 +76,4 @@ pub mod hopeful_eidolon;
 pub mod underworld_cerberus;
 pub mod erebos_god_of_the_dead;
 pub mod fabled_hero;
+pub mod prophet_of_kruphix;

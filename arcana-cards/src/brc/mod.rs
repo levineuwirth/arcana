@@ -9,3 +9,4 @@ pub mod tawnos_solemn_survivor;
 pub mod blast_furnace_hellkite;
 pub mod the_archimandrite;
 pub mod farid_enterprising_salvager;
+pub mod wire_surgeons;

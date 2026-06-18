@@ -85,3 +85,6 @@ pub mod callous_oppressor;
 pub mod aphetto_alchemist;
 pub mod cabal_executioner;
 pub mod riptide_entrancer;
+pub mod ascending_aven;
+pub mod mistform_skyreaver;
+pub mod grinning_demon;

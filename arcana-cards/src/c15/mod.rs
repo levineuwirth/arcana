@@ -13,3 +13,4 @@ pub mod awaken_the_sky_tyrant;
 pub mod kor_sanctifiers;
 pub mod underworld_coinsmith;
 pub mod lone_revenant;
+pub mod daxos_the_returned;

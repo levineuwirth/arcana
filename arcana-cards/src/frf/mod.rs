@@ -43,3 +43,4 @@ pub mod ambush_krotiq;
 pub mod shu_yun_the_silent_tempest;
 pub mod jeskai_sage;
 pub mod ainok_guide;
+pub mod hooded_assassin;

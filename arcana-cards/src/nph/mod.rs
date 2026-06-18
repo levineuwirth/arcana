@@ -43,3 +43,5 @@ pub mod toxic_nim;
 pub mod moltensteel_dragon;
 pub mod blighted_agent;
 pub mod blind_zealot;
+pub mod tormentor_exarch;
+pub mod ogre_menial;

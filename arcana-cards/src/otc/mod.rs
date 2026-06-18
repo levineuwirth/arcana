@@ -57,3 +57,5 @@ pub mod whirler_rogue;
 pub mod angelic_sell_sword;
 pub mod kaza_roil_chaser;
 pub mod brainstealer_dragon;
+pub mod gonti_canny_acquisitor;
+pub mod turntimber_sower;

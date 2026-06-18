@@ -58,3 +58,5 @@ pub mod plague_stinger;
 pub mod kemba_s_skyguard;
 pub mod blackcleave_goblin;
 pub mod sky_eel_school;
+pub mod ichor_rats;
+pub mod kuldotha_phoenix;

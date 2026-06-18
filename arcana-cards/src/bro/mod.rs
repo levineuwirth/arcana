@@ -114,3 +114,4 @@ pub mod gnarlroot_pallbearer;
 pub mod bladecoil_serpent;
 pub mod su_chi_cave_guard;
 pub mod steel_exemplar;
+pub mod terisian_mindbreaker;

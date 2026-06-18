@@ -22,6 +22,8 @@ Ambling Stormshell
 Amulet of Vigor
 Aphetto Alchemist
 Arbiter of Knollridge
+Archfiend of the Dross
+Archway Angel
 Armed Response
 Arvad of the Weatherlight
 Ashcoat of the Shadow Swarm
@@ -50,6 +52,7 @@ Burst of Energy
 Calamitous Cave-In
 Callous Oppressor
 Cancel
+Canopy Crawler
 Captivating Vampire
 Ceremonious Rejection
 Chain Stasis
@@ -104,6 +107,7 @@ Descendant of Masumaro
 Desertion
 Despoiler of Souls
 Devious Cover-Up
+Devoted Druid
 Dispersal Shield
 Dissipate
 Divert Disaster
@@ -135,6 +139,7 @@ Evasive Action
 Faerie Trickery
 Feasting Troll King
 Fickle Efreet
+Firmament Sage
 Flaccify
 Floodwater Dam
 Force Spike
@@ -143,8 +148,10 @@ Frazzle
 Freyalise, Skyshroud Partisan
 Frillscare Mentor
 Fuel for the Cause
+Furgul, Quag Nurturer
 Fyndhorn Brownie
 Gates Ablaze
+Gelectrode
 Geralf's Masterpiece
 Ghoulsteed
 Glimmerbell
@@ -208,6 +215,7 @@ Kiora, the Tide's Fury
 Kjeldoran Javelineer
 Koh, the Face Stealer
 Kraul Swarm
+Kuldotha Phoenix
 Kumano Faces Kakkazan
 Kydele, Chosen of Kruphix
 Lapse of Certainty
@@ -294,6 +302,7 @@ Preeminent Captain
 Preyseizer Dragon
 Priest of the Haunted Edge
 Prince of Thralls
+Pristine Angel
 Progenitor Exarch
 Punish Ignorance
 Puppet Strings
@@ -357,6 +366,7 @@ Skittering Skirge
 Skred
 Soliton
 Sorin, Imperious Bloodlord
+Sower of Temptation
 Sparring Mummy
 Spell Crumple
 Spell Pierce
@@ -422,6 +432,7 @@ Voidslime
 Volatile Rig
 Voltaic Construct
 Voracious Hatchling
+Walking Archive
 Warren Pilferers
 Watchful Blisterzoa
 Wild Wurm

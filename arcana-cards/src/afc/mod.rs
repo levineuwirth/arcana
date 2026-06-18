@@ -33,3 +33,4 @@ pub mod curator_of_mysteries;
 pub mod death_tyrant;
 pub mod sefris_of_the_hidden_ways;
 pub mod wulfgar_of_icewind_dale;
+pub mod knight_of_autumn;

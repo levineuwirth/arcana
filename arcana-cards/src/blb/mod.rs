@@ -127,3 +127,5 @@ pub mod helga_skittish_seer;
 pub mod lumra_bellow_of_the_woods;
 pub mod mouse_trapper;
 pub mod nightwhorl_hermit;
+pub mod jackdaw_savior;
+pub mod seedglaive_mentor;

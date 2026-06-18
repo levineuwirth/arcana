@@ -130,3 +130,4 @@ pub mod froghemoth;
 pub mod lurking_roper;
 pub mod drizzt_do_urden;
 pub mod inspiring_bard;
+pub mod black_dragon;

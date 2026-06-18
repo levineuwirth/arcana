@@ -87,3 +87,4 @@ pub mod rowdy_crew;
 pub mod imperial_aerosaur;
 pub mod fire_shrine_keeper;
 pub mod steadfast_armasaur;
+pub mod shapers_of_nature;

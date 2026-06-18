@@ -101,3 +101,8 @@ pub mod indoctrination_attendant;
 pub mod zopandrel_hunger_dominus;
 pub mod sinew_dancer;
 pub mod phyrexian_vindicator;
+pub mod mandible_justiciar;
+pub mod cankerbloom;
+pub mod archfiend_of_the_dross;
+pub mod tyrranax_atrocity;
+pub mod bladegraft_aspirant;

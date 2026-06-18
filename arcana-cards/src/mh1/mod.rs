@@ -62,3 +62,5 @@ pub mod endling;
 pub mod venomous_changeling;
 pub mod eyekite;
 pub mod conifer_wurm;
+pub mod rank_officer;
+pub mod bazaar_trademage;

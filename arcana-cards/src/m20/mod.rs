@@ -126,3 +126,6 @@ pub mod loyal_pegasus;
 pub mod steadfast_sentry;
 pub mod dread_presence;
 pub mod yanling_s_harbinger;
+pub mod griffin_sentinel;
+pub mod howling_giant;
+pub mod cavalier_of_gales;

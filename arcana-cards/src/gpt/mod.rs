@@ -46,3 +46,4 @@ pub mod graven_dominator;
 pub mod battering_wurm;
 pub mod crystal_seer;
 pub mod gatherer_of_graces;
+pub mod souls_of_the_faultless;

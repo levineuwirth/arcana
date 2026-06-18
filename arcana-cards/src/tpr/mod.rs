@@ -102,3 +102,5 @@ pub mod thopter_squadron;
 pub mod dracoplasm;
 pub mod carnassid;
 pub mod thalakos_scout;
+pub mod soltari_trooper;
+pub mod ephemeron;

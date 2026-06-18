@@ -98,3 +98,4 @@ pub mod lithatog;
 pub mod childhood_horror;
 pub mod chainflinger;
 pub mod stone_tongue_basilisk;
+pub mod mystic_penitent;

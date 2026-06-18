@@ -37,3 +37,4 @@ pub mod krosan_constrictor;
 pub mod possessed_aven;
 pub mod grotesque_hybrid;
 pub mod centaur_veteran;
+pub mod boneshard_slasher;

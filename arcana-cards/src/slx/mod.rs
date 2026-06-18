@@ -11,3 +11,4 @@ pub mod rashel_fist_of_torm;
 pub mod vikya_scorching_stalwart;
 pub mod mathise_surge_channeler;
 pub mod othelm_sigardian_outcast;
+pub mod immard_the_stormcleaver;

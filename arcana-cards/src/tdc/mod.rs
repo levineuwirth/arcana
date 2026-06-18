@@ -97,3 +97,6 @@ pub mod canopy_gargantuan;
 pub mod emeria_angel;
 pub mod overgrown_battlement;
 pub mod siege_gang_commander;
+pub mod timeless_witness;
+pub mod river_kelpie;
+pub mod welcoming_vampire;

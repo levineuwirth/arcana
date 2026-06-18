@@ -24,3 +24,4 @@ pub mod academy_elite;
 pub mod akroan_horse;
 pub mod ravos_soultender;
 pub mod akiri_line_slinger;
+pub mod runehorn_hellkite;

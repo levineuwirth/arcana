@@ -36,3 +36,4 @@ pub mod the_fallen_apart;
 pub mod double_header;
 pub mod moniker_mage;
 pub mod assquatch;
+pub mod meddling_kids;

@@ -23,3 +23,4 @@ pub mod raksha_golden_cub;
 pub mod qasali_slingers;
 pub mod broodmate_dragon;
 pub mod inalla_archmage_ritualist;
+pub mod crosis_the_purger;

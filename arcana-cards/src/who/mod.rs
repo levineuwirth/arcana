@@ -55,3 +55,6 @@ pub mod adric_mathematical_genius;
 pub mod the_valeyard;
 pub mod vrestin_menoptra_leader;
 pub mod rory_williams;
+pub mod atraxi_warden;
+pub mod vashta_nerada;
+pub mod judoon_enforcers;

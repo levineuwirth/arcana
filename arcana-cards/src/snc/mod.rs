@@ -123,3 +123,5 @@ pub mod crew_captain;
 pub mod cleanup_crew;
 pub mod faerie_vandal;
 pub mod a_queza_augur_of_agonies;
+pub mod psionic_snoop;
+pub mod night_clubber;

@@ -104,3 +104,4 @@ pub mod jem_lightfoote_sky_explorer;
 pub mod sheriff_of_safe_passage;
 pub mod beastbond_outcaster;
 pub mod spinewoods_paladin;
+pub mod jolene_plundering_pugilist;

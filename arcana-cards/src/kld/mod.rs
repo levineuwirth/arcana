@@ -94,3 +94,5 @@ pub mod spontaneous_artist;
 pub mod highspire_artisan;
 pub mod minister_of_inquiries;
 pub mod servant_of_the_conduit;
+pub mod long_finned_skywhale;
+pub mod lathnu_hellion;

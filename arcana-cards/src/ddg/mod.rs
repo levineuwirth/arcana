@@ -12,3 +12,4 @@ pub mod spidersilk_armor;
 pub mod paladin_of_prahv;
 pub mod fire_belly_changeling;
 pub mod mordant_dragon;
+pub mod lionheart_maverick;

@@ -125,3 +125,4 @@ pub mod kinsbaile_aspirant;
 pub mod moonshadow;
 pub mod hexing_squelcher;
 pub mod kulrath_zealot;
+pub mod lys_alana_dignitary;

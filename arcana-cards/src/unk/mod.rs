@@ -138,3 +138,4 @@ pub mod the_beleaguered_boxer;
 pub mod the_knight_of_weeks;
 pub mod arvad_of_the_weatherlight;
 pub mod auntie_flint;
+pub mod sue_everlasting_dinosaur;

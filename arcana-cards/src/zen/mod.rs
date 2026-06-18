@@ -45,3 +45,4 @@ pub mod noble_vestige;
 pub mod tempest_owl;
 pub mod scythe_tiger;
 pub mod umara_raptor;
+pub mod living_tsunami;

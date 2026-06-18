@@ -122,3 +122,5 @@ pub mod bill_ferny_bree_swindler;
 pub mod oliphaunt;
 pub mod bill_the_pony;
 pub mod mirkwood_bats;
+pub mod frodo_baggins;
+pub mod goldberry_river_daughter;

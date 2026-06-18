@@ -40,3 +40,5 @@ pub mod abyssal_specter;
 pub mod wing_splicer;
 pub mod ogre_jailbreaker;
 pub mod sunhome_guildmage;
+pub mod hanweir_lancer;
+pub mod wingcrafter;

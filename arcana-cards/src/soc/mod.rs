@@ -172,3 +172,5 @@ pub mod kami_of_whispered_hopes;
 pub mod forgotten_ancient;
 pub mod curiosity_crafter;
 pub mod deekah_fractal_theorist;
+pub mod angel_of_indemnity;
+pub mod kinetic_ooze;

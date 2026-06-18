@@ -97,3 +97,4 @@ pub mod ruham_djinn;
 pub mod halam_djinn;
 pub mod cinder_shade;
 pub mod prison_barricade;
+pub mod dream_thrush;

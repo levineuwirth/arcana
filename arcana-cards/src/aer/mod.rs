@@ -74,3 +74,5 @@ pub mod hope_of_ghirapur;
 pub mod shielded_aether_thief;
 pub mod dawnfeather_eagle;
 pub mod enraged_giant;
+pub mod glint_sleeve_siphoner;
+pub mod spire_patrol;

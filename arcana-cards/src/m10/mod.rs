@@ -27,3 +27,4 @@ pub mod sage_owl;
 pub mod sphinx_ambassador;
 pub mod serpent_of_the_endless_sea;
 pub mod illusionary_servant;
+pub mod great_sable_stag;

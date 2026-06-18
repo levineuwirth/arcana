@@ -66,3 +66,4 @@ pub mod exuberant_firestoker;
 pub mod kederekt_creeper;
 pub mod sighted_caste_sorcerer;
 pub mod undead_leotau;
+pub mod gustrider_exuberant;

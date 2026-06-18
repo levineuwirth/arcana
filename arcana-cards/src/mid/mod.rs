@@ -109,3 +109,5 @@ pub mod dawnhart_wardens;
 pub mod dawnhart_mentor;
 pub mod nebelgast_intruder;
 pub mod patrician_geist;
+pub mod firmament_sage;
+pub mod falcon_abomination;

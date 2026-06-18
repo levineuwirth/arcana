@@ -74,3 +74,4 @@ pub mod light_of_the_legion;
 pub mod boros_challenger;
 pub mod molderhulk;
 pub mod golgari_raiders;
+pub mod swarm_guildmage;

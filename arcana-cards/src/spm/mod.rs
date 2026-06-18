@@ -76,3 +76,4 @@ pub mod jackal_genius_geneticist;
 pub mod merciless_enforcers;
 pub mod iron_spider_stark_upgrade;
 pub mod spider_punk;
+pub mod green_goblin_revenant;

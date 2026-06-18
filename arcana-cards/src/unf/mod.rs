@@ -57,3 +57,4 @@ pub mod ambassador_blorpityblorpboop;
 pub mod stiltstrider;
 pub mod trapeze_artist;
 pub mod icing_manipulator;
+pub mod vorthos_steward_of_myth;

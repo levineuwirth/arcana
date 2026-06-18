@@ -94,3 +94,6 @@ pub mod sheoldred_the_apocalypse;
 pub mod a_radha_s_firebrand;
 pub mod balduvian_berserker;
 pub mod phyrexian_warhorse;
+pub mod rulik_mons_warren_chief;
+pub mod meria_s_outrider;
+pub mod shanna_purifying_blade;

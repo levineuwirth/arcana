@@ -87,3 +87,4 @@ pub mod jolrael_s_centaur;
 pub mod zhalfirin_knight;
 pub mod shauku_endbringer;
 pub mod urborg_panther;
+pub mod femeref_knight;

@@ -69,3 +69,5 @@ pub mod xolatoyac_the_smiling_flood;
 pub mod order_of_sacred_dusk;
 pub mod rampaging_brontodon;
 pub mod warkite_marauder;
+pub mod azure_fleet_admiral;
+pub mod kinjalli_s_sunwing;

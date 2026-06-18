@@ -64,3 +64,5 @@ pub mod adrix_and_nev_twincasters;
 pub mod toski_bearer_of_secrets;
 pub mod detective_of_the_month;
 pub mod fiendish_duo;
+pub mod serene_sleuth;
+pub mod havoc_eater;
