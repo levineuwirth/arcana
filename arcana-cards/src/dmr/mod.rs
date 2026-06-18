@@ -88,3 +88,5 @@ pub mod undead_gladiator;
 pub mod thieving_magpie;
 pub mod phyrexian_scuta;
 pub mod rith_the_awakener;
+pub mod nut_collector;
+pub mod evil_eye_of_orms_by_gore;

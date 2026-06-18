@@ -64,3 +64,4 @@ pub mod warped_devotion;
 pub mod choke;
 pub mod living_terrain;
 pub mod spitting_spider;
+pub mod sunweb;

@@ -55,3 +55,5 @@ pub mod trespasser;
 pub mod roxi_publicist_to_the_stars;
 pub mod ambassador_blorpityblorpboop;
 pub mod stiltstrider;
+pub mod trapeze_artist;
+pub mod icing_manipulator;

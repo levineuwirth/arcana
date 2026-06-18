@@ -99,3 +99,6 @@ pub mod renegade_warlord;
 pub mod dungeon_shade;
 pub mod skyshroud_vampire;
 pub mod thopter_squadron;
+pub mod dracoplasm;
+pub mod carnassid;
+pub mod thalakos_scout;

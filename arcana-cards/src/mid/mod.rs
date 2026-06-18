@@ -108,3 +108,4 @@ pub mod slaughter_specialist;
 pub mod dawnhart_wardens;
 pub mod dawnhart_mentor;
 pub mod nebelgast_intruder;
+pub mod patrician_geist;

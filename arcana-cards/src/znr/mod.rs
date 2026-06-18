@@ -90,3 +90,5 @@ pub mod umara_mystic;
 pub mod hagra_constrictor;
 pub mod acquisitions_expert;
 pub mod verazol_the_split_current;
+pub mod taunting_arbormage;
+pub mod vine_gecko;

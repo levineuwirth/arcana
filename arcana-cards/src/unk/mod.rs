@@ -133,3 +133,8 @@ pub mod the_charitable_drafter;
 pub mod the_milling_runner;
 pub mod nim_mongoose;
 pub mod the_knight_of_land_drops;
+pub mod magicconsecrated_sphinx;
+pub mod the_beleaguered_boxer;
+pub mod the_knight_of_weeks;
+pub mod arvad_of_the_weatherlight;
+pub mod auntie_flint;

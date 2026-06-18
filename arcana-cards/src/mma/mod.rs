@@ -26,3 +26,4 @@ pub mod meadowboon;
 pub mod hammerheim_deadeye;
 pub mod thieving_sprite;
 pub mod auntie_s_snitch;
+pub mod demigod_of_revenge;

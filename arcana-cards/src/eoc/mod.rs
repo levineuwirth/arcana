@@ -49,3 +49,4 @@ pub mod korvold_fae_cursed_king;
 pub mod augur_of_autumn;
 pub mod kappa_cannoneer;
 pub mod aftermath_analyst;
+pub mod uurg_spawn_of_turg;

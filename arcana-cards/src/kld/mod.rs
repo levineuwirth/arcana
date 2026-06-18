@@ -92,3 +92,5 @@ pub mod electrostatic_pummeler;
 pub mod janjeet_sentry;
 pub mod spontaneous_artist;
 pub mod highspire_artisan;
+pub mod minister_of_inquiries;
+pub mod servant_of_the_conduit;

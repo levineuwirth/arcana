@@ -40,3 +40,4 @@ pub mod lu_xun_scholar_general;
 pub mod mana_charged_dragon;
 pub mod wolfbriar_elemental;
 pub mod creeperhulk;
+pub mod deceiver_exarch;

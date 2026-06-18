@@ -22,3 +22,4 @@ pub mod furnace_of_rath;
 pub mod wizard_replica;
 pub mod razia_boros_archangel;
 pub mod arcbound_slith;
+pub mod menacing_ogre;

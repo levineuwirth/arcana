@@ -87,3 +87,4 @@ pub mod faerie_swarm;
 pub mod grief_tyrant;
 pub mod heartmender;
 pub mod rustrazor_butcher;
+pub mod cinderbones;

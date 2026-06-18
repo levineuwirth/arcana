@@ -50,3 +50,5 @@ pub mod jwar_isle_avenger;
 pub mod wall_of_resurgence;
 pub mod flayer_drone;
 pub mod maw_of_kozilek;
+pub mod sky_scourer;
+pub mod void_grafter;

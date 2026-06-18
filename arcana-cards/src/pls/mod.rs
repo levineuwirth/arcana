@@ -35,3 +35,4 @@ pub mod tahngarth_talruum_hero;
 pub mod steel_leaf_paladin;
 pub mod caldera_kavu;
 pub mod sunscape_familiar;
+pub mod stratadon;

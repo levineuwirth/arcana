@@ -99,3 +99,5 @@ pub mod venomous_brutalizer;
 pub mod armored_scrapgorger;
 pub mod indoctrination_attendant;
 pub mod zopandrel_hunger_dominus;
+pub mod sinew_dancer;
+pub mod phyrexian_vindicator;

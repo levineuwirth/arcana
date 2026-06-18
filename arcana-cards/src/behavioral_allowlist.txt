@@ -23,6 +23,7 @@ Amulet of Vigor
 Aphetto Alchemist
 Arbiter of Knollridge
 Armed Response
+Arvad of the Weatherlight
 Ashcoat of the Shadow Swarm
 Attentive Skywarden
 Auriok Transfixer
@@ -75,6 +76,7 @@ Coffin Puppets
 Commodore Guff
 Companion of the Trials
 Concerted Defense
+Conifer Wurm
 Convolute
 Corpse Cur
 Corridor Monitor
@@ -93,6 +95,7 @@ Dauntless Aven
 Dazzling Denial
 Death Watch
 Deathless Behemoth
+Deceiver Exarch
 Decimator Beetle
 Deep-Slumber Titan
 Defiant Greatmaw
@@ -183,6 +186,7 @@ Into the Night
 Invert Polarity
 Inverted Iceberg
 Ire of Kaminari
+Iron Spider, Stark Upgrade
 It'll Quench Ya!
 Iwamori of the Open Fist
 Ixidor's Will
@@ -365,6 +369,7 @@ Spelljack
 Steel Overseer
 Stensia Innkeeper
 Stitchwing Skaab
+Stone-Seeder Hierophant
 Sunrise Cavalier
 Super Mutant Scavenger
 Superior Numbers
@@ -410,6 +415,7 @@ Unified Lunge
 Unravel
 Urtet, Remnant of Memnarch
 Vedalken Plotter
+Vigean Graftmage
 Vivien's Jaguar
 Vogar, Necropolis Tyrant
 Voidslime

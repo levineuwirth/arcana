@@ -27,3 +27,4 @@ pub mod banquet_guests;
 pub mod gr_ma_saruman_s_footman;
 pub mod witch_king_sky_scourge;
 pub mod faramir_steward_of_gondor;
+pub mod farmer_cotton;

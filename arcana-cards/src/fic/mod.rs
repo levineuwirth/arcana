@@ -44,3 +44,4 @@ pub mod y_shtola_night_s_blessed;
 pub mod hraesvelgr_of_the_first_brood;
 pub mod mog_moogle_warrior;
 pub mod tromell_seymour_s_butler;
+pub mod sephiroth_fallen_hero;

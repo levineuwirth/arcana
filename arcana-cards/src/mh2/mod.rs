@@ -102,3 +102,4 @@ pub mod cabal_initiate;
 pub mod thraben_watcher;
 pub mod aeve_progenitor_ooze;
 pub mod storm_god_s_oracle;
+pub mod specimen_collector;

@@ -138,3 +138,5 @@ pub mod specter_of_mortality;
 pub mod charmed_clothier;
 pub mod rootrider_faun;
 pub mod slumbering_keepguard;
+pub mod skybeast_tracker;
+pub mod redtooth_vanguard;

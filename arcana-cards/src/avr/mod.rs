@@ -63,3 +63,4 @@ pub mod stern_mentor;
 pub mod archwing_dragon;
 pub mod heirs_of_stromkirk;
 pub mod wolfir_avenger;
+pub mod angel_of_jubilation;

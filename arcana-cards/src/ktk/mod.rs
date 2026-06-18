@@ -73,3 +73,4 @@ pub mod longshot_squad;
 pub mod dazzling_ramparts;
 pub mod siege_rhino;
 pub mod shambling_attendants;
+pub mod rakshasa_deathdealer;

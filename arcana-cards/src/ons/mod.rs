@@ -84,3 +84,4 @@ pub mod thrashing_mudspawn;
 pub mod callous_oppressor;
 pub mod aphetto_alchemist;
 pub mod cabal_executioner;
+pub mod riptide_entrancer;

@@ -123,3 +123,5 @@ pub mod wildvine_pummeler;
 pub mod shimmercreep;
 pub mod kinsbaile_aspirant;
 pub mod moonshadow;
+pub mod hexing_squelcher;
+pub mod kulrath_zealot;

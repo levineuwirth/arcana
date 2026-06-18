@@ -91,3 +91,5 @@ pub mod glimmerbell;
 pub mod adaptive_shimmerer;
 pub mod keensight_mentor;
 pub mod gyruda_doom_of_depths;
+pub mod pollywog_symbiote;
+pub mod farfinder;

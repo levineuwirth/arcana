@@ -74,3 +74,5 @@ pub mod manticore_eternal;
 pub mod ominous_sphinx;
 pub mod eternal_of_harsh_truths;
 pub mod resilient_khenra;
+pub mod hollow_one;
+pub mod steadfast_sentinel;

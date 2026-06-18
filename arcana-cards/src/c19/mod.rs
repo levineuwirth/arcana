@@ -30,3 +30,4 @@ pub mod sevinne_the_chronoclasm;
 pub mod sagu_mauler;
 pub mod marisi_breaker_of_the_coil;
 pub mod volrath_the_shapestealer;
+pub mod roc_egg;

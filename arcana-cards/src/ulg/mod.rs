@@ -36,3 +36,4 @@ pub mod tethered_skirge;
 pub mod yavimaya_granger;
 pub mod shivan_phoenix;
 pub mod thran_war_machine;
+pub mod multani_maro_sorcerer;

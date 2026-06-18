@@ -96,3 +96,4 @@ pub mod lotleth_troll;
 pub mod wasitora_nekoru_queen;
 pub mod reveillark;
 pub mod wingsteed_rider;
+pub mod uril_the_miststalker;

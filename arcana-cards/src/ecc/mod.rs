@@ -51,3 +51,4 @@ pub mod selvala_heart_of_the_wilds;
 pub mod dusk_urchins;
 pub mod maelstrom_wanderer;
 pub mod endurance;
+pub mod grave_titan;

@@ -49,3 +49,4 @@ pub mod butch_deloria_tunnel_snake;
 pub mod cathedral_acolyte;
 pub mod elder_owyn_lyons;
 pub mod arcade_gannon;
+pub mod piper_wright_publick_reporter;

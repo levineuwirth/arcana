@@ -99,3 +99,4 @@ pub mod master_symmetrist;
 pub mod sedgemoor_witch;
 pub mod kelpie_guide;
 pub mod lorehold_pledgemage;
+pub mod a_tanazir_quandrix;

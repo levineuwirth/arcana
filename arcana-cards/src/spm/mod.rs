@@ -74,3 +74,5 @@ pub mod lady_octopus_inspired_inventor;
 pub mod j_jonah_jameson;
 pub mod jackal_genius_geneticist;
 pub mod merciless_enforcers;
+pub mod iron_spider_stark_upgrade;
+pub mod spider_punk;

@@ -58,3 +58,4 @@ pub mod forlorn_pseudamma;
 pub mod griffin_dreamfinder;
 pub mod nyxborn_rollicker;
 pub mod nessian_wilds_ravager;
+pub mod fanatic_of_xenagos;

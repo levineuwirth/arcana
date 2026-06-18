@@ -41,3 +41,5 @@ pub mod sandsteppe_outcast;
 pub mod lotus_path_djinn;
 pub mod ambush_krotiq;
 pub mod shu_yun_the_silent_tempest;
+pub mod jeskai_sage;
+pub mod ainok_guide;

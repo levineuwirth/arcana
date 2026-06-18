@@ -101,3 +101,5 @@ pub mod riddle_gate_gargoyle;
 pub mod distinguished_conjurer;
 pub mod molten_gatekeeper;
 pub mod devourer_of_destiny;
+pub mod faithful_watchdog;
+pub mod arna_kenner_d_skycaptain;

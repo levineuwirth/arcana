@@ -102,3 +102,5 @@ pub mod the_mindskinner;
 pub mod osseous_sticktwister;
 pub mod fear_of_isolation;
 pub mod friendly_ghost;
+pub mod silent_hallcreeper;
+pub mod overlord_of_the_floodpits;

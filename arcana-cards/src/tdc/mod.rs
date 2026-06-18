@@ -96,3 +96,4 @@ pub mod noxious_gearhulk;
 pub mod canopy_gargantuan;
 pub mod emeria_angel;
 pub mod overgrown_battlement;
+pub mod siege_gang_commander;

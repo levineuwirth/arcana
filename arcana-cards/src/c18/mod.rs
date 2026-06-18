@@ -34,3 +34,4 @@ pub mod sphinx_of_jwar_isle;
 pub mod rubblehulk;
 pub mod djinn_of_wishes;
 pub mod tawnos_urza_s_apprentice;
+pub mod celestial_archon;

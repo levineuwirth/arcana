@@ -112,3 +112,6 @@ pub mod soratami_mirror_guard;
 pub mod numai_outcast;
 pub mod konda_s_hatamoto;
 pub mod kami_of_the_waning_moon;
+pub mod callous_deceiver;
+pub mod cursed_ronin;
+pub mod soratami_savant;

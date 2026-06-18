@@ -3,3 +3,4 @@ pub mod urtet_remnant_of_memnarch;
 pub mod glissa_s_retriever;
 pub mod vishgraz_the_doomhive;
 pub mod neyali_suns_vanguard;
+pub mod chiss_goria_forge_tyrant;

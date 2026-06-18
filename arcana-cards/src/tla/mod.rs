@@ -101,3 +101,4 @@ pub mod fire_sages;
 pub mod the_mechanist_aerial_artisan;
 pub mod messenger_hawk;
 pub mod invasion_reinforcements;
+pub mod hermitic_herbalist;

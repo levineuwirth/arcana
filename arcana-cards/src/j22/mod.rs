@@ -19,3 +19,4 @@ pub mod disciple_of_perdition;
 pub mod lita_mechanical_engineer;
 pub mod agrus_kos_eternal_soldier;
 pub mod magnanimous_magistrate;
+pub mod towering_gibbon;

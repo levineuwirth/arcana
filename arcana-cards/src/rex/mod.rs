@@ -9,3 +9,4 @@ pub mod swooping_pteranodon;
 pub mod ravenous_tyrannosaurus;
 pub mod blue_loyal_raptor;
 pub mod ian_malcolm_chaotician;
+pub mod owen_grady_raptor_trainer;

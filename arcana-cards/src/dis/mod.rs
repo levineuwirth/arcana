@@ -43,3 +43,4 @@ pub mod sandstorm_eidolon;
 pub mod sporeback_troll;
 pub mod rakdos_augermage;
 pub mod aurora_eidolon;
+pub mod sprouting_phytohydra;

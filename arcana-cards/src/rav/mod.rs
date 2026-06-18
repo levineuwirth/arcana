@@ -64,3 +64,6 @@ pub mod wizened_snitches;
 pub mod sewerdreg;
 pub mod boros_recruit;
 pub mod centaur_safeguard;
+pub mod divebomber_griffin;
+pub mod nullstone_gargoyle;
+pub mod stone_seeder_hierophant;

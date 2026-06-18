@@ -52,3 +52,6 @@ pub mod danny_pink;
 pub mod ashad_the_lone_cyberman;
 pub mod rose_tyler;
 pub mod adric_mathematical_genius;
+pub mod the_valeyard;
+pub mod vrestin_menoptra_leader;
+pub mod rory_williams;

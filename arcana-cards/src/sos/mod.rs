@@ -82,3 +82,5 @@ pub mod hydro_channeler;
 pub mod pest_mascot;
 pub mod ennis_debate_moderator;
 pub mod startled_relic_sloth;
+pub mod teacher_s_pest;
+pub mod slumbering_trudge;

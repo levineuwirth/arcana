@@ -156,3 +156,5 @@ pub mod attentive_skywarden;
 pub mod golden_scale_aeronaut;
 pub mod guardian_of_ghirapur;
 pub mod enduring_bondwarden;
+pub mod rampaging_geoderm;
+pub mod redcap_heelslasher;

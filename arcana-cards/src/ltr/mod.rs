@@ -121,3 +121,4 @@ pub mod riders_of_the_mark;
 pub mod bill_ferny_bree_swindler;
 pub mod oliphaunt;
 pub mod bill_the_pony;
+pub mod mirkwood_bats;

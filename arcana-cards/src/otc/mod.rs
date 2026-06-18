@@ -55,3 +55,5 @@ pub mod niv_mizzet_parun;
 pub mod fallen_shinobi;
 pub mod whirler_rogue;
 pub mod angelic_sell_sword;
+pub mod kaza_roil_chaser;
+pub mod brainstealer_dragon;

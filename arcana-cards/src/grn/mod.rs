@@ -72,3 +72,5 @@ pub mod runaway_steam_kin;
 pub mod loxodon_restorer;
 pub mod light_of_the_legion;
 pub mod boros_challenger;
+pub mod molderhulk;
+pub mod golgari_raiders;

@@ -28,3 +28,5 @@ pub mod dimir_infiltrator;
 pub mod sakashima_s_student;
 pub mod okiba_gang_shinobi;
 pub mod kathari_remnant;
+pub mod dragonlair_spider;
+pub mod gluttonous_slime;

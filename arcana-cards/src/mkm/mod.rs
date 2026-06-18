@@ -100,3 +100,4 @@ pub mod defenestrated_phantom;
 pub mod teysa_opulent_oligarch;
 pub mod loxodon_eavesdropper;
 pub mod cold_case_cracker;
+pub mod tenth_district_hero;

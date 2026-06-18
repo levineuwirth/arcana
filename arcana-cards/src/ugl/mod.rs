@@ -16,3 +16,4 @@ pub mod chaos_confetti;
 pub mod fowl_play;
 pub mod b_f_m_big_furry_monster;
 pub mod miss_demeanor;
+pub mod clay_pigeon;

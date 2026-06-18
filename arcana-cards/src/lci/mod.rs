@@ -128,3 +128,4 @@ pub mod hotfoot_gnome;
 pub mod roaming_throne;
 pub mod the_ancient_one;
 pub mod deep_cavern_bat;
+pub mod waterwind_scout;

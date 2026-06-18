@@ -52,3 +52,4 @@ pub mod thopter_engineer;
 pub mod inferno_project;
 pub mod sangromancer;
 pub mod guardian_archon;
+pub mod radiant_performer;

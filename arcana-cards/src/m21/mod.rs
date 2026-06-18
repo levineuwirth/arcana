@@ -116,3 +116,4 @@ pub mod gnarled_sage;
 pub mod garruk_s_warsteed;
 pub mod elder_gargaroth;
 pub mod siege_striker;
+pub mod hobblefiend;

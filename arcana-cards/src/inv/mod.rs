@@ -94,3 +94,6 @@ pub mod sunscape_apprentice;
 pub mod kavu_chameleon;
 pub mod andradite_leech;
 pub mod ruham_djinn;
+pub mod halam_djinn;
+pub mod cinder_shade;
+pub mod prison_barricade;

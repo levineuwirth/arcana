@@ -130,3 +130,6 @@ pub mod mirrorshell_crab;
 pub mod reito_sentinel;
 pub mod a_raiyuu_storm_s_edge;
 pub mod walking_skyscraper;
+pub mod a_prosperous_thief;
+pub mod towashi_guide_bot;
+pub mod go_shintai_of_hidden_cruelty;

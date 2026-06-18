@@ -185,3 +185,8 @@ pub mod lae_zel_vlaakith_s_champion;
 pub mod balor;
 pub mod archpriest_of_iona;
 pub mod sludge_monster;
+pub mod geode_rager;
+pub mod lurking_green_dragon;
+pub mod gluntch_the_bestower;
+pub mod beckoning_will_o_wisp;
+pub mod minthara_merciless_soul;

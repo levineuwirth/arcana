@@ -74,3 +74,4 @@ pub mod anointer_priest;
 pub mod hazoret_the_fervent;
 pub mod dread_wanderer;
 pub mod khenra_charioteer;
+pub mod unwavering_initiate;

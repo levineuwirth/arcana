@@ -47,3 +47,4 @@ pub mod j_tun_owl_keeper;
 pub mod surging_sentinels;
 pub mod garza_zol_plague_queen;
 pub mod ronom_hulk;
+pub mod frost_raptor;

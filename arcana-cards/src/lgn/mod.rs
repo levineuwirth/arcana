@@ -36,3 +36,4 @@ pub mod goblin_dynamo;
 pub mod daru_stinger;
 pub mod primoc_escapee;
 pub mod root_sliver;
+pub mod cephalid_pathmage;

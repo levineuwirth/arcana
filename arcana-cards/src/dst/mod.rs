@@ -47,3 +47,4 @@ pub mod neurok_transmuter;
 pub mod greater_harvester;
 pub mod hoverguard_observer;
 pub mod death_mask_duplicant;
+pub mod furnace_dragon;

@@ -168,3 +168,7 @@ pub mod starfield_mystic;
 pub mod witch_of_the_moors;
 pub mod ribtruss_roaster;
 pub mod benevolent_hydra;
+pub mod kami_of_whispered_hopes;
+pub mod forgotten_ancient;
+pub mod curiosity_crafter;
+pub mod deekah_fractal_theorist;
