@@ -102,3 +102,6 @@ pub mod lorehold_pledgemage;
 pub mod a_tanazir_quandrix;
 pub mod bookwurm;
 pub mod brackish_trudge;
+pub mod pillardrop_warden;
+pub mod blood_researcher;
+pub mod scurrid_colony;

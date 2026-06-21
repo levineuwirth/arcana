@@ -65,3 +65,5 @@ pub mod kamber_the_plunderer;
 pub mod octavia_living_thesis;
 pub mod silent_blade_oni;
 pub mod captain_lannery_storm;
+pub mod silhana_ledgewalker;
+pub mod bladegriff_prototype;

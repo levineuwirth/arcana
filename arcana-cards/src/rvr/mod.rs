@@ -99,3 +99,5 @@ pub mod frilled_mystic;
 pub mod petrahydrox;
 pub mod orzhov_enforcer;
 pub mod master_of_cruelties;
+pub mod savra_queen_of_the_golgari;
+pub mod drift_of_phantasms;

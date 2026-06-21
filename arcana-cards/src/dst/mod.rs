@@ -51,3 +51,5 @@ pub mod furnace_dragon;
 pub mod emissary_of_hope;
 pub mod auriok_siege_sled;
 pub mod emissary_of_despair;
+pub mod spincrusher;
+pub mod karstoderm;

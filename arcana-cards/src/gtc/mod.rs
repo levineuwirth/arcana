@@ -66,3 +66,4 @@ pub mod duskmantle_guildmage;
 pub mod nightveil_specter;
 pub mod clinging_anemones;
 pub mod sapphire_drake;
+pub mod mindeye_drake;

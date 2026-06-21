@@ -102,3 +102,6 @@ pub mod crypt_angel;
 pub mod nightscape_master;
 pub mod ardent_soldier;
 pub mod kavu_monarch;
+pub mod kavu_aggressor;
+pub mod crusading_knight;
+pub mod samite_archer;

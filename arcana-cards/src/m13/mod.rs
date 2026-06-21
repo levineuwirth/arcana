@@ -37,3 +37,4 @@ pub mod duty_bound_dead;
 pub mod reckless_brute;
 pub mod xathrid_gorgon;
 pub mod duskmantle_prowler;
+pub mod veilborn_ghoul;

@@ -56,3 +56,5 @@ pub mod mysterious_stranger;
 pub mod bloatfly_swarm;
 pub mod brotherhood_outcast;
 pub mod maccready_lamplight_mayor;
+pub mod boomer_scrapper;
+pub mod securitron_squadron;

@@ -148,3 +148,4 @@ pub mod werefox_bodyguard;
 pub mod malevolent_witchkite;
 pub mod greta_sweettooth_scourge;
 pub mod elvish_archivist;
+pub mod chancellor_of_tales;

@@ -105,3 +105,5 @@ pub mod king_darien_xlviii;
 pub mod vineshaper_prodigy;
 pub mod keldon_strike_team;
 pub mod radha_s_firebrand;
+pub mod vodalian_hexcatcher;
+pub mod rona_sheoldred_s_faithful;

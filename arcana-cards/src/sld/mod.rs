@@ -20,3 +20,4 @@ pub mod storm_force_of_nature;
 pub mod jaws_relentless_predator;
 pub mod nathan_drake_treasure_hunter;
 pub mod black_panther_wakandan_king;
+pub mod kratos_god_of_war;

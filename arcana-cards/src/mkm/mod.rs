@@ -107,3 +107,8 @@ pub mod exit_specialist;
 pub mod doorkeeper_thrull;
 pub mod anzrag_the_quake_mole;
 pub mod museum_nightwatch;
+pub mod bolrac_clan_basher;
+pub mod culvert_ambusher;
+pub mod tunnel_tipster;
+pub mod private_eye;
+pub mod leering_onlooker;

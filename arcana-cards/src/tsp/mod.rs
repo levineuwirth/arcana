@@ -41,3 +41,4 @@ pub mod cavalry_master;
 pub mod cloudchaser_kestrel;
 pub mod plated_pegasus;
 pub mod savage_thallid;
+pub mod subterranean_shambler;

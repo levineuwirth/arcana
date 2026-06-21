@@ -17,3 +17,4 @@ pub mod blighted_gorge;
 pub mod merfolk_wayfinder;
 pub mod battle_squadron;
 pub mod streambed_aquitects;
+pub mod goblin_rabblemaster;

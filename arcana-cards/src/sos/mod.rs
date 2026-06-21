@@ -89,3 +89,6 @@ pub mod nita_forum_conciliator;
 pub mod mica_reader_of_ruins;
 pub mod old_growth_educator;
 pub mod tester_of_the_tangential;
+pub mod hungry_graffalon;
+pub mod arnyn_deathbloom_botanist;
+pub mod burrog_banemaker;

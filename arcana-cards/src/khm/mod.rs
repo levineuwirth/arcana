@@ -150,3 +150,5 @@ pub mod valkyrie_harbinger;
 pub mod resplendent_marshal;
 pub mod quakebringer;
 pub mod codespell_cleric;
+pub mod fearless_pup;
+pub mod a_harald_king_of_skemfar;

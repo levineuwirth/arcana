@@ -69,3 +69,4 @@ pub mod ghost_lit_raider;
 pub mod kuro_s_taken;
 pub mod celestial_kirin;
 pub mod oboro_envoy;
+pub mod oboro_breezecaller;

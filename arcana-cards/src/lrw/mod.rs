@@ -81,3 +81,6 @@ pub mod sentry_oak;
 pub mod changeling_hero;
 pub mod changeling_berserker;
 pub mod brigid_hero_of_kinsbaile;
+pub mod benthicore;
+pub mod wort_boggart_auntie;
+pub mod dawnfluke;

@@ -32,3 +32,4 @@ pub mod anje_s_ravager;
 pub mod stromkirk_captain;
 pub mod sire_of_the_storm;
 pub mod bloodsworn_steward;
+pub mod malakir_bloodwitch;

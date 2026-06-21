@@ -121,3 +121,4 @@ pub mod koilos_roc;
 pub mod mishra_s_juggernaut;
 pub mod artificer_s_dragon;
 pub mod wing_commando;
+pub mod platoon_dispenser;

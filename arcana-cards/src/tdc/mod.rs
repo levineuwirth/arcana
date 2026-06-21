@@ -107,3 +107,5 @@ pub mod territorial_hellkite;
 pub mod scourge_of_the_throne;
 pub mod grenzo_havoc_raiser;
 pub mod tasigur_the_golden_fang;
+pub mod aron_benalia_s_ruin;
+pub mod chittering_witch;

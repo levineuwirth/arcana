@@ -36,3 +36,5 @@ pub mod wildfire_emissary;
 pub mod welkin_guide;
 pub mod crater_hellion;
 pub mod keldon_marauders;
+pub mod skulking_ghost;
+pub mod glimmerpoint_stag;

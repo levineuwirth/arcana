@@ -35,3 +35,4 @@ pub mod pristine_angel;
 pub mod tectonic_hellion;
 pub mod gerrard_weatherlight_hero;
 pub mod grismold_the_dreadsower;
+pub mod great_oak_guardian;

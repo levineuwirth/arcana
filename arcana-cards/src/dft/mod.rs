@@ -99,3 +99,6 @@ pub mod molt_tender;
 pub mod wreckage_wickerfolk;
 pub mod loxodon_surveyor;
 pub mod glitch_ghost_surveyor;
+pub mod guidelight_synergist;
+pub mod shefet_archfiend;
+pub mod the_speed_demon;

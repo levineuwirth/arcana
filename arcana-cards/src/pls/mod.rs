@@ -40,3 +40,6 @@ pub mod aurora_griffin;
 pub mod dralnu_s_pet;
 pub mod sparkcaster;
 pub mod stone_kavu;
+pub mod marsh_crocodile;
+pub mod silver_drake;
+pub mod cavern_harpy;

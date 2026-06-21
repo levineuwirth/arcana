@@ -36,3 +36,5 @@ pub mod everlasting_lich;
 pub mod puresteel_angel;
 pub mod ruff_underdog_champ;
 pub mod innocuous_insect;
+pub mod louvaq_the_aberrant;
+pub mod impatient_iguana;

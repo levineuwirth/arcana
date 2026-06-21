@@ -91,3 +91,5 @@ pub mod cinderbones;
 pub mod tatterkite;
 pub mod blistering_dieflyn;
 pub mod wingrattle_scarecrow;
+pub mod windbrisk_raptor;
+pub mod boggart_arsonists;

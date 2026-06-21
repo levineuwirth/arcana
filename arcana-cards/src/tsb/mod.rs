@@ -28,3 +28,4 @@ pub mod eron_the_relentless;
 pub mod avalanche_riders;
 pub mod merieke_ri_berit;
 pub mod cockatrice;
+pub mod giant_oyster;

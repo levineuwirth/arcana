@@ -55,3 +55,5 @@ pub mod vizkopa_guildmage;
 pub mod benevolent_ancestor;
 pub mod jhessian_thief;
 pub mod mer_ek_nightblade;
+pub mod abyssal_persecutor;
+pub mod illusory_angel;

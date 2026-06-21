@@ -48,3 +48,4 @@ pub mod monster_mashup;
 pub mod electric_seaweed;
 pub mod roadkill_rodney;
 pub mod donnie_april_adorkable_duo;
+pub mod ray_fillet_wave_warrior;

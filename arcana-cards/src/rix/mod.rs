@@ -54,3 +54,4 @@ pub mod tetzimoc_primal_death;
 pub mod dire_fleet_poisoner;
 pub mod storm_fleet_swashbuckler;
 pub mod charging_tuskodon;
+pub mod spire_winder;

@@ -45,3 +45,7 @@ pub mod blighted_agent;
 pub mod blind_zealot;
 pub mod tormentor_exarch;
 pub mod ogre_menial;
+pub mod fallen_ferromancer;
+pub mod shriek_raptor;
+pub mod spinebiter;
+pub mod phyrexian_swarmlord;

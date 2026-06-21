@@ -60,3 +60,5 @@ pub mod nyxborn_rollicker;
 pub mod nessian_wilds_ravager;
 pub mod fanatic_of_xenagos;
 pub mod servant_of_tymaret;
+pub mod siren_of_the_silent_song;
+pub mod brimaz_king_of_oreskos;

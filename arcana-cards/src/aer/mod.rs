@@ -79,3 +79,4 @@ pub mod spire_patrol;
 pub mod aether_poisoner;
 pub mod freejam_regent;
 pub mod silkweaver_elite;
+pub mod aether_swooper;

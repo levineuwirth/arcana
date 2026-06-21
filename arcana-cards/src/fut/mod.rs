@@ -27,3 +27,5 @@ pub mod linessa_zephyr_mage;
 pub mod oriss_samite_guardian;
 pub mod vedalken_aethermage;
 pub mod tarox_bladewing;
+pub mod steamflogger_boss;
+pub mod aven_augur;

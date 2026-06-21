@@ -122,3 +122,5 @@ pub mod orbweaver_kumo;
 pub mod matsu_tribe_decoy;
 pub mod kabuto_moth;
 pub mod pious_kitsune;
+pub mod painwracker_oni;
+pub mod seshiro_the_anointed;

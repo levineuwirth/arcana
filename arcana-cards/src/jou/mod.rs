@@ -49,3 +49,4 @@ pub mod athreos_god_of_passage;
 pub mod mogis_s_warhound;
 pub mod spirespine;
 pub mod pharika_god_of_affliction;
+pub mod pheres_band_warchief;

@@ -63,3 +63,5 @@ pub mod myra_the_magnificent;
 pub mod squirrel_squatters;
 pub mod it_came_from_planet_glurg;
 pub mod brims_barone_midway_mobster;
+pub mod solaflora_intergalactic_icon;
+pub mod vedalken_squirrel_whacker;

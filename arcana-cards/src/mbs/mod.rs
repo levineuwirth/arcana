@@ -47,3 +47,4 @@ pub mod glissa_the_traitor;
 pub mod core_prowler;
 pub mod signal_pest;
 pub mod neurok_commando;
+pub mod thrun_the_last_troll;

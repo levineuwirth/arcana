@@ -69,3 +69,6 @@ pub mod nullstone_gargoyle;
 pub mod stone_seeder_hierophant;
 pub mod sabertooth_alley_cat;
 pub mod autochthon_wurm;
+pub mod sunhome_enforcer;
+pub mod oathsworn_giant;
+pub mod tidewater_minion;

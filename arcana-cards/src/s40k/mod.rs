@@ -77,3 +77,7 @@ pub mod seeker_of_slaanesh;
 pub mod kh_rn_the_betrayer;
 pub mod callidus_assassin;
 pub mod zephyrim;
+pub mod mortarion_daemon_primarch;
+pub mod winged_hive_tyrant;
+pub mod old_one_eye;
+pub mod zoanthrope;

@@ -89,3 +89,6 @@ pub mod ascending_aven;
 pub mod mistform_skyreaver;
 pub mod grinning_demon;
 pub mod glarecaster;
+pub mod tephraderm;
+pub mod nameless_one;
+pub mod mistform_dreamer;

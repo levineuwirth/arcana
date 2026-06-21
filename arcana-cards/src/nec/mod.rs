@@ -20,3 +20,4 @@ pub mod arcanist_s_owl;
 pub mod kotori_pilot_prodigy;
 pub mod myojin_of_grim_betrayal;
 pub mod komainu_battle_armor;
+pub mod go_shintai_of_life_s_origin;

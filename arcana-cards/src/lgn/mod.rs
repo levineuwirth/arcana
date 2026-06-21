@@ -38,3 +38,5 @@ pub mod primoc_escapee;
 pub mod root_sliver;
 pub mod cephalid_pathmage;
 pub mod canopy_crawler;
+pub mod rockshard_elemental;
+pub mod crested_craghorn;

@@ -49,3 +49,4 @@ pub mod dauthi_ghoul;
 pub mod spike_drone;
 pub mod leeching_licid;
 pub mod soltari_crusader;
+pub mod bounty_hunter;

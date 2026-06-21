@@ -48,3 +48,4 @@ pub mod maze_behemoth;
 pub mod exava_rakdos_blood_witch;
 pub mod maze_sentinel;
 pub mod goblin_test_pilot;
+pub mod renegade_krasis;

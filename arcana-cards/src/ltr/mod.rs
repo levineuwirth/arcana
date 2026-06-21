@@ -131,3 +131,6 @@ pub mod frodo_sauron_s_bane;
 pub mod wose_pathfinder;
 pub mod pelargir_survivor;
 pub mod mordor_trebuchet;
+pub mod voracious_fell_beast;
+pub mod saruman_the_white;
+pub mod the_balrog_durin_s_bane;

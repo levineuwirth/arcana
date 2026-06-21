@@ -87,3 +87,4 @@ pub mod rust_elemental;
 pub mod neurok_familiar;
 pub mod vulshok_battlemaster;
 pub mod psychic_membrane;
+pub mod lumengrid_sentinel;

@@ -151,3 +151,5 @@ pub mod molting_harpy;
 pub mod cateran_enforcer;
 pub mod delraich;
 pub mod corrupt_official;
+pub mod flailing_ogre;
+pub mod robber_fly;

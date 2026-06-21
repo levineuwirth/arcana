@@ -101,3 +101,5 @@ pub mod wandering_mage;
 pub mod rohgahh_of_kher_keep;
 pub mod wall_of_light;
 pub mod liu_bei_lord_of_shu;
+pub mod kobold_overlord;
+pub mod tetsuo_umezawa;

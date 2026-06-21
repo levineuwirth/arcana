@@ -84,3 +84,6 @@ pub mod rakdos_lord_of_riots;
 pub mod whisperwood_elemental;
 pub mod hornet_queen;
 pub mod soaring_lightbringer;
+pub mod skaab_ruinator;
+pub mod giant_adephage;
+pub mod archetype_of_imagination;

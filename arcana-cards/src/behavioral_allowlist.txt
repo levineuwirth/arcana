@@ -144,10 +144,12 @@ Evaporate
 Evasive Action
 Faerie Trickery
 Feasting Troll King
+Fell Beast of Mordor
 Fickle Efreet
 Firmament Sage
 Flaccify
 Floodwater Dam
+Flowerfoot Swordmaster
 Force Spike
 Forensic Researcher
 Frazzle
@@ -155,6 +157,7 @@ Freyalise, Skyshroud Partisan
 Frillscare Mentor
 Fuel for the Cause
 Furgul, Quag Nurturer
+Futurist Operative
 Fyndhorn Brownie
 Gates Ablaze
 Gavony Dawnguard
@@ -184,6 +187,7 @@ Haunted Dead
 Heartmender
 Hinder
 Hisoka's Defiance
+Hivis of the Scale
 Honden of Cleansing Fire
 Honden of Infinite Rage
 Honden of Night's Reach
@@ -215,8 +219,10 @@ Jaded Response
 Jandor's Saddlebags
 Jaws of Defeat
 Jungle Creeper
+Kaalia of the Vast
 Karlach, Tiefling Berserker
 Karlach, Tiefling Spellrager
+Karstoderm
 Kellogg, Dangerous Mind
 Kelpie Guide
 Keruga, the Macrosage
@@ -271,6 +277,7 @@ Mijae Djinn
 Minamo's Meddling
 Minamo, School at Water's Edge
 Mindstatic
+Minion of the Mighty
 Minor Misstep
 Mirran Spy
 Mirror Universe
@@ -424,6 +431,7 @@ Thoughtbind
 Tibalt's Trickery
 Ticking Mime Bomb
 Tideforce Elemental
+Tidewater Minion
 Timestream Navigator
 Tombstone, Career Criminal
 Torchling
@@ -444,6 +452,7 @@ Unravel
 Urtet, Remnant of Memnarch
 Vedalken Plotter
 Vigean Graftmage
+Vigilant Drake
 Vivien's Jaguar
 Vogar, Necropolis Tyrant
 Voidslime
@@ -456,6 +465,7 @@ Warren Pilferers
 Watchful Blisterzoa
 Wild Wurm
 Wirewood Lodge
+Woolly Razorback
 Wyll of the Blade Pact
 Ydwen Efreet
 Yomiji, Who Bars the Way

@@ -35,3 +35,4 @@ pub mod boneyard_mycodrax;
 pub mod haldan_avid_arcanist;
 pub mod vastwood_hydra;
 pub mod cryptic_trilobite;
+pub mod brallin_skyshark_rider;

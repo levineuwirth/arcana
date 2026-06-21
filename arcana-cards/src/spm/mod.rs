@@ -85,3 +85,6 @@ pub mod selfless_police_captain;
 pub mod lurking_lizards;
 pub mod mister_negative;
 pub mod skyward_spider;
+pub mod scarlet_spider_ben_reilly;
+pub mod carnage_crimson_chaos;
+pub mod hobgoblin_mantled_marauder;

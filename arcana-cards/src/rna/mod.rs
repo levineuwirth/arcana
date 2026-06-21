@@ -81,3 +81,4 @@ pub mod trollbred_guardian;
 pub mod lumbering_battlement;
 pub mod chillbringer;
 pub mod frenzied_arynx;
+pub mod domri_s_nodorog;

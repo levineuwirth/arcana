@@ -46,3 +46,4 @@ pub mod ainok_guide;
 pub mod hooded_assassin;
 pub mod vaultbreaker;
 pub mod sibsig_muckdraggers;
+pub mod yasova_dragonclaw;

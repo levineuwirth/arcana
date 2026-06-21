@@ -114,3 +114,6 @@ pub mod chatterfang_squirrel_general;
 pub mod flametongue_yearling;
 pub mod revolutionist;
 pub mod carth_the_lion;
+pub mod orchard_strider;
+pub mod a_dragon_s_rage_channeler;
+pub mod arcbound_javelineer;

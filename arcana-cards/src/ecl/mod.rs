@@ -130,3 +130,7 @@ pub mod glamer_gifter;
 pub mod mischievous_sneakling;
 pub mod abigale_eloquent_first_year;
 pub mod catharsis;
+pub mod emptiness;
+pub mod spinerock_tyrant;
+pub mod dawn_s_light_archer;
+pub mod foraging_wickermaw;

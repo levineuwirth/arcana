@@ -77,3 +77,5 @@ pub mod resilient_khenra;
 pub mod hollow_one;
 pub mod steadfast_sentinel;
 pub mod hope_tender;
+pub mod frontline_devastator;
+pub mod sunscourge_champion;

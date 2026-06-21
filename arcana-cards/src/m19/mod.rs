@@ -86,3 +86,5 @@ pub mod lightning_mare;
 pub mod siegebreaker_giant;
 pub mod skymarch_bloodletter;
 pub mod surge_mare;
+pub mod goblin_trashmaster;
+pub mod bone_dragon;

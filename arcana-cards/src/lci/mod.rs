@@ -133,3 +133,5 @@ pub mod resplendent_angel;
 pub mod earthshaker_dreadmaw;
 pub mod cogwork_wrestler;
 pub mod oltec_cloud_guard;
+pub mod kinjalli_s_dawnrunner;
+pub mod gargantuan_leech;

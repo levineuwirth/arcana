@@ -23,3 +23,4 @@ pub mod dark_tutelage;
 pub mod primal_cocoon;
 pub mod ajani_goldmane;
 pub mod arc_runner;
+pub mod cloud_crusader;

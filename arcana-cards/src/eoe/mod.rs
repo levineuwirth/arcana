@@ -93,3 +93,5 @@ pub mod survey_mechan;
 pub mod mm_menon_the_right_hand;
 pub mod sunstar_expansionist;
 pub mod rust_harvester;
+pub mod nebula_dragon;
+pub mod sunstar_chaplain;

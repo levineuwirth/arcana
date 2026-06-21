@@ -75,3 +75,4 @@ pub mod soul_of_ravnica;
 pub mod cruel_sadist;
 pub mod kapsho_kitefins;
 pub mod living_totem;
+pub mod resolute_archangel;

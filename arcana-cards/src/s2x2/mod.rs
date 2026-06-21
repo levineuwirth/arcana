@@ -102,3 +102,4 @@ pub mod league_guildmage;
 pub mod qasali_pridemage;
 pub mod jodah_archmage_eternal;
 pub mod teneb_the_harvester;
+pub mod ulasht_the_hate_seed;

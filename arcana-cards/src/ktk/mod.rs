@@ -75,3 +75,5 @@ pub mod siege_rhino;
 pub mod shambling_attendants;
 pub mod rakshasa_deathdealer;
 pub mod sage_eye_harrier;
+pub mod sultai_scavenger;
+pub mod savage_knuckleblade;

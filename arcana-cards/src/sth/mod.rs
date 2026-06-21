@@ -23,3 +23,4 @@ pub mod convulsing_licid;
 pub mod thalakos_deceiver;
 pub mod spindrift_drake;
 pub mod skeleton_scavengers;
+pub mod mindwarper;

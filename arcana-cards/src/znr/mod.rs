@@ -97,3 +97,4 @@ pub mod archon_of_emeria;
 pub mod grakmaw_skyclave_ravager;
 pub mod angel_of_destiny;
 pub mod murasa_rootgrazer;
+pub mod stonework_packbeast;

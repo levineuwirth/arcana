@@ -128,3 +128,6 @@ pub mod qarsi_revenant;
 pub mod karakyk_guardian;
 pub mod sunpearl_kirin;
 pub mod alchemist_s_assistant;
+pub mod zurgo_s_vanguard;
+pub mod jeskai_brushmaster;
+pub mod fangkeeper_s_familiar;

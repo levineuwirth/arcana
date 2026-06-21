@@ -115,3 +115,6 @@ pub mod plague_nurse;
 pub mod evolving_adaptive;
 pub mod bilious_skulldweller;
 pub mod jawbone_duelist;
+pub mod slaughter_singer;
+pub mod elesh_norn_mother_of_machines;
+pub mod resistance_skywarden;

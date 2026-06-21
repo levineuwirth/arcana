@@ -33,3 +33,5 @@ pub mod gluttonous_slime;
 pub mod ink_eyes_servant_of_oni;
 pub mod higure_the_still_wind;
 pub mod augury_owl;
+pub mod guard_gomazoa;
+pub mod whirlpool_warrior;

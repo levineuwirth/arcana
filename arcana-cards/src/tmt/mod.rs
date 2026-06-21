@@ -89,3 +89,5 @@ pub mod insectoid_exterminator;
 pub mod wingnut_bat_on_the_belfry;
 pub mod don_raph_hard_science;
 pub mod dark_leo_shredder;
+pub mod buzz_bots;
+pub mod michelangelo_mutant_bff;

@@ -29,3 +29,5 @@ pub mod tithe_drinker;
 pub mod boneyard_scourge;
 pub mod bloodhusk_ritualist;
 pub mod dromoka_the_eternal;
+pub mod orator_of_ojutai;
+pub mod jedit_ojanen_of_efrava;

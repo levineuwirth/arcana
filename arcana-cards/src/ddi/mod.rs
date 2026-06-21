@@ -16,3 +16,4 @@ pub mod neurok_invisimancer;
 pub mod vulshok_sorcerer;
 pub mod windreaver;
 pub mod jedit_s_dragoons;
+pub mod greater_stone_spirit;

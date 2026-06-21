@@ -76,3 +76,5 @@ pub mod woodland_wanderer;
 pub mod cryptic_cruiser;
 pub mod ondu_greathorn;
 pub mod munda_ambush_leader;
+pub mod windrider_patrol;
+pub mod skyrider_elf;

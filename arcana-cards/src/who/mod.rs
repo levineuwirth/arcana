@@ -63,3 +63,6 @@ pub mod jenny_flint;
 pub mod cult_of_skaro;
 pub mod yasmin_khan;
 pub mod flaming_tyrannosaurus;
+pub mod the_tenth_doctor;
+pub mod nyssa_of_traken;
+pub mod ace_fearless_rebel;

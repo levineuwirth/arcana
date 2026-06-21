@@ -112,3 +112,6 @@ pub mod aang_the_last_airbender;
 pub mod azula_on_the_hunt;
 pub mod ty_lee_artful_acrobat;
 pub mod sparring_dummy;
+pub mod walltop_sentries;
+pub mod zhao_the_moon_slayer;
+pub mod yuyan_archers;

@@ -140,3 +140,6 @@ pub mod heartfire_hero;
 pub mod nettle_guard;
 pub mod knightfisher;
 pub mod downwind_ambusher;
+pub mod flowerfoot_swordmaster;
+pub mod barkform_harvester;
+pub mod valley_rotcaller;

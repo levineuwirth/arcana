@@ -130,3 +130,4 @@ pub mod daybreak_combatants;
 pub mod cemetery_prowler;
 pub mod olivia_s_attendants;
 pub mod cemetery_protector;
+pub mod dreamshackle_geist;

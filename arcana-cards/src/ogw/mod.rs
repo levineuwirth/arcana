@@ -57,3 +57,5 @@ pub mod embodiment_of_fury;
 pub mod prophet_of_distortion;
 pub mod eldrazi_obligator;
 pub mod general_tazri;
+pub mod linvala_the_preserver;
+pub mod reckless_bushwhacker;

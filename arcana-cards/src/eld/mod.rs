@@ -115,3 +115,4 @@ pub mod garenbrig_paladin;
 pub mod brimstone_trebuchet;
 pub mod thorn_mammoth;
 pub mod inquisitive_puppet;
+pub mod oathsworn_knight;

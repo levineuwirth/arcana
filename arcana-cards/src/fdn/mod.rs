@@ -232,3 +232,6 @@ pub mod drogskol_reaver;
 pub mod goblin_smuggler;
 pub mod vizier_of_the_menagerie;
 pub mod cackling_prowler;
+pub mod skyknight_squire;
+pub mod apothecary_stomper;
+pub mod strongbox_raider;

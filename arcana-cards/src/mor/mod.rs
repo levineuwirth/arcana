@@ -39,3 +39,4 @@ pub mod brighthearth_banneret;
 pub mod cenn_s_tactician;
 pub mod changeling_sentinel;
 pub mod greatbow_doyen;
+pub mod moonglove_changeling;

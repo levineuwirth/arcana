@@ -54,3 +54,6 @@ pub mod rathi_fiend;
 pub mod lin_sivvi_defiant_hero;
 pub mod rootwater_thief;
 pub mod rathi_assassin;
+pub mod mogg_toady;
+pub mod rusting_golem;
+pub mod nesting_wurm;

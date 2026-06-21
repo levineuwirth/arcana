@@ -108,3 +108,5 @@ pub mod tyvar_the_pummeler;
 pub mod toby_beastie_befriender;
 pub mod overgrown_zealot;
 pub mod enduring_innocence;
+pub mod marina_vendrell;
+pub mod altanak_the_thrice_called;

@@ -47,3 +47,5 @@ pub mod conclave_phalanx;
 pub mod vigean_graftmage;
 pub mod thunderblust;
 pub mod guile;
+pub mod novijen_sages;
+pub mod dragonsoul_knight;

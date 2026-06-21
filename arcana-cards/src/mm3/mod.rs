@@ -42,3 +42,4 @@ pub mod ogre_jailbreaker;
 pub mod sunhome_guildmage;
 pub mod hanweir_lancer;
 pub mod wingcrafter;
+pub mod scourge_devil;

@@ -89,3 +89,5 @@ pub mod aven_eternal;
 pub mod elite_guardmage;
 pub mod god_eternal_oketra;
 pub mod vizier_of_the_scorpion;
+pub mod god_eternal_kefnet;
+pub mod ahn_crop_invader;

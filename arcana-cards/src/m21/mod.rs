@@ -121,3 +121,6 @@ pub mod pack_leader;
 pub mod alpine_houndmaster;
 pub mod stormwing_entity;
 pub mod gale_swooper;
+pub mod trufflesnout;
+pub mod watcher_of_the_spheres;
+pub mod portcullis_vine;

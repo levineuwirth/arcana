@@ -41,3 +41,4 @@ pub mod bell_borca_spectral_sergeant;
 pub mod xira_the_golden_sting;
 pub mod o_kagachi_vengeful_kami;
 pub mod zeriam_golden_wind;
+pub mod rasputin_the_oneiromancer;

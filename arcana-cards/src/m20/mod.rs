@@ -133,3 +133,5 @@ pub mod apostle_of_purifying_light;
 pub mod agent_of_treachery;
 pub mod knight_of_the_ebon_legion;
 pub mod skyknight_vanguard;
+pub mod blightbeetle;
+pub mod boreal_elemental;

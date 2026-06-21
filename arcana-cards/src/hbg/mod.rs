@@ -109,3 +109,4 @@ pub mod tiefling_outcasts;
 pub mod viconia_disciple_of_strength;
 pub mod karlach_tiefling_berserker;
 pub mod vhal_scholar_of_creation;
+pub mod sarevok_deadly_usurper;

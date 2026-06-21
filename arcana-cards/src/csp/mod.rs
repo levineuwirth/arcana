@@ -51,3 +51,5 @@ pub mod frost_raptor;
 pub mod frostweb_spider;
 pub mod garza_s_assassin;
 pub mod survivor_of_the_unseen;
+pub mod woolly_razorback;
+pub mod earthen_goo;

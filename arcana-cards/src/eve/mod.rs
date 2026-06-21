@@ -66,3 +66,6 @@ pub mod duergar_cave_guard;
 pub mod talonrend;
 pub mod twinblade_slasher;
 pub mod rendclaw_trow;
+pub mod lingering_tormentor;
+pub mod indigo_faerie;
+pub mod trapjaw_kelpie;

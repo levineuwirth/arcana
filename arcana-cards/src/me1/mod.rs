@@ -68,3 +68,5 @@ pub mod illusionary_wall;
 pub mod mountain_yeti;
 pub mod order_of_leitbur;
 pub mod yavimaya_ants;
+pub mod walking_wall;
+pub mod granite_gargoyle;

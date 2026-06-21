@@ -207,3 +207,5 @@ pub mod nalia_de_arnise;
 pub mod urabrask_the_hidden;
 pub mod tiamat_s_fanatics;
 pub mod white_plume_adventurer;
+pub mod ryusei_the_falling_star;
+pub mod dauthi_horror;

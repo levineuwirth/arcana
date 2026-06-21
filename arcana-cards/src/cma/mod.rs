@@ -41,3 +41,4 @@ pub mod mana_charged_dragon;
 pub mod wolfbriar_elemental;
 pub mod creeperhulk;
 pub mod deceiver_exarch;
+pub mod aerie_mystics;

@@ -108,3 +108,7 @@ pub mod breya_etherium_shaper;
 pub mod grim_servant;
 pub mod detective_s_phoenix;
 pub mod indebted_spirit;
+pub mod dreamdrinker_vampire;
+pub mod glyph_elemental;
+pub mod fetid_gargantua;
+pub mod kaalia_of_the_vast;

@@ -179,3 +179,5 @@ pub mod moonshaker_cavalry;
 pub mod owlin_spiralmancer;
 pub mod altered_ego;
 pub mod sun_titan;
+pub mod serra_paragon;
+pub mod guardian_scalelord;

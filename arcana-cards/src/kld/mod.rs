@@ -96,3 +96,5 @@ pub mod minister_of_inquiries;
 pub mod servant_of_the_conduit;
 pub mod long_finned_skywhale;
 pub mod lathnu_hellion;
+pub mod aether_theorist;
+pub mod eddytrail_hawk;

@@ -110,3 +110,8 @@ pub mod kunoros_hound_of_athreos;
 pub mod phoenix_of_ash;
 pub mod thaumaturge_s_familiar;
 pub mod sunmane_pegasus;
+pub mod polukranos_unchained;
+pub mod sphinx_mindbreaker;
+pub mod stampede_rider;
+pub mod aphemia_the_cacophony;
+pub mod nexus_wardens;

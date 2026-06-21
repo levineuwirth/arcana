@@ -15,3 +15,6 @@ pub mod harnessed_snubhorn;
 pub mod metropolis_reformer;
 pub mod kiora_sovereign_of_the_deep;
 pub mod gold_forged_thopteryx;
+pub mod jolrael_voice_of_zhalfir;
+pub mod markov_baron;
+pub mod danitha_new_benalia_s_light;

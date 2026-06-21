@@ -72,3 +72,4 @@ pub mod wintermoor_commander;
 pub mod duergar_hedge_mage;
 pub mod village_bell_ringer;
 pub mod hellkite_igniter;
+pub mod arvad_the_cursed;

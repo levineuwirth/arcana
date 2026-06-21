@@ -134,3 +134,5 @@ pub mod blim_comedic_genius;
 pub mod dawnglade_regent;
 pub mod rebbec_architect_of_ascension;
 pub mod lys_alana_bowmaster;
+pub mod stumpsquall_hydra;
+pub mod skaab_goliath;

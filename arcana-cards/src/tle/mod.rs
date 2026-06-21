@@ -70,3 +70,4 @@ pub mod mai_and_zuko;
 pub mod dutiful_knowledge_seeker;
 pub mod sokka_swordmaster;
 pub mod avatar_roku_firebender;
+pub mod appa_the_vigilant;

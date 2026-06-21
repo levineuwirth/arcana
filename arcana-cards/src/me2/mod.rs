@@ -88,3 +88,5 @@ pub mod wall_of_kelp;
 pub mod elvish_farmer;
 pub mod storm_elemental;
 pub mod rogue_skycaptain;
+pub mod foul_familiar;
+pub mod woolly_spider;

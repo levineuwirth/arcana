@@ -141,3 +141,5 @@ pub mod a_demilich;
 pub mod iron_golem;
 pub mod minsc_beloved_ranger;
 pub mod dragon_s_disciple;
+pub mod white_dragon;
+pub mod minion_of_the_mighty;

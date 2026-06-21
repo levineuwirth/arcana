@@ -83,3 +83,6 @@ pub mod coastline_chimera;
 pub mod leafcrown_dryad;
 pub mod nylea_god_of_the_hunt;
 pub mod observant_alseid;
+pub mod setessan_griffin;
+pub mod nemesis_of_mortals;
+pub mod disciple_of_phenax;

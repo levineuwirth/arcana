@@ -69,3 +69,4 @@ pub mod undead_leotau;
 pub mod gustrider_exuberant;
 pub mod jungle_weaver;
 pub mod windwright_mage;
+pub mod court_archers;

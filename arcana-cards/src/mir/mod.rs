@@ -94,3 +94,7 @@ pub mod phyrexian_dreadnought;
 pub mod sea_scryer;
 pub mod dirtwater_wraith;
 pub mod benthic_djinn;
+pub mod zuberi_golden_feather;
+pub mod hivis_of_the_scale;
+pub mod telim_tor;
+pub mod auspicious_ancestor;

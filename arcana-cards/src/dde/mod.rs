@@ -17,3 +17,5 @@ pub mod phyrexian_negator;
 pub mod sanguine_guard;
 pub mod darigaaz_the_igniter;
 pub mod order_of_yawgmoth;
+pub mod gerrard_capashen;
+pub mod phyrexian_battleflies;

@@ -41,3 +41,6 @@ pub mod blood_toll_harpy;
 pub mod pyretic_hunter;
 pub mod stormchaser_chimera;
 pub mod skittering_crustacean;
+pub mod caller_of_the_untamed;
+pub mod sinuous_vermin;
+pub mod crown_hunter_hireling;

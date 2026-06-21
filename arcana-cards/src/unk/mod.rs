@@ -152,3 +152,8 @@ pub mod you_iterative_playtester;
 pub mod oozeavite;
 pub mod the_value_knight;
 pub mod jeska_and_kamahl;
+pub mod brave_falconhawk;
+pub mod hound_of_urabrask;
+pub mod dan_shrewd_trader;
+pub mod praetorhoof_behemoth;
+pub mod old_way_phyrexian;
