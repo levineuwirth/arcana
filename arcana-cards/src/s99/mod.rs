@@ -21,3 +21,4 @@ pub mod undo;
 pub mod devout_monk;
 pub mod dakmor_ghoul;
 pub mod ingenious_thief;
+pub mod shrieking_specter;

@@ -126,3 +126,7 @@ pub mod gryffwing_cavalry;
 pub mod fell_stinger;
 pub mod stormchaser_drake;
 pub mod heron_of_hope;
+pub mod daybreak_combatants;
+pub mod cemetery_prowler;
+pub mod olivia_s_attendants;
+pub mod cemetery_protector;

@@ -8,3 +8,4 @@ pub mod shimian_night_stalker;
 pub mod goblin_artisans;
 pub mod runesword;
 pub mod wall_of_shadows;
+pub mod wall_of_opposition;

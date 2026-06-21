@@ -126,3 +126,6 @@ pub mod moonshadow;
 pub mod hexing_squelcher;
 pub mod kulrath_zealot;
 pub mod lys_alana_dignitary;
+pub mod glamer_gifter;
+pub mod mischievous_sneakling;
+pub mod abigale_eloquent_first_year;

@@ -66,3 +66,5 @@ pub mod detective_of_the_month;
 pub mod fiendish_duo;
 pub mod serene_sleuth;
 pub mod havoc_eater;
+pub mod lonis_cryptozoologist;
+pub mod ethereal_investigator;

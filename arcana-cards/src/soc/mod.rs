@@ -177,3 +177,5 @@ pub mod kinetic_ooze;
 pub mod mangara_the_diplomat;
 pub mod moonshaker_cavalry;
 pub mod owlin_spiralmancer;
+pub mod altered_ego;
+pub mod sun_titan;

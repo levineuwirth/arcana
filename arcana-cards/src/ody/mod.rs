@@ -99,3 +99,6 @@ pub mod childhood_horror;
 pub mod chainflinger;
 pub mod stone_tongue_basilisk;
 pub mod mystic_penitent;
+pub mod dreamwinder;
+pub mod diligent_farmhand;
+pub mod skyshooter;

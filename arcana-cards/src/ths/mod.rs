@@ -80,3 +80,5 @@ pub mod prophet_of_kruphix;
 pub mod anax_and_cymede;
 pub mod decorated_griffin;
 pub mod coastline_chimera;
+pub mod leafcrown_dryad;
+pub mod nylea_god_of_the_hunt;

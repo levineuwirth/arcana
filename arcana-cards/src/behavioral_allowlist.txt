@@ -14,6 +14,7 @@ A-Raiyuu, Storm's Edge
 Absorb Energy
 Access Denied
 Admiral Beckett Brass
+Agent of Treachery
 Aladdin
 All Suns' Dawn
 Altar Golem
@@ -48,6 +49,7 @@ Bloodsoaked Champion
 Bloodtithe Harvester
 Boon of Boseiju
 Brackish Trudge
+Brimstone Trebuchet
 Brimstone Vandal
 Bulwark
 Burst of Energy
@@ -171,6 +173,7 @@ Gustcloak Cavalier
 Gustcloak Harrier
 Gustcloak Runner
 Gustcloak Sentinel
+Gutterbones
 Hana Kami
 Haunt of the Dead Marshes
 Haunted Dead
@@ -183,6 +186,7 @@ Honden of Night's Reach
 Honden of Seeing Winds
 Horseshoe Crab
 Huatli, Dinosaur Knight
+Hydro-Man, Fluid Felon
 Hyperion Blacksmith
 Hyrax Tower Scout
 Imaryll, Elfhame Elite
@@ -348,6 +352,7 @@ Sanctum of Stone Fangs
 Sandstorm Salvager
 Sanitarium Skeleton
 Saryth, the Viper's Fang
+Satsuki, the Living Lore
 Savage Firecat
 Scattering Stroke
 Scoria Wurm

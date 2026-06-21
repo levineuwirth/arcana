@@ -122,3 +122,6 @@ pub mod teval_arbiter_of_virtue;
 pub mod highspire_bell_ringer;
 pub mod shocking_sharpshooter;
 pub mod equilibrium_adept;
+pub mod unrooted_ancestor;
+pub mod felothar_dawn_of_the_abzan;
+pub mod qarsi_revenant;

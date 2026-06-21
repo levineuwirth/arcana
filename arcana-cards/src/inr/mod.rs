@@ -141,3 +141,4 @@ pub mod furyblade_vampire;
 pub mod subjugator_angel;
 pub mod it_of_the_horrid_swarm;
 pub mod bramble_wurm;
+pub mod cultivator_colossus;

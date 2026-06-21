@@ -101,3 +101,6 @@ pub mod timeless_witness;
 pub mod river_kelpie;
 pub mod welcoming_vampire;
 pub mod wall_of_blossoms;
+pub mod twilight_drover;
+pub mod consuming_aberration;
+pub mod territorial_hellkite;

@@ -118,3 +118,5 @@ pub mod soratami_savant;
 pub mod cruel_deceiver;
 pub mod teller_of_tales;
 pub mod kitsune_blademaster;
+pub mod orbweaver_kumo;
+pub mod matsu_tribe_decoy;

@@ -59,3 +59,4 @@ pub mod trapeze_artist;
 pub mod icing_manipulator;
 pub mod vorthos_steward_of_myth;
 pub mod goblin_cruciverbalist;
+pub mod myra_the_magnificent;

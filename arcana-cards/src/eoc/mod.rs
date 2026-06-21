@@ -52,3 +52,4 @@ pub mod aftermath_analyst;
 pub mod uurg_spawn_of_turg;
 pub mod rampaging_baloths;
 pub mod enthusiastic_mechanaut;
+pub mod evendo_brushrazer;

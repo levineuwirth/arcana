@@ -15,3 +15,4 @@ pub mod barrowgoyf;
 pub mod blaster_hulk;
 pub mod chittering_dispatcher;
 pub mod siege_gang_lieutenant;
+pub mod sawhorn_nemesis;

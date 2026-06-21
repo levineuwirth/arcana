@@ -69,3 +69,7 @@ pub mod sanguinary_priest;
 pub mod inquisitor_eisenhorn;
 pub mod lokhust_heavy_destroyer;
 pub mod exalted_flamer_of_tzeentch;
+pub mod hexmark_destroyer;
+pub mod knight_rampager;
+pub mod triarch_praetorian;
+pub mod psychomancer;

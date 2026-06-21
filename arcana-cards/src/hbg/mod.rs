@@ -106,3 +106,4 @@ pub mod oyaminartok_polar_werebear;
 pub mod ambergris_citadel_agent;
 pub mod lae_zel_wrathful_warrior;
 pub mod tiefling_outcasts;
+pub mod viconia_disciple_of_strength;

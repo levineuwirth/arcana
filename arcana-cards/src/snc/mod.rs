@@ -126,3 +126,5 @@ pub mod a_queza_augur_of_agonies;
 pub mod psionic_snoop;
 pub mod night_clubber;
 pub mod disciplined_duelist;
+pub mod a_celestial_regulator;
+pub mod girder_goons;

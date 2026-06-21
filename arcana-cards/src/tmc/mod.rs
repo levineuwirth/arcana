@@ -46,3 +46,5 @@ pub mod leonardo_worldly_warrior;
 pub mod splinter_leo_father_son;
 pub mod monster_mashup;
 pub mod electric_seaweed;
+pub mod roadkill_rodney;
+pub mod donnie_april_adorkable_duo;

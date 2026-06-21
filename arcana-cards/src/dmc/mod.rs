@@ -37,3 +37,5 @@ pub mod chromanticore;
 pub mod the_peregrine_dynamo;
 pub mod greensleeves_maro_sorcerer;
 pub mod moira_urborg_haunt;
+pub mod bell_borca_spectral_sergeant;
+pub mod xira_the_golden_sting;

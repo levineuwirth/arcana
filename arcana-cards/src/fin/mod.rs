@@ -132,3 +132,6 @@ pub mod freya_crescent;
 pub mod cloud_planet_s_champion;
 pub mod sin_spira_s_punishment;
 pub mod tonberry;
+pub mod cactuar;
+pub mod giott_king_of_the_dwarves;
+pub mod rydia_summoner_of_mist;

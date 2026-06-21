@@ -6,3 +6,4 @@ pub mod hamza_might_of_the_yathan;
 pub mod lam_storm_crane_elder;
 pub mod runeblade_raiser;
 pub mod pampered_loamfrill;
+pub mod dalkovan_outrider;

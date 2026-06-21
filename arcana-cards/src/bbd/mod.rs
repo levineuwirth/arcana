@@ -90,3 +90,4 @@ pub mod spellweaver_duo;
 pub mod sower_of_temptation;
 pub mod apocalypse_hydra;
 pub mod plated_crusher;
+pub mod lava_field_overlord;

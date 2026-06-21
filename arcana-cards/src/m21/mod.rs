@@ -119,3 +119,5 @@ pub mod siege_striker;
 pub mod hobblefiend;
 pub mod pack_leader;
 pub mod alpine_houndmaster;
+pub mod stormwing_entity;
+pub mod gale_swooper;

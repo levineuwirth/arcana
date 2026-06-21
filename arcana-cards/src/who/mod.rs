@@ -59,3 +59,5 @@ pub mod atraxi_warden;
 pub mod vashta_nerada;
 pub mod judoon_enforcers;
 pub mod iraxxa_empress_of_mars;
+pub mod jenny_flint;
+pub mod cult_of_skaro;

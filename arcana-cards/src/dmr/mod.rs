@@ -92,3 +92,7 @@ pub mod nut_collector;
 pub mod evil_eye_of_orms_by_gore;
 pub mod yawgmoth_thran_physician;
 pub mod serra_avatar;
+pub mod storm_entity;
+pub mod spiritmonger;
+pub mod street_wraith;
+pub mod suq_ata_lancer;

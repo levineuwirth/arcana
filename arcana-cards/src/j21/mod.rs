@@ -11,3 +11,4 @@ pub mod skyshroud_lookout;
 pub mod subversive_acolyte;
 pub mod shoreline_scout;
 pub mod reckless_ringleader;
+pub mod faceless_agent;

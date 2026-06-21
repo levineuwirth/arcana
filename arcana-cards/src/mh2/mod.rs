@@ -106,3 +106,8 @@ pub mod specimen_collector;
 pub mod arcus_acolyte;
 pub mod jewel_eyed_cobra;
 pub mod sojourner_s_companion;
+pub mod subtlety;
+pub mod prophetic_titan;
+pub mod scurry_oak;
+pub mod guardian_kirin;
+pub mod chatterfang_squirrel_general;

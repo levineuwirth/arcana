@@ -25,3 +25,4 @@ pub mod mu_yanling;
 pub mod jiang_yanggu;
 pub mod welkin_tern;
 pub mod fire_omen_crane;
+pub mod screeching_phoenix;

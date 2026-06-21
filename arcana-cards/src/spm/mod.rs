@@ -77,3 +77,7 @@ pub mod merciless_enforcers;
 pub mod iron_spider_stark_upgrade;
 pub mod spider_punk;
 pub mod green_goblin_revenant;
+pub mod radioactive_spider;
+pub mod cosmic_spider_man;
+pub mod news_helicopter;
+pub mod hydro_man_fluid_felon;

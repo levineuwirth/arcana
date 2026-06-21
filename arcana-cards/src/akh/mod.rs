@@ -75,3 +75,4 @@ pub mod hazoret_the_fervent;
 pub mod dread_wanderer;
 pub mod khenra_charioteer;
 pub mod unwavering_initiate;
+pub mod tah_crop_elite;

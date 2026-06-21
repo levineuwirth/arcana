@@ -80,3 +80,4 @@ pub mod battlewand_oak;
 pub mod sentry_oak;
 pub mod changeling_hero;
 pub mod changeling_berserker;
+pub mod brigid_hero_of_kinsbaile;

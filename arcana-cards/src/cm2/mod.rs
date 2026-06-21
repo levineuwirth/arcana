@@ -34,3 +34,5 @@ pub mod dawnbreak_reclaimer;
 pub mod hunted_dragon;
 pub mod desecrator_hag;
 pub mod epochrasite;
+pub mod patron_of_the_nezumi;
+pub mod damia_sage_of_stone;

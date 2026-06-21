@@ -69,3 +69,8 @@ pub mod deathless_behemoth;
 pub mod fathom_feeder;
 pub mod benthic_infiltrator;
 pub mod skitterskin;
+pub mod guul_draz_overseer;
+pub mod kozilek_s_sentinel;
+pub mod dust_stalker;
+pub mod woodland_wanderer;
+pub mod cryptic_cruiser;

@@ -6,3 +6,4 @@ pub mod surrakar_banisher;
 pub mod kinsbaile_skirmisher;
 pub mod kiora_the_crashing_wave;
 pub mod gustcloak_harrier;
+pub mod nimbus_swimmer;

@@ -129,3 +129,5 @@ pub mod gilanra_caller_of_wirewood;
 pub mod armix_filigree_thrasher;
 pub mod wyleth_soul_of_steel;
 pub mod liesa_shroud_of_dusk;
+pub mod angel_of_the_dawn;
+pub mod blim_comedic_genius;

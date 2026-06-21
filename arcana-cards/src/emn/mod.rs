@@ -64,3 +64,4 @@ pub mod mournwillow;
 pub mod insatiable_gorgers;
 pub mod vampire_cutthroat;
 pub mod swift_spinner;
+pub mod tattered_haunter;

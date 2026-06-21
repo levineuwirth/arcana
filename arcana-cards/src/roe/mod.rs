@@ -44,3 +44,4 @@ pub mod reinforced_bulwark;
 pub mod rage_nimbus;
 pub mod thought_gorger;
 pub mod escaped_null;
+pub mod phantasmal_abomination;

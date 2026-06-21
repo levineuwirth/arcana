@@ -65,3 +65,4 @@ pub mod conifer_wurm;
 pub mod rank_officer;
 pub mod bazaar_trademage;
 pub mod scrapyard_recombiner;
+pub mod ice_fang_coatl;

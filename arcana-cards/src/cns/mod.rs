@@ -35,3 +35,5 @@ pub mod agent_of_acquisitions;
 pub mod minamo_scrollkeeper;
 pub mod ignition_team;
 pub mod cogwork_tracker;
+pub mod woodvine_elemental;
+pub mod cogwork_librarian;

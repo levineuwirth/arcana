@@ -8,3 +8,4 @@ pub mod caldera_breaker;
 pub mod legion_reconsecrator;
 pub mod tan_jolom_the_worldwalker;
 pub mod scalespeaker_shepherd;
+pub mod valiant_batrider;

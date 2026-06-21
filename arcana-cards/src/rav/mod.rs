@@ -67,3 +67,5 @@ pub mod centaur_safeguard;
 pub mod divebomber_griffin;
 pub mod nullstone_gargoyle;
 pub mod stone_seeder_hierophant;
+pub mod sabertooth_alley_cat;
+pub mod autochthon_wurm;

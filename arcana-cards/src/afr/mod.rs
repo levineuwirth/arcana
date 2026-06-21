@@ -131,3 +131,6 @@ pub mod lurking_roper;
 pub mod drizzt_do_urden;
 pub mod inspiring_bard;
 pub mod black_dragon;
+pub mod a_death_priest_of_myrkul;
+pub mod sylvan_shepherd;
+pub mod demilich;

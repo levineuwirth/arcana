@@ -226,3 +226,5 @@ pub mod syr_alin_the_lion_s_claw;
 pub mod juggernaut;
 pub mod arbiter_of_woe;
 pub mod regal_caracal;
+pub mod mindsparker;
+pub mod gleaming_barrier;

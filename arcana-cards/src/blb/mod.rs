@@ -130,3 +130,6 @@ pub mod nightwhorl_hermit;
 pub mod jackdaw_savior;
 pub mod seedglaive_mentor;
 pub mod thornplate_intimidator;
+pub mod clement_the_worrywort;
+pub mod manifold_mouse;
+pub mod thought_stalker_warlock;

@@ -6,3 +6,4 @@ pub mod malleable_impostor;
 pub mod korvold_gleeful_glutton;
 pub mod ellivere_of_the_wild_court;
 pub mod faerie_bladecrafter;
+pub mod blightwing_bandit;

@@ -26,3 +26,5 @@ pub mod angel_of_unity;
 pub mod fearsome_whelp;
 pub mod patient_zero;
 pub mod ethereal_escort;
+pub mod lupine_harbingers;
+pub mod hollowhenge_wrangler;

@@ -15,3 +15,4 @@ pub mod koth_of_the_hammer;
 pub mod neurok_invisimancer;
 pub mod vulshok_sorcerer;
 pub mod windreaver;
+pub mod jedit_s_dragoons;

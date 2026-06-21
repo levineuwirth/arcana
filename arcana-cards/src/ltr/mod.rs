@@ -126,3 +126,6 @@ pub mod frodo_baggins;
 pub mod goldberry_river_daughter;
 pub mod warg_rider;
 pub mod haunt_of_the_dead_marshes;
+pub mod peregrin_took;
+pub mod frodo_sauron_s_bane;
+pub mod wose_pathfinder;

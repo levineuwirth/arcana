@@ -83,3 +83,8 @@ pub mod ice_cream_kitty;
 pub mod armaggon_future_shark;
 pub mod ravenous_robots;
 pub mod mikey_don_party_planners;
+pub mod tokka_rahzar_terrible_twos;
+pub mod kitsune_dragon_s_daughter;
+pub mod insectoid_exterminator;
+pub mod wingnut_bat_on_the_belfry;
+pub mod don_raph_hard_science;

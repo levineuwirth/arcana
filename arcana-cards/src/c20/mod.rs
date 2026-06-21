@@ -34,3 +34,4 @@ pub mod soul_of_innistrad;
 pub mod boneyard_mycodrax;
 pub mod haldan_avid_arcanist;
 pub mod vastwood_hydra;
+pub mod cryptic_trilobite;

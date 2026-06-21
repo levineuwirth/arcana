@@ -147,3 +147,5 @@ pub mod svella_ice_shaper;
 pub mod jaspera_sentinel;
 pub mod runeforge_champion;
 pub mod valkyrie_harbinger;
+pub mod resplendent_marshal;
+pub mod quakebringer;

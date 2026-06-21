@@ -103,3 +103,4 @@ pub mod cold_case_cracker;
 pub mod tenth_district_hero;
 pub mod magnetic_snuffler;
 pub mod kraul_whipcracker;
+pub mod exit_specialist;

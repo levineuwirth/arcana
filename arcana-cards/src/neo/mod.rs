@@ -136,3 +136,5 @@ pub mod go_shintai_of_hidden_cruelty;
 pub mod cloudsteel_kirin;
 pub mod go_shintai_of_ancient_wars;
 pub mod skyswimmer_koi;
+pub mod leech_gauntlet;
+pub mod satsuki_the_living_lore;

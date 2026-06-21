@@ -118,3 +118,4 @@ pub mod terisian_mindbreaker;
 pub mod hoarding_recluse;
 pub mod zephyr_sentinel;
 pub mod koilos_roc;
+pub mod mishra_s_juggernaut;

@@ -17,3 +17,4 @@ pub mod lightwielder_paladin;
 pub mod chandra_s_phoenix;
 pub mod turntimber_basilisk;
 pub mod fiendslayer_paladin;
+pub mod blood_ogre;

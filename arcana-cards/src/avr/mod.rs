@@ -64,3 +64,4 @@ pub mod archwing_dragon;
 pub mod heirs_of_stromkirk;
 pub mod wolfir_avenger;
 pub mod angel_of_jubilation;
+pub mod nightshade_peddler;

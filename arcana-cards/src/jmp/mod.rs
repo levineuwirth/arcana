@@ -166,3 +166,4 @@ pub mod fell_specter;
 pub mod lena_selfless_champion;
 pub mod trusty_retriever;
 pub mod sheoldred_whispering_one;
+pub mod wren_s_run_vanquisher;

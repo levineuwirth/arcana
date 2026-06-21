@@ -89,3 +89,7 @@ pub mod shauku_endbringer;
 pub mod urborg_panther;
 pub mod femeref_knight;
 pub mod haunting_apparition;
+pub mod mtenda_griffin;
+pub mod phyrexian_dreadnought;
+pub mod sea_scryer;
+pub mod dirtwater_wraith;

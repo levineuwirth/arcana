@@ -39,3 +39,5 @@ pub mod cloaked_siren;
 pub mod grenzo_s_ruffians;
 pub mod blood_toll_harpy;
 pub mod pyretic_hunter;
+pub mod stormchaser_chimera;
+pub mod skittering_crustacean;

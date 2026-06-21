@@ -53,3 +53,5 @@ pub mod inferno_project;
 pub mod sangromancer;
 pub mod guardian_archon;
 pub mod radiant_performer;
+pub mod tivash_gloom_summoner;
+pub mod arashi_the_sky_asunder;

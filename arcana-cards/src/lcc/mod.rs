@@ -73,3 +73,5 @@ pub mod azure_fleet_admiral;
 pub mod kinjalli_s_sunwing;
 pub mod quartzwood_crasher;
 pub mod otepec_huntmaster;
+pub mod dusk_legion_sergeant;
+pub mod malcolm_keen_eyed_navigator;

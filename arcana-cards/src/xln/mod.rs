@@ -89,3 +89,4 @@ pub mod fire_shrine_keeper;
 pub mod steadfast_armasaur;
 pub mod shapers_of_nature;
 pub mod dreamcaller_siren;
+pub mod siren_lookout;

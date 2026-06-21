@@ -104,3 +104,4 @@ pub mod devourer_of_destiny;
 pub mod faithful_watchdog;
 pub mod arna_kenner_d_skycaptain;
 pub mod trickster_s_elk;
+pub mod breya_etherium_shaper;

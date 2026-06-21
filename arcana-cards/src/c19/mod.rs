@@ -32,3 +32,5 @@ pub mod marisi_breaker_of_the_coil;
 pub mod volrath_the_shapestealer;
 pub mod roc_egg;
 pub mod pristine_angel;
+pub mod tectonic_hellion;
+pub mod gerrard_weatherlight_hero;

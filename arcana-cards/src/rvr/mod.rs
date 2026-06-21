@@ -95,3 +95,5 @@ pub mod cloudfin_raptor;
 pub mod experiment_one;
 pub mod bloodfray_giant;
 pub mod conclave_cavalier;
+pub mod frilled_mystic;
+pub mod petrahydrox;

@@ -12,3 +12,4 @@ pub mod saiba_syphoner;
 pub mod swarm_saboteur;
 pub mod chronicler_of_worship;
 pub mod artillery_enthusiast;
+pub mod imperial_blademaster;

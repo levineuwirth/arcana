@@ -62,3 +62,4 @@ pub mod foundry_champion;
 pub mod kingpin_s_pet;
 pub mod legion_loyalist;
 pub mod corpse_blockade;
+pub mod duskmantle_guildmage;

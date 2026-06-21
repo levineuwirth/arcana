@@ -106,3 +106,7 @@ pub mod beastbond_outcaster;
 pub mod spinewoods_paladin;
 pub mod jolene_plundering_pugilist;
 pub mod harrier_strix;
+pub mod congregation_gryff;
+pub mod seraphic_steed;
+pub mod aloe_alchemist;
+pub mod redrock_sentinel;

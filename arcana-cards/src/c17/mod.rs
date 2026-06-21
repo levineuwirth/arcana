@@ -24,3 +24,6 @@ pub mod qasali_slingers;
 pub mod broodmate_dragon;
 pub mod inalla_archmage_ritualist;
 pub mod crosis_the_purger;
+pub mod kheru_mind_eater;
+pub mod tithe_drinker;
+pub mod boneyard_scourge;

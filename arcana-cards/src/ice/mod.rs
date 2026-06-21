@@ -54,3 +54,4 @@ pub mod general_jarkeld;
 pub mod illusionary_presence;
 pub mod flow_of_maggots;
 pub mod orcish_healer;
+pub mod chaos_lord;

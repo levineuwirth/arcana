@@ -144,3 +144,5 @@ pub mod lord_skitter_sewer_king;
 pub mod savior_of_the_sleeping;
 pub mod will_scion_of_peace;
 pub mod likeness_looter;
+pub mod werefox_bodyguard;
+pub mod malevolent_witchkite;

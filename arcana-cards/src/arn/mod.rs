@@ -2,3 +2,4 @@
 pub mod stone_throwing_devils;
 pub mod king_suleiman;
 pub mod sandals_of_abdallah;
+pub mod camel;

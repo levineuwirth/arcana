@@ -74,3 +74,6 @@ pub mod wrecking_beast;
 pub mod growth_chamber_guardian;
 pub mod carrion_imp;
 pub mod senate_griffin;
+pub mod gutterbones;
+pub mod knight_of_sorrows;
+pub mod tithe_taker;

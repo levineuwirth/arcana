@@ -112,3 +112,5 @@ pub mod garrison_griffin;
 pub mod elite_headhunter;
 pub mod burning_yard_trainer;
 pub mod garenbrig_paladin;
+pub mod brimstone_trebuchet;
+pub mod thorn_mammoth;

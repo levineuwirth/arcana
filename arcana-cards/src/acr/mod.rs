@@ -37,3 +37,6 @@ pub mod surtr_fiery_j_tun;
 pub mod desmond_miles;
 pub mod ezio_auditore_da_firenze;
 pub mod tax_collector;
+pub mod alta_r_ibn_la_ahad;
+pub mod poison_blade_mentor;
+pub mod the_capitoline_triad;

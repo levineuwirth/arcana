@@ -195,3 +195,6 @@ pub mod alora_merry_thief;
 pub mod kagha_shadow_archdruid;
 pub mod scouting_hawk;
 pub mod lulu_loyal_hollyphant;
+pub mod seasoned_dungeoneer;
+pub mod amber_gristle_o_maul;
+pub mod lozhan_dragons_legacy;

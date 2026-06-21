@@ -54,3 +54,5 @@ pub mod sky_scourer;
 pub mod void_grafter;
 pub mod kozilek_s_shrieker;
 pub mod embodiment_of_fury;
+pub mod prophet_of_distortion;
+pub mod eldrazi_obligator;

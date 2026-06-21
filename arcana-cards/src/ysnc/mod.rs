@@ -9,3 +9,4 @@ pub mod loose_in_the_park;
 pub mod effluence_devourer;
 pub mod graven_archfiend;
 pub mod nightclub_bouncer;
+pub mod menagerie_curator;

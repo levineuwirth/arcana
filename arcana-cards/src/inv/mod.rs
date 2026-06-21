@@ -99,3 +99,5 @@ pub mod cinder_shade;
 pub mod prison_barricade;
 pub mod dream_thrush;
 pub mod crypt_angel;
+pub mod nightscape_master;
+pub mod ardent_soldier;

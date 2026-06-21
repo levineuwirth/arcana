@@ -67,3 +67,5 @@ pub mod champion_of_lambholt;
 pub mod infernal_sovereign;
 pub mod exsanguinator_cavalry;
 pub mod suture_priest;
+pub mod gimbal_gremlin_prodigy;
+pub mod wintermoor_commander;

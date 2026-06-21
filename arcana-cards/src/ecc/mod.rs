@@ -54,3 +54,5 @@ pub mod endurance;
 pub mod grave_titan;
 pub mod devoted_druid;
 pub mod mulldrifter;
+pub mod foundation_breaker;
+pub mod the_scorpion_god;

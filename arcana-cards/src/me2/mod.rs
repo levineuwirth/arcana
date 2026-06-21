@@ -84,3 +84,6 @@ pub mod ebon_praetor;
 pub mod drift_of_the_dead;
 pub mod sustaining_spirit;
 pub mod phantasmal_mount;
+pub mod wall_of_kelp;
+pub mod elvish_farmer;
+pub mod storm_elemental;

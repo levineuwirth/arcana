@@ -46,3 +46,4 @@ pub mod moonlit_strider;
 pub mod conclave_phalanx;
 pub mod vigean_graftmage;
 pub mod thunderblust;
+pub mod guile;

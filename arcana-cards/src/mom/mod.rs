@@ -160,3 +160,5 @@ pub mod rampaging_geoderm;
 pub mod redcap_heelslasher;
 pub mod mutagen_connoisseur;
 pub mod sigiled_sentinel;
+pub mod doomskar_warrior;
+pub mod terror_of_towashi;

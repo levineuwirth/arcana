@@ -109,3 +109,5 @@ pub mod bladegraft_aspirant;
 pub mod chrome_prowler;
 pub mod necrogen_rotpriest;
 pub mod atraxa_s_skitterfang;
+pub mod sheoldred_s_headcleaver;
+pub mod pestilent_syphoner;

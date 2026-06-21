@@ -107,3 +107,4 @@ pub mod the_earth_king;
 pub mod appa_loyal_sky_bison;
 pub mod fire_nation_cadets;
 pub mod lo_and_li_twin_tutors;
+pub mod fire_navy_trebuchet;
