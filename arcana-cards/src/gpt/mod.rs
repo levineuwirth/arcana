@@ -48,3 +48,6 @@ pub mod crystal_seer;
 pub mod gatherer_of_graces;
 pub mod souls_of_the_faultless;
 pub mod exhumer_thrull;
+pub mod borborygmos;
+pub mod sky_swallower;
+pub mod stratozeppelid;

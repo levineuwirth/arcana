@@ -25,3 +25,5 @@ pub mod akroan_horse;
 pub mod ravos_soultender;
 pub mod akiri_line_slinger;
 pub mod runehorn_hellkite;
+pub mod wilderness_elemental;
+pub mod bruse_tarl_boorish_herder;

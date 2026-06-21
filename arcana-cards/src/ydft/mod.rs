@@ -4,3 +4,4 @@ pub mod chomping_mastasaur;
 pub mod naktamun_shines_again;
 pub mod trackhand_trainer;
 pub mod great_fang_chroniclers;
+pub mod fuel_tank_feaster;

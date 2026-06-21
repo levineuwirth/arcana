@@ -109,3 +109,4 @@ pub mod scavenging_harpy;
 pub mod kunoros_hound_of_athreos;
 pub mod phoenix_of_ash;
 pub mod thaumaturge_s_familiar;
+pub mod sunmane_pegasus;

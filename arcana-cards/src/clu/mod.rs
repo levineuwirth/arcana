@@ -101,3 +101,4 @@ pub mod underrealm_lich;
 pub mod trostani_discordant;
 pub mod cloudkin_seer;
 pub mod scuttlegator;
+pub mod masked_blackguard;

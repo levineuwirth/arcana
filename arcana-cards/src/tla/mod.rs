@@ -108,3 +108,7 @@ pub mod appa_loyal_sky_bison;
 pub mod fire_nation_cadets;
 pub mod lo_and_li_twin_tutors;
 pub mod fire_navy_trebuchet;
+pub mod aang_the_last_airbender;
+pub mod azula_on_the_hunt;
+pub mod ty_lee_artful_acrobat;
+pub mod sparring_dummy;

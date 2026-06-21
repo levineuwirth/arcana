@@ -35,3 +35,5 @@ pub mod shimian_specter;
 pub mod nefarox_overlord_of_grixis;
 pub mod duty_bound_dead;
 pub mod reckless_brute;
+pub mod xathrid_gorgon;
+pub mod duskmantle_prowler;

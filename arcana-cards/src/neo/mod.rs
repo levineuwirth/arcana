@@ -138,3 +138,6 @@ pub mod go_shintai_of_ancient_wars;
 pub mod skyswimmer_koi;
 pub mod leech_gauntlet;
 pub mod satsuki_the_living_lore;
+pub mod prosperous_thief;
+pub mod hinata_dawn_crowned;
+pub mod tatsunari_toad_rider;

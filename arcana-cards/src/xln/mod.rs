@@ -90,3 +90,5 @@ pub mod steadfast_armasaur;
 pub mod shapers_of_nature;
 pub mod dreamcaller_siren;
 pub mod siren_lookout;
+pub mod blight_keeper;
+pub mod sunrise_seeker;

@@ -74,3 +74,5 @@ pub mod kozilek_s_sentinel;
 pub mod dust_stalker;
 pub mod woodland_wanderer;
 pub mod cryptic_cruiser;
+pub mod ondu_greathorn;
+pub mod munda_ambush_leader;

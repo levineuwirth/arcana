@@ -75,3 +75,6 @@ pub mod quartzwood_crasher;
 pub mod otepec_huntmaster;
 pub mod dusk_legion_sergeant;
 pub mod malcolm_keen_eyed_navigator;
+pub mod illustrious_wanderglyph;
+pub mod timestream_navigator;
+pub mod majestic_heliopterus;

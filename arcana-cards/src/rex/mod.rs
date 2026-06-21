@@ -10,3 +10,4 @@ pub mod ravenous_tyrannosaurus;
 pub mod blue_loyal_raptor;
 pub mod ian_malcolm_chaotician;
 pub mod owen_grady_raptor_trainer;
+pub mod indoraptor_the_perfect_hybrid;

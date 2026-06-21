@@ -61,3 +61,5 @@ pub mod sky_eel_school;
 pub mod ichor_rats;
 pub mod kuldotha_phoenix;
 pub mod acid_web_spider;
+pub mod ichorclaw_myr;
+pub mod tel_jilad_fallen;

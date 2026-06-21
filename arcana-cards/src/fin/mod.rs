@@ -135,3 +135,7 @@ pub mod tonberry;
 pub mod cactuar;
 pub mod giott_king_of_the_dwarves;
 pub mod rydia_summoner_of_mist;
+pub mod ultimecia_temporal_threat;
+pub mod ardyn_the_usurper;
+pub mod judge_magister_gabranth;
+pub mod aerith_gainsborough;

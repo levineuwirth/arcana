@@ -39,3 +39,5 @@ pub mod greensleeves_maro_sorcerer;
 pub mod moira_urborg_haunt;
 pub mod bell_borca_spectral_sergeant;
 pub mod xira_the_golden_sting;
+pub mod o_kagachi_vengeful_kami;
+pub mod zeriam_golden_wind;

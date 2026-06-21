@@ -37,3 +37,6 @@ pub mod caldera_kavu;
 pub mod sunscape_familiar;
 pub mod stratadon;
 pub mod aurora_griffin;
+pub mod dralnu_s_pet;
+pub mod sparkcaster;
+pub mod stone_kavu;

@@ -52,3 +52,7 @@ pub mod arcade_gannon;
 pub mod piper_wright_publick_reporter;
 pub mod dogmeat_ever_loyal;
 pub mod the_master_transcendent;
+pub mod mysterious_stranger;
+pub mod bloatfly_swarm;
+pub mod brotherhood_outcast;
+pub mod maccready_lamplight_mayor;

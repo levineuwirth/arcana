@@ -114,3 +114,4 @@ pub mod burning_yard_trainer;
 pub mod garenbrig_paladin;
 pub mod brimstone_trebuchet;
 pub mod thorn_mammoth;
+pub mod inquisitive_puppet;

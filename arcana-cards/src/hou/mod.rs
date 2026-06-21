@@ -76,3 +76,4 @@ pub mod eternal_of_harsh_truths;
 pub mod resilient_khenra;
 pub mod hollow_one;
 pub mod steadfast_sentinel;
+pub mod hope_tender;

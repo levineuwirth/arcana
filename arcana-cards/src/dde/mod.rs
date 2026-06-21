@@ -16,3 +16,4 @@ pub mod thornscape_apprentice;
 pub mod phyrexian_negator;
 pub mod sanguine_guard;
 pub mod darigaaz_the_igniter;
+pub mod order_of_yawgmoth;

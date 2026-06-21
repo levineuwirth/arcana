@@ -149,3 +149,5 @@ pub mod cho_arrim_legate;
 pub mod flailing_soldier;
 pub mod molting_harpy;
 pub mod cateran_enforcer;
+pub mod delraich;
+pub mod corrupt_official;

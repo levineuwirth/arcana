@@ -18,3 +18,5 @@ pub mod ellie_vengeful_hunter;
 pub mod shadow_the_hedgehog;
 pub mod storm_force_of_nature;
 pub mod jaws_relentless_predator;
+pub mod nathan_drake_treasure_hunter;
+pub mod black_panther_wakandan_king;

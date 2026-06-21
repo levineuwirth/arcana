@@ -88,3 +88,4 @@ pub mod kitsune_dragon_s_daughter;
 pub mod insectoid_exterminator;
 pub mod wingnut_bat_on_the_belfry;
 pub mod don_raph_hard_science;
+pub mod dark_leo_shredder;

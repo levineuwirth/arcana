@@ -120,3 +120,5 @@ pub mod teller_of_tales;
 pub mod kitsune_blademaster;
 pub mod orbweaver_kumo;
 pub mod matsu_tribe_decoy;
+pub mod kabuto_moth;
+pub mod pious_kitsune;

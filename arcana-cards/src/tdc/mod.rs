@@ -104,3 +104,6 @@ pub mod wall_of_blossoms;
 pub mod twilight_drover;
 pub mod consuming_aberration;
 pub mod territorial_hellkite;
+pub mod scourge_of_the_throne;
+pub mod grenzo_havoc_raiser;
+pub mod tasigur_the_golden_fang;

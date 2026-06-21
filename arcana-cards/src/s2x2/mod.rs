@@ -100,3 +100,5 @@ pub mod uril_the_miststalker;
 pub mod ashenmoor_liege;
 pub mod league_guildmage;
 pub mod qasali_pridemage;
+pub mod jodah_archmage_eternal;
+pub mod teneb_the_harvester;

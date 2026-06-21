@@ -63,3 +63,5 @@ pub mod felix_five_boots;
 pub mod cold_eyed_selkie;
 pub mod kamber_the_plunderer;
 pub mod octavia_living_thesis;
+pub mod silent_blade_oni;
+pub mod captain_lannery_storm;

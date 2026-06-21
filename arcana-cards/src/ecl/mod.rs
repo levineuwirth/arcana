@@ -129,3 +129,4 @@ pub mod lys_alana_dignitary;
 pub mod glamer_gifter;
 pub mod mischievous_sneakling;
 pub mod abigale_eloquent_first_year;
+pub mod catharsis;

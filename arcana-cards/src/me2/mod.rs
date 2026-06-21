@@ -87,3 +87,4 @@ pub mod phantasmal_mount;
 pub mod wall_of_kelp;
 pub mod elvish_farmer;
 pub mod storm_elemental;
+pub mod rogue_skycaptain;

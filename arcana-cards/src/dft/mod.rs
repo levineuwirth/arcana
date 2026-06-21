@@ -97,3 +97,5 @@ pub mod goblin_surveyor;
 pub mod sab_sunen_luxa_embodied;
 pub mod molt_tender;
 pub mod wreckage_wickerfolk;
+pub mod loxodon_surveyor;
+pub mod glitch_ghost_surveyor;

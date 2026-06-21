@@ -50,3 +50,4 @@ pub mod ronom_hulk;
 pub mod frost_raptor;
 pub mod frostweb_spider;
 pub mod garza_s_assassin;
+pub mod survivor_of_the_unseen;

@@ -111,3 +111,7 @@ pub mod necrogen_rotpriest;
 pub mod atraxa_s_skitterfang;
 pub mod sheoldred_s_headcleaver;
 pub mod pestilent_syphoner;
+pub mod plague_nurse;
+pub mod evolving_adaptive;
+pub mod bilious_skulldweller;
+pub mod jawbone_duelist;

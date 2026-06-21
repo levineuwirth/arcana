@@ -83,3 +83,4 @@ pub mod fear_of_sleep_paralysis;
 pub mod rakdos_lord_of_riots;
 pub mod whisperwood_elemental;
 pub mod hornet_queen;
+pub mod soaring_lightbringer;

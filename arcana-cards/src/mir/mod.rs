@@ -93,3 +93,4 @@ pub mod mtenda_griffin;
 pub mod phyrexian_dreadnought;
 pub mod sea_scryer;
 pub mod dirtwater_wraith;
+pub mod benthic_djinn;

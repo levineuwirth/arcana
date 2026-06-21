@@ -1,0 +1,97 @@
+//! Bruse Tarl, Boorish Herder — `{2}{R}{W}` 3/3 Legendary Human Ally.
+//!
+//! * Whenever Bruse Tarl enters or attacks, target creature you control
+//!   gains double strike and lifelink until end of turn. (Decomposed
+//!   into an ETB trigger + an attacks trigger sharing one resolver.)
+//! * Partner. (No KeywordAbility::Partner variant — GAP.)
+
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::Duration;
+use arcana_core::mana::ManaCost;
+use arcana_core::objects::Characteristics;
+use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::state::GameState;
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::zones::Zone;
+
+pub fn register(reg: &mut CardRegistry) -> CardId {
+    let name = reg.interner_mut().intern("Bruse Tarl, Boorish Herder");
+    let human = reg.interner_mut().intern("Human");
+    let ally = reg.interner_mut().intern("Ally");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(human);
+    subtypes.0.insert(ally);
+
+    // GAP: Partner is a commander-construction keyword with no KeywordAbility
+    // variant.
+
+    let chars = Characteristics {
+        name,
+        mana_cost: Some(ManaCost::parse("{2}{R}{W}").expect("valid cost")),
+        colors: ColorSet::red() | ColorSet::white(),
+        types: TypeLine::CREATURE.into(),
+        subtypes,
+        supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
+        power: Some(PtValue::Fixed(3)),
+        toughness: Some(PtValue::Fixed(3)),
+        ..Default::default()
+    };
+
+    reg.register(
+        CardDefinition::new(name, chars)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: grant_double_strike_lifelink,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![creature_you_control()],
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfAttacks,
+                intervening_if: None,
+                effect: grant_double_strike_lifelink,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![creature_you_control()],
+            }),
+    )
+}
+
+fn creature_you_control() -> TargetRequirement {
+    TargetRequirement {
+        filter: TargetFilter::Permanent(
+            ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        ),
+        count: TargetCount::Exactly(1),
+        controller: None,
+    }
+}
+
+fn grant_double_strike_lifelink(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    vec![Effect::Pump {
+        target: *id,
+        power: 0,
+        toughness: 0,
+        duration: Duration::EndOfTurn,
+        keywords: vec![KeywordAbility::DoubleStrike, KeywordAbility::Lifelink],
+    }]
+}

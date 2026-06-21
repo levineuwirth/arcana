@@ -93,3 +93,6 @@ pub mod keensight_mentor;
 pub mod gyruda_doom_of_depths;
 pub mod pollywog_symbiote;
 pub mod farfinder;
+pub mod rielle_the_everwise;
+pub mod prickly_marmoset;
+pub mod alert_heedbonder;

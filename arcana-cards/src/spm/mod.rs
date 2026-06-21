@@ -81,3 +81,7 @@ pub mod radioactive_spider;
 pub mod cosmic_spider_man;
 pub mod news_helicopter;
 pub mod hydro_man_fluid_felon;
+pub mod selfless_police_captain;
+pub mod lurking_lizards;
+pub mod mister_negative;
+pub mod skyward_spider;

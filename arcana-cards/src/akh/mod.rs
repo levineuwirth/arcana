@@ -76,3 +76,7 @@ pub mod dread_wanderer;
 pub mod khenra_charioteer;
 pub mod unwavering_initiate;
 pub mod tah_crop_elite;
+pub mod seraph_of_the_suns;
+pub mod oketra_the_true;
+pub mod crocodile_of_the_crossing;
+pub mod flameblade_adept;

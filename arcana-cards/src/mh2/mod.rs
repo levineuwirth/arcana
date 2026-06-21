@@ -111,3 +111,6 @@ pub mod prophetic_titan;
 pub mod scurry_oak;
 pub mod guardian_kirin;
 pub mod chatterfang_squirrel_general;
+pub mod flametongue_yearling;
+pub mod revolutionist;
+pub mod carth_the_lion;

@@ -115,3 +115,4 @@ pub mod a_patrician_geist;
 pub mod rem_karolus_stalwart_slayer;
 pub mod brimstone_vandal;
 pub mod dreadhound;
+pub mod gavony_dawnguard;

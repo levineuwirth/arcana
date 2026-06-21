@@ -78,3 +78,4 @@ pub mod glint_sleeve_siphoner;
 pub mod spire_patrol;
 pub mod aether_poisoner;
 pub mod freejam_regent;
+pub mod silkweaver_elite;

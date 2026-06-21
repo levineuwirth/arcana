@@ -146,3 +146,5 @@ pub mod will_scion_of_peace;
 pub mod likeness_looter;
 pub mod werefox_bodyguard;
 pub mod malevolent_witchkite;
+pub mod greta_sweettooth_scourge;
+pub mod elvish_archivist;

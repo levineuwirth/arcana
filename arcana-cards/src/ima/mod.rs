@@ -52,3 +52,6 @@ pub mod vent_sentinel;
 pub mod bladewing_the_risen;
 pub mod doorkeeper;
 pub mod vizkopa_guildmage;
+pub mod benevolent_ancestor;
+pub mod jhessian_thief;
+pub mod mer_ek_nightblade;

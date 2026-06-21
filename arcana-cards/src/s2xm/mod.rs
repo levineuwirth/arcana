@@ -88,3 +88,7 @@ pub mod wurmcoil_engine;
 pub mod liege_of_the_tangle;
 pub mod cloudreader_sphinx;
 pub mod vexing_shusher;
+pub mod noble_hierarch;
+pub mod sphinx_summoner;
+pub mod inkwell_leviathan;
+pub mod stonehewer_giant;

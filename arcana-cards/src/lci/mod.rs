@@ -130,3 +130,6 @@ pub mod the_ancient_one;
 pub mod deep_cavern_bat;
 pub mod waterwind_scout;
 pub mod resplendent_angel;
+pub mod earthshaker_dreadmaw;
+pub mod cogwork_wrestler;
+pub mod oltec_cloud_guard;

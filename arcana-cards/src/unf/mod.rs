@@ -60,3 +60,6 @@ pub mod icing_manipulator;
 pub mod vorthos_steward_of_myth;
 pub mod goblin_cruciverbalist;
 pub mod myra_the_magnificent;
+pub mod squirrel_squatters;
+pub mod it_came_from_planet_glurg;
+pub mod brims_barone_midway_mobster;

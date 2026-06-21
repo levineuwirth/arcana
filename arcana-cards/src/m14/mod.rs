@@ -51,3 +51,4 @@ pub mod messenger_drake;
 pub mod shadowborn_demon;
 pub mod briarpack_alpha;
 pub mod seraph_of_the_sword;
+pub mod cyclops_tyrant;

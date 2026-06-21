@@ -110,3 +110,6 @@ pub mod congregation_gryff;
 pub mod seraphic_steed;
 pub mod aloe_alchemist;
 pub mod redrock_sentinel;
+pub mod ambush_gigapede;
+pub mod silver_deputy;
+pub mod outcaster_greenblade;

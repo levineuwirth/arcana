@@ -38,3 +38,4 @@ pub mod shivan_phoenix;
 pub mod thran_war_machine;
 pub mod multani_maro_sorcerer;
 pub mod darkwatch_elves;
+pub mod fog_of_gnats;

@@ -131,3 +131,6 @@ pub mod wyleth_soul_of_steel;
 pub mod liesa_shroud_of_dusk;
 pub mod angel_of_the_dawn;
 pub mod blim_comedic_genius;
+pub mod dawnglade_regent;
+pub mod rebbec_architect_of_ascension;
+pub mod lys_alana_bowmaster;

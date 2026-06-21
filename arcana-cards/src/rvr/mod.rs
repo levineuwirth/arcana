@@ -97,3 +97,5 @@ pub mod bloodfray_giant;
 pub mod conclave_cavalier;
 pub mod frilled_mystic;
 pub mod petrahydrox;
+pub mod orzhov_enforcer;
+pub mod master_of_cruelties;

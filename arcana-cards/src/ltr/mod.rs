@@ -129,3 +129,5 @@ pub mod haunt_of_the_dead_marshes;
 pub mod peregrin_took;
 pub mod frodo_sauron_s_bane;
 pub mod wose_pathfinder;
+pub mod pelargir_survivor;
+pub mod mordor_trebuchet;

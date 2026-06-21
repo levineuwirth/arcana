@@ -48,3 +48,6 @@ pub mod greater_harvester;
 pub mod hoverguard_observer;
 pub mod death_mask_duplicant;
 pub mod furnace_dragon;
+pub mod emissary_of_hope;
+pub mod auriok_siege_sled;
+pub mod emissary_of_despair;

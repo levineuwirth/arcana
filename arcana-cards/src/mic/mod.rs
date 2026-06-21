@@ -31,3 +31,5 @@ pub mod shadow_kin;
 pub mod diregraf_captain;
 pub mod lynde_cheerful_tormentor;
 pub mod cemetery_reaper;
+pub mod eloise_nephalia_sleuth;
+pub mod verdurous_gearhulk;

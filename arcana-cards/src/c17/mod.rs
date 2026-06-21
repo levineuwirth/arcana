@@ -27,3 +27,5 @@ pub mod crosis_the_purger;
 pub mod kheru_mind_eater;
 pub mod tithe_drinker;
 pub mod boneyard_scourge;
+pub mod bloodhusk_ritualist;
+pub mod dromoka_the_eternal;

@@ -63,3 +63,6 @@ pub mod altar_golem;
 pub mod hag_hedge_mage;
 pub mod selkie_hedge_mage;
 pub mod duergar_cave_guard;
+pub mod talonrend;
+pub mod twinblade_slasher;
+pub mod rendclaw_trow;

@@ -16,6 +16,7 @@ Access Denied
 Admiral Beckett Brass
 Agent of Treachery
 Aladdin
+Alert Heedbonder
 All Suns' Dawn
 Altar Golem
 Altar of the Wretched
@@ -26,6 +27,7 @@ Arbiter of Knollridge
 Archfiend of the Dross
 Archway Angel
 Armed Response
+Artificer's Dragon
 Arvad of the Weatherlight
 Ashcoat of the Shadow Swarm
 Attentive Skywarden
@@ -155,6 +157,7 @@ Fuel for the Cause
 Furgul, Quag Nurturer
 Fyndhorn Brownie
 Gates Ablaze
+Gavony Dawnguard
 Gelectrode
 Geralf's Masterpiece
 Ghoulsteed
@@ -173,6 +176,7 @@ Gustcloak Cavalier
 Gustcloak Harrier
 Gustcloak Runner
 Gustcloak Sentinel
+Gustcloak Skirmisher
 Gutterbones
 Hana Kami
 Haunt of the Dead Marshes
@@ -211,6 +215,7 @@ Jaded Response
 Jandor's Saddlebags
 Jaws of Defeat
 Jungle Creeper
+Karlach, Tiefling Berserker
 Karlach, Tiefling Spellrager
 Kellogg, Dangerous Mind
 Kelpie Guide
@@ -356,6 +361,7 @@ Satsuki, the Living Lore
 Savage Firecat
 Scattering Stroke
 Scoria Wurm
+Scourge of the Throne
 Scrib Nibblers
 Scroll of Isildur
 Scuttling Sliver
@@ -418,6 +424,7 @@ Thoughtbind
 Tibalt's Trickery
 Ticking Mime Bomb
 Tideforce Elemental
+Timestream Navigator
 Tombstone, Career Criminal
 Torchling
 Touchstone
@@ -443,6 +450,7 @@ Voidslime
 Volatile Rig
 Voltaic Construct
 Voracious Hatchling
+Vulshok Battlemaster
 Walking Archive
 Warren Pilferers
 Watchful Blisterzoa

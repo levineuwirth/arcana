@@ -69,3 +69,6 @@ pub mod exsanguinator_cavalry;
 pub mod suture_priest;
 pub mod gimbal_gremlin_prodigy;
 pub mod wintermoor_commander;
+pub mod duergar_hedge_mage;
+pub mod village_bell_ringer;
+pub mod hellkite_igniter;

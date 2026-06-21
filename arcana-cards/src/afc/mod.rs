@@ -37,3 +37,4 @@ pub mod knight_of_autumn;
 pub mod minn_wily_illusionist;
 pub mod midnight_pathlighter;
 pub mod klauth_unrivaled_ancient;
+pub mod marionette_master;

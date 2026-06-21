@@ -15,3 +15,4 @@ pub mod agoraphobia;
 pub mod gatecreeper_vine;
 pub mod spawnwrithe;
 pub mod jace_s_mindseeker;
+pub mod aether_figment;

@@ -106,3 +106,5 @@ pub mod soltari_trooper;
 pub mod ephemeron;
 pub mod wayward_soul;
 pub mod commander_greven_il_vec;
+pub mod crovax_the_cursed;
+pub mod silver_wyvern;

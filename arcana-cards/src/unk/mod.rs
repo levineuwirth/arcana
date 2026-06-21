@@ -148,3 +148,7 @@ pub mod the_keeper_of_four_scythes;
 pub mod bad_knight;
 pub mod the_sixth_seraph;
 pub mod the_goblin_mastermind;
+pub mod you_iterative_playtester;
+pub mod oozeavite;
+pub mod the_value_knight;
+pub mod jeska_and_kamahl;

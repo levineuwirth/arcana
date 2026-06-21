@@ -23,3 +23,4 @@ pub mod groundbreaker;
 pub mod malach_of_the_dawn;
 pub mod chronozoa;
 pub mod tidewalker;
+pub mod magus_of_the_library;

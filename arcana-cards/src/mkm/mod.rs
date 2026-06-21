@@ -104,3 +104,6 @@ pub mod tenth_district_hero;
 pub mod magnetic_snuffler;
 pub mod kraul_whipcracker;
 pub mod exit_specialist;
+pub mod doorkeeper_thrull;
+pub mod anzrag_the_quake_mole;
+pub mod museum_nightwatch;

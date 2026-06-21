@@ -132,3 +132,4 @@ pub mod cavalier_of_gales;
 pub mod apostle_of_purifying_light;
 pub mod agent_of_treachery;
 pub mod knight_of_the_ebon_legion;
+pub mod skyknight_vanguard;

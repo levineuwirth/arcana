@@ -36,3 +36,5 @@ pub mod niblis_of_the_mist;
 pub mod geralf_s_mindcrusher;
 pub mod headless_skaab;
 pub mod kessig_recluse;
+pub mod markov_warlord;
+pub mod pyreheart_wolf;

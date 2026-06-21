@@ -68,3 +68,4 @@ pub mod sighted_caste_sorcerer;
 pub mod undead_leotau;
 pub mod gustrider_exuberant;
 pub mod jungle_weaver;
+pub mod windwright_mage;

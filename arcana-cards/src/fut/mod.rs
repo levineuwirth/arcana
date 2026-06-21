@@ -26,3 +26,4 @@ pub mod soultether_golem;
 pub mod linessa_zephyr_mage;
 pub mod oriss_samite_guardian;
 pub mod vedalken_aethermage;
+pub mod tarox_bladewing;

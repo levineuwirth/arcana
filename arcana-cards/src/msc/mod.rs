@@ -5,3 +5,4 @@ pub mod the_thing;
 pub mod human_torch;
 pub mod t_challa_the_black_panther;
 pub mod vision_synthezoid_avenger;
+pub mod invisible_woman;

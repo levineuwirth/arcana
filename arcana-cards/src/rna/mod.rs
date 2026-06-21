@@ -77,3 +77,7 @@ pub mod senate_griffin;
 pub mod gutterbones;
 pub mod knight_of_sorrows;
 pub mod tithe_taker;
+pub mod trollbred_guardian;
+pub mod lumbering_battlement;
+pub mod chillbringer;
+pub mod frenzied_arynx;

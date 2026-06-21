@@ -83,3 +83,7 @@ pub mod glissa_sunseeker;
 pub mod woebearer;
 pub mod myr_prototype;
 pub mod slith_predator;
+pub mod rust_elemental;
+pub mod neurok_familiar;
+pub mod vulshok_battlemaster;
+pub mod psychic_membrane;

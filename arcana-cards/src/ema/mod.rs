@@ -34,3 +34,5 @@ pub mod nekrataal;
 pub mod xantid_swarm;
 pub mod wildfire_emissary;
 pub mod welkin_guide;
+pub mod crater_hellion;
+pub mod keldon_marauders;

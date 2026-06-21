@@ -45,3 +45,4 @@ pub mod jeskai_sage;
 pub mod ainok_guide;
 pub mod hooded_assassin;
 pub mod vaultbreaker;
+pub mod sibsig_muckdraggers;

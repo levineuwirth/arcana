@@ -102,3 +102,6 @@ pub mod mystic_penitent;
 pub mod dreamwinder;
 pub mod diligent_farmhand;
 pub mod skyshooter;
+pub mod thaumatog;
+pub mod otarian_juggernaut;
+pub mod stalking_bloodsucker;

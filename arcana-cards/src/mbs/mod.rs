@@ -46,3 +46,4 @@ pub mod mirran_spy;
 pub mod glissa_the_traitor;
 pub mod core_prowler;
 pub mod signal_pest;
+pub mod neurok_commando;

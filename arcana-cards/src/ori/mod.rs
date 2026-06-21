@@ -67,3 +67,4 @@ pub mod alhammarret_high_arbiter;
 pub mod gnarlroot_trapper;
 pub mod scab_clan_berserker;
 pub mod outland_colossus;
+pub mod aspiring_aeronaut;

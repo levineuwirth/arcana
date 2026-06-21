@@ -73,3 +73,7 @@ pub mod hexmark_destroyer;
 pub mod knight_rampager;
 pub mod triarch_praetorian;
 pub mod psychomancer;
+pub mod seeker_of_slaanesh;
+pub mod kh_rn_the_betrayer;
+pub mod callidus_assassin;
+pub mod zephyrim;

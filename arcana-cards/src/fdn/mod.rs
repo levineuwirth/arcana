@@ -228,3 +228,7 @@ pub mod arbiter_of_woe;
 pub mod regal_caracal;
 pub mod mindsparker;
 pub mod gleaming_barrier;
+pub mod drogskol_reaver;
+pub mod goblin_smuggler;
+pub mod vizier_of_the_menagerie;
+pub mod cackling_prowler;

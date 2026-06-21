@@ -103,3 +103,5 @@ pub mod squee_dubious_monarch;
 pub mod tattered_apparition;
 pub mod king_darien_xlviii;
 pub mod vineshaper_prodigy;
+pub mod keldon_strike_team;
+pub mod radha_s_firebrand;

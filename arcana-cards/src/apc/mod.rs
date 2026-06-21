@@ -48,3 +48,4 @@ pub mod ana_disciple;
 pub mod ceta_disciple;
 pub mod dega_disciple;
 pub mod enlistment_officer;
+pub mod fungal_shambler;

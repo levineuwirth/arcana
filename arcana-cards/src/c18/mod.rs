@@ -36,3 +36,4 @@ pub mod djinn_of_wishes;
 pub mod tawnos_urza_s_apprentice;
 pub mod celestial_archon;
 pub mod scuttling_doom_engine;
+pub mod tuvasa_the_sunlit;

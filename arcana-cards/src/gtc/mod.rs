@@ -63,3 +63,6 @@ pub mod kingpin_s_pet;
 pub mod legion_loyalist;
 pub mod corpse_blockade;
 pub mod duskmantle_guildmage;
+pub mod nightveil_specter;
+pub mod clinging_anemones;
+pub mod sapphire_drake;

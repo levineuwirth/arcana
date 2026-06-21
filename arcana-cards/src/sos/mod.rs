@@ -86,3 +86,6 @@ pub mod teacher_s_pest;
 pub mod slumbering_trudge;
 pub mod aberrant_manawurm;
 pub mod nita_forum_conciliator;
+pub mod mica_reader_of_ruins;
+pub mod old_growth_educator;
+pub mod tester_of_the_tangential;

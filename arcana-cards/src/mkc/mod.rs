@@ -68,3 +68,5 @@ pub mod serene_sleuth;
 pub mod havoc_eater;
 pub mod lonis_cryptozoologist;
 pub mod ethereal_investigator;
+pub mod eye_of_duskmantle;
+pub mod nelly_borca_impulsive_accuser;

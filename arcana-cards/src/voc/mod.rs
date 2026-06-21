@@ -29,3 +29,6 @@ pub mod custodi_soulbinders;
 pub mod spectral_arcanist;
 pub mod shadowgrange_archfiend;
 pub mod anje_s_ravager;
+pub mod stromkirk_captain;
+pub mod sire_of_the_storm;
+pub mod bloodsworn_steward;

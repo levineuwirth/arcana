@@ -61,3 +61,5 @@ pub mod judoon_enforcers;
 pub mod iraxxa_empress_of_mars;
 pub mod jenny_flint;
 pub mod cult_of_skaro;
+pub mod yasmin_khan;
+pub mod flaming_tyrannosaurus;

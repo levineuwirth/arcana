@@ -73,3 +73,5 @@ pub mod glacial_crasher;
 pub mod sungrace_pegasus;
 pub mod soul_of_ravnica;
 pub mod cruel_sadist;
+pub mod kapsho_kitefins;
+pub mod living_totem;

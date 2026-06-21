@@ -9,3 +9,4 @@ pub mod rankle_pitiless_trickster;
 pub mod stalwart_realmwarden;
 pub mod switchgrass_grazer;
 pub mod wagon_wrecker;
+pub mod blooming_cactusfolk;

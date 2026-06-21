@@ -128,3 +128,7 @@ pub mod night_clubber;
 pub mod disciplined_duelist;
 pub mod a_celestial_regulator;
 pub mod girder_goons;
+pub mod snooping_newsie;
+pub mod riveteers_requisitioner;
+pub mod reservoir_kraken;
+pub mod nimble_larcenist;

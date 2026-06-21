@@ -37,3 +37,5 @@ pub mod ignition_team;
 pub mod cogwork_tracker;
 pub mod woodvine_elemental;
 pub mod cogwork_librarian;
+pub mod cinder_wall;
+pub mod whispergear_sneak;

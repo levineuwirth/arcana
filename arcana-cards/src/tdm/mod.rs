@@ -125,3 +125,6 @@ pub mod equilibrium_adept;
 pub mod unrooted_ancestor;
 pub mod felothar_dawn_of_the_abzan;
 pub mod qarsi_revenant;
+pub mod karakyk_guardian;
+pub mod sunpearl_kirin;
+pub mod alchemist_s_assistant;

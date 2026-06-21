@@ -71,3 +71,5 @@ pub mod ashen_monstrosity;
 pub mod takeno_s_cavalry;
 pub mod silverstorm_samurai;
 pub mod opal_eye_konda_s_yojimbo;
+pub mod indebted_samurai;
+pub mod isao_enlightened_bushi;

@@ -101,3 +101,4 @@ pub mod dream_thrush;
 pub mod crypt_angel;
 pub mod nightscape_master;
 pub mod ardent_soldier;
+pub mod kavu_monarch;

@@ -2,3 +2,4 @@
 pub mod war_of_the_spark;
 pub mod champions_of_archery_join_the_group;
 pub mod collectigull_only_the_best;
+pub mod keeper_of_the_secret_lair;
