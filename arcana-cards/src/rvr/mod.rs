@@ -94,3 +94,4 @@ pub mod rakdos_guildmage;
 pub mod cloudfin_raptor;
 pub mod experiment_one;
 pub mod bloodfray_giant;
+pub mod conclave_cavalier;

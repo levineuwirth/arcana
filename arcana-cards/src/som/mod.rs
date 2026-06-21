@@ -60,3 +60,4 @@ pub mod blackcleave_goblin;
 pub mod sky_eel_school;
 pub mod ichor_rats;
 pub mod kuldotha_phoenix;
+pub mod acid_web_spider;

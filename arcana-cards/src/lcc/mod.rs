@@ -71,3 +71,5 @@ pub mod rampaging_brontodon;
 pub mod warkite_marauder;
 pub mod azure_fleet_admiral;
 pub mod kinjalli_s_sunwing;
+pub mod quartzwood_crasher;
+pub mod otepec_huntmaster;

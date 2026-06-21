@@ -65,3 +65,5 @@ pub mod pain_distributor;
 pub mod abzan_falconer;
 pub mod champion_of_lambholt;
 pub mod infernal_sovereign;
+pub mod exsanguinator_cavalry;
+pub mod suture_priest;

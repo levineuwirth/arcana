@@ -73,3 +73,4 @@ pub mod chaos_imps;
 pub mod dark_revenant;
 pub mod tower_drake;
 pub mod azor_s_elocutors;
+pub mod new_prahv_guildmage;

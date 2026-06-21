@@ -141,3 +141,6 @@ pub mod slumbering_keepguard;
 pub mod skybeast_tracker;
 pub mod redtooth_vanguard;
 pub mod lord_skitter_sewer_king;
+pub mod savior_of_the_sleeping;
+pub mod will_scion_of_peace;
+pub mod likeness_looter;

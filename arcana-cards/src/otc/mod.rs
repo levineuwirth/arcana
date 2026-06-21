@@ -59,3 +59,6 @@ pub mod kaza_roil_chaser;
 pub mod brainstealer_dragon;
 pub mod gonti_canny_acquisitor;
 pub mod turntimber_sower;
+pub mod felix_five_boots;
+pub mod cold_eyed_selkie;
+pub mod kamber_the_plunderer;

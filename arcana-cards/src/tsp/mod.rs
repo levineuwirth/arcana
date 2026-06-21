@@ -38,3 +38,4 @@ pub mod drudge_reavers;
 pub mod voidmage_husher;
 pub mod blazing_blade_askari;
 pub mod cavalry_master;
+pub mod cloudchaser_kestrel;

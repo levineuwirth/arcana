@@ -27,3 +27,4 @@ pub mod cemetery_gate;
 pub mod timmerian_fiends;
 pub mod trade_caravan;
 pub mod black_carriage;
+pub mod sengir_bats;

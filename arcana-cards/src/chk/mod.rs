@@ -115,3 +115,6 @@ pub mod kami_of_the_waning_moon;
 pub mod callous_deceiver;
 pub mod cursed_ronin;
 pub mod soratami_savant;
+pub mod cruel_deceiver;
+pub mod teller_of_tales;
+pub mod kitsune_blademaster;

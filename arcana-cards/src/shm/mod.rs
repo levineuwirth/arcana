@@ -89,3 +89,4 @@ pub mod heartmender;
 pub mod rustrazor_butcher;
 pub mod cinderbones;
 pub mod tatterkite;
+pub mod blistering_dieflyn;

@@ -117,3 +117,5 @@ pub mod garruk_s_warsteed;
 pub mod elder_gargaroth;
 pub mod siege_striker;
 pub mod hobblefiend;
+pub mod pack_leader;
+pub mod alpine_houndmaster;

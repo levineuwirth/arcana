@@ -90,3 +90,4 @@ pub mod dawnstrike_vanguard;
 pub mod alpharael_dreaming_acolyte;
 pub mod ragost_deft_gastronaut;
 pub mod survey_mechan;
+pub mod mm_menon_the_right_hand;

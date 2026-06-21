@@ -65,3 +65,5 @@ pub mod stampeding_serow;
 pub mod nikko_onna;
 pub mod hand_of_cruelty;
 pub mod trusted_advisor;
+pub mod ghost_lit_raider;
+pub mod kuro_s_taken;

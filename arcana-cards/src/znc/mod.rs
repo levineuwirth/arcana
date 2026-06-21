@@ -15,3 +15,5 @@ pub mod sylvan_advocate;
 pub mod admonition_angel;
 pub mod living_twister;
 pub mod mina_and_denn_wildborn;
+pub mod stinkdrinker_bandit;
+pub mod notion_thief;

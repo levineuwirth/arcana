@@ -48,3 +48,4 @@ pub mod leshrac_s_rite;
 pub mod uktabi_wildcats;
 pub mod bellowing_fiend;
 pub mod cloudchaser_eagle;
+pub mod wall_of_wonder;

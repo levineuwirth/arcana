@@ -53,3 +53,4 @@ pub mod maelstrom_wanderer;
 pub mod endurance;
 pub mod grave_titan;
 pub mod devoted_druid;
+pub mod mulldrifter;

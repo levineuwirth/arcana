@@ -89,3 +89,5 @@ pub mod bulwark_ox;
 pub mod nesting_bot;
 pub mod unswerving_sloth;
 pub mod endrider_spikespitter;
+pub mod engine_rat;
+pub mod interface_ace;

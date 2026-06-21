@@ -34,3 +34,6 @@ pub mod adriana_captain_of_the_guard;
 pub mod kothophed_soul_hoarder;
 pub mod robaran_mercenaries;
 pub mod chromanticore;
+pub mod the_peregrine_dynamo;
+pub mod greensleeves_maro_sorcerer;
+pub mod moira_urborg_haunt;

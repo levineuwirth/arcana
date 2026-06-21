@@ -47,6 +47,8 @@ Bloodcrazed Hoplite
 Bloodsoaked Champion
 Bloodtithe Harvester
 Boon of Boseiju
+Brackish Trudge
+Brimstone Vandal
 Bulwark
 Burst of Energy
 Calamitous Cave-In
@@ -170,6 +172,7 @@ Gustcloak Harrier
 Gustcloak Runner
 Gustcloak Sentinel
 Hana Kami
+Haunt of the Dead Marshes
 Haunted Dead
 Heartmender
 Hinder
@@ -188,6 +191,7 @@ Induce Paranoia
 Initiate's Companion
 Innocence Kami
 Inspired Sprite
+Interface Ace
 Intervene
 Into the Night
 Invert Polarity
@@ -209,6 +213,7 @@ Kelpie Guide
 Keruga, the Macrosage
 Kindlespark Duo
 Kindred Denial
+King Darien XLVIII
 Kiora's Follower
 Kiora, Behemoth Beckoner
 Kiora, the Tide's Fury
@@ -234,6 +239,7 @@ Mage-Ring Responder
 Magebane Lizard
 Magewright's Stone
 Magmaroth
+Magnetic Snuffler
 Mana Crypt
 Mana Drain
 Mana Leak

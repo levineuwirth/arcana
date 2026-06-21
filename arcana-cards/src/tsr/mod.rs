@@ -92,3 +92,4 @@ pub mod thelon_of_havenwood;
 pub mod sarcomite_myr;
 pub mod drifter_il_dal;
 pub mod sengir_nosferatu;
+pub mod giant_dustwasp;

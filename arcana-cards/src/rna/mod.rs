@@ -73,3 +73,4 @@ pub mod clan_guildmage;
 pub mod wrecking_beast;
 pub mod growth_chamber_guardian;
 pub mod carrion_imp;
+pub mod senate_griffin;

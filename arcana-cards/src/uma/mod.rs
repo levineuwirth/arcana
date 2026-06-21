@@ -58,3 +58,4 @@ pub mod iridescent_drake;
 pub mod skyspear_cavalry;
 pub mod lotus_eye_mystics;
 pub mod sublime_archangel;
+pub mod mad_prophet;

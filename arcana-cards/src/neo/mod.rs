@@ -133,3 +133,6 @@ pub mod walking_skyscraper;
 pub mod a_prosperous_thief;
 pub mod towashi_guide_bot;
 pub mod go_shintai_of_hidden_cruelty;
+pub mod cloudsteel_kirin;
+pub mod go_shintai_of_ancient_wars;
+pub mod skyswimmer_koi;

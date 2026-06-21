@@ -98,3 +98,4 @@ pub mod zombie_master;
 pub mod scarwood_bandits;
 pub mod black_knight;
 pub mod minion_of_tevesh_szat;
+pub mod scavenging_ghoul;

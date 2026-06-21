@@ -44,3 +44,5 @@ pub mod rocksteady_mutant_marauder;
 pub mod dimension_x_pizzasaur;
 pub mod leonardo_worldly_warrior;
 pub mod splinter_leo_father_son;
+pub mod monster_mashup;
+pub mod electric_seaweed;

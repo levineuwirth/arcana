@@ -163,3 +163,6 @@ pub mod wall_of_vines;
 pub mod spiteful_prankster;
 pub mod minotaur_sureshot;
 pub mod fell_specter;
+pub mod lena_selfless_champion;
+pub mod trusty_retriever;
+pub mod sheoldred_whispering_one;

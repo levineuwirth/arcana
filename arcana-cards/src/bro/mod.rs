@@ -115,3 +115,6 @@ pub mod bladecoil_serpent;
 pub mod su_chi_cave_guard;
 pub mod steel_exemplar;
 pub mod terisian_mindbreaker;
+pub mod hoarding_recluse;
+pub mod zephyr_sentinel;
+pub mod koilos_roc;

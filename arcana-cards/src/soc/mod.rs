@@ -174,3 +174,6 @@ pub mod curiosity_crafter;
 pub mod deekah_fractal_theorist;
 pub mod angel_of_indemnity;
 pub mod kinetic_ooze;
+pub mod mangara_the_diplomat;
+pub mod moonshaker_cavalry;
+pub mod owlin_spiralmancer;

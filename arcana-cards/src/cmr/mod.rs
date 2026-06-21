@@ -128,3 +128,4 @@ pub mod trove_tracker;
 pub mod gilanra_caller_of_wirewood;
 pub mod armix_filigree_thrasher;
 pub mod wyleth_soul_of_steel;
+pub mod liesa_shroud_of_dusk;

@@ -223,3 +223,6 @@ pub mod fog_bank;
 pub mod aurelia_the_warleader;
 pub mod high_fae_trickster;
 pub mod syr_alin_the_lion_s_claw;
+pub mod juggernaut;
+pub mod arbiter_of_woe;
+pub mod regal_caracal;

@@ -53,3 +53,4 @@ pub mod maw_of_kozilek;
 pub mod sky_scourer;
 pub mod void_grafter;
 pub mod kozilek_s_shrieker;
+pub mod embodiment_of_fury;

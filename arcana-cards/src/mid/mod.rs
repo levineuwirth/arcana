@@ -111,3 +111,6 @@ pub mod nebelgast_intruder;
 pub mod patrician_geist;
 pub mod firmament_sage;
 pub mod falcon_abomination;
+pub mod a_patrician_geist;
+pub mod rem_karolus_stalwart_slayer;
+pub mod brimstone_vandal;

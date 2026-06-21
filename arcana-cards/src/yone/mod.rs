@@ -4,3 +4,5 @@ pub mod norn_s_fetchling;
 pub mod quicksilver_servitor;
 pub mod ghalma_the_shaper;
 pub mod phyrexian_harvester;
+pub mod phyresis_roach;
+pub mod surgical_metamorph;

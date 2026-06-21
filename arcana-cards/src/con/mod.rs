@@ -40,3 +40,4 @@ pub mod controlled_instincts;
 pub mod frontline_sage;
 pub mod meglonoth;
 pub mod paragon_of_the_amesha;
+pub mod cliffrunner_behemoth;

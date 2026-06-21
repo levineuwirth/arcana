@@ -100,3 +100,4 @@ pub mod siege_gang_commander;
 pub mod timeless_witness;
 pub mod river_kelpie;
 pub mod welcoming_vampire;
+pub mod wall_of_blossoms;

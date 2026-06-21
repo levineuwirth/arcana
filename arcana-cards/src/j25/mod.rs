@@ -25,3 +25,5 @@ pub mod brigone_soldier_of_meletis;
 pub mod qala_ajani_s_pridemate;
 pub mod scythecat_cub;
 pub mod taeko_the_patient_avalanche;
+pub mod gilded_scuttler;
+pub mod general_kreat_the_boltbringer;

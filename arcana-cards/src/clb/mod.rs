@@ -190,3 +190,8 @@ pub mod lurking_green_dragon;
 pub mod gluntch_the_bestower;
 pub mod beckoning_will_o_wisp;
 pub mod minthara_merciless_soul;
+pub mod wizards_of_thay;
+pub mod alora_merry_thief;
+pub mod kagha_shadow_archdruid;
+pub mod scouting_hawk;
+pub mod lulu_loyal_hollyphant;

@@ -36,3 +36,4 @@ pub mod ad_wal_breaker_of_chains;
 pub mod surtr_fiery_j_tun;
 pub mod desmond_miles;
 pub mod ezio_auditore_da_firenze;
+pub mod tax_collector;

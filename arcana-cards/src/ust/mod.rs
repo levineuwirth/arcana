@@ -71,3 +71,4 @@ pub mod novellamental;
 pub mod phoebe_head_of_s_n_e_a_k;
 pub mod graveyard_busybody;
 pub mod knight_of_the_widget;
+pub mod hydradoodle;

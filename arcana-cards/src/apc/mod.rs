@@ -47,3 +47,4 @@ pub mod living_airship;
 pub mod ana_disciple;
 pub mod ceta_disciple;
 pub mod dega_disciple;
+pub mod enlistment_officer;

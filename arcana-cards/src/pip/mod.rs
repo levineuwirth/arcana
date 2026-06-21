@@ -50,3 +50,5 @@ pub mod cathedral_acolyte;
 pub mod elder_owyn_lyons;
 pub mod arcade_gannon;
 pub mod piper_wright_publick_reporter;
+pub mod dogmeat_ever_loyal;
+pub mod the_master_transcendent;

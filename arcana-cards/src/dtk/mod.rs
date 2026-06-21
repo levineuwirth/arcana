@@ -77,3 +77,4 @@ pub mod dragonlord_kolaghan;
 pub mod herald_of_dromoka;
 pub mod zurgo_bellstriker;
 pub mod arashin_sovereign;
+pub mod ojutai_interceptor;

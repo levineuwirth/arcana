@@ -98,3 +98,5 @@ pub mod reveillark;
 pub mod wingsteed_rider;
 pub mod uril_the_miststalker;
 pub mod ashenmoor_liege;
+pub mod league_guildmage;
+pub mod qasali_pridemage;

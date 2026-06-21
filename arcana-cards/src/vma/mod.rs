@@ -64,3 +64,5 @@ pub mod morphling;
 pub mod lightning_dragon;
 pub mod cloud_djinn;
 pub mod krosan_vorine;
+pub mod zhalfirin_crusader;
+pub mod sidar_jabari;

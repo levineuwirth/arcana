@@ -129,3 +129,4 @@ pub mod yanling_s_harbinger;
 pub mod griffin_sentinel;
 pub mod howling_giant;
 pub mod cavalier_of_gales;
+pub mod apostle_of_purifying_light;

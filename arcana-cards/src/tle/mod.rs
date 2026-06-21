@@ -66,3 +66,4 @@ pub mod baboon_spirit;
 pub mod chong_and_lily_nomads;
 pub mod swampbenders;
 pub mod hei_bai_forest_guardian;
+pub mod mai_and_zuko;

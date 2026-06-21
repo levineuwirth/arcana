@@ -106,3 +106,6 @@ pub mod cankerbloom;
 pub mod archfiend_of_the_dross;
 pub mod tyrranax_atrocity;
 pub mod bladegraft_aspirant;
+pub mod chrome_prowler;
+pub mod necrogen_rotpriest;
+pub mod atraxa_s_skitterfang;

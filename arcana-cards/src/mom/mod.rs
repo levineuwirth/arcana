@@ -158,3 +158,5 @@ pub mod guardian_of_ghirapur;
 pub mod enduring_bondwarden;
 pub mod rampaging_geoderm;
 pub mod redcap_heelslasher;
+pub mod mutagen_connoisseur;
+pub mod sigiled_sentinel;

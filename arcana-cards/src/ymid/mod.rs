@@ -24,3 +24,5 @@ pub mod geist_of_regret;
 pub mod frenzied_geistblaster;
 pub mod angel_of_unity;
 pub mod fearsome_whelp;
+pub mod patient_zero;
+pub mod ethereal_escort;

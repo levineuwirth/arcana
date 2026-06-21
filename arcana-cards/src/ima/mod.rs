@@ -51,3 +51,4 @@ pub mod elesh_norn_grand_cenobite;
 pub mod vent_sentinel;
 pub mod bladewing_the_risen;
 pub mod doorkeeper;
+pub mod vizkopa_guildmage;

@@ -88,3 +88,4 @@ pub mod zhalfirin_knight;
 pub mod shauku_endbringer;
 pub mod urborg_panther;
 pub mod femeref_knight;
+pub mod haunting_apparition;

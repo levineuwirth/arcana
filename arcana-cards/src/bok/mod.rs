@@ -70,3 +70,4 @@ pub mod kentaro_the_smiling_cat;
 pub mod ashen_monstrosity;
 pub mod takeno_s_cavalry;
 pub mod silverstorm_samurai;
+pub mod opal_eye_konda_s_yojimbo;

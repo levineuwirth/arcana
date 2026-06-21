@@ -104,3 +104,5 @@ pub mod aeve_progenitor_ooze;
 pub mod storm_god_s_oracle;
 pub mod specimen_collector;
 pub mod arcus_acolyte;
+pub mod jewel_eyed_cobra;
+pub mod sojourner_s_companion;

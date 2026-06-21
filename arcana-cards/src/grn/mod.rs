@@ -75,3 +75,4 @@ pub mod boros_challenger;
 pub mod molderhulk;
 pub mod golgari_raiders;
 pub mod swarm_guildmage;
+pub mod izoni_thousand_eyed;

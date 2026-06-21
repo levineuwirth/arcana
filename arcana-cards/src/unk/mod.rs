@@ -139,3 +139,5 @@ pub mod the_knight_of_weeks;
 pub mod arvad_of_the_weatherlight;
 pub mod auntie_flint;
 pub mod sue_everlasting_dinosaur;
+pub mod the_ancient_dingus;
+pub mod shahrazad_and_sindbad;

@@ -129,3 +129,6 @@ pub mod cid_timeless_artificer;
 pub mod ultros_obnoxious_octopus;
 pub mod dragoon_s_wyvern;
 pub mod freya_crescent;
+pub mod cloud_planet_s_champion;
+pub mod sin_spira_s_punishment;
+pub mod tonberry;

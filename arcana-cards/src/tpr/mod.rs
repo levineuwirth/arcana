@@ -104,3 +104,5 @@ pub mod carnassid;
 pub mod thalakos_scout;
 pub mod soltari_trooper;
 pub mod ephemeron;
+pub mod wayward_soul;
+pub mod commander_greven_il_vec;

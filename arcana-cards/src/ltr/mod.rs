@@ -124,3 +124,5 @@ pub mod bill_the_pony;
 pub mod mirkwood_bats;
 pub mod frodo_baggins;
 pub mod goldberry_river_daughter;
+pub mod warg_rider;
+pub mod haunt_of_the_dead_marshes;

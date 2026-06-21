@@ -206,3 +206,4 @@ pub mod endbringer;
 pub mod it_that_betrays;
 pub mod renowned_weaponsmith;
 pub mod hatchery_sliver;
+pub mod skyline_despot;

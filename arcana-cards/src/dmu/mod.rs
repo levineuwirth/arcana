@@ -97,3 +97,8 @@ pub mod phyrexian_warhorse;
 pub mod rulik_mons_warren_chief;
 pub mod meria_s_outrider;
 pub mod shanna_purifying_blade;
+pub mod snarespinner;
+pub mod queen_allenal_of_ruadach;
+pub mod squee_dubious_monarch;
+pub mod tattered_apparition;
+pub mod king_darien_xlviii;

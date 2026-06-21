@@ -81,3 +81,5 @@ pub mod karai_future_of_the_foot;
 pub mod raphael_most_attitude;
 pub mod ice_cream_kitty;
 pub mod armaggon_future_shark;
+pub mod ravenous_robots;
+pub mod mikey_don_party_planners;

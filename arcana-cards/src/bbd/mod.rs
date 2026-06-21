@@ -88,3 +88,5 @@ pub mod daggerdrome_imp;
 pub mod expedition_raptor;
 pub mod spellweaver_duo;
 pub mod sower_of_temptation;
+pub mod apocalypse_hydra;
+pub mod plated_crusher;

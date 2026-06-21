@@ -93,3 +93,4 @@ pub mod verazol_the_split_current;
 pub mod taunting_arbormage;
 pub mod vine_gecko;
 pub mod kor_blademaster;
+pub mod archon_of_emeria;

@@ -105,3 +105,4 @@ pub mod sheriff_of_safe_passage;
 pub mod beastbond_outcaster;
 pub mod spinewoods_paladin;
 pub mod jolene_plundering_pugilist;
+pub mod harrier_strix;

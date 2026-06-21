@@ -34,3 +34,4 @@ pub mod slivdrazi_monstrosity;
 pub mod squidnapper;
 pub mod everlasting_lich;
 pub mod puresteel_angel;
+pub mod ruff_underdog_champ;

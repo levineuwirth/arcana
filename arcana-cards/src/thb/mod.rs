@@ -107,3 +107,4 @@ pub mod devourer_of_memory;
 pub mod sunlit_hoplite;
 pub mod scavenging_harpy;
 pub mod kunoros_hound_of_athreos;
+pub mod phoenix_of_ash;

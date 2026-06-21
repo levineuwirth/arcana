@@ -87,3 +87,4 @@ pub mod charmed_stray;
 pub mod niv_mizzet_reborn;
 pub mod aven_eternal;
 pub mod elite_guardmage;
+pub mod god_eternal_oketra;
