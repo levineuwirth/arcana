@@ -141,3 +141,5 @@ pub mod golem_artisan;
 pub mod sakashima_of_a_thousand_faces;
 pub mod exquisite_huntmaster;
 pub mod eligeth_crossroads_augur;
+pub mod jared_carthalion_true_heir;
+pub mod toggo_goblin_weaponsmith;

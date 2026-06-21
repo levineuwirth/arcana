@@ -114,3 +114,5 @@ pub mod lord_of_the_forsaken;
 pub mod wakestone_gargoyle;
 pub mod nyx_weaver;
 pub mod voracious_bibliophile;
+pub mod adeline_resplendent_cathar;
+pub mod wall_of_reverence;

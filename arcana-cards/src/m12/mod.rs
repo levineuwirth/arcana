@@ -52,3 +52,5 @@ pub mod skywinder_drake;
 pub mod vengeful_pharaoh;
 pub mod sutured_ghoul;
 pub mod chasm_drake;
+pub mod furyborn_hellkite;
+pub mod drifting_shade;

@@ -104,3 +104,4 @@ pub mod drift_of_phantasms;
 pub mod thrill_kill_assassin;
 pub mod dreadmalkin;
 pub mod crackling_drake;
+pub mod nightveil_predator;

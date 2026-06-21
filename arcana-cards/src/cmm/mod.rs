@@ -235,3 +235,7 @@ pub mod nyxborn_behemoth;
 pub mod herald_of_the_host;
 pub mod grateful_apparition;
 pub mod narset_enlightened_master;
+pub mod mowu_loyal_companion;
+pub mod faerie_artisans;
+pub mod looter_il_kor;
+pub mod portal_mage;

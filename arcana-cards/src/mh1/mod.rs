@@ -71,3 +71,6 @@ pub mod hogaak_arisen_necropolis;
 pub mod the_first_sliver;
 pub mod alpine_guide;
 pub mod abominable_treefolk;
+pub mod gluttonous_slug;
+pub mod lightning_skelemental;
+pub mod goblin_champion;

@@ -120,3 +120,5 @@ pub mod arcbound_javelineer;
 pub mod extruder;
 pub mod soul_of_migration;
 pub mod disciple_of_the_sun;
+pub mod magus_of_the_bridge;
+pub mod drey_keeper;

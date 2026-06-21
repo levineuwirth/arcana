@@ -19,3 +19,4 @@ pub mod darigaaz_the_igniter;
 pub mod order_of_yawgmoth;
 pub mod gerrard_capashen;
 pub mod phyrexian_battleflies;
+pub mod quirion_elves;

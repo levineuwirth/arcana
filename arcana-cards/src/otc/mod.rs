@@ -72,3 +72,7 @@ pub mod tower_winder;
 pub mod hazezon_shaper_of_sand;
 pub mod impulsive_pilferer;
 pub mod mirror_entity;
+pub mod nashi_moon_sage_s_scion;
+pub mod pteramander;
+pub mod olivia_opulent_outlaw;
+pub mod mari_the_killing_quill;

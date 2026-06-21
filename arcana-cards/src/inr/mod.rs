@@ -145,3 +145,6 @@ pub mod cultivator_colossus;
 pub mod stromkirk_occultist;
 pub mod spectral_shepherd;
 pub mod gluttonous_guest;
+pub mod galvanic_juggernaut;
+pub mod voice_of_the_blessed;
+pub mod balefire_dragon;

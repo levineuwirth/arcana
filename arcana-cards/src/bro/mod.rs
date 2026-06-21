@@ -124,3 +124,6 @@ pub mod wing_commando;
 pub mod platoon_dispenser;
 pub mod dwarven_forge_chanter;
 pub mod arbalest_engineers;
+pub mod a_thran_spider;
+pub mod carrion_locust;
+pub mod teething_wurmlet;

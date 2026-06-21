@@ -36,3 +36,5 @@ pub mod tectonic_hellion;
 pub mod gerrard_weatherlight_hero;
 pub mod grismold_the_dreadsower;
 pub mod great_oak_guardian;
+pub mod doomed_artisan;
+pub mod heart_piercer_manticore;

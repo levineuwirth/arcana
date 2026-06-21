@@ -57,3 +57,4 @@ pub mod tivash_gloom_summoner;
 pub mod arashi_the_sky_asunder;
 pub mod jor_kadeen_the_prevailer;
 pub mod pia_nalaar;
+pub mod bloodthirsty_aerialist;

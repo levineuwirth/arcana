@@ -69,3 +69,6 @@ pub mod sidar_jabari;
 pub mod keeneye_aven;
 pub mod shivan_wurm;
 pub mod palinchron;
+pub mod simian_grunts;
+pub mod krovikan_sorcerer;
+pub mod psychatog;

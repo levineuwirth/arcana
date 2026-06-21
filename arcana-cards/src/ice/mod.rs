@@ -55,3 +55,5 @@ pub mod illusionary_presence;
 pub mod flow_of_maggots;
 pub mod orcish_healer;
 pub mod chaos_lord;
+pub mod wall_of_lava;
+pub mod krovikan_elementalist;

@@ -95,3 +95,4 @@ pub mod khorvath_brightflame;
 pub mod noosegraf_mob;
 pub mod dwarven_lightsmith;
 pub mod skystreamer;
+pub mod screeching_buzzard;

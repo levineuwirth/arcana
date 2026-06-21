@@ -49,3 +49,5 @@ pub mod thunderblust;
 pub mod guile;
 pub mod novijen_sages;
 pub mod dragonsoul_knight;
+pub mod hikari_twilight_guardian;
+pub mod thief_of_hope;

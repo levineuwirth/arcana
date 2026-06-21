@@ -17,3 +17,5 @@ pub mod akoum_hellkite;
 pub mod highcliff_felidar;
 pub mod kytheon_s_irregulars;
 pub mod aven_wind_mage;
+pub mod sphinx_of_enlightenment;
+pub mod topan_freeblade;

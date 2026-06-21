@@ -114,3 +114,6 @@ pub mod fetid_gargantua;
 pub mod kaalia_of_the_vast;
 pub mod territory_culler;
 pub mod inspired_inventor;
+pub mod fledgling_dragon;
+pub mod hexgold_slith;
+pub mod dreamtide_whale;

@@ -102,3 +102,5 @@ pub mod sulfur_elemental;
 pub mod penumbra_spider;
 pub mod corpulent_corpse;
 pub mod stingscourger;
+pub mod draining_whelk;
+pub mod magus_of_the_future;

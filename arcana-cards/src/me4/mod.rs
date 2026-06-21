@@ -104,3 +104,4 @@ pub mod jun_n_efreet;
 pub mod phantasmal_forces;
 pub mod osai_vultures;
 pub mod argothian_pixies;
+pub mod personal_incarnation;

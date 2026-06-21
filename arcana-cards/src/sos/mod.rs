@@ -95,3 +95,6 @@ pub mod burrog_banemaker;
 pub mod thornfist_striker;
 pub mod sneering_shadewriter;
 pub mod topiary_lecturer;
+pub mod colorstorm_stallion;
+pub mod witherbloom_the_balancer;
+pub mod moseo_vein_s_new_dean;

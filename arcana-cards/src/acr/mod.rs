@@ -42,3 +42,4 @@ pub mod poison_blade_mentor;
 pub mod the_capitoline_triad;
 pub mod achilles_davenport;
 pub mod labyrinth_adversary;
+pub mod layla_hassan;

@@ -43,3 +43,4 @@ pub mod creeperhulk;
 pub mod deceiver_exarch;
 pub mod aerie_mystics;
 pub mod drove_of_elves;
+pub mod rubinia_soulsinger;

@@ -132,3 +132,5 @@ pub mod zurgo_s_vanguard;
 pub mod jeskai_brushmaster;
 pub mod fangkeeper_s_familiar;
 pub mod undergrowth_leopard;
+pub mod salt_road_packbeast;
+pub mod ureni_the_song_unending;

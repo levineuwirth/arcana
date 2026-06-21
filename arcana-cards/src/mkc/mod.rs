@@ -73,3 +73,5 @@ pub mod nelly_borca_impulsive_accuser;
 pub mod loran_of_the_third_path;
 pub mod boros_reckoner;
 pub mod neheb_the_eternal;
+pub mod chulane_teller_of_tales;
+pub mod unshakable_tail;

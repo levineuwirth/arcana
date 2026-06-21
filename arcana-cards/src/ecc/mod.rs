@@ -59,3 +59,4 @@ pub mod the_scorpion_god;
 pub mod greenwarden_of_murasa;
 pub mod channeler_initiate;
 pub mod yarok_the_desecrated;
+pub mod titan_of_industry;

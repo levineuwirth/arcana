@@ -81,3 +81,5 @@ pub mod citywatch_sphinx;
 pub mod arboretum_elemental;
 pub mod goblin_cratermaker;
 pub mod vigorspore_wurm;
+pub mod worldsoul_colossus;
+pub mod grappling_sundew;

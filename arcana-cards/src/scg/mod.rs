@@ -25,3 +25,6 @@ pub mod thundercloud_elemental;
 pub mod rock_jockey;
 pub mod daru_warchief;
 pub mod mistform_warchief;
+pub mod titanic_bulvox;
+pub mod mercurial_kite;
+pub mod karona_false_god;

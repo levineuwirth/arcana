@@ -33,3 +33,4 @@ pub mod wall_of_caltrops;
 pub mod wall_of_putrid_flesh;
 pub mod elder_spawn;
 pub mod marble_priest;
+pub mod lord_magnus;

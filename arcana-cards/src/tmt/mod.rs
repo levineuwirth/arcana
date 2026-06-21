@@ -92,3 +92,6 @@ pub mod dark_leo_shredder;
 pub mod buzz_bots;
 pub mod michelangelo_mutant_bff;
 pub mod donatello_way_with_machines;
+pub mod pizza_face_gastromancer;
+pub mod putrid_pals;
+pub mod featherbrained_filcher;

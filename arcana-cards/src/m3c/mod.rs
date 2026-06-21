@@ -18,3 +18,5 @@ pub mod siege_gang_lieutenant;
 pub mod sawhorn_nemesis;
 pub mod omo_queen_of_vesuva;
 pub mod polygoyf;
+pub mod salvation_colossus;
+pub mod razorfield_ripper;

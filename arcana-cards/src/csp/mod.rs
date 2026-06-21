@@ -53,3 +53,5 @@ pub mod garza_s_assassin;
 pub mod survivor_of_the_unseen;
 pub mod woolly_razorback;
 pub mod earthen_goo;
+pub mod arctic_nishoba;
+pub mod void_maw;

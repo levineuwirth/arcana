@@ -136,3 +136,4 @@ pub mod skyknight_vanguard;
 pub mod blightbeetle;
 pub mod boreal_elemental;
 pub mod herald_of_the_sun;
+pub mod overgrowth_elemental;

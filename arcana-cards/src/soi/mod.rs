@@ -82,3 +82,4 @@ pub mod gibbering_fiend;
 pub mod soul_swallower;
 pub mod tooth_collector;
 pub mod incorrigible_youths;
+pub mod pale_rider_of_trostad;

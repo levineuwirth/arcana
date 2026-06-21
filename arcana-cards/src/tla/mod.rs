@@ -120,3 +120,5 @@ pub mod canyon_crawler;
 pub mod the_lion_turtle;
 pub mod master_pakku;
 pub mod tiger_seal;
+pub mod hog_monkey;
+pub mod earth_kingdom_soldier;

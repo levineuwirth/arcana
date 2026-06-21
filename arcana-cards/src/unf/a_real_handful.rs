@@ -1,0 +1,40 @@
+//! A Real Handful — `{3}{B}` 1/1 Alien Child Guest.
+//! "As long as one or more hands are touching this creature, it gets +2/+2."
+//! "As long as two or more hands are touching this creature, it has menace."
+//! "As long as three or more hands are touching this creature, it has lifelink."
+//!
+//! All three abilities key on the Un-set "hands touching this creature"
+//! mechanic, which has no expressible condition or effect — all GAP'd. Bones
+//! only.
+
+use arcana_core::mana::ManaCost;
+use arcana_core::objects::Characteristics;
+use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+
+pub fn register(reg: &mut CardRegistry) -> CardId {
+    let name = reg.interner_mut().intern("A Real Handful");
+    let alien = reg.interner_mut().intern("Alien");
+    let child = reg.interner_mut().intern("Child");
+    let guest = reg.interner_mut().intern("Guest");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(alien);
+    subtypes.0.insert(child);
+    subtypes.0.insert(guest);
+
+    let chars = Characteristics {
+        name,
+        mana_cost: Some(ManaCost::parse("{3}{B}").expect("valid cost")),
+        colors: ColorSet::black(),
+        types: TypeLine::CREATURE.into(),
+        subtypes,
+        power: Some(PtValue::Fixed(1)),
+        toughness: Some(PtValue::Fixed(1)),
+        ..Default::default()
+    };
+
+    // GAP: static — three "as long as N+ hands are touching this creature"
+    // clauses (+2/+2, menace, lifelink). The Un-set "hands touching" condition
+    // has no expressible representation; all omitted.
+    reg.register(CardDefinition::new(name, chars))
+}

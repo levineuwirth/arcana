@@ -135,3 +135,4 @@ pub mod fleeting_spirit;
 pub mod bloodvial_purveyor;
 pub mod bloodcrazed_socialite;
 pub mod angelic_quartermaster;
+pub mod falkenrath_forebear;

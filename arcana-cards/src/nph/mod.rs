@@ -49,3 +49,4 @@ pub mod fallen_ferromancer;
 pub mod shriek_raptor;
 pub mod spinebiter;
 pub mod phyrexian_swarmlord;
+pub mod whispering_specter;

@@ -10,3 +10,7 @@ pub mod stalwart_realmwarden;
 pub mod switchgrass_grazer;
 pub mod wagon_wrecker;
 pub mod blooming_cactusfolk;
+pub mod vona_de_iedo_the_antifex;
+pub mod pearl_collector;
+pub mod sapphire_collector;
+pub mod nashi_illusion_gadgeteer;

@@ -80,3 +80,5 @@ pub mod windrider_patrol;
 pub mod skyrider_elf;
 pub mod veteran_warleader;
 pub mod barrage_tyrant;
+pub mod wave_wing_elemental;
+pub mod mist_intruder;

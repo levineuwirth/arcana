@@ -40,3 +40,4 @@ pub mod cephalid_pathmage;
 pub mod canopy_crawler;
 pub mod rockshard_elemental;
 pub mod crested_craghorn;
+pub mod sootfeather_flock;

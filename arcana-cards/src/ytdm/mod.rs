@@ -7,3 +7,4 @@ pub mod lam_storm_crane_elder;
 pub mod runeblade_raiser;
 pub mod pampered_loamfrill;
 pub mod dalkovan_outrider;
+pub mod dragonblood_twins;

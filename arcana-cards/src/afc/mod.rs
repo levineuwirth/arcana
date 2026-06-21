@@ -39,3 +39,4 @@ pub mod midnight_pathlighter;
 pub mod klauth_unrivaled_ancient;
 pub mod marionette_master;
 pub mod vrondiss_rage_of_ancients;
+pub mod skyship_stalker;

@@ -94,3 +94,5 @@ pub mod blight_keeper;
 pub mod sunrise_seeker;
 pub mod river_sneak;
 pub mod atzocan_archer;
+pub mod goring_ceratops;
+pub mod tilonalli_s_skinshifter;

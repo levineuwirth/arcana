@@ -34,3 +34,5 @@ pub mod sire_of_the_storm;
 pub mod bloodsworn_steward;
 pub mod malakir_bloodwitch;
 pub mod boreas_charger;
+pub mod bloodlord_of_vaasgoth;
+pub mod drogskol_reinforcements;

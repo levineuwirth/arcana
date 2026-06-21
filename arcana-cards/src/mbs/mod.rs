@@ -48,3 +48,5 @@ pub mod core_prowler;
 pub mod signal_pest;
 pub mod neurok_commando;
 pub mod thrun_the_last_troll;
+pub mod kemba_s_legion;
+pub mod septic_rats;

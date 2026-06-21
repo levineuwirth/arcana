@@ -46,3 +46,4 @@ pub mod aurora_eidolon;
 pub mod sprouting_phytohydra;
 pub mod slithering_shade;
 pub mod walking_archive;
+pub mod isperia_the_inscrutable;

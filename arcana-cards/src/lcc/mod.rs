@@ -83,3 +83,6 @@ pub mod bloodline_necromancer;
 pub mod tributary_instructor;
 pub mod wrathful_raptors;
 pub mod tishana_voice_of_thunder;
+pub mod raging_swordtooth;
+pub mod xenagos_god_of_revels;
+pub mod singer_of_swift_rivers;

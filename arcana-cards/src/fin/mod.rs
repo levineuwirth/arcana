@@ -140,3 +140,5 @@ pub mod ardyn_the_usurper;
 pub mod judge_magister_gabranth;
 pub mod aerith_gainsborough;
 pub mod prompto_argentum;
+pub mod shambling_cie_th;
+pub mod blazing_bomb;

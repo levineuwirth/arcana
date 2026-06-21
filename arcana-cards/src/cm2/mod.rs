@@ -38,3 +38,4 @@ pub mod patron_of_the_nezumi;
 pub mod damia_sage_of_stone;
 pub mod dawnglare_invoker;
 pub mod warchief_giant;
+pub mod ishai_ojutai_dragonspeaker;

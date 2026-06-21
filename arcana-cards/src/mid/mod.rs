@@ -118,3 +118,7 @@ pub mod dreadhound;
 pub mod gavony_dawnguard;
 pub mod primal_adversary;
 pub mod slogurk_the_overslime;
+pub mod vampire_socialite;
+pub mod sigarda_champion_of_light;
+pub mod contortionist_troupe;
+pub mod drownyard_amalgam;

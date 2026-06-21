@@ -126,3 +126,6 @@ pub mod painwracker_oni;
 pub mod seshiro_the_anointed;
 pub mod kami_of_the_palace_fields;
 pub mod konda_lord_of_eiganjo;
+pub mod kashi_tribe_reaver;
+pub mod gibbering_kami;
+pub mod soratami_seer;

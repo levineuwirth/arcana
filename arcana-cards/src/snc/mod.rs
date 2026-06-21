@@ -136,3 +136,4 @@ pub mod goldhound;
 pub mod park_heights_pegasus;
 pub mod a_spara_s_adjudicators;
 pub mod riveteers_decoy;
+pub mod revel_ruiner;

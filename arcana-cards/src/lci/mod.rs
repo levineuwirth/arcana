@@ -139,3 +139,7 @@ pub mod child_of_the_volcano;
 pub mod gishath_sun_s_avatar;
 pub mod sentinel_of_the_nameless_city;
 pub mod malamet_veteran;
+pub mod jadelight_spelunker;
+pub mod akawalli_the_seething_tower;
+pub mod bedrock_tortoise;
+pub mod belligerent_yearling;

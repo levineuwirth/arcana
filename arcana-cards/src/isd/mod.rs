@@ -57,3 +57,5 @@ pub mod angelic_overseer;
 pub mod lantern_spirit;
 pub mod somberwald_spider;
 pub mod manor_skeleton;
+pub mod falkenrath_marauders;
+pub mod bloodcrazed_neonate;

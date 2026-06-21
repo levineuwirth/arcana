@@ -100,3 +100,5 @@ pub mod zur_the_enchanter;
 pub mod mogg_war_marshal;
 pub mod kamahl_fist_of_krosa;
 pub mod sawtooth_loon;
+pub mod macetail_hystrodon;
+pub mod kjeldoran_gargoyle;

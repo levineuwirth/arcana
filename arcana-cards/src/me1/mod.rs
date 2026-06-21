@@ -70,3 +70,5 @@ pub mod order_of_leitbur;
 pub mod yavimaya_ants;
 pub mod walking_wall;
 pub mod granite_gargoyle;
+pub mod goblin_wizard;
+pub mod illusionary_forces;

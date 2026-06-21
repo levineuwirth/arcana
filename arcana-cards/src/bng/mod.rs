@@ -63,3 +63,4 @@ pub mod servant_of_tymaret;
 pub mod siren_of_the_silent_song;
 pub mod brimaz_king_of_oreskos;
 pub mod everflame_eidolon;
+pub mod archetype_of_finality;

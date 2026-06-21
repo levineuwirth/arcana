@@ -136,3 +136,6 @@ pub mod saruman_the_white;
 pub mod the_balrog_durin_s_bane;
 pub mod witch_king_of_angmar;
 pub mod haradrim_spearmaster;
+pub mod east_mark_cavalier;
+pub mod arwen_mortal_queen;
+pub mod snarling_warg;

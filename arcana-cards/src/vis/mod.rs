@@ -40,3 +40,5 @@ pub mod aku_djinn;
 pub mod suq_ata_assassin;
 pub mod viashivan_dragon;
 pub mod knight_of_valor;
+pub mod iron_heart_chimera;
+pub mod rainbow_efreet;

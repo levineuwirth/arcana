@@ -49,3 +49,4 @@ pub mod ceta_disciple;
 pub mod dega_disciple;
 pub mod enlistment_officer;
 pub mod fungal_shambler;
+pub mod goblin_legionnaire;

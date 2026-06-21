@@ -15,3 +15,5 @@ pub mod nacatl_hunt_pride;
 pub mod wild_nacatl;
 pub mod loxodon_hierarch;
 pub mod surveilling_sprite;
+pub mod igneous_pouncer;
+pub mod jhessian_zombies;

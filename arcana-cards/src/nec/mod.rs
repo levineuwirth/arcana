@@ -23,3 +23,4 @@ pub mod komainu_battle_armor;
 pub mod go_shintai_of_life_s_origin;
 pub mod myojin_of_towering_might;
 pub mod myojin_of_roaring_blades;
+pub mod indomitable_archangel;

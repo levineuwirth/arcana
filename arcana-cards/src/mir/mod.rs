@@ -101,3 +101,4 @@ pub mod auspicious_ancestor;
 pub mod crimson_roc;
 pub mod frenetic_efreet;
 pub mod granger_guildmage;
+pub mod mist_dragon;

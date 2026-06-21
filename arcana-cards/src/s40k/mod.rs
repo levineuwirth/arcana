@@ -82,3 +82,4 @@ pub mod winged_hive_tyrant;
 pub mod old_one_eye;
 pub mod zoanthrope;
 pub mod be_lakor_the_dark_master;
+pub mod space_marine_scout;

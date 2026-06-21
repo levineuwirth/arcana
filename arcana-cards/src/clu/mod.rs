@@ -106,3 +106,6 @@ pub mod helium_squirter;
 pub mod trusted_pegasus;
 pub mod kronch_wrangler;
 pub mod wojek_bodyguard;
+pub mod memory_vampire;
+pub mod basilica_screecher;
+pub mod sludge_titan;

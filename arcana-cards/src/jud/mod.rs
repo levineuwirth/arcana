@@ -38,3 +38,5 @@ pub mod masked_gorgon;
 pub mod anurid_swarmsnapper;
 pub mod mirror_wall;
 pub mod phantom_centaur;
+pub mod balthor_the_defiled;
+pub mod battlewise_aven;

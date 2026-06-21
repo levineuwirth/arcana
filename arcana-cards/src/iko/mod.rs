@@ -96,3 +96,6 @@ pub mod farfinder;
 pub mod rielle_the_everwise;
 pub mod prickly_marmoset;
 pub mod alert_heedbonder;
+pub mod kaheera_the_orphanguard;
+pub mod slitherwisp;
+pub mod momentum_rumbler;

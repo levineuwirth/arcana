@@ -50,3 +50,7 @@ pub mod thancred_waters;
 pub mod auron_venerated_guardian;
 pub mod banon_the_returners_leader;
 pub mod gau_feral_youth;
+pub mod edgar_master_machinist;
+pub mod bugenhagen_wise_elder;
+pub mod the_destined_black_mage;
+pub mod barret_avalanche_leader;

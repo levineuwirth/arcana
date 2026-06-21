@@ -151,3 +151,6 @@ pub mod elvish_archivist;
 pub mod chancellor_of_tales;
 pub mod syr_ginger_the_meal_ender;
 pub mod wildwood_mentor;
+pub mod territorial_witchstalker;
+pub mod hylda_of_the_icy_crown;
+pub mod unruly_catapult;

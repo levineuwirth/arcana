@@ -66,3 +66,5 @@ pub mod brims_barone_midway_mobster;
 pub mod solaflora_intergalactic_icon;
 pub mod vedalken_squirrel_whacker;
 pub mod claire_d_loon_joy_sculptor;
+pub mod a_real_handful;
+pub mod blorbian_buddy;

@@ -60,3 +60,5 @@ pub mod boomer_scrapper;
 pub mod securitron_squadron;
 pub mod agent_frank_horrigan;
 pub mod cait_cage_brawler;
+pub mod ruthless_radrat;
+pub mod paladin_danse_steel_maverick;

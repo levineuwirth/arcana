@@ -44,3 +44,5 @@ pub mod zeriam_golden_wind;
 pub mod rasputin_the_oneiromancer;
 pub mod baru_wurmspeaker;
 pub mod glint_eye_nephilim;
+pub mod rienne_angel_of_rebirth;
+pub mod ayesha_tanaka_armorer;

@@ -37,3 +37,4 @@ pub mod double_header;
 pub mod moniker_mage;
 pub mod assquatch;
 pub mod meddling_kids;
+pub mod question_elemental;

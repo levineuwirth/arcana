@@ -82,3 +82,7 @@ pub mod silkweaver_elite;
 pub mod aether_swooper;
 pub mod reckless_racer;
 pub mod lifecraft_cavalry;
+pub mod sweatworks_brawler;
+pub mod airdrop_aeronauts;
+pub mod aethergeode_miner;
+pub mod barricade_breaker;

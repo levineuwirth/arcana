@@ -69,3 +69,5 @@ pub mod sapphire_drake;
 pub mod mindeye_drake;
 pub mod sylvan_primordial;
 pub mod thrull_parasite;
+pub mod viashino_shanktail;
+pub mod elusive_krasis;

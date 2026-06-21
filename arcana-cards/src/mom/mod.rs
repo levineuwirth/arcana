@@ -169,3 +169,4 @@ pub mod timberland_ancient;
 pub mod ravenous_sailback;
 pub mod karsus_depthguard;
 pub mod bloated_processor;
+pub mod kroxa_and_kunoros;

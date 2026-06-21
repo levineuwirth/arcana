@@ -71,3 +71,4 @@ pub mod sontaran_general;
 pub mod sergeant_john_benton;
 pub mod the_flood_of_mars;
 pub mod rassilon_the_war_president;
+pub mod susan_foreman;

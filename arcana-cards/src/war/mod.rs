@@ -93,3 +93,5 @@ pub mod god_eternal_kefnet;
 pub mod ahn_crop_invader;
 pub mod jace_s_projection;
 pub mod sky_theater_strix;
+pub mod huatli_s_raptor;
+pub mod dreadhorde_arcanist;

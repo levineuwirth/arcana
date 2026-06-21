@@ -97,3 +97,7 @@ pub mod nebula_dragon;
 pub mod sunstar_chaplain;
 pub mod interceptor_mechan;
 pub mod mechan_shieldmate;
+pub mod syr_vondam_sunstar_exemplar;
+pub mod cosmogrand_zenith;
+pub mod elegy_acolyte;
+pub mod icecave_crasher;

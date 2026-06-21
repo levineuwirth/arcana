@@ -115,3 +115,4 @@ pub mod sphinx_mindbreaker;
 pub mod stampede_rider;
 pub mod aphemia_the_cacophony;
 pub mod nexus_wardens;
+pub mod mischievous_chimera;

@@ -123,3 +123,6 @@ pub mod graaz_unstoppable_juggernaut;
 pub mod forgehammer_centurion;
 pub mod tainted_observer;
 pub mod transplant_theorist;
+pub mod ichorplate_golem;
+pub mod glistener_seer;
+pub mod cruel_grimnarch;

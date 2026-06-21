@@ -38,3 +38,6 @@ pub mod reckless_brute;
 pub mod xathrid_gorgon;
 pub mod duskmantle_prowler;
 pub mod veilborn_ghoul;
+pub mod elderscale_wurm;
+pub mod prized_elephant;
+pub mod courtly_provocateur;

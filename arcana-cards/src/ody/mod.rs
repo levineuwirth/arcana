@@ -107,3 +107,5 @@ pub mod otarian_juggernaut;
 pub mod stalking_bloodsucker;
 pub mod krosan_archer;
 pub mod escape_artist;
+pub mod aven_archer;
+pub mod cognivore;

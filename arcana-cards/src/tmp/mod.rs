@@ -52,3 +52,6 @@ pub mod soltari_crusader;
 pub mod bounty_hunter;
 pub mod nurturing_licid;
 pub mod skyshroud_condor;
+pub mod pallimud;
+pub mod flailing_drake;
+pub mod ranger_en_vec;

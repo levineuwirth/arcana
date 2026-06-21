@@ -72,3 +72,4 @@ pub mod oboro_envoy;
 pub mod oboro_breezecaller;
 pub mod kagemaro_first_to_suffer;
 pub mod bounteous_kirin;
+pub mod moonbow_illusionist;

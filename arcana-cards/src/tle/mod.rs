@@ -73,3 +73,4 @@ pub mod avatar_roku_firebender;
 pub mod appa_the_vigilant;
 pub mod azula_ruthless_firebender;
 pub mod the_duke_rebel_sentry;
+pub mod suki_kyoshi_captain;

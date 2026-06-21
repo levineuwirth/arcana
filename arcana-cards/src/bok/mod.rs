@@ -73,3 +73,6 @@ pub mod silverstorm_samurai;
 pub mod opal_eye_konda_s_yojimbo;
 pub mod indebted_samurai;
 pub mod isao_enlightened_bushi;
+pub mod quillmane_baku;
+pub mod toshiro_umezawa;
+pub mod chisei_heart_of_oceans;

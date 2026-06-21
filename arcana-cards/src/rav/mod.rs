@@ -73,3 +73,4 @@ pub mod sunhome_enforcer;
 pub mod oathsworn_giant;
 pub mod tidewater_minion;
 pub mod hunted_phantasm;
+pub mod drake_familiar;

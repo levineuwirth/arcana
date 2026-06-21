@@ -186,3 +186,6 @@ pub mod defiling_daemogoth;
 pub mod merchant_of_venom;
 pub mod tanazir_quandrix;
 pub mod wight_of_the_reliquary;
+pub mod dina_soul_steeper;
+pub mod karmic_guide;
+pub mod eidolon_of_countless_battles;

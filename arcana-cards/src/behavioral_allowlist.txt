@@ -27,6 +27,7 @@ Aphetto Alchemist
 Arbiter of Knollridge
 Archfiend of the Dross
 Archway Angel
+Arctic Nishoba
 Armed Response
 Artificer's Dragon
 Arvad of the Weatherlight
@@ -40,6 +41,7 @@ Bag Check
 Baldur's Gate
 Ballynock Trapper
 Bane's Contingency
+Barbed Servitor
 Basilisk Gate
 Beguiler of Wills
 Belligerent Hatchling
@@ -107,6 +109,7 @@ Dauntless Aven
 Dazzling Denial
 Death Watch
 Deathless Behemoth
+Deathless Pilot
 Deceiver Exarch
 Decimator Beetle
 Deep-Slumber Titan
@@ -126,6 +129,7 @@ Double Negative
 Dragonlord Silumgar
 Dread Slaver
 Dread Wanderer
+Drey Keeper
 Drooling Ogre
 Drover of the Swine
 Drownyard Temple
@@ -146,6 +150,7 @@ Ethersworn Adjudicator
 Evaporate
 Evasive Action
 Faerie Trickery
+Falkenrath Forebear
 Feasting Troll King
 Fell Beast of Mordor
 Fickle Efreet
@@ -162,6 +167,7 @@ Fuel for the Cause
 Furgul, Quag Nurturer
 Futurist Operative
 Fyndhorn Brownie
+Galvanic Juggernaut
 Gates Ablaze
 Gavony Dawnguard
 Gelectrode
@@ -172,6 +178,7 @@ Glimmerbell
 Glimmerpost
 Goblin Assassin
 Goblin Psychopath
+Goblin Wizard
 Godo, Bandit Warlord
 Grafted Butcher
 Greater Morphling
@@ -202,6 +209,7 @@ Hydro-Man, Fluid Felon
 Hyperion Blacksmith
 Hyrax Tower Scout
 Imaryll, Elfhame Elite
+Impetuous Devils
 Incandescent Soulstoke
 Incubation Triformer
 Induce Paranoia
@@ -227,6 +235,7 @@ Jungle Creeper
 Kaalia of the Vast
 Karlach, Tiefling Berserker
 Karlach, Tiefling Spellrager
+Karona, False God
 Karstoderm
 Kellogg, Dangerous Mind
 Kelpie Guide
@@ -261,6 +270,7 @@ Lurking Roper
 Mage-Ring Responder
 Magebane Lizard
 Magewright's Stone
+Magma Phoenix
 Magmaroth
 Magnetic Snuffler
 Mana Crypt
@@ -366,6 +376,7 @@ Rogues' Gallery
 Rona, Herald of Invasion
 Rootwater Matriarch
 Rubblebelt Braggart
+Rubinia Soulsinger
 Rune Snag
 Sacred Ground
 Saint Traft and Rem Karolus
@@ -376,6 +387,7 @@ Sanitarium Skeleton
 Saryth, the Viper's Fang
 Satsuki, the Living Lore
 Savage Firecat
+Scarecrone
 Scattering Stroke
 Scoria Wurm
 Scourge of the Throne
@@ -434,6 +446,7 @@ The Legend of Yangchen
 The Miniaturizer
 The Modern Age
 The Reaper, King No More
+The Vast Scrier
 The Wandering Minstrel
 Thermo-Alchemist
 Thing in the Ice
@@ -462,8 +475,11 @@ Undersimplify
 Unholy Indenture
 Unified Lunge
 Unravel
+Unruly Catapult
+Unshakable Tail
 Urtet, Remnant of Memnarch
 Vedalken Plotter
+Vhal, Scholar of Elements
 Vigean Graftmage
 Vigilant Drake
 Vivien's Jaguar

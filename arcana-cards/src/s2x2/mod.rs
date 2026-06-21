@@ -105,3 +105,6 @@ pub mod teneb_the_harvester;
 pub mod ulasht_the_hate_seed;
 pub mod orzhov_pontiff;
 pub mod venser_shaper_savant;
+pub mod vampire_sovereign;
+pub mod intet_the_dreamer;
+pub mod ingenious_skaab;

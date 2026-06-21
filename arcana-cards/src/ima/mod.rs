@@ -57,3 +57,4 @@ pub mod jhessian_thief;
 pub mod mer_ek_nightblade;
 pub mod abyssal_persecutor;
 pub mod illusory_angel;
+pub mod bladewing_s_thrall;

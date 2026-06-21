@@ -75,3 +75,6 @@ pub mod hellkite_igniter;
 pub mod arvad_the_cursed;
 pub mod blade_splicer;
 pub mod workshop_elders;
+pub mod pia_and_kiran_nalaar;
+pub mod blight_titan;
+pub mod brimaz_blight_of_oreskos;

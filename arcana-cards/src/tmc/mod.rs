@@ -51,3 +51,4 @@ pub mod donnie_april_adorkable_duo;
 pub mod ray_fillet_wave_warrior;
 pub mod rat_king_pale_piper;
 pub mod big_mother_mouser;
+pub mod shredder_shadow_master;

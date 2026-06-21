@@ -22,3 +22,4 @@ pub mod magnanimous_magistrate;
 pub mod towering_gibbon;
 pub mod plundering_predator;
 pub mod auntie_blyte_bad_influence;
+pub mod ardoz_cobbler_of_war;

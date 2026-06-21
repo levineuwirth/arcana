@@ -37,3 +37,5 @@ pub mod vastwood_hydra;
 pub mod cryptic_trilobite;
 pub mod brallin_skyshark_rider;
 pub mod illusory_ambusher;
+pub mod hungering_hydra;
+pub mod tayam_luminous_enigma;

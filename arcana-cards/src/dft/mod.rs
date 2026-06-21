@@ -104,3 +104,5 @@ pub mod shefet_archfiend;
 pub mod the_speed_demon;
 pub mod walking_sarcophagus;
 pub mod marauding_mako;
+pub mod ticket_tortoise;
+pub mod deathless_pilot;

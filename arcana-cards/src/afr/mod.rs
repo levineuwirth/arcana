@@ -148,3 +148,4 @@ pub mod ingenious_smith;
 pub mod rust_monster;
 pub mod the_tarrasque;
 pub mod death_priest_of_myrkul;
+pub mod zalto_fire_giant_duke;

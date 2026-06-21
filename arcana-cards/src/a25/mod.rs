@@ -57,3 +57,7 @@ pub mod prossh_skyraider_of_kher;
 pub mod relentless_rats;
 pub mod mystic_snake;
 pub mod ember_weaver;
+pub mod master_of_the_wild_hunt;
+pub mod noble_templar;
+pub mod chartooth_cougar;
+pub mod shoreline_ranger;

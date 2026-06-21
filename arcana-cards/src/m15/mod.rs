@@ -76,3 +76,4 @@ pub mod cruel_sadist;
 pub mod kapsho_kitefins;
 pub mod living_totem;
 pub mod resolute_archangel;
+pub mod coral_barrier;

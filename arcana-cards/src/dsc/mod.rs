@@ -88,3 +88,4 @@ pub mod skaab_ruinator;
 pub mod giant_adephage;
 pub mod archetype_of_imagination;
 pub mod ancient_cellarspawn;
+pub mod falkenrath_noble;

@@ -40,3 +40,4 @@ pub mod blizzard_elemental;
 pub mod colos_yearling;
 pub mod kingfisher;
 pub mod slinking_skirge;
+pub mod aura_thief;

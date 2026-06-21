@@ -38,3 +38,5 @@ pub mod headless_skaab;
 pub mod kessig_recluse;
 pub mod markov_warlord;
 pub mod pyreheart_wolf;
+pub mod stormbound_geist;
+pub mod vengeful_vampire;

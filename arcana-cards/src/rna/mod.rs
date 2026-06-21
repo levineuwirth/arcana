@@ -84,3 +84,4 @@ pub mod frenzied_arynx;
 pub mod domri_s_nodorog;
 pub mod tenth_district_veteran;
 pub mod resolute_watchdog;
+pub mod hackrobat;

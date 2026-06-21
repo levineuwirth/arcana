@@ -114,3 +114,5 @@ pub mod wilson_bear_comrade;
 pub mod gnoll_hunting_party;
 pub mod lae_zel_blessed_warrior;
 pub mod dragonborn_immolator;
+pub mod vhal_scholar_of_elements;
+pub mod lulu_inspiring_hollyphant;

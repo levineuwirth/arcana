@@ -110,3 +110,7 @@ pub mod rona_sheoldred_s_faithful;
 pub mod llanowar_greenwidow;
 pub mod silverback_elder;
 pub mod danitha_benalia_s_hope;
+pub mod defiler_of_instinct;
+pub mod defiler_of_flesh;
+pub mod llanowar_loamspeaker;
+pub mod coalition_warbrute;

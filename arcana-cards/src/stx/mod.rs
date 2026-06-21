@@ -107,3 +107,5 @@ pub mod blood_researcher;
 pub mod scurrid_colony;
 pub mod dueling_coach;
 pub mod shadewing_laureate;
+pub mod owlin_shieldmage;
+pub mod oggyar_battle_seer;

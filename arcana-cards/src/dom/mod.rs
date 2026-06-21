@@ -85,3 +85,4 @@ pub mod kwende_pride_of_femeref;
 pub mod excavation_elephant;
 pub mod untamed_kavu;
 pub mod urgoros_the_empty_one;
+pub mod daring_archaeologist;

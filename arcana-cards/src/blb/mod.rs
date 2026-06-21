@@ -147,3 +147,6 @@ pub mod keen_eyed_curator;
 pub mod fireglass_mentor;
 pub mod plumecreed_mentor;
 pub mod rust_shield_rampager;
+pub mod thundertrap_trainer;
+pub mod ygra_eater_of_all;
+pub mod kastral_the_windcrested;
