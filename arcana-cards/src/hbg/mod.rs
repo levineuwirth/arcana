@@ -116,3 +116,6 @@ pub mod lae_zel_blessed_warrior;
 pub mod dragonborn_immolator;
 pub mod vhal_scholar_of_elements;
 pub mod lulu_inspiring_hollyphant;
+pub mod wilson_majestic_bear;
+pub mod lukamina_hawk_form;
+pub mod karlach_tiefling_zealot;

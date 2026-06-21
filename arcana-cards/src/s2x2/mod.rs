@@ -108,3 +108,7 @@ pub mod venser_shaper_savant;
 pub mod vampire_sovereign;
 pub mod intet_the_dreamer;
 pub mod ingenious_skaab;
+pub mod deathbringer_liege;
+pub mod goblin_banneret;
+pub mod arjun_the_shifting_flame;
+pub mod flickerwisp;

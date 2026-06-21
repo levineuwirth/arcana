@@ -33,3 +33,4 @@ pub mod primeval_herald;
 pub mod eidolon_of_astral_winds;
 pub mod rev_tithe_extractor;
 pub mod fumulus_the_infestation;
+pub mod saurian_symbiote;

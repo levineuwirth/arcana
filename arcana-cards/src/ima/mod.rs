@@ -58,3 +58,4 @@ pub mod mer_ek_nightblade;
 pub mod abyssal_persecutor;
 pub mod illusory_angel;
 pub mod bladewing_s_thrall;
+pub mod knight_of_the_reliquary;

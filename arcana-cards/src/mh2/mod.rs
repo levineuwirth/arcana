@@ -122,3 +122,5 @@ pub mod soul_of_migration;
 pub mod disciple_of_the_sun;
 pub mod magus_of_the_bridge;
 pub mod drey_keeper;
+pub mod serra_s_emissary;
+pub mod clattering_augur;

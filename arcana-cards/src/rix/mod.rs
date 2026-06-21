@@ -56,3 +56,4 @@ pub mod storm_fleet_swashbuckler;
 pub mod charging_tuskodon;
 pub mod spire_winder;
 pub mod paladin_of_atonement;
+pub mod skymarcher_aspirant;

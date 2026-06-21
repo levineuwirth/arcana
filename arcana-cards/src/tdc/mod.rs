@@ -116,3 +116,7 @@ pub mod nyx_weaver;
 pub mod voracious_bibliophile;
 pub mod adeline_resplendent_cathar;
 pub mod wall_of_reverence;
+pub mod shalai_voice_of_plenty;
+pub mod bone_devourer;
+pub mod ainok_strike_leader;
+pub mod monastery_mentor;

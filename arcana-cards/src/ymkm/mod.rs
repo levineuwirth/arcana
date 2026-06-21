@@ -6,3 +6,4 @@ pub mod emporium_thopterist;
 pub mod furgul_quag_nurturer;
 pub mod snarlfang_vermin;
 pub mod perforator_crocodile;
+pub mod rampaging_ursaguana;

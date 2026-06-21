@@ -82,3 +82,4 @@ pub mod veteran_warleader;
 pub mod barrage_tyrant;
 pub mod wave_wing_elemental;
 pub mod mist_intruder;
+pub mod wasteland_strangler;

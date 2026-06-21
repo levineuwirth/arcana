@@ -134,3 +134,4 @@ pub mod fangkeeper_s_familiar;
 pub mod undergrowth_leopard;
 pub mod salt_road_packbeast;
 pub mod ureni_the_song_unending;
+pub mod adorned_crocodile;

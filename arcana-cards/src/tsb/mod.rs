@@ -31,3 +31,5 @@ pub mod cockatrice;
 pub mod giant_oyster;
 pub mod leviathan;
 pub mod orgg;
+pub mod valor;
+pub mod witch_hunter;

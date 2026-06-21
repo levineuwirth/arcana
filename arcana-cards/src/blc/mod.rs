@@ -21,3 +21,4 @@ pub mod ms_bumbleflower;
 pub mod moonstone_eulogist;
 pub mod agate_instigator;
 pub mod mr_foxglove;
+pub mod rapid_augmenter;

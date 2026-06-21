@@ -78,3 +78,5 @@ pub mod archon_of_the_triumvirate;
 pub mod pack_rat;
 pub mod trestle_troll;
 pub mod skymark_roc;
+pub mod skyline_predator;
+pub mod korozda_monitor;

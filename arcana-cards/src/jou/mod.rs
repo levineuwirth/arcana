@@ -50,3 +50,5 @@ pub mod mogis_s_warhound;
 pub mod spirespine;
 pub mod pharika_god_of_affliction;
 pub mod pheres_band_warchief;
+pub mod dawnbringer_charioteers;
+pub mod sage_of_hours;

@@ -127,3 +127,6 @@ pub mod servant_of_the_stinger;
 pub mod iron_fist_pulverizer;
 pub mod rakdos_the_muscle;
 pub mod wylie_duke_atiin_hero;
+pub mod laughing_jasper_flint;
+pub mod bonny_pall_clearcutter;
+pub mod breeches_the_blastmaker;

@@ -52,3 +52,4 @@ pub mod shadowborn_demon;
 pub mod briarpack_alpha;
 pub mod seraph_of_the_sword;
 pub mod cyclops_tyrant;
+pub mod merfolk_spy;

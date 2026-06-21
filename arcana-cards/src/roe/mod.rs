@@ -46,3 +46,5 @@ pub mod thought_gorger;
 pub mod escaped_null;
 pub mod phantasmal_abomination;
 pub mod frostwind_invoker;
+pub mod hand_of_emrakul;
+pub mod champion_s_drake;

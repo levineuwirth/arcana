@@ -122,3 +122,8 @@ pub mod vampire_socialite;
 pub mod sigarda_champion_of_light;
 pub mod contortionist_troupe;
 pub mod drownyard_amalgam;
+pub mod consuming_blob;
+pub mod celestus_sanctifier;
+pub mod voldaren_stinger;
+pub mod storm_skreelix;
+pub mod crossroads_candleguide;

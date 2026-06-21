@@ -116,3 +116,6 @@ pub mod stampede_rider;
 pub mod aphemia_the_cacophony;
 pub mod nexus_wardens;
 pub mod mischievous_chimera;
+pub mod haktos_the_unscarred;
+pub mod kroxa_titan_of_death_s_hunger;
+pub mod alseid_of_life_s_bounty;

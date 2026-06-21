@@ -56,3 +56,5 @@ pub mod evendo_brushrazer;
 pub mod tekuthal_inquiry_dominus;
 pub mod cyberdrive_awakener;
 pub mod kilo_apogee_mind;
+pub mod emry_lurker_of_the_loch;
+pub mod baloth_prime;

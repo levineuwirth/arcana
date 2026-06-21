@@ -77,3 +77,5 @@ pub mod rakshasa_deathdealer;
 pub mod sage_eye_harrier;
 pub mod sultai_scavenger;
 pub mod savage_knuckleblade;
+pub mod jeskai_windscout;
+pub mod kheru_bloodsucker;

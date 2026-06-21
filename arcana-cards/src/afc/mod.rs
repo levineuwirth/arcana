@@ -40,3 +40,5 @@ pub mod klauth_unrivaled_ancient;
 pub mod marionette_master;
 pub mod vrondiss_rage_of_ancients;
 pub mod skyship_stalker;
+pub mod catti_brie_of_mithral_hall;
+pub mod chameleon_colossus;

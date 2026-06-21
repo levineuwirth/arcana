@@ -87,3 +87,5 @@ pub mod setessan_griffin;
 pub mod nemesis_of_mortals;
 pub mod disciple_of_phenax;
 pub mod heliod_s_emissary;
+pub mod erebos_s_emissary;
+pub mod loathsome_catoblepas;

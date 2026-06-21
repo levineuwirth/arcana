@@ -86,3 +86,4 @@ pub mod sweatworks_brawler;
 pub mod airdrop_aeronauts;
 pub mod aethergeode_miner;
 pub mod barricade_breaker;
+pub mod fen_hauler;

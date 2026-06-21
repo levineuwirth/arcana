@@ -41,3 +41,4 @@ pub mod veilborn_ghoul;
 pub mod elderscale_wurm;
 pub mod prized_elephant;
 pub mod courtly_provocateur;
+pub mod knight_of_glory;

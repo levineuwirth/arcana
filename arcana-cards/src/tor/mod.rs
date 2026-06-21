@@ -39,3 +39,5 @@ pub mod grotesque_hybrid;
 pub mod centaur_veteran;
 pub mod boneshard_slasher;
 pub mod seton_s_scout;
+pub mod balshan_collaborator;
+pub mod major_teroh;

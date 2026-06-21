@@ -95,3 +95,6 @@ pub mod donatello_way_with_machines;
 pub mod pizza_face_gastromancer;
 pub mod putrid_pals;
 pub mod featherbrained_filcher;
+pub mod groundchuck_dirtbag;
+pub mod lord_dregg_insect_invader;
+pub mod shredder_unrelenting;

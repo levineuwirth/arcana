@@ -83,3 +83,7 @@ pub mod old_one_eye;
 pub mod zoanthrope;
 pub mod be_lakor_the_dark_master;
 pub mod space_marine_scout;
+pub mod tervigon;
+pub mod purestrain_genestealer;
+pub mod assault_intercessor;
+pub mod canoptek_spyder;

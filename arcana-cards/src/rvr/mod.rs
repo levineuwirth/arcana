@@ -105,3 +105,5 @@ pub mod thrill_kill_assassin;
 pub mod dreadmalkin;
 pub mod crackling_drake;
 pub mod nightveil_predator;
+pub mod teysa_orzhov_scion;
+pub mod tajic_legion_s_edge;

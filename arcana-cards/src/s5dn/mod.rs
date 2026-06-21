@@ -43,3 +43,5 @@ pub mod auriok_windwalker;
 pub mod iron_barb_hellion;
 pub mod razorgrass_screen;
 pub mod suncrusher;
+pub mod summoner_s_egg;
+pub mod mycosynth_golem;

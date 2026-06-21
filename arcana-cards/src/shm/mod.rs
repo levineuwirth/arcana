@@ -94,3 +94,4 @@ pub mod wingrattle_scarecrow;
 pub mod windbrisk_raptor;
 pub mod boggart_arsonists;
 pub mod knacksaw_clique;
+pub mod horde_of_boggarts;

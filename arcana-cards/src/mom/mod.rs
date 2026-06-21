@@ -170,3 +170,6 @@ pub mod ravenous_sailback;
 pub mod karsus_depthguard;
 pub mod bloated_processor;
 pub mod kroxa_and_kunoros;
+pub mod zephyr_singer;
+pub mod serpent_blade_assailant;
+pub mod phyrexian_censor;

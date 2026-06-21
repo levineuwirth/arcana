@@ -154,3 +154,6 @@ pub mod wildwood_mentor;
 pub mod territorial_witchstalker;
 pub mod hylda_of_the_icy_crown;
 pub mod unruly_catapult;
+pub mod spellbook_vendor;
+pub mod dream_spoilers;
+pub mod gingerbrute;

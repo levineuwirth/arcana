@@ -109,3 +109,7 @@ pub mod dueling_coach;
 pub mod shadewing_laureate;
 pub mod owlin_shieldmage;
 pub mod oggyar_battle_seer;
+pub mod spectacle_mage;
+pub mod a_maelstrom_muse;
+pub mod callous_bloodmage;
+pub mod a_tenured_inkcaster;

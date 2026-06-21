@@ -92,3 +92,6 @@ pub mod foul_familiar;
 pub mod woolly_spider;
 pub mod tinder_wall;
 pub mod roterothopter;
+pub mod brine_shaman;
+pub mod snow_fortress;
+pub mod spore_flower;

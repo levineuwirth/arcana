@@ -114,3 +114,4 @@ pub mod defiler_of_instinct;
 pub mod defiler_of_flesh;
 pub mod llanowar_loamspeaker;
 pub mod coalition_warbrute;
+pub mod monstrous_war_leech;

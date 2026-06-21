@@ -10,3 +10,4 @@ pub mod peema_trailblazer;
 pub mod nissa_worldsoul_speaker;
 pub mod rhet_tomb_mystic;
 pub mod prophet_of_the_scarab;
+pub mod rampaging_aetherhood;

@@ -123,3 +123,6 @@ pub mod gravestone_strider;
 pub mod melek_reforged_researcher;
 pub mod wispdrinker_vampire;
 pub mod barbed_servitor;
+pub mod crimestopper_sprite;
+pub mod wojek_investigator;
+pub mod lazav_wearer_of_faces;

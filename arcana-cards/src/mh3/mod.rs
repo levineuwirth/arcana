@@ -117,3 +117,6 @@ pub mod inspired_inventor;
 pub mod fledgling_dragon;
 pub mod hexgold_slith;
 pub mod dreamtide_whale;
+pub mod cursed_wombat;
+pub mod the_necrobloom;
+pub mod writhing_chrysalis;

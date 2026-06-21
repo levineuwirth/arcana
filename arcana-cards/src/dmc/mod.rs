@@ -46,3 +46,5 @@ pub mod baru_wurmspeaker;
 pub mod glint_eye_nephilim;
 pub mod rienne_angel_of_rebirth;
 pub mod ayesha_tanaka_armorer;
+pub mod orca_siege_demon;
+pub mod traxos_scourge_of_kroog;

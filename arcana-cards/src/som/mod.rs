@@ -65,3 +65,6 @@ pub mod ichorclaw_myr;
 pub mod tel_jilad_fallen;
 pub mod putrefax;
 pub mod wall_of_tanglecord;
+pub mod flameborn_hellion;
+pub mod tangle_angler;
+pub mod blight_mamba;

@@ -153,3 +153,7 @@ pub mod codespell_cleric;
 pub mod fearless_pup;
 pub mod a_harald_king_of_skemfar;
 pub mod undersea_invader;
+pub mod littjara_glade_warden;
+pub mod varragoth_bloodsky_sire;
+pub mod burning_rune_demon;
+pub mod sarulf_s_packmate;

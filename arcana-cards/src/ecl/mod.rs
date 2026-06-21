@@ -143,3 +143,5 @@ pub mod virulent_emissary;
 pub mod chomping_changeling;
 pub mod gangly_stompling;
 pub mod luminollusk;
+pub mod twilight_diviner;
+pub mod prismabasher;

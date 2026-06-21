@@ -72,3 +72,8 @@ pub mod sergeant_john_benton;
 pub mod the_flood_of_mars;
 pub mod rassilon_the_war_president;
 pub mod susan_foreman;
+pub mod sisterhood_of_karn;
+pub mod the_first_doctor;
+pub mod star_whale;
+pub mod missy;
+pub mod the_fugitive_doctor;

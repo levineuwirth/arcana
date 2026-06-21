@@ -7,3 +7,4 @@ pub mod trip_noose;
 pub mod daru_encampment;
 pub mod crusade;
 pub mod razormane_masticore;
+pub mod mosquito_guard;

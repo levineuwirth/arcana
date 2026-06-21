@@ -142,3 +142,7 @@ pub mod aerith_gainsborough;
 pub mod prompto_argentum;
 pub mod shambling_cie_th;
 pub mod blazing_bomb;
+pub mod qutrub_forayer;
+pub mod snow_villiers;
+pub mod quina_qu_gourmet;
+pub mod a_vivi_ornitier;

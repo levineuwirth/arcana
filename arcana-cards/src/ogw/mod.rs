@@ -61,3 +61,4 @@ pub mod linvala_the_preserver;
 pub mod reckless_bushwhacker;
 pub mod cinder_hellion;
 pub mod seed_guardian;
+pub mod slaughter_drone;

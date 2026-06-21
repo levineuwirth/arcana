@@ -108,3 +108,6 @@ pub mod samite_archer;
 pub mod sunscape_master;
 pub mod tsabo_tavoc;
 pub mod thunderscape_apprentice;
+pub mod sapphire_leech;
+pub mod shivan_emissary;
+pub mod armored_guardian;

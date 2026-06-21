@@ -107,3 +107,4 @@ pub mod coralhelm_chronicler;
 pub mod brushfire_elemental;
 pub mod expedition_healer;
 pub mod orah_skyclave_hierophant;
+pub mod shatterskull_minotaur;

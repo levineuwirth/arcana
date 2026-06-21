@@ -105,3 +105,6 @@ pub mod phantasmal_forces;
 pub mod osai_vultures;
 pub mod argothian_pixies;
 pub mod personal_incarnation;
+pub mod colossus_of_sardia;
+pub mod force_of_nature;
+pub mod clockwork_swarm;

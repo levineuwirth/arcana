@@ -99,3 +99,5 @@ pub mod alert_heedbonder;
 pub mod kaheera_the_orphanguard;
 pub mod slitherwisp;
 pub mod momentum_rumbler;
+pub mod lurrus_of_the_dream_den;
+pub mod blisterspit_gremlin;

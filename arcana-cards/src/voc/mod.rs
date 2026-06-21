@@ -36,3 +36,5 @@ pub mod malakir_bloodwitch;
 pub mod boreas_charger;
 pub mod bloodlord_of_vaasgoth;
 pub mod drogskol_reinforcements;
+pub mod rattlechains;
+pub mod angel_of_flight_alabaster;

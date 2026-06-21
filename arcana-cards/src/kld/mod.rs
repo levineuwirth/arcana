@@ -99,3 +99,5 @@ pub mod lathnu_hellion;
 pub mod aether_theorist;
 pub mod eddytrail_hawk;
 pub mod bristling_hydra;
+pub mod peema_outrider;
+pub mod aetherstorm_roc;

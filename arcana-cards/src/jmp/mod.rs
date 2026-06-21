@@ -181,3 +181,7 @@ pub mod swarm_of_bloodflies;
 pub mod scarecrone;
 pub mod rishadan_airship;
 pub mod goblin_goon;
+pub mod scourge_of_nel_toth;
+pub mod linvala_keeper_of_silence;
+pub mod tempting_witch;
+pub mod angel_of_the_dire_hour;

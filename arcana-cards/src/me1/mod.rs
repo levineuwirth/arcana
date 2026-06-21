@@ -72,3 +72,6 @@ pub mod walking_wall;
 pub mod granite_gargoyle;
 pub mod goblin_wizard;
 pub mod illusionary_forces;
+pub mod shield_sphere;
+pub mod order_of_the_ebon_hand;
+pub mod preacher;

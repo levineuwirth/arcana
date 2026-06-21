@@ -83,3 +83,5 @@ pub mod pitiless_horde;
 pub mod shorecrasher_elemental;
 pub mod palace_familiar;
 pub mod glade_watcher;
+pub mod cunning_breezedancer;
+pub mod ojutai_exemplars;

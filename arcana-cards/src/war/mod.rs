@@ -95,3 +95,5 @@ pub mod jace_s_projection;
 pub mod sky_theater_strix;
 pub mod huatli_s_raptor;
 pub mod dreadhorde_arcanist;
+pub mod feather_the_redeemed;
+pub mod loxodon_sergeant;

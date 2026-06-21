@@ -83,3 +83,5 @@ pub mod soul_swallower;
 pub mod tooth_collector;
 pub mod incorrigible_youths;
 pub mod pale_rider_of_trostad;
+pub mod morkrut_necropod;
+pub mod runaway_carriage;

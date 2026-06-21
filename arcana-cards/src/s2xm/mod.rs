@@ -99,3 +99,4 @@ pub mod silumgar_scavenger;
 pub mod savageborn_hydra;
 pub mod parasitic_strix;
 pub mod karrthus_tyrant_of_jund;
+pub mod falkenrath_aristocrat;

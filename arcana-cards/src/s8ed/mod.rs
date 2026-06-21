@@ -66,3 +66,4 @@ pub mod living_terrain;
 pub mod spitting_spider;
 pub mod sunweb;
 pub mod vampiric_spirit;
+pub mod okk;

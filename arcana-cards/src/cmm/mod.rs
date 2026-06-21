@@ -239,3 +239,5 @@ pub mod mowu_loyal_companion;
 pub mod faerie_artisans;
 pub mod looter_il_kor;
 pub mod portal_mage;
+pub mod inga_rune_eyes;
+pub mod loyal_subordinate;

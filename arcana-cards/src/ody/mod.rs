@@ -109,3 +109,6 @@ pub mod krosan_archer;
 pub mod escape_artist;
 pub mod aven_archer;
 pub mod cognivore;
+pub mod mine_layer;
+pub mod crashing_centaur;
+pub mod chlorophant;

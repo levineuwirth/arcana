@@ -47,3 +47,4 @@ pub mod crown_hunter_hireling;
 pub mod sanctum_prelate;
 pub mod ill_tempered_cyclops;
 pub mod spire_phantasm;
+pub mod noble_banneret;

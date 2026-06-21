@@ -139,3 +139,6 @@ pub mod haradrim_spearmaster;
 pub mod east_mark_cavalier;
 pub mod arwen_mortal_queen;
 pub mod snarling_warg;
+pub mod boromir_warden_of_the_tower;
+pub mod sauron_the_necromancer;
+pub mod sharkey_tyrant_of_the_shire;

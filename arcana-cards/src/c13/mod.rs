@@ -31,3 +31,4 @@ pub mod uyo_silent_prophet;
 pub mod fell_shepherd;
 pub mod spellbreaker_behemoth;
 pub mod razor_hippogriff;
+pub mod marath_will_of_the_wild;

@@ -115,3 +115,8 @@ pub mod malevolent_chandelier;
 pub mod razorkin_needlehead;
 pub mod winter_misanthropic_guide;
 pub mod spectral_snatcher;
+pub mod nashi_searcher_in_the_dark;
+pub mod fear_of_exposure;
+pub mod niko_light_of_hope;
+pub mod wildfire_wickerfolk;
+pub mod inquisitive_glimmer;

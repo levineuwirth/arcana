@@ -126,3 +126,5 @@ pub mod transplant_theorist;
 pub mod ichorplate_golem;
 pub mod glistener_seer;
 pub mod cruel_grimnarch;
+pub mod serum_core_chimera;
+pub mod nimraiser_paladin;

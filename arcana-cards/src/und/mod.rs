@@ -18,3 +18,4 @@ pub mod knight_of_the_hokey_pokey;
 pub mod slaying_mantis;
 pub mod b_i_n_g_o;
 pub mod cheatyface;
+pub mod carnivorous_death_parrot;

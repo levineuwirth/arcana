@@ -189,3 +189,5 @@ pub mod wight_of_the_reliquary;
 pub mod dina_soul_steeper;
 pub mod karmic_guide;
 pub mod eidolon_of_countless_battles;
+pub mod mazirek_kraul_death_priest;
+pub mod renegade_bull;

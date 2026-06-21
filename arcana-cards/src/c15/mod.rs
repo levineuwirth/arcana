@@ -16,3 +16,4 @@ pub mod lone_revenant;
 pub mod daxos_the_returned;
 pub mod noble_quarry;
 pub mod plaxmanta;
+pub mod ghostblade_eidolon;

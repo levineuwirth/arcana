@@ -83,3 +83,4 @@ pub mod goblin_cratermaker;
 pub mod vigorspore_wurm;
 pub mod worldsoul_colossus;
 pub mod grappling_sundew;
+pub mod hellkite_whelp;

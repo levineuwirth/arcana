@@ -62,3 +62,6 @@ pub mod agent_frank_horrigan;
 pub mod cait_cage_brawler;
 pub mod ruthless_radrat;
 pub mod paladin_danse_steel_maverick;
+pub mod synth_eradicator;
+pub mod tato_farmer;
+pub mod powder_ganger;

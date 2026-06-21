@@ -86,3 +86,6 @@ pub mod tishana_voice_of_thunder;
 pub mod raging_swordtooth;
 pub mod xenagos_god_of_revels;
 pub mod singer_of_swift_rivers;
+pub mod patron_of_the_vein;
+pub mod departed_deckhand;
+pub mod topography_tracker;

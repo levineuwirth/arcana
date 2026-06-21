@@ -43,3 +43,4 @@ pub mod moonglove_changeling;
 pub mod gilt_leaf_archdruid;
 pub mod maralen_of_the_mornsong;
 pub mod final_sting_faerie;
+pub mod stingmoggie;

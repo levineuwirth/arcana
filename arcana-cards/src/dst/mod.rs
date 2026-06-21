@@ -53,3 +53,5 @@ pub mod auriok_siege_sled;
 pub mod emissary_of_despair;
 pub mod spincrusher;
 pub mod karstoderm;
+pub mod razor_golem;
+pub mod pteron_ghost;

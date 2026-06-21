@@ -19,3 +19,5 @@ pub mod kytheon_s_irregulars;
 pub mod aven_wind_mage;
 pub mod sphinx_of_enlightenment;
 pub mod topan_freeblade;
+pub mod consul_s_lieutenant;
+pub mod crested_herdcaller;

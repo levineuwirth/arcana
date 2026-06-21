@@ -75,3 +75,5 @@ pub mod boros_reckoner;
 pub mod neheb_the_eternal;
 pub mod chulane_teller_of_tales;
 pub mod unshakable_tail;
+pub mod vizier_of_many_faces;
+pub mod junk_winder;

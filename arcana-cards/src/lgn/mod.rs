@@ -41,3 +41,7 @@ pub mod canopy_crawler;
 pub mod rockshard_elemental;
 pub mod crested_craghorn;
 pub mod sootfeather_flock;
+pub mod feral_throwback;
+pub mod brontotherium;
+pub mod aven_warhawk;
+pub mod aven_redeemer;

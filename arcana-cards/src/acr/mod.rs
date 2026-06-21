@@ -43,3 +43,5 @@ pub mod the_capitoline_triad;
 pub mod achilles_davenport;
 pub mod labyrinth_adversary;
 pub mod layla_hassan;
+pub mod havi_the_all_father;
+pub mod evie_frye;

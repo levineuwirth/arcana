@@ -82,3 +82,5 @@ pub mod crocodile_of_the_crossing;
 pub mod flameblade_adept;
 pub mod rhonas_the_indomitable;
 pub mod labyrinth_guardian;
+pub mod sacred_cat;
+pub mod winged_shepherd;

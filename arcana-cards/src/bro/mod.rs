@@ -127,3 +127,6 @@ pub mod arbalest_engineers;
 pub mod a_thran_spider;
 pub mod carrion_locust;
 pub mod teething_wurmlet;
+pub mod argothian_sprite;
+pub mod aeronaut_cavalry;
+pub mod rescue_retriever;

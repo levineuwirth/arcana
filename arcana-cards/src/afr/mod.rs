@@ -149,3 +149,6 @@ pub mod rust_monster;
 pub mod the_tarrasque;
 pub mod death_priest_of_myrkul;
 pub mod zalto_fire_giant_duke;
+pub mod a_dwarfhold_champion;
+pub mod a_bruenor_battlehammer;
+pub mod eccentric_apprentice;

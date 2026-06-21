@@ -50,3 +50,5 @@ pub mod neurok_commando;
 pub mod thrun_the_last_troll;
 pub mod kemba_s_legion;
 pub mod septic_rats;
+pub mod phyrexian_crusader;
+pub mod serum_raker;

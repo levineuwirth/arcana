@@ -19,3 +19,4 @@ pub mod battle_squadron;
 pub mod streambed_aquitects;
 pub mod goblin_rabblemaster;
 pub mod tidal_courier;
+pub mod master_of_waves;

@@ -56,3 +56,4 @@ pub mod manta_ray;
 pub mod gallowbraid;
 pub mod revered_unicorn;
 pub mod alabaster_dragon;
+pub mod volunteer_reserves;

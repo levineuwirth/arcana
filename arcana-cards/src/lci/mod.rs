@@ -143,3 +143,5 @@ pub mod jadelight_spelunker;
 pub mod akawalli_the_seething_tower;
 pub mod bedrock_tortoise;
 pub mod belligerent_yearling;
+pub mod tishana_s_tidebinder;
+pub mod trumpeting_carnosaur;

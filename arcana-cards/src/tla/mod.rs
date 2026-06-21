@@ -122,3 +122,4 @@ pub mod master_pakku;
 pub mod tiger_seal;
 pub mod hog_monkey;
 pub mod earth_kingdom_soldier;
+pub mod master_piandao;

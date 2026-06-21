@@ -129,3 +129,4 @@ pub mod konda_lord_of_eiganjo;
 pub mod kashi_tribe_reaver;
 pub mod gibbering_kami;
 pub mod soratami_seer;
+pub mod mothrider_samurai;

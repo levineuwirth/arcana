@@ -74,3 +74,6 @@ pub mod appa_the_vigilant;
 pub mod azula_ruthless_firebender;
 pub mod the_duke_rebel_sentry;
 pub mod suki_kyoshi_captain;
+pub mod lion_vulture;
+pub mod sokka_and_suki;
+pub mod the_blue_spirit;

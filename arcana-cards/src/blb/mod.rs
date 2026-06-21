@@ -150,3 +150,4 @@ pub mod rust_shield_rampager;
 pub mod thundertrap_trainer;
 pub mod ygra_eater_of_all;
 pub mod kastral_the_windcrested;
+pub mod bria_riptide_rogue;

@@ -94,3 +94,7 @@ pub mod nameless_one;
 pub mod mistform_dreamer;
 pub mod riptide_biologist;
 pub mod mistform_stalker;
+pub mod skittish_valesk;
+pub mod boneknitter;
+pub mod flamestick_courier;
+pub mod ixidor_reality_sculptor;

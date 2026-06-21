@@ -74,3 +74,5 @@ pub mod abominable_treefolk;
 pub mod gluttonous_slug;
 pub mod lightning_skelemental;
 pub mod goblin_champion;
+pub mod moonblade_shinobi;
+pub mod orcish_hellraiser;

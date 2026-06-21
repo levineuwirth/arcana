@@ -54,3 +54,6 @@ pub mod edgar_master_machinist;
 pub mod bugenhagen_wise_elder;
 pub mod the_destined_black_mage;
 pub mod barret_avalanche_leader;
+pub mod rinoa_angel_wing;
+pub mod urianger_augurelt;
+pub mod sabin_master_monk;

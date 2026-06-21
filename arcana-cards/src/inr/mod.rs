@@ -148,3 +148,6 @@ pub mod gluttonous_guest;
 pub mod galvanic_juggernaut;
 pub mod voice_of_the_blessed;
 pub mod balefire_dragon;
+pub mod stitched_mangler;
+pub mod gisa_and_geralf;
+pub mod wretched_gryff;

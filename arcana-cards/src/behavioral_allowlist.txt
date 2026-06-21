@@ -45,9 +45,12 @@ Barbed Servitor
 Basilisk Gate
 Beguiler of Wills
 Belligerent Hatchling
+Bin Chicken
 Biogenic Ooze
 Black Carriage
+Black Market Tycoon
 Blinkmoth Well
+Blisterspit Gremlin
 Blizzard Elemental
 Bloodcrazed Hoplite
 Bloodsoaked Champion
@@ -63,6 +66,7 @@ Callous Oppressor
 Cancel
 Canopy Crawler
 Captivating Vampire
+Celestus Sanctifier
 Ceremonious Rejection
 Chain Stasis
 Chainbreaker
@@ -79,13 +83,16 @@ Cinderhaze Wretch
 City of Traitors
 Civic Gardener
 Claire D'Loon, Joy Sculptor
+Clattering Augur
 Cleaving Reaper
 Clever Conjurer
 Clockwork Beast
 Clockwork Steed
+Clockwork Swarm
 Clone Legion
 Cloudpost
 Coffin Puppets
+Colossus of Sardia
 Commodore Guff
 Companion of the Trials
 Concerted Defense
@@ -144,6 +151,7 @@ Elvish Scout
 Elvish Vatkeeper
 Empress Galina
 Endbringer
+Eon Frolicker
 Ertai's Trickery
 Eternal Dragon
 Ethersworn Adjudicator
@@ -195,6 +203,7 @@ Gutterbones
 Hana Kami
 Haunt of the Dead Marshes
 Haunted Dead
+Havi, the All-Father
 Heartmender
 Hinder
 Hisoka's Defiance
@@ -235,6 +244,7 @@ Jungle Creeper
 Kaalia of the Vast
 Karlach, Tiefling Berserker
 Karlach, Tiefling Spellrager
+Karlach, Tiefling Zealot
 Karona, False God
 Karstoderm
 Kellogg, Dangerous Mind
@@ -296,6 +306,7 @@ Mijae Djinn
 Minamo's Meddling
 Minamo, School at Water's Edge
 Mindstatic
+Mine Layer
 Minion of the Mighty
 Minor Misstep
 Mirran Spy
@@ -373,12 +384,14 @@ Rishadan Dockhand
 Rishadan Port
 Roc Hatchling
 Rogues' Gallery
+Roil Elemental
 Rona, Herald of Invasion
 Rootwater Matriarch
 Rubblebelt Braggart
 Rubinia Soulsinger
 Rune Snag
 Sacred Ground
+Sage of Hours
 Saint Traft and Rem Karolus
 Salvager of Secrets
 Sanctum of Stone Fangs
@@ -463,6 +476,7 @@ Tombstone, Career Criminal
 Torchling
 Touchstone
 Trampled Lotus
+Traxos, Scourge of Kroog
 Triceraton Commander
 Trickster Mage
 Tunnel Rats

@@ -110,3 +110,6 @@ pub mod crovax_the_cursed;
 pub mod silver_wyvern;
 pub mod spike_colony;
 pub mod wall_of_souls;
+pub mod angelic_protector;
+pub mod wind_dancer;
+pub mod shaman_en_kor;

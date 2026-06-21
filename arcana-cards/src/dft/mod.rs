@@ -106,3 +106,5 @@ pub mod walking_sarcophagus;
 pub mod marauding_mako;
 pub mod ticket_tortoise;
 pub mod deathless_pilot;
+pub mod winter_cursed_rider;
+pub mod dynamite_diver;

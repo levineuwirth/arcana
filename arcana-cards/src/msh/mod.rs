@@ -5,3 +5,4 @@ pub mod doctor_doom;
 pub mod the_sentry_golden_guardian;
 pub mod attuma_atlantean_warlord;
 pub mod super_skrull;
+pub mod captain_america_super_soldier;
