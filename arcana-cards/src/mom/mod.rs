@@ -173,3 +173,6 @@ pub mod kroxa_and_kunoros;
 pub mod zephyr_singer;
 pub mod serpent_blade_assailant;
 pub mod phyrexian_censor;
+pub mod fearless_skald;
+pub mod inga_and_esika;
+pub mod halo_forager;

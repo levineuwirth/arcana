@@ -146,3 +146,4 @@ pub mod qutrub_forayer;
 pub mod snow_villiers;
 pub mod quina_qu_gourmet;
 pub mod a_vivi_ornitier;
+pub mod diamond_weapon;

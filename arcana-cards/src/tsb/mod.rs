@@ -33,3 +33,4 @@ pub mod leviathan;
 pub mod orgg;
 pub mod valor;
 pub mod witch_hunter;
+pub mod swamp_mosquito;

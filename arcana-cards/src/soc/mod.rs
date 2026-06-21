@@ -191,3 +191,6 @@ pub mod karmic_guide;
 pub mod eidolon_of_countless_battles;
 pub mod mazirek_kraul_death_priest;
 pub mod renegade_bull;
+pub mod redoubled_stormsinger;
+pub mod yahenni_undying_partisan;
+pub mod brudiclad_telchor_engineer;

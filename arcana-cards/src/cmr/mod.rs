@@ -145,3 +145,8 @@ pub mod jared_carthalion_true_heir;
 pub mod toggo_goblin_weaponsmith;
 pub mod akroma_vision_of_ixidor;
 pub mod noxious_dragon;
+pub mod fathom_fleet_swordjack;
+pub mod nymris_oona_s_trickster;
+pub mod soul_of_eternity;
+pub mod opposition_agent;
+pub mod elvish_dreadlord;

@@ -20,3 +20,6 @@ pub mod omo_queen_of_vesuva;
 pub mod polygoyf;
 pub mod salvation_colossus;
 pub mod razorfield_ripper;
+pub mod sage_of_the_maze;
+pub mod cayth_famed_mechanist;
+pub mod wonderscape_sage;

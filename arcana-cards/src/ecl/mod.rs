@@ -145,3 +145,6 @@ pub mod gangly_stompling;
 pub mod luminollusk;
 pub mod twilight_diviner;
 pub mod prismabasher;
+pub mod rooftop_percher;
+pub mod sun_dappled_celebrant;
+pub mod champions_of_the_perfect;

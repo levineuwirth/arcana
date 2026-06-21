@@ -151,3 +151,6 @@ pub mod balefire_dragon;
 pub mod stitched_mangler;
 pub mod gisa_and_geralf;
 pub mod wretched_gryff;
+pub mod mausoleum_wanderer;
+pub mod splinterfright;
+pub mod sigarda_host_of_herons;

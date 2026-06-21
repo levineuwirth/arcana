@@ -140,3 +140,6 @@ pub mod revel_ruiner;
 pub mod paragon_of_modernity;
 pub mod raffine_s_silencer;
 pub mod black_market_tycoon;
+pub mod lord_xander_the_collector;
+pub mod spara_s_adjudicators;
+pub mod jetmir_nexus_of_revels;

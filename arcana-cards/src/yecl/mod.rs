@@ -10,3 +10,4 @@ pub mod gilt_leaf_alchemist;
 pub mod thoughtsteal_sprites;
 pub mod salacinder_and_soot_rascals;
 pub mod the_grand_goatnapper;
+pub mod pep_raucous_raider;

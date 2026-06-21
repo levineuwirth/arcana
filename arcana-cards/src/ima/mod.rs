@@ -59,3 +59,7 @@ pub mod abyssal_persecutor;
 pub mod illusory_angel;
 pub mod bladewing_s_thrall;
 pub mod knight_of_the_reliquary;
+pub mod stalwart_aven;
+pub mod jungle_barrier;
+pub mod primeval_titan;
+pub mod mnemonic_wall;

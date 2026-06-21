@@ -61,3 +61,4 @@ pub mod master_of_the_wild_hunt;
 pub mod noble_templar;
 pub mod chartooth_cougar;
 pub mod shoreline_ranger;
+pub mod vendilion_clique;

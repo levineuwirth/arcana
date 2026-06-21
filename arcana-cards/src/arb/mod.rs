@@ -37,3 +37,5 @@ pub mod jund_sojourners;
 pub mod defiler_of_souls;
 pub mod giant_ambush_beetle;
 pub mod esper_sojourners;
+pub mod deadshot_minotaur;
+pub mod marrow_chomper;

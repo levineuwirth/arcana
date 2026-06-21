@@ -259,6 +259,7 @@ Kiora, the Tide's Fury
 Kjeldoran Javelineer
 Knight of Valor
 Koh, the Face Stealer
+Koll, the Forgemaster
 Kraul Swarm
 Kuldotha Phoenix
 Kumano Faces Kakkazan
@@ -312,6 +313,7 @@ Minor Misstep
 Mirran Spy
 Mirror Universe
 Mishra's Helix
+Mole Worms
 Moonshadow
 Moonstone Harbinger
 Morphling
@@ -392,6 +394,7 @@ Rubinia Soulsinger
 Rune Snag
 Sacred Ground
 Sage of Hours
+Sage of the Maze
 Saint Traft and Rem Karolus
 Salvager of Secrets
 Sanctum of Stone Fangs
@@ -435,6 +438,7 @@ Spell Suck
 Spell Swindle
 Spell Syphon
 Spelljack
+Spike Cannibal
 Steel Overseer
 Stensia Innkeeper
 Stitchwing Skaab
@@ -497,6 +501,7 @@ Vhal, Scholar of Elements
 Vigean Graftmage
 Vigilant Drake
 Vivien's Jaguar
+Vodalian Mindsinger
 Vogar, Necropolis Tyrant
 Voidslime
 Volatile Rig

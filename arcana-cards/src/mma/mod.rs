@@ -29,3 +29,4 @@ pub mod auntie_s_snitch;
 pub mod demigod_of_revenge;
 pub mod arcbound_stinger;
 pub mod mad_auntie;
+pub mod avian_changeling;

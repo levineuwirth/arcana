@@ -120,3 +120,6 @@ pub mod shalai_voice_of_plenty;
 pub mod bone_devourer;
 pub mod ainok_strike_leader;
 pub mod monastery_mentor;
+pub mod weathered_sentinels;
+pub mod neriv_crackling_vanguard;
+pub mod jaddi_offshoot;

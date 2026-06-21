@@ -85,3 +85,5 @@ pub mod domri_s_nodorog;
 pub mod tenth_district_veteran;
 pub mod resolute_watchdog;
 pub mod hackrobat;
+pub mod rix_maadi_reveler;
+pub mod thirsting_shade;

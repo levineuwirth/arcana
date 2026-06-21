@@ -108,3 +108,5 @@ pub mod personal_incarnation;
 pub mod colossus_of_sardia;
 pub mod force_of_nature;
 pub mod clockwork_swarm;
+pub mod bronze_horse;
+pub mod rock_hydra;

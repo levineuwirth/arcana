@@ -11,3 +11,5 @@ pub mod the_archimandrite;
 pub mod farid_enterprising_salvager;
 pub mod wire_surgeons;
 pub mod glint_raker;
+pub mod scavenged_brawler;
+pub mod sardian_avenger;

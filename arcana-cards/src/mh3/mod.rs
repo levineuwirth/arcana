@@ -120,3 +120,4 @@ pub mod dreamtide_whale;
 pub mod cursed_wombat;
 pub mod the_necrobloom;
 pub mod writhing_chrysalis;
+pub mod a_ocelot_pride;

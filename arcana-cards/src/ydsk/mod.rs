@@ -8,3 +8,4 @@ pub mod golden_sidekick;
 pub mod lurker_in_the_deep;
 pub mod ethrimik_imagined_fiend;
 pub mod chittering_illuminator;
+pub mod mangled_soulrager;

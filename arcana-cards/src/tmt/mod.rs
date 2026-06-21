@@ -98,3 +98,6 @@ pub mod featherbrained_filcher;
 pub mod groundchuck_dirtbag;
 pub mod lord_dregg_insect_invader;
 pub mod shredder_unrelenting;
+pub mod south_wind_avatar;
+pub mod donatello_mutant_mechanic;
+pub mod venus_torn_between_worlds;

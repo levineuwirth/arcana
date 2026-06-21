@@ -87,3 +87,6 @@ pub mod tervigon;
 pub mod purestrain_genestealer;
 pub mod assault_intercessor;
 pub mod canoptek_spyder;
+pub mod thunderwolf_cavalry;
+pub mod lucius_the_eternal;
+pub mod venomcrawler;

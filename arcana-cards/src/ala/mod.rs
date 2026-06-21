@@ -72,3 +72,6 @@ pub mod windwright_mage;
 pub mod court_archers;
 pub mod sunseed_nurturer;
 pub mod viscera_dragger;
+pub mod caldera_hellion;
+pub mod deft_duelist;
+pub mod tar_fiend;

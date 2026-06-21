@@ -241,3 +241,8 @@ pub mod looter_il_kor;
 pub mod portal_mage;
 pub mod inga_rune_eyes;
 pub mod loyal_subordinate;
+pub mod custodi_squire;
+pub mod sliver_gravemother;
+pub mod jaya_s_phoenix;
+pub mod acidic_slime;
+pub mod goremand;

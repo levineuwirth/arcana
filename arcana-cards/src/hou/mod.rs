@@ -81,3 +81,5 @@ pub mod frontline_devastator;
 pub mod sunscourge_champion;
 pub mod granitic_titan;
 pub mod angel_of_condemnation;
+pub mod thorned_moloch;
+pub mod ammit_eternal;

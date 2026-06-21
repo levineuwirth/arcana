@@ -77,3 +77,6 @@ pub mod the_first_doctor;
 pub mod star_whale;
 pub mod missy;
 pub mod the_fugitive_doctor;
+pub mod adipose_offspring;
+pub mod the_dalek_emperor;
+pub mod leela_sevateem_warrior;

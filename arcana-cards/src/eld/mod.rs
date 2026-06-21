@@ -119,3 +119,5 @@ pub mod oathsworn_knight;
 pub mod a_cauldron_familiar;
 pub mod blacklance_paragon;
 pub mod eye_collector;
+pub mod harmonious_archon;
+pub mod belle_of_the_brawl;

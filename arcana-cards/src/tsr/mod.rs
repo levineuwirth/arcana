@@ -111,3 +111,6 @@ pub mod pulmonic_sliver;
 pub mod aven_riftwatcher;
 pub mod citanul_woodreaders;
 pub mod basalt_gargoyle;
+pub mod riftwing_cloudskate;
+pub mod stronghold_rats;
+pub mod knight_of_sursi;

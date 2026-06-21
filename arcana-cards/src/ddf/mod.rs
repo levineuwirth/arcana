@@ -8,3 +8,4 @@ pub mod daru_encampment;
 pub mod crusade;
 pub mod razormane_masticore;
 pub mod mosquito_guard;
+pub mod burrenton_bombardier;

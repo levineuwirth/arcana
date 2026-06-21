@@ -25,3 +25,4 @@ pub mod alaborn_zealot;
 pub mod alaborn_veteran;
 pub mod temple_elder;
 pub mod coastal_wizard;
+pub mod talas_explorer;

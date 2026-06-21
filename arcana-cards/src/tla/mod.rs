@@ -123,3 +123,6 @@ pub mod tiger_seal;
 pub mod hog_monkey;
 pub mod earth_kingdom_soldier;
 pub mod master_piandao;
+pub mod boiling_rock_rioter;
+pub mod uncle_iroh;
+pub mod saber_tooth_moose_lion;

@@ -29,3 +29,4 @@ pub mod vedalken_aethermage;
 pub mod tarox_bladewing;
 pub mod steamflogger_boss;
 pub mod aven_augur;
+pub mod bogardan_lancer;

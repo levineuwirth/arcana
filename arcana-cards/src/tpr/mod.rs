@@ -113,3 +113,8 @@ pub mod wall_of_souls;
 pub mod angelic_protector;
 pub mod wind_dancer;
 pub mod shaman_en_kor;
+pub mod coffin_queen;
+pub mod exalted_dragon;
+pub mod flowstone_mauler;
+pub mod rathi_dragon;
+pub mod mounted_archers;

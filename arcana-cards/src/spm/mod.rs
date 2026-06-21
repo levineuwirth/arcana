@@ -100,3 +100,4 @@ pub mod electro_assaulting_battery;
 pub mod molten_man_inferno_incarnate;
 pub mod shriek_treblemaker;
 pub mod doc_ock_sinister_scientist;
+pub mod spiders_man_heroic_horde;

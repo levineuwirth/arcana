@@ -38,3 +38,4 @@ pub mod workhorse;
 pub mod dauthi_cutthroat;
 pub mod mirozel;
 pub mod spike_weaver;
+pub mod spike_cannibal;

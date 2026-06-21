@@ -89,3 +89,5 @@ pub mod surge_mare;
 pub mod goblin_trashmaster;
 pub mod bone_dragon;
 pub mod phylactery_lich;
+pub mod novice_knight;
+pub mod shield_mare;

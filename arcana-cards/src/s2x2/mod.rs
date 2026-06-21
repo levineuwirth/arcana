@@ -112,3 +112,7 @@ pub mod deathbringer_liege;
 pub mod goblin_banneret;
 pub mod arjun_the_shifting_flame;
 pub mod flickerwisp;
+pub mod webweaver_changeling;
+pub mod disciple_of_the_ring;
+pub mod child_of_alara;
+pub mod aven_initiate;

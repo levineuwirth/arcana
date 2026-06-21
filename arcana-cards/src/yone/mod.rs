@@ -8,3 +8,4 @@ pub mod phyresis_roach;
 pub mod surgical_metamorph;
 pub mod mephidross_slime;
 pub mod darksteel_hydra;
+pub mod magmatic_scorchwing;

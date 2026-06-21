@@ -107,3 +107,6 @@ pub mod crackling_drake;
 pub mod nightveil_predator;
 pub mod teysa_orzhov_scion;
 pub mod tajic_legion_s_edge;
+pub mod sewer_shambler;
+pub mod persistent_petitioners;
+pub mod burning_tree_vandal;

@@ -72,3 +72,5 @@ pub mod trapjaw_kelpie;
 pub mod primalcrux;
 pub mod sturdy_hatchling;
 pub mod stillmoon_cavalier;
+pub mod hateflayer;
+pub mod needle_specter;

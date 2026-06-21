@@ -157,3 +157,5 @@ pub mod unruly_catapult;
 pub mod spellbook_vendor;
 pub mod dream_spoilers;
 pub mod gingerbrute;
+pub mod johann_apprentice_sorcerer;
+pub mod diminisher_witch;

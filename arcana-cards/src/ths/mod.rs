@@ -89,3 +89,4 @@ pub mod disciple_of_phenax;
 pub mod heliod_s_emissary;
 pub mod erebos_s_emissary;
 pub mod loathsome_catoblepas;
+pub mod thassa_s_emissary;

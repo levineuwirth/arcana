@@ -116,3 +116,6 @@ pub mod selesnya_guildmage;
 pub mod lavinia_foil_to_conspiracy;
 pub mod frenzied_gorespawn;
 pub mod hypersonic_dragon;
+pub mod war_screecher;
+pub mod golgari_guildmage;
+pub mod roc_charger;

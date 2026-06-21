@@ -231,3 +231,7 @@ pub mod frontline_medic;
 pub mod dross_harvester;
 pub mod aven_mindcensor;
 pub mod warmonger_hellkite;
+pub mod avenging_hunter;
+pub mod sailors_bane;
+pub mod faceless_one;
+pub mod mold_folk;

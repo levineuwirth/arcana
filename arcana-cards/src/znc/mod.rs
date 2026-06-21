@@ -18,3 +18,5 @@ pub mod mina_and_denn_wildborn;
 pub mod stinkdrinker_bandit;
 pub mod notion_thief;
 pub mod oona_queen_of_the_fae;
+pub mod marang_river_prowler;
+pub mod marsh_flitter;

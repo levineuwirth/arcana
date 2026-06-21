@@ -97,3 +97,4 @@ pub mod huatli_s_raptor;
 pub mod dreadhorde_arcanist;
 pub mod feather_the_redeemed;
 pub mod loxodon_sergeant;
+pub mod gideon_s_company;

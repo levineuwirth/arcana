@@ -39,3 +39,4 @@ pub mod scuttling_doom_engine;
 pub mod tuvasa_the_sunlit;
 pub mod elderwood_scion;
 pub mod kestia_the_cultivator;
+pub mod silent_sentinel;

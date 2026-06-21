@@ -39,3 +39,4 @@ pub mod great_oak_guardian;
 pub mod doomed_artisan;
 pub mod heart_piercer_manticore;
 pub mod thalia_s_geistcaller;
+pub mod greven_predator_captain;

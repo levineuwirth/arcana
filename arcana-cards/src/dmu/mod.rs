@@ -115,3 +115,8 @@ pub mod defiler_of_flesh;
 pub mod llanowar_loamspeaker;
 pub mod coalition_warbrute;
 pub mod monstrous_war_leech;
+pub mod anointed_peacekeeper;
+pub mod juniper_order_rootweaver;
+pub mod jodah_the_unifier;
+pub mod battlefly_swarm;
+pub mod vodalian_mindsinger;

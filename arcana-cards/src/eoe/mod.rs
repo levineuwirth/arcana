@@ -108,3 +108,4 @@ pub mod honored_knight_captain;
 pub mod illvoi_galeblade;
 pub mod skystinger;
 pub mod mm_menon_uthros_exile;
+pub mod cloudsculpt_technician;

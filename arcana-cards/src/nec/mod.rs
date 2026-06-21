@@ -24,3 +24,5 @@ pub mod go_shintai_of_life_s_origin;
 pub mod myojin_of_towering_might;
 pub mod myojin_of_roaring_blades;
 pub mod indomitable_archangel;
+pub mod myojin_of_blooming_dawn;
+pub mod aeronaut_admiral;

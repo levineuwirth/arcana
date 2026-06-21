@@ -108,3 +108,8 @@ pub mod brushfire_elemental;
 pub mod expedition_healer;
 pub mod orah_skyclave_hierophant;
 pub mod shatterskull_minotaur;
+pub mod scion_of_the_swarm;
+pub mod legion_angel;
+pub mod master_of_winds;
+pub mod skyclave_shadowcat;
+pub mod expedition_diviner;

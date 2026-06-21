@@ -42,3 +42,4 @@ pub mod kingfisher;
 pub mod slinking_skirge;
 pub mod aura_thief;
 pub mod goblin_marshal;
+pub mod wall_of_glare;

@@ -82,3 +82,4 @@ pub mod benalish_knight;
 pub mod mantis_engine;
 pub mod spark_elemental;
 pub mod aven_cloudchaser;
+pub mod viashino_sandscout;

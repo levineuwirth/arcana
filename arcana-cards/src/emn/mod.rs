@@ -67,3 +67,4 @@ pub mod swift_spinner;
 pub mod tattered_haunter;
 pub mod mercurial_geists;
 pub mod impetuous_devils;
+pub mod vexing_scuttler;

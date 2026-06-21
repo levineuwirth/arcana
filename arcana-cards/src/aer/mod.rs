@@ -87,3 +87,5 @@ pub mod airdrop_aeronauts;
 pub mod aethergeode_miner;
 pub mod barricade_breaker;
 pub mod fen_hauler;
+pub mod winding_constrictor;
+pub mod shipwreck_moray;

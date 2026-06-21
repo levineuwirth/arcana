@@ -46,3 +46,4 @@ pub mod cavern_harpy;
 pub mod lava_zombie;
 pub mod hunting_drake;
 pub mod doomsday_specter;
+pub mod arctic_merfolk;

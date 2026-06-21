@@ -130,3 +130,4 @@ pub mod kashi_tribe_reaver;
 pub mod gibbering_kami;
 pub mod soratami_seer;
 pub mod mothrider_samurai;
+pub mod myojin_of_seeing_winds;

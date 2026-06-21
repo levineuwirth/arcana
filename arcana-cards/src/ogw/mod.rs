@@ -62,3 +62,8 @@ pub mod reckless_bushwhacker;
 pub mod cinder_hellion;
 pub mod seed_guardian;
 pub mod slaughter_drone;
+pub mod gravity_negator;
+pub mod goblin_freerunner;
+pub mod thought_harvester;
+pub mod tyrant_of_valakut;
+pub mod inverter_of_truth;

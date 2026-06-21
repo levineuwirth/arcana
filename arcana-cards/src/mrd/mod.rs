@@ -88,3 +88,4 @@ pub mod neurok_familiar;
 pub mod vulshok_battlemaster;
 pub mod psychic_membrane;
 pub mod lumengrid_sentinel;
+pub mod goblin_war_wagon;

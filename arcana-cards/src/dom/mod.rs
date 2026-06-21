@@ -87,3 +87,4 @@ pub mod untamed_kavu;
 pub mod urgoros_the_empty_one;
 pub mod daring_archaeologist;
 pub mod dauntless_bodyguard;
+pub mod stronghold_confessor;

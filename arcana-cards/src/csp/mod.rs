@@ -55,3 +55,6 @@ pub mod woolly_razorback;
 pub mod earthen_goo;
 pub mod arctic_nishoba;
 pub mod void_maw;
+pub mod white_shield_crusader;
+pub mod stalking_yeti;
+pub mod squall_drifter;

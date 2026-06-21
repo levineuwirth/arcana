@@ -127,3 +127,4 @@ pub mod portcullis_vine;
 pub mod niambi_esteemed_speaker;
 pub mod feline_sovereign;
 pub mod valorous_steed;
+pub mod warded_battlements;

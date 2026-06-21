@@ -101,3 +101,4 @@ pub mod eddytrail_hawk;
 pub mod bristling_hydra;
 pub mod peema_outrider;
 pub mod aetherstorm_roc;
+pub mod scrapheap_scrounger;

@@ -96,3 +96,5 @@ pub mod river_sneak;
 pub mod atzocan_archer;
 pub mod goring_ceratops;
 pub mod tilonalli_s_skinshifter;
+pub mod storm_fleet_aerialist;
+pub mod rigging_runner;

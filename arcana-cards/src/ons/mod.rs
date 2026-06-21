@@ -98,3 +98,6 @@ pub mod skittish_valesk;
 pub mod boneknitter;
 pub mod flamestick_courier;
 pub mod ixidor_reality_sculptor;
+pub mod spitting_gourna;
+pub mod mistform_wall;
+pub mod goblin_taskmaster;

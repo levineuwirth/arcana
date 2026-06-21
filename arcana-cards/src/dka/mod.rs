@@ -40,3 +40,5 @@ pub mod markov_warlord;
 pub mod pyreheart_wolf;
 pub mod stormbound_geist;
 pub mod vengeful_vampire;
+pub mod erdwal_ripper;
+pub mod gravetiller_wurm;

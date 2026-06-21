@@ -27,3 +27,4 @@ pub mod the_brute;
 pub mod serra_paladin;
 pub mod primordial_ooze;
 pub mod cave_people;
+pub mod mole_worms;

@@ -45,3 +45,4 @@ pub mod trynn_champion_of_freedom;
 pub mod goblin_dark_dwellers;
 pub mod surly_badgersaur;
 pub mod eon_frolicker;
+pub mod wort_the_raidmother;

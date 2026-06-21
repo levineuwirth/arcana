@@ -130,3 +130,5 @@ pub mod wylie_duke_atiin_hero;
 pub mod laughing_jasper_flint;
 pub mod bonny_pall_clearcutter;
 pub mod breeches_the_blastmaker;
+pub mod reckless_lackey;
+pub mod honest_rutstein;

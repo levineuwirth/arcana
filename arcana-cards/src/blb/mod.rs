@@ -151,3 +151,6 @@ pub mod thundertrap_trainer;
 pub mod ygra_eater_of_all;
 pub mod kastral_the_windcrested;
 pub mod bria_riptide_rogue;
+pub mod warren_warleader;
+pub mod persistent_marshstalker;
+pub mod steampath_charger;

@@ -161,3 +161,4 @@ pub mod covert_technician;
 pub mod orochi_merge_keeper;
 pub mod tameshi_reality_architect;
 pub mod peerless_samurai;
+pub mod simian_sling;

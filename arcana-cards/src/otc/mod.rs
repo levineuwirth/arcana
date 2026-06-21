@@ -76,3 +76,7 @@ pub mod nashi_moon_sage_s_scion;
 pub mod pteramander;
 pub mod olivia_opulent_outlaw;
 pub mod mari_the_killing_quill;
+pub mod dune_chanter;
+pub mod yuma_proud_protector;
+pub mod dire_fleet_ravager;
+pub mod dire_fleet_daredevil;

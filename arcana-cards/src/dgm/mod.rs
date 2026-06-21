@@ -50,3 +50,4 @@ pub mod maze_sentinel;
 pub mod goblin_test_pilot;
 pub mod renegade_krasis;
 pub mod mirko_vosk_mind_drinker;
+pub mod riot_piker;

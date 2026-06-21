@@ -71,3 +71,5 @@ pub mod sylvan_primordial;
 pub mod thrull_parasite;
 pub mod viashino_shanktail;
 pub mod elusive_krasis;
+pub mod vizkopa_confessor;
+pub mod skarrg_goliath;

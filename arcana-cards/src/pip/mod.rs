@@ -65,3 +65,4 @@ pub mod paladin_danse_steel_maverick;
 pub mod synth_eradicator;
 pub mod tato_farmer;
 pub mod powder_ganger;
+pub mod thrill_kill_disciple;

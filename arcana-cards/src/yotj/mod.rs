@@ -15,3 +15,4 @@ pub mod pearl_collector;
 pub mod sapphire_collector;
 pub mod nashi_illusion_gadgeteer;
 pub mod grenzo_crooked_jailer;
+pub mod jet_collector;

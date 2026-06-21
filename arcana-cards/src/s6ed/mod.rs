@@ -42,3 +42,4 @@ pub mod mesa_falcon;
 pub mod daraja_griffin;
 pub mod pearl_dragon;
 pub mod mischievous_poltergeist;
+pub mod blighted_shaman;

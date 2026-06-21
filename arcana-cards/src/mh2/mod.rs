@@ -124,3 +124,7 @@ pub mod magus_of_the_bridge;
 pub mod drey_keeper;
 pub mod serra_s_emissary;
 pub mod clattering_augur;
+pub mod landscaper_colos;
+pub mod bloodbraid_marauder;
+pub mod glorious_enforcer;
+pub mod breathless_knight;

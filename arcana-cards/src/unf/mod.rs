@@ -68,3 +68,4 @@ pub mod vedalken_squirrel_whacker;
 pub mod claire_d_loon_joy_sculptor;
 pub mod a_real_handful;
 pub mod blorbian_buddy;
+pub mod prize_wall;

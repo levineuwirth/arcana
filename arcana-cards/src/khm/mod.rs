@@ -157,3 +157,7 @@ pub mod littjara_glade_warden;
 pub mod varragoth_bloodsky_sire;
 pub mod burning_rune_demon;
 pub mod sarulf_s_packmate;
+pub mod dragonkin_berserker;
+pub mod koll_the_forgemaster;
+pub mod firja_judge_of_valor;
+pub mod hailstorm_valkyrie;

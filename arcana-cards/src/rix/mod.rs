@@ -57,3 +57,5 @@ pub mod charging_tuskodon;
 pub mod spire_winder;
 pub mod paladin_of_atonement;
 pub mod skymarcher_aspirant;
+pub mod mausoleum_harpy;
+pub mod sadistic_skymarcher;

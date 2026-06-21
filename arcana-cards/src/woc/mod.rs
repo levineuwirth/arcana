@@ -9,3 +9,4 @@ pub mod faerie_bladecrafter;
 pub mod blightwing_bandit;
 pub mod ox_drover;
 pub mod tegwyll_duke_of_splendor;
+pub mod shadow_puppeteers;

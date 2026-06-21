@@ -113,3 +113,4 @@ pub mod spectacle_mage;
 pub mod a_maelstrom_muse;
 pub mod callous_bloodmage;
 pub mod a_tenured_inkcaster;
+pub mod gnarled_professor;

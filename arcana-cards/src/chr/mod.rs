@@ -10,3 +10,6 @@ pub mod runesword;
 pub mod wall_of_shadows;
 pub mod wall_of_opposition;
 pub mod emerald_dragonfly;
+pub mod ayesha_tanaka;
+pub mod beasts_of_bogardan;
+pub mod wall_of_vapor;

@@ -29,3 +29,4 @@ pub mod ethereal_escort;
 pub mod lupine_harbingers;
 pub mod hollowhenge_wrangler;
 pub mod inquisitor_captain;
+pub mod obsessive_collector;

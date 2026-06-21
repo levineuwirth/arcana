@@ -135,3 +135,4 @@ pub mod undergrowth_leopard;
 pub mod salt_road_packbeast;
 pub mod ureni_the_song_unending;
 pub mod adorned_crocodile;
+pub mod shiko_paragon_of_the_way;

@@ -62,3 +62,6 @@ pub mod yarok_the_desecrated;
 pub mod titan_of_industry;
 pub mod wickerbough_elder;
 pub mod massacre_girl_known_killer;
+pub mod auntie_ool_cursewretch;
+pub mod muldrotha_the_gravetide;
+pub mod grim_poppet;

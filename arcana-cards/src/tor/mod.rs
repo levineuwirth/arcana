@@ -41,3 +41,4 @@ pub mod boneshard_slasher;
 pub mod seton_s_scout;
 pub mod balshan_collaborator;
 pub mod major_teroh;
+pub mod hydromorph_gull;

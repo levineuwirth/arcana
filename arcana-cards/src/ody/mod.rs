@@ -112,3 +112,4 @@ pub mod cognivore;
 pub mod mine_layer;
 pub mod crashing_centaur;
 pub mod chlorophant;
+pub mod bloodcurdler;

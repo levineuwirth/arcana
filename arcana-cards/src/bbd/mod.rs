@@ -96,3 +96,6 @@ pub mod noosegraf_mob;
 pub mod dwarven_lightsmith;
 pub mod skystreamer;
 pub mod screeching_buzzard;
+pub mod virtus_the_veiled;
+pub mod boldwyr_intimidator;
+pub mod soulblade_renewer;

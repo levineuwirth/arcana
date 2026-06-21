@@ -103,3 +103,6 @@ pub mod sawtooth_loon;
 pub mod macetail_hystrodon;
 pub mod kjeldoran_gargoyle;
 pub mod avarax;
+pub mod wall_of_junk;
+pub mod phyrexian_debaser;
+pub mod voice_of_all;

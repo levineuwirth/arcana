@@ -119,3 +119,5 @@ pub mod mischievous_chimera;
 pub mod haktos_the_unscarred;
 pub mod kroxa_titan_of_death_s_hunger;
 pub mod alseid_of_life_s_bounty;
+pub mod witness_of_tomorrows;
+pub mod uro_titan_of_nature_s_wrath;

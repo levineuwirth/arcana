@@ -95,3 +95,6 @@ pub mod windbrisk_raptor;
 pub mod boggart_arsonists;
 pub mod knacksaw_clique;
 pub mod horde_of_boggarts;
+pub mod tattermunge_duo;
+pub mod prismwake_merrow;
+pub mod leech_bonder;

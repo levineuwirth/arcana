@@ -45,3 +45,7 @@ pub mod razorgrass_screen;
 pub mod suncrusher;
 pub mod summoner_s_egg;
 pub mod mycosynth_golem;
+pub mod mephidross_vampire;
+pub mod cosmic_larva;
+pub mod solarion;
+pub mod spinal_parasite;

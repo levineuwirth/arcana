@@ -83,3 +83,5 @@ pub mod barrage_tyrant;
 pub mod wave_wing_elemental;
 pub mod mist_intruder;
 pub mod wasteland_strangler;
+pub mod oracle_of_dust;
+pub mod silent_skimmer;

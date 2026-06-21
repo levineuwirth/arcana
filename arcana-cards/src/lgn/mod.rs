@@ -45,3 +45,7 @@ pub mod feral_throwback;
 pub mod brontotherium;
 pub mod aven_warhawk;
 pub mod aven_redeemer;
+pub mod skirk_alarmist;
+pub mod celestial_gatekeeper;
+pub mod mistform_wakecaster;
+pub mod vexing_beetle;

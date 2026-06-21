@@ -14,3 +14,4 @@ pub mod hidden_path;
 pub mod tangle_kelp;
 pub mod scarwood_hag;
 pub mod electric_eel;
+pub mod nameless_race;

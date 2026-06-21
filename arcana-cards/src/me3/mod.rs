@@ -103,3 +103,5 @@ pub mod wall_of_light;
 pub mod liu_bei_lord_of_shu;
 pub mod kobold_overlord;
 pub mod tetsuo_umezawa;
+pub mod wei_night_raiders;
+pub mod ivory_guardians;

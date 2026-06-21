@@ -142,3 +142,4 @@ pub mod snarling_warg;
 pub mod boromir_warden_of_the_tower;
 pub mod sauron_the_necromancer;
 pub mod sharkey_tyrant_of_the_shire;
+pub mod ithilien_kingfisher;

@@ -38,3 +38,4 @@ pub mod moniker_mage;
 pub mod assquatch;
 pub mod meddling_kids;
 pub mod question_elemental;
+pub mod togglodyte;

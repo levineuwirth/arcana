@@ -13,3 +13,5 @@ pub mod keening_banshee;
 pub mod ghost_lit_stalker;
 pub mod howling_banshee;
 pub mod blastoderm;
+pub mod faerie_macabre;
+pub mod albino_troll;

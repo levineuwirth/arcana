@@ -84,3 +84,5 @@ pub mod mirror_style_master;
 pub mod syr_elenora_the_discerning;
 pub mod knight_of_the_white_orchid;
 pub mod hedron_detonator;
+pub mod knight_exemplar;
+pub mod sunscorch_regent;

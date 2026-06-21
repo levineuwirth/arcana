@@ -89,3 +89,7 @@ pub mod singer_of_swift_rivers;
 pub mod patron_of_the_vein;
 pub mod departed_deckhand;
 pub mod topography_tracker;
+pub mod topiary_stomper;
+pub mod shifting_ceratops;
+pub mod redemption_choir;
+pub mod zacama_primal_calamity;
