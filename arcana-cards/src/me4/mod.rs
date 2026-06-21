@@ -102,3 +102,5 @@ pub mod scavenging_ghoul;
 pub mod two_headed_giant_of_foriys;
 pub mod jun_n_efreet;
 pub mod phantasmal_forces;
+pub mod osai_vultures;
+pub mod argothian_pixies;

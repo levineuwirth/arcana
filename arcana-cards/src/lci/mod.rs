@@ -135,3 +135,7 @@ pub mod cogwork_wrestler;
 pub mod oltec_cloud_guard;
 pub mod kinjalli_s_dawnrunner;
 pub mod gargantuan_leech;
+pub mod child_of_the_volcano;
+pub mod gishath_sun_s_avatar;
+pub mod sentinel_of_the_nameless_city;
+pub mod malamet_veteran;

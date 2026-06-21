@@ -112,3 +112,5 @@ pub mod dreamdrinker_vampire;
 pub mod glyph_elemental;
 pub mod fetid_gargantua;
 pub mod kaalia_of_the_vast;
+pub mod territory_culler;
+pub mod inspired_inventor;

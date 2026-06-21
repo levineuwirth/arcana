@@ -9,6 +9,7 @@
 # future ForEach/subtype_filter-class bug) fails CI. The trigger block is an
 # un-triaged baseline — mine it for real bugs (like subtype_filter) and SHRINK
 # it; never grow without confirming the card is a genuine false-positive.
+A-Cauldron Familiar
 A-Llanowar Greenwidow
 A-Raiyuu, Storm's Edge
 Absorb Energy
@@ -75,6 +76,7 @@ Cinder Pyromancer
 Cinderhaze Wretch
 City of Traitors
 Civic Gardener
+Claire D'Loon, Joy Sculptor
 Cleaving Reaper
 Clever Conjurer
 Clockwork Beast
@@ -98,6 +100,7 @@ Cult Conscript
 Cybermat
 Cytoplast Manipulator
 Dack Fayden
+Danitha, Benalia's Hope
 Dark Suspicions
 Daru Stinger
 Dauntless Aven
@@ -164,6 +167,7 @@ Gavony Dawnguard
 Gelectrode
 Geralf's Masterpiece
 Ghoulsteed
+Giant Ambush Beetle
 Glimmerbell
 Glimmerpost
 Goblin Assassin
@@ -199,6 +203,7 @@ Hyperion Blacksmith
 Hyrax Tower Scout
 Imaryll, Elfhame Elite
 Incandescent Soulstoke
+Incubation Triformer
 Induce Paranoia
 Initiate's Companion
 Innocence Kami
@@ -233,11 +238,13 @@ Kiora's Follower
 Kiora, Behemoth Beckoner
 Kiora, the Tide's Fury
 Kjeldoran Javelineer
+Knight of Valor
 Koh, the Face Stealer
 Kraul Swarm
 Kuldotha Phoenix
 Kumano Faces Kakkazan
 Kydele, Chosen of Kruphix
+Labyrinth Guardian
 Lapse of Certainty
 Lay Bare
 Leonin Battlemage
@@ -246,6 +253,7 @@ Lightning-Rig Crew
 Lingering Phantom
 Liquify
 Lita, Mechanical Engineer
+Llanowar Greenwidow
 Lofty Denial
 Loyal Retainers
 Lunar Force
@@ -263,6 +271,7 @@ Mana Tithe
 Mandate of Abaddon
 Marchesa, the Black Rose
 Marketback Walker
+Master Pakku
 Master Thief
 Medicine Runner
 Medomai the Ageless
@@ -334,6 +343,7 @@ Quench
 Radagast the Brown
 Raggadragga, Goreguts Boss
 Ragost, Deft Gastronaut
+Raiyuu, Storm's Edge
 Rakshasa's Disdain
 Ral Zarek
 Raph & Leo, Sibling Rivals
@@ -404,6 +414,7 @@ Steel Overseer
 Stensia Innkeeper
 Stitchwing Skaab
 Stone-Seeder Hierophant
+Sturdy Hatchling
 Sunrise Cavalier
 Super Mutant Scavenger
 Superior Numbers
@@ -414,6 +425,7 @@ Teferi's Contingency
 Teferi, Master of Time
 Teferi, Temporal Archmage
 Teferi, Timebender
+Tenth District Veteran
 Tezzeret, Cruel Captain
 Thalakos Deceiver
 Thassa's Rebuff
@@ -432,6 +444,7 @@ Tibalt's Trickery
 Ticking Mime Bomb
 Tideforce Elemental
 Tidewater Minion
+Tiger-Seal
 Timestream Navigator
 Tombstone, Career Criminal
 Torchling

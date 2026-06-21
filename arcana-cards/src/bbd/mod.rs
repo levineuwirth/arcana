@@ -91,3 +91,7 @@ pub mod sower_of_temptation;
 pub mod apocalypse_hydra;
 pub mod plated_crusher;
 pub mod lava_field_overlord;
+pub mod khorvath_brightflame;
+pub mod noosegraf_mob;
+pub mod dwarven_lightsmith;
+pub mod skystreamer;

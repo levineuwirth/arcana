@@ -632,6 +632,8 @@ pub mod yone;
 
 pub mod aa2;
 
+pub mod pspl;
+
 /// Staging area for arcana-gen card generations. See the module
 /// docs — this is intermediate storage, not a stable public API.
 pub mod generated;

@@ -67,3 +67,8 @@ pub mod silent_blade_oni;
 pub mod captain_lannery_storm;
 pub mod silhana_ledgewalker;
 pub mod bladegriff_prototype;
+pub mod sage_of_the_beyond;
+pub mod tower_winder;
+pub mod hazezon_shaper_of_sand;
+pub mod impulsive_pilferer;
+pub mod mirror_entity;

@@ -143,3 +143,7 @@ pub mod downwind_ambusher;
 pub mod flowerfoot_swordmaster;
 pub mod barkform_harvester;
 pub mod valley_rotcaller;
+pub mod keen_eyed_curator;
+pub mod fireglass_mentor;
+pub mod plumecreed_mentor;
+pub mod rust_shield_rampager;

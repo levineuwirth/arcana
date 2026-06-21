@@ -148,3 +148,7 @@ pub mod twinshot_sniper;
 pub mod lion_sash;
 pub mod futurist_operative;
 pub mod searchlight_companion;
+pub mod mothrider_patrol;
+pub mod raiyuu_storm_s_edge;
+pub mod blade_blizzard_kitsune;
+pub mod a_dokuchi_silencer;

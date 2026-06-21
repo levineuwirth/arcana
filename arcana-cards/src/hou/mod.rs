@@ -79,3 +79,4 @@ pub mod steadfast_sentinel;
 pub mod hope_tender;
 pub mod frontline_devastator;
 pub mod sunscourge_champion;
+pub mod granitic_titan;

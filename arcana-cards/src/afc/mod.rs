@@ -38,3 +38,4 @@ pub mod minn_wily_illusionist;
 pub mod midnight_pathlighter;
 pub mod klauth_unrivaled_ancient;
 pub mod marionette_master;
+pub mod vrondiss_rage_of_ancients;

@@ -15,3 +15,4 @@ pub mod underworld_coinsmith;
 pub mod lone_revenant;
 pub mod daxos_the_returned;
 pub mod noble_quarry;
+pub mod plaxmanta;

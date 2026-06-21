@@ -88,3 +88,6 @@ pub mod skyward_spider;
 pub mod scarlet_spider_ben_reilly;
 pub mod carnage_crimson_chaos;
 pub mod hobgoblin_mantled_marauder;
+pub mod gwenom_remorseless;
+pub mod swarm_being_of_bees;
+pub mod doc_ock_s_henchmen;

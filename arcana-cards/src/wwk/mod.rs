@@ -34,3 +34,4 @@ pub mod perimeter_captain;
 pub mod akoum_battlesinger;
 pub mod tideforce_elemental;
 pub mod thada_adel_acquisitor;
+pub mod bojuka_brigand;

@@ -70,3 +70,5 @@ pub mod kuro_s_taken;
 pub mod celestial_kirin;
 pub mod oboro_envoy;
 pub mod oboro_breezecaller;
+pub mod kagemaro_first_to_suffer;
+pub mod bounteous_kirin;

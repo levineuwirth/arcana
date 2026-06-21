@@ -44,3 +44,4 @@ pub mod skittering_crustacean;
 pub mod caller_of_the_untamed;
 pub mod sinuous_vermin;
 pub mod crown_hunter_hireling;
+pub mod sanctum_prelate;

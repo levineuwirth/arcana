@@ -134,3 +134,5 @@ pub mod mordor_trebuchet;
 pub mod voracious_fell_beast;
 pub mod saruman_the_white;
 pub mod the_balrog_durin_s_bane;
+pub mod witch_king_of_angmar;
+pub mod haradrim_spearmaster;

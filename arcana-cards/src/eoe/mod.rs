@@ -95,3 +95,5 @@ pub mod sunstar_expansionist;
 pub mod rust_harvester;
 pub mod nebula_dragon;
 pub mod sunstar_chaplain;
+pub mod interceptor_mechan;
+pub mod mechan_shieldmate;

@@ -63,3 +63,5 @@ pub mod kuldotha_phoenix;
 pub mod acid_web_spider;
 pub mod ichorclaw_myr;
 pub mod tel_jilad_fallen;
+pub mod putrefax;
+pub mod wall_of_tanglecord;

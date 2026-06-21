@@ -86,3 +86,4 @@ pub mod observant_alseid;
 pub mod setessan_griffin;
 pub mod nemesis_of_mortals;
 pub mod disciple_of_phenax;
+pub mod heliod_s_emissary;

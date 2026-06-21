@@ -40,3 +40,5 @@ pub mod panglacial_shinobi;
 pub mod oracle_of_the_alpha;
 pub mod lutri_pauper_otter;
 pub mod werewhat;
+pub mod new_master_of_arms;
+pub mod noble_ox;

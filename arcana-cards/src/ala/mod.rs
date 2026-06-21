@@ -70,3 +70,5 @@ pub mod gustrider_exuberant;
 pub mod jungle_weaver;
 pub mod windwright_mage;
 pub mod court_archers;
+pub mod sunseed_nurturer;
+pub mod viscera_dragger;

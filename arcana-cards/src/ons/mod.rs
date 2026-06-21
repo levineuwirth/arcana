@@ -92,3 +92,5 @@ pub mod glarecaster;
 pub mod tephraderm;
 pub mod nameless_one;
 pub mod mistform_dreamer;
+pub mod riptide_biologist;
+pub mod mistform_stalker;

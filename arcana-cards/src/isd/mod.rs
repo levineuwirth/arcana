@@ -55,3 +55,5 @@ pub mod gallows_warden;
 pub mod mirror_mad_phantasm;
 pub mod angelic_overseer;
 pub mod lantern_spirit;
+pub mod somberwald_spider;
+pub mod manor_skeleton;

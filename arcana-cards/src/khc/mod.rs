@@ -30,3 +30,4 @@ pub mod inspired_sphinx;
 pub mod ranar_the_ever_watchful;
 pub mod cloudgoat_ranger;
 pub mod jagged_scar_archers;
+pub mod rhys_the_exiled;

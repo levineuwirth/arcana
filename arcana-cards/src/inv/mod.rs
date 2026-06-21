@@ -105,3 +105,6 @@ pub mod kavu_monarch;
 pub mod kavu_aggressor;
 pub mod crusading_knight;
 pub mod samite_archer;
+pub mod sunscape_master;
+pub mod tsabo_tavoc;
+pub mod thunderscape_apprentice;

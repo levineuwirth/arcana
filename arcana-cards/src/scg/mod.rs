@@ -24,3 +24,4 @@ pub mod woodcloaker;
 pub mod thundercloud_elemental;
 pub mod rock_jockey;
 pub mod daru_warchief;
+pub mod mistform_warchief;

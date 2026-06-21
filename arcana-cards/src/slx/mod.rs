@@ -13,3 +13,4 @@ pub mod mathise_surge_channeler;
 pub mod othelm_sigardian_outcast;
 pub mod immard_the_stormcleaver;
 pub mod gregor_shrewd_magistrate;
+pub mod cecily_haunted_mage;

@@ -81,3 +81,4 @@ pub mod mortarion_daemon_primarch;
 pub mod winged_hive_tyrant;
 pub mod old_one_eye;
 pub mod zoanthrope;
+pub mod be_lakor_the_dark_master;

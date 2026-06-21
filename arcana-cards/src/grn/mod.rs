@@ -78,3 +78,6 @@ pub mod swarm_guildmage;
 pub mod izoni_thousand_eyed;
 pub mod hatchery_spider;
 pub mod citywatch_sphinx;
+pub mod arboretum_elemental;
+pub mod goblin_cratermaker;
+pub mod vigorspore_wurm;

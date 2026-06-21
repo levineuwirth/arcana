@@ -132,3 +132,7 @@ pub mod snooping_newsie;
 pub mod riveteers_requisitioner;
 pub mod reservoir_kraken;
 pub mod nimble_larcenist;
+pub mod goldhound;
+pub mod park_heights_pegasus;
+pub mod a_spara_s_adjudicators;
+pub mod riveteers_decoy;

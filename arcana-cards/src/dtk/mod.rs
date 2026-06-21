@@ -81,3 +81,5 @@ pub mod ojutai_interceptor;
 pub mod aven_sunstriker;
 pub mod pitiless_horde;
 pub mod shorecrasher_elemental;
+pub mod palace_familiar;
+pub mod glade_watcher;

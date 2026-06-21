@@ -149,3 +149,5 @@ pub mod malevolent_witchkite;
 pub mod greta_sweettooth_scourge;
 pub mod elvish_archivist;
 pub mod chancellor_of_tales;
+pub mod syr_ginger_the_meal_ender;
+pub mod wildwood_mentor;

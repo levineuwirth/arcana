@@ -66,3 +66,8 @@ pub mod flaming_tyrannosaurus;
 pub mod the_tenth_doctor;
 pub mod nyssa_of_traken;
 pub mod ace_fearless_rebel;
+pub mod the_ninth_doctor;
+pub mod sontaran_general;
+pub mod sergeant_john_benton;
+pub mod the_flood_of_mars;
+pub mod rassilon_the_war_president;

@@ -69,3 +69,5 @@ pub mod ice_fang_coatl;
 pub mod treetop_ambusher;
 pub mod hogaak_arisen_necropolis;
 pub mod the_first_sliver;
+pub mod alpine_guide;
+pub mod abominable_treefolk;

@@ -92,3 +92,5 @@ pub mod dreamcaller_siren;
 pub mod siren_lookout;
 pub mod blight_keeper;
 pub mod sunrise_seeker;
+pub mod river_sneak;
+pub mod atzocan_archer;

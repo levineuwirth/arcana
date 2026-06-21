@@ -80,3 +80,5 @@ pub mod aether_poisoner;
 pub mod freejam_regent;
 pub mod silkweaver_elite;
 pub mod aether_swooper;
+pub mod reckless_racer;
+pub mod lifecraft_cavalry;

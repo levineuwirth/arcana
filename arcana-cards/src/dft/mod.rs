@@ -102,3 +102,5 @@ pub mod glitch_ghost_surveyor;
 pub mod guidelight_synergist;
 pub mod shefet_archfiend;
 pub mod the_speed_demon;
+pub mod walking_sarcophagus;
+pub mod marauding_mako;

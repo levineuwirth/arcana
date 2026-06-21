@@ -55,3 +55,4 @@ pub mod dire_fleet_poisoner;
 pub mod storm_fleet_swashbuckler;
 pub mod charging_tuskodon;
 pub mod spire_winder;
+pub mod paladin_of_atonement;

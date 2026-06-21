@@ -40,3 +40,5 @@ pub mod cenn_s_tactician;
 pub mod changeling_sentinel;
 pub mod greatbow_doyen;
 pub mod moonglove_changeling;
+pub mod gilt_leaf_archdruid;
+pub mod maralen_of_the_mornsong;

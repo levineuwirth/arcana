@@ -98,3 +98,6 @@ pub mod zuberi_golden_feather;
 pub mod hivis_of_the_scale;
 pub mod telim_tor;
 pub mod auspicious_ancestor;
+pub mod crimson_roc;
+pub mod frenetic_efreet;
+pub mod granger_guildmage;

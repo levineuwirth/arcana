@@ -43,3 +43,4 @@ pub mod sunhome_guildmage;
 pub mod hanweir_lancer;
 pub mod wingcrafter;
 pub mod scourge_devil;
+pub mod attended_knight;

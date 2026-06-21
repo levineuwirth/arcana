@@ -70,3 +70,6 @@ pub mod lonis_cryptozoologist;
 pub mod ethereal_investigator;
 pub mod eye_of_duskmantle;
 pub mod nelly_borca_impulsive_accuser;
+pub mod loran_of_the_third_path;
+pub mod boros_reckoner;
+pub mod neheb_the_eternal;

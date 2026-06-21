@@ -170,3 +170,7 @@ pub mod wren_s_run_vanquisher;
 pub mod lightning_phoenix;
 pub mod oneirophage;
 pub mod wall_of_lost_thoughts;
+pub mod rageblood_shaman;
+pub mod entomber_exarch;
+pub mod goblin_chieftain;
+pub mod malakir_familiar;

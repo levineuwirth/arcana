@@ -92,3 +92,6 @@ pub mod tester_of_the_tangential;
 pub mod hungry_graffalon;
 pub mod arnyn_deathbloom_botanist;
 pub mod burrog_banemaker;
+pub mod thornfist_striker;
+pub mod sneering_shadewriter;
+pub mod topiary_lecturer;

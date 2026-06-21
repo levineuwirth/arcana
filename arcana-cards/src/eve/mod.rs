@@ -69,3 +69,5 @@ pub mod rendclaw_trow;
 pub mod lingering_tormentor;
 pub mod indigo_faerie;
 pub mod trapjaw_kelpie;
+pub mod primalcrux;
+pub mod sturdy_hatchling;

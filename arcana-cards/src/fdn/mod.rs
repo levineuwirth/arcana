@@ -235,3 +235,6 @@ pub mod cackling_prowler;
 pub mod skyknight_squire;
 pub mod apothecary_stomper;
 pub mod strongbox_raider;
+pub mod clinquant_skymage;
+pub mod elfsworn_giant;
+pub mod three_tree_mascot;

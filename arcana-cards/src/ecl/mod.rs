@@ -134,3 +134,6 @@ pub mod emptiness;
 pub mod spinerock_tyrant;
 pub mod dawn_s_light_archer;
 pub mod foraging_wickermaw;
+pub mod tributary_vaulter;
+pub mod gnarlbark_elm;
+pub mod glamermite;

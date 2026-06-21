@@ -31,3 +31,5 @@ pub mod gravity_sphere;
 pub mod gosta_dirk;
 pub mod wall_of_caltrops;
 pub mod wall_of_putrid_flesh;
+pub mod elder_spawn;
+pub mod marble_priest;

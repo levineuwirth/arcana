@@ -66,3 +66,4 @@ pub mod wu_scout;
 pub mod yellow_scarves_cavalry;
 pub mod ma_chao_western_warrior;
 pub mod zuo_ci_the_mocking_sage;
+pub mod zhang_he_wei_general;

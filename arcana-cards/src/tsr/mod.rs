@@ -100,3 +100,5 @@ pub mod stormfront_riders;
 pub mod vesuvan_shapeshifter;
 pub mod sulfur_elemental;
 pub mod penumbra_spider;
+pub mod corpulent_corpse;
+pub mod stingscourger;

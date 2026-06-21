@@ -73,3 +73,5 @@ pub mod graveyard_busybody;
 pub mod knight_of_the_widget;
 pub mod hydradoodle;
 pub mod chivalrous_chevalier;
+pub mod overt_operative;
+pub mod spike_tournament_grinder;

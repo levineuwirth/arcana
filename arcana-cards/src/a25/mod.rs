@@ -56,3 +56,4 @@ pub mod mystic_of_the_hidden_way;
 pub mod prossh_skyraider_of_kher;
 pub mod relentless_rats;
 pub mod mystic_snake;
+pub mod ember_weaver;

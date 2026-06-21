@@ -38,3 +38,4 @@ pub mod ruff_underdog_champ;
 pub mod innocuous_insect;
 pub mod louvaq_the_aberrant;
 pub mod impatient_iguana;
+pub mod cyclopean_titan;

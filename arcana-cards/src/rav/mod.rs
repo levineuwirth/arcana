@@ -72,3 +72,4 @@ pub mod autochthon_wurm;
 pub mod sunhome_enforcer;
 pub mod oathsworn_giant;
 pub mod tidewater_minion;
+pub mod hunted_phantasm;

@@ -117,3 +117,6 @@ pub mod carth_the_lion;
 pub mod orchard_strider;
 pub mod a_dragon_s_rage_channeler;
 pub mod arcbound_javelineer;
+pub mod extruder;
+pub mod soul_of_migration;
+pub mod disciple_of_the_sun;

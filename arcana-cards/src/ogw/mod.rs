@@ -59,3 +59,4 @@ pub mod eldrazi_obligator;
 pub mod general_tazri;
 pub mod linvala_the_preserver;
 pub mod reckless_bushwhacker;
+pub mod cinder_hellion;

@@ -29,3 +29,4 @@ pub mod avalanche_riders;
 pub mod merieke_ri_berit;
 pub mod cockatrice;
 pub mod giant_oyster;
+pub mod leviathan;

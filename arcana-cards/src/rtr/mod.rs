@@ -77,3 +77,4 @@ pub mod new_prahv_guildmage;
 pub mod archon_of_the_triumvirate;
 pub mod pack_rat;
 pub mod trestle_troll;
+pub mod skymark_roc;

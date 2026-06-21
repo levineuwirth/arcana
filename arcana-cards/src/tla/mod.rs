@@ -115,3 +115,8 @@ pub mod sparring_dummy;
 pub mod walltop_sentries;
 pub mod zhao_the_moon_slayer;
 pub mod yuyan_archers;
+pub mod wartime_protestors;
+pub mod canyon_crawler;
+pub mod the_lion_turtle;
+pub mod master_pakku;
+pub mod tiger_seal;

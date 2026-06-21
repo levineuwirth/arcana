@@ -80,3 +80,5 @@ pub mod topplegeist;
 pub mod insolent_neonate;
 pub mod gibbering_fiend;
 pub mod soul_swallower;
+pub mod tooth_collector;
+pub mod incorrigible_youths;

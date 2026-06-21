@@ -78,3 +78,8 @@ pub mod malcolm_keen_eyed_navigator;
 pub mod illustrious_wanderglyph;
 pub mod timestream_navigator;
 pub mod majestic_heliopterus;
+pub mod xavier_sal_infested_captain;
+pub mod bloodline_necromancer;
+pub mod tributary_instructor;
+pub mod wrathful_raptors;
+pub mod tishana_voice_of_thunder;

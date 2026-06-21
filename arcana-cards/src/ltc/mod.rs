@@ -29,3 +29,6 @@ pub mod witch_king_sky_scourge;
 pub mod faramir_steward_of_gondor;
 pub mod farmer_cotton;
 pub mod fell_beast_of_mordor;
+pub mod feasting_hobbit;
+pub mod corsairs_of_umbar;
+pub mod cavern_hoard_dragon;

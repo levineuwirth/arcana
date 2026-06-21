@@ -31,3 +31,4 @@ pub mod bloodhusk_ritualist;
 pub mod dromoka_the_eternal;
 pub mod orator_of_ojutai;
 pub mod jedit_ojanen_of_efrava;
+pub mod skeletal_vampire;

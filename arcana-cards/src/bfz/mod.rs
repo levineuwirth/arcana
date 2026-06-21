@@ -78,3 +78,5 @@ pub mod ondu_greathorn;
 pub mod munda_ambush_leader;
 pub mod windrider_patrol;
 pub mod skyrider_elf;
+pub mod veteran_warleader;
+pub mod barrage_tyrant;

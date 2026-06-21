@@ -5,3 +5,5 @@ pub mod memory_vessel;
 pub mod oltec_matterweaver;
 pub mod sandstorm_salvager;
 pub mod generous_plunderer;
+pub mod harvester_of_misery;
+pub mod loot_the_key_to_everything;

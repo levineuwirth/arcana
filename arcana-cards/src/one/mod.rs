@@ -118,3 +118,8 @@ pub mod jawbone_duelist;
 pub mod slaughter_singer;
 pub mod elesh_norn_mother_of_machines;
 pub mod resistance_skywarden;
+pub mod orthodoxy_enforcer;
+pub mod graaz_unstoppable_juggernaut;
+pub mod forgehammer_centurion;
+pub mod tainted_observer;
+pub mod transplant_theorist;

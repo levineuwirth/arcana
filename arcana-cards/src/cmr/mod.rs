@@ -136,3 +136,8 @@ pub mod rebbec_architect_of_ascension;
 pub mod lys_alana_bowmaster;
 pub mod stumpsquall_hydra;
 pub mod skaab_goliath;
+pub mod aven_surveyor;
+pub mod golem_artisan;
+pub mod sakashima_of_a_thousand_faces;
+pub mod exquisite_huntmaster;
+pub mod eligeth_crossroads_augur;

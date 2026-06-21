@@ -164,3 +164,8 @@ pub mod doomskar_warrior;
 pub mod terror_of_towashi;
 pub mod dusk_legion_duelist;
 pub mod borborygmos_and_fblthp;
+pub mod knight_of_the_new_coalition;
+pub mod timberland_ancient;
+pub mod ravenous_sailback;
+pub mod karsus_depthguard;
+pub mod bloated_processor;

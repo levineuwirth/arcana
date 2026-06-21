@@ -57,3 +57,4 @@ pub mod caldaia_guardian;
 pub mod roalesk_apex_hybrid;
 pub mod inkfathom_witch;
 pub mod rekindling_phoenix;
+pub mod archon_of_coronation;

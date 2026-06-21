@@ -80,3 +80,5 @@ pub mod seraph_of_the_suns;
 pub mod oketra_the_true;
 pub mod crocodile_of_the_crossing;
 pub mod flameblade_adept;
+pub mod rhonas_the_indomitable;
+pub mod labyrinth_guardian;

@@ -50,3 +50,5 @@ pub mod spike_drone;
 pub mod leeching_licid;
 pub mod soltari_crusader;
 pub mod bounty_hunter;
+pub mod nurturing_licid;
+pub mod skyshroud_condor;

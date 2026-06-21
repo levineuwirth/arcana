@@ -109,3 +109,8 @@ pub mod grenzo_havoc_raiser;
 pub mod tasigur_the_golden_fang;
 pub mod aron_benalia_s_ruin;
 pub mod chittering_witch;
+pub mod caldera_pyremaw;
+pub mod lord_of_the_forsaken;
+pub mod wakestone_gargoyle;
+pub mod nyx_weaver;
+pub mod voracious_bibliophile;

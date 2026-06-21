@@ -153,3 +153,5 @@ pub mod delraich;
 pub mod corrupt_official;
 pub mod flailing_ogre;
 pub mod robber_fly;
+pub mod wall_of_distortion;
+pub mod cavern_crawler;

@@ -41,3 +41,5 @@ pub mod stasis_cocoon;
 pub mod bringer_of_the_red_dawn;
 pub mod auriok_windwalker;
 pub mod iron_barb_hellion;
+pub mod razorgrass_screen;
+pub mod suncrusher;

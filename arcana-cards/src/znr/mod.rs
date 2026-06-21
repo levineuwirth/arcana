@@ -98,3 +98,6 @@ pub mod grakmaw_skyclave_ravager;
 pub mod angel_of_destiny;
 pub mod murasa_rootgrazer;
 pub mod stonework_packbeast;
+pub mod grotag_bug_catcher;
+pub mod a_phylath_world_sculptor;
+pub mod soaring_thought_thief;

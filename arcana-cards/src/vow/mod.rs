@@ -131,3 +131,7 @@ pub mod cemetery_prowler;
 pub mod olivia_s_attendants;
 pub mod cemetery_protector;
 pub mod dreamshackle_geist;
+pub mod fleeting_spirit;
+pub mod bloodvial_purveyor;
+pub mod bloodcrazed_socialite;
+pub mod angelic_quartermaster;

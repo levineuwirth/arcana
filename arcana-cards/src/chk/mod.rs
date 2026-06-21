@@ -124,3 +124,5 @@ pub mod kabuto_moth;
 pub mod pious_kitsune;
 pub mod painwracker_oni;
 pub mod seshiro_the_anointed;
+pub mod kami_of_the_palace_fields;
+pub mod konda_lord_of_eiganjo;

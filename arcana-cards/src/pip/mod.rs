@@ -58,3 +58,5 @@ pub mod brotherhood_outcast;
 pub mod maccready_lamplight_mayor;
 pub mod boomer_scrapper;
 pub mod securitron_squadron;
+pub mod agent_frank_horrigan;
+pub mod cait_cage_brawler;

@@ -122,3 +122,7 @@ pub mod obeka_splitter_of_seconds;
 pub mod dust_animus;
 pub mod desperate_bloodseeker;
 pub mod mine_raider;
+pub mod armored_armadillo;
+pub mod servant_of_the_stinger;
+pub mod iron_fist_pulverizer;
+pub mod rakdos_the_muscle;

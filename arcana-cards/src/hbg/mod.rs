@@ -110,3 +110,7 @@ pub mod viconia_disciple_of_strength;
 pub mod karlach_tiefling_berserker;
 pub mod vhal_scholar_of_creation;
 pub mod sarevok_deadly_usurper;
+pub mod wilson_bear_comrade;
+pub mod gnoll_hunting_party;
+pub mod lae_zel_blessed_warrior;
+pub mod dragonborn_immolator;

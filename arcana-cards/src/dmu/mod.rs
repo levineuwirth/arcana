@@ -107,3 +107,6 @@ pub mod keldon_strike_team;
 pub mod radha_s_firebrand;
 pub mod vodalian_hexcatcher;
 pub mod rona_sheoldred_s_faithful;
+pub mod llanowar_greenwidow;
+pub mod silverback_elder;
+pub mod danitha_benalia_s_hope;

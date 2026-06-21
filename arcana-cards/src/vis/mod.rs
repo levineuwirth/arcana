@@ -39,3 +39,4 @@ pub mod knight_of_the_mists;
 pub mod aku_djinn;
 pub mod suq_ata_assassin;
 pub mod viashivan_dragon;
+pub mod knight_of_valor;

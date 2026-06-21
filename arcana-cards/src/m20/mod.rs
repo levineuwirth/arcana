@@ -135,3 +135,4 @@ pub mod knight_of_the_ebon_legion;
 pub mod skyknight_vanguard;
 pub mod blightbeetle;
 pub mod boreal_elemental;
+pub mod herald_of_the_sun;

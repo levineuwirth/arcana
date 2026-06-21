@@ -73,3 +73,5 @@ pub mod duergar_hedge_mage;
 pub mod village_bell_ringer;
 pub mod hellkite_igniter;
 pub mod arvad_the_cursed;
+pub mod blade_splicer;
+pub mod workshop_elders;

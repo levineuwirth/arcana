@@ -124,3 +124,6 @@ pub mod gale_swooper;
 pub mod trufflesnout;
 pub mod watcher_of_the_spheres;
 pub mod portcullis_vine;
+pub mod niambi_esteemed_speaker;
+pub mod feline_sovereign;
+pub mod valorous_steed;

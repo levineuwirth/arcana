@@ -41,3 +41,4 @@ pub mod alta_r_ibn_la_ahad;
 pub mod poison_blade_mentor;
 pub mod the_capitoline_triad;
 pub mod achilles_davenport;
+pub mod labyrinth_adversary;

@@ -103,3 +103,6 @@ pub mod cloudkin_seer;
 pub mod scuttlegator;
 pub mod masked_blackguard;
 pub mod helium_squirter;
+pub mod trusted_pegasus;
+pub mod kronch_wrangler;
+pub mod wojek_bodyguard;

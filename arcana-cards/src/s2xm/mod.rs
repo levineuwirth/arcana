@@ -95,3 +95,5 @@ pub mod stonehewer_giant;
 pub mod goblin_guide;
 pub mod ghor_clan_rampager;
 pub mod grand_architect;
+pub mod silumgar_scavenger;
+pub mod savageborn_hydra;

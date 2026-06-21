@@ -105,3 +105,5 @@ pub mod brackish_trudge;
 pub mod pillardrop_warden;
 pub mod blood_researcher;
 pub mod scurrid_colony;
+pub mod dueling_coach;
+pub mod shadewing_laureate;

@@ -7,3 +7,4 @@ pub mod sparkmage_apprentice;
 pub mod hell_s_thunder;
 pub mod hussar_patrol;
 pub mod faerie_impostor;
+pub mod aquamorph_entity;

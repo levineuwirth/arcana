@@ -43,3 +43,4 @@ pub mod stone_kavu;
 pub mod marsh_crocodile;
 pub mod silver_drake;
 pub mod cavern_harpy;
+pub mod lava_zombie;

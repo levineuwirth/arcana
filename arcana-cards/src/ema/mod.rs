@@ -38,3 +38,5 @@ pub mod crater_hellion;
 pub mod keldon_marauders;
 pub mod skulking_ghost;
 pub mod glimmerpoint_stag;
+pub mod visara_the_dreadful;
+pub mod ballynock_cohort;

@@ -122,3 +122,5 @@ pub mod mishra_s_juggernaut;
 pub mod artificer_s_dragon;
 pub mod wing_commando;
 pub mod platoon_dispenser;
+pub mod dwarven_forge_chanter;
+pub mod arbalest_engineers;

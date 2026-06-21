@@ -24,3 +24,5 @@ pub mod thalakos_deceiver;
 pub mod spindrift_drake;
 pub mod skeleton_scavengers;
 pub mod mindwarper;
+pub mod tempting_licid;
+pub mod calming_licid;

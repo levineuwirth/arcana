@@ -90,3 +90,4 @@ pub mod storm_elemental;
 pub mod rogue_skycaptain;
 pub mod foul_familiar;
 pub mod woolly_spider;
+pub mod tinder_wall;

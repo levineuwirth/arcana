@@ -110,3 +110,7 @@ pub mod overgrown_zealot;
 pub mod enduring_innocence;
 pub mod marina_vendrell;
 pub mod altanak_the_thrice_called;
+pub mod diversion_specialist;
+pub mod malevolent_chandelier;
+pub mod razorkin_needlehead;
+pub mod winter_misanthropic_guide;

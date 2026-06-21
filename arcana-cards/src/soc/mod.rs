@@ -181,3 +181,8 @@ pub mod altered_ego;
 pub mod sun_titan;
 pub mod serra_paragon;
 pub mod guardian_scalelord;
+pub mod galazeth_prismari;
+pub mod defiling_daemogoth;
+pub mod merchant_of_venom;
+pub mod tanazir_quandrix;
+pub mod wight_of_the_reliquary;

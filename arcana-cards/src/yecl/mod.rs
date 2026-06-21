@@ -7,3 +7,4 @@ pub mod thorna_and_twigtooth;
 pub mod wildgrove_summoner;
 pub mod perennial_gravewarden;
 pub mod gilt_leaf_alchemist;
+pub mod thoughtsteal_sprites;

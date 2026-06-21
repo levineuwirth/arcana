@@ -68,3 +68,4 @@ pub mod zhalfirin_crusader;
 pub mod sidar_jabari;
 pub mod keeneye_aven;
 pub mod shivan_wurm;
+pub mod palinchron;

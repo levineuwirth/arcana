@@ -157,3 +157,8 @@ pub mod hound_of_urabrask;
 pub mod dan_shrewd_trader;
 pub mod praetorhoof_behemoth;
 pub mod old_way_phyrexian;
+pub mod the_misty_stepper;
+pub mod the_ash_lizard;
+pub mod the_magic_bandit;
+pub mod incubation_triformer;
+pub mod trash_panda;

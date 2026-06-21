@@ -48,3 +48,5 @@ pub mod sephiroth_fallen_hero;
 pub mod locke_treasure_hunter;
 pub mod thancred_waters;
 pub mod auron_venerated_guardian;
+pub mod banon_the_returners_leader;
+pub mod gau_feral_youth;

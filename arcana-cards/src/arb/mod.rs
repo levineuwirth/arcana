@@ -35,3 +35,4 @@ pub mod illusory_demon;
 pub mod grixis_sojourners;
 pub mod jund_sojourners;
 pub mod defiler_of_souls;
+pub mod giant_ambush_beetle;

@@ -112,3 +112,8 @@ pub mod culvert_ambusher;
 pub mod tunnel_tipster;
 pub mod private_eye;
 pub mod leering_onlooker;
+pub mod inside_source;
+pub mod griffnaut_tracker;
+pub mod forensic_gadgeteer;
+pub mod gearbane_orangutan;
+pub mod crowd_control_warden;

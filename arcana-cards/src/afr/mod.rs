@@ -143,3 +143,8 @@ pub mod minsc_beloved_ranger;
 pub mod dragon_s_disciple;
 pub mod white_dragon;
 pub mod minion_of_the_mighty;
+pub mod loathsome_troll;
+pub mod ingenious_smith;
+pub mod rust_monster;
+pub mod the_tarrasque;
+pub mod death_priest_of_myrkul;

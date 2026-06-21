@@ -17,3 +17,4 @@ pub mod chittering_dispatcher;
 pub mod siege_gang_lieutenant;
 pub mod sawhorn_nemesis;
 pub mod omo_queen_of_vesuva;
+pub mod polygoyf;

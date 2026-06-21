@@ -91,3 +91,5 @@ pub mod god_eternal_oketra;
 pub mod vizier_of_the_scorpion;
 pub mod god_eternal_kefnet;
 pub mod ahn_crop_invader;
+pub mod jace_s_projection;
+pub mod sky_theater_strix;

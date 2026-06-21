@@ -71,3 +71,5 @@ pub mod dutiful_knowledge_seeker;
 pub mod sokka_swordmaster;
 pub mod avatar_roku_firebender;
 pub mod appa_the_vigilant;
+pub mod azula_ruthless_firebender;
+pub mod the_duke_rebel_sentry;
