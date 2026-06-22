@@ -84,3 +84,5 @@ pub mod shinen_of_fury_s_fire;
 pub mod skyfire_kirin;
 pub mod yuki_onna;
 pub mod shinen_of_fear_s_chill;
+pub mod shinen_of_flight_s_wings;
+pub mod kami_of_the_tended_garden;

@@ -126,3 +126,5 @@ pub mod winged_coatl;
 pub mod glen_elendra_liege;
 pub mod figure_of_destiny;
 pub mod graveblade_marauder;
+pub mod murkfiend_liege;
+pub mod emiel_the_blessed;

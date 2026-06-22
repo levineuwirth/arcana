@@ -86,3 +86,5 @@ pub mod perennial_behemoth;
 pub mod fain_the_broker;
 pub mod bloodthirsty_adversary;
 pub mod savvy_trader;
+pub mod electrostatic_field;
+pub mod tenured_inkcaster;

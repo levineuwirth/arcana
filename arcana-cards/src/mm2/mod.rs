@@ -57,3 +57,5 @@ pub mod duskhunter_bat;
 pub mod skyreach_manta;
 pub mod etched_monstrosity;
 pub mod viashino_slaughtermaster;
+pub mod ghostly_changeling;
+pub mod argent_sphinx;

@@ -92,3 +92,4 @@ pub mod shipwreck_moray;
 pub mod maulfist_revolutionary;
 pub mod bastion_inventor;
 pub mod aethertide_whale;
+pub mod scrapper_champion;

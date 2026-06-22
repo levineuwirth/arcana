@@ -153,3 +153,8 @@ pub mod rohirrim_lancer;
 pub mod eagle_of_deliverance;
 pub mod legolas_master_archer;
 pub mod ioreth_of_the_healing_house;
+pub mod saradoc_master_of_buckland;
+pub mod gimli_mournful_avenger;
+pub mod saruman_of_many_colors;
+pub mod gothmog_morgul_lieutenant;
+pub mod omer_of_the_riddermark;

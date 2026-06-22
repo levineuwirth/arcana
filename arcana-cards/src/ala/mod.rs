@@ -78,3 +78,5 @@ pub mod tar_fiend;
 pub mod rhox_charger;
 pub mod bloodthorn_taunter;
 pub mod godsire;
+pub mod archdemon_of_unx;
+pub mod skeletal_kathari;

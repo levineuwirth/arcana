@@ -135,3 +135,4 @@ pub mod fanatic_of_rhonas;
 pub mod tempest_harvester;
 pub mod genku_future_shaper;
 pub mod reckless_pyrosurfer;
+pub mod voltstorm_angel;

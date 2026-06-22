@@ -128,3 +128,5 @@ pub mod sarevok_mighty_usurper;
 pub mod lulu_vengeful_hollyphant;
 pub mod liara_of_the_flaming_fist;
 pub mod lukamina_bear_form;
+pub mod vhal_scholar_of_prophecy;
+pub mod viconia_nightsinger_s_disciple;

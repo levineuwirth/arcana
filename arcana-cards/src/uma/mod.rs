@@ -64,3 +64,6 @@ pub mod ancestor_s_chosen;
 pub mod skywing_aven;
 pub mod hooting_mandrills;
 pub mod murderous_redcap;
+pub mod firewing_phoenix;
+pub mod basking_rootwalla;
+pub mod whirlwind_adept;

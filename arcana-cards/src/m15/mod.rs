@@ -84,3 +84,4 @@ pub mod soul_of_shandalar;
 pub mod paragon_of_fierce_defiance;
 pub mod nightfire_giant;
 pub mod kird_chieftain;
+pub mod wall_of_mulch;

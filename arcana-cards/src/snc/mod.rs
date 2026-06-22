@@ -156,3 +156,4 @@ pub mod angelic_observer;
 pub mod angel_of_suffering;
 pub mod urabrask_heretic_praetor;
 pub mod a_shattered_seraph;
+pub mod obscura_interceptor;

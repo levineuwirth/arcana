@@ -126,3 +126,6 @@ pub mod riptide_turtle;
 pub mod irreverent_revelers;
 pub mod slaughter_priest_of_mogis;
 pub mod threnody_singer;
+pub mod shimmerwing_chimera;
+pub mod incendiary_oracle;
+pub mod purphoros_bronze_blooded;

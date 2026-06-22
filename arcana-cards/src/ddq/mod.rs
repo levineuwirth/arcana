@@ -10,3 +10,4 @@ pub mod goldnight_redeemer;
 pub mod scrapskin_drake;
 pub mod abattoir_ghoul;
 pub mod gryff_vanguard;
+pub mod unbreathing_horde;

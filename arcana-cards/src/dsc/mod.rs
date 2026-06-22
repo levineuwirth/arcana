@@ -95,3 +95,8 @@ pub mod phenomenon_investigators;
 pub mod arvinox_the_mind_flail;
 pub mod obsessive_skinner;
 pub mod aminatou_veil_piercer;
+pub mod kefnet_the_mindful;
+pub mod prognostic_sphinx;
+pub mod suspicious_bookcase;
+pub mod aesi_tyrant_of_gyre_strait;
+pub mod skola_grovedancer;

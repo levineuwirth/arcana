@@ -117,3 +117,6 @@ pub mod junktroller;
 pub mod stalking_vengeance;
 pub mod basilica_guards;
 pub mod wild_cantor;
+pub mod azorius_guildmage;
+pub mod mourning_thrull;
+pub mod fblthp_the_lost;

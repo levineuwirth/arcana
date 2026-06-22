@@ -86,3 +86,4 @@ pub mod ammit_eternal;
 pub mod unesh_criosphinx_sovereign;
 pub mod banewhip_punisher;
 pub mod earthshaker_khenra;
+pub mod wildfire_eternal;

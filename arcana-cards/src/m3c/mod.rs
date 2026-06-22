@@ -26,3 +26,4 @@ pub mod wonderscape_sage;
 pub mod aurora_shifter;
 pub mod disa_the_restless;
 pub mod jyoti_moag_ancient;
+pub mod ulamog_s_dreadsire;

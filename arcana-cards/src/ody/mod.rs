@@ -119,3 +119,4 @@ pub mod gorilla_titan;
 pub mod luminous_guardian;
 pub mod mystic_crusader;
 pub mod pilgrim_of_virtue;
+pub mod balshan_griffin;

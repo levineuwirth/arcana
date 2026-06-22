@@ -143,3 +143,4 @@ pub mod simian_simulacrum;
 pub mod hero_of_the_dunes;
 pub mod scrapwork_rager;
 pub mod a_geology_enthusiast;
+pub mod reconstructed_thopter;

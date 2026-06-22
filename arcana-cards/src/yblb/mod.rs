@@ -8,3 +8,4 @@ pub mod euru_acorn_scrounger;
 pub mod tempest_trapper;
 pub mod leaf_leap_guide;
 pub mod chittering_skullspeaker;
+pub mod indris_the_hydrostatic_surge;

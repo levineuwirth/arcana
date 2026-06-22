@@ -112,3 +112,7 @@ pub mod vexing_sphinx;
 pub mod tiana_ship_s_caretaker;
 pub mod krosan_restorer;
 pub mod lieutenant_kirtar;
+pub mod body_snatcher;
+pub mod werebear;
+pub mod sol_kanar_the_swamp_king;
+pub mod aven_fisher;

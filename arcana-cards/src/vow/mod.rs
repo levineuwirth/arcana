@@ -145,3 +145,6 @@ pub mod kessig_wolfrider;
 pub mod toxic_scorpion;
 pub mod a_sigardian_paladin;
 pub mod belligerent_guest;
+pub mod hiveheart_shaman;
+pub mod patchwork_crawler;
+pub mod heron_blessed_geist;

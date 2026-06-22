@@ -44,3 +44,4 @@ pub mod courtly_provocateur;
 pub mod knight_of_glory;
 pub mod war_falcon;
 pub mod crimson_muckwader;
+pub mod liliana_s_shade;

@@ -75,3 +75,4 @@ pub mod vizkopa_confessor;
 pub mod skarrg_goliath;
 pub mod knight_of_obligation;
 pub mod luminate_primordial;
+pub mod skarrg_guildmage;

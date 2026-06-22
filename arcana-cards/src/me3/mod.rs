@@ -111,3 +111,4 @@ pub mod vaevictis_asmadi;
 pub mod spiny_starfish;
 pub mod tuknir_deathlock;
 pub mod bartel_runeaxe;
+pub mod willow_priestess;

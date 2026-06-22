@@ -43,3 +43,4 @@ pub mod silent_sentinel;
 pub mod thantis_the_warweaver;
 pub mod varchild_betrayer_of_kjeldor;
 pub mod emissary_of_grudges;
+pub mod ninja_of_the_deep_hours;

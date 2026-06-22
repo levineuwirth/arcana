@@ -53,3 +53,5 @@ pub mod ebon_drake;
 pub mod battered_golem;
 pub mod bringer_of_the_white_dawn;
 pub mod ferropede;
+pub mod bringer_of_the_green_dawn;
+pub mod advanced_hoverguard;

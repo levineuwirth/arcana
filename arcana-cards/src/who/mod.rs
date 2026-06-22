@@ -87,3 +87,5 @@ pub mod the_eleventh_doctor;
 pub mod martha_jones;
 pub mod ryan_sinclair;
 pub mod dalek_drone;
+pub mod donna_noble;
+pub mod the_beast_deathless_prince;

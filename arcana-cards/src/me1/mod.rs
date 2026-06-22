@@ -78,3 +78,4 @@ pub mod preacher;
 pub mod goblin_mutant;
 pub mod polar_kraken;
 pub mod thorn_thallid;
+pub mod ifh_b_ff_efreet;

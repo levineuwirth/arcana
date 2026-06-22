@@ -205,3 +205,5 @@ pub mod bloodghast;
 pub mod stonecoil_serpent;
 pub mod harmonic_prodigy;
 pub mod archon_of_sun_s_grace;
+pub mod creakwood_liege;
+pub mod veyran_voice_of_duality;

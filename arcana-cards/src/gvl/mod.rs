@@ -15,3 +15,4 @@ pub mod howling_banshee;
 pub mod blastoderm;
 pub mod faerie_macabre;
 pub mod albino_troll;
+pub mod vampire_bats;

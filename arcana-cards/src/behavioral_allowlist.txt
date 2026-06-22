@@ -66,7 +66,9 @@ Brackish Trudge
 Breaching Hippocamp
 Brimstone Trebuchet
 Brimstone Vandal
+Bristlebane Battler
 Bulwark
+Bumi, Eclectic Earthbender
 Burst of Energy
 Cadira, Caller of the Small
 Calamitous Cave-In
@@ -160,6 +162,7 @@ Drownyard Temple
 Dumb Ass
 Durable Coilbug
 Dutiful Griffin
+Dwarven Patrol
 Earthquake Dragon
 Ebon Praetor
 Elder Druid
@@ -185,12 +188,14 @@ Falkenrath Forebear
 Feasting Troll King
 Fell Beast of Mordor
 Fickle Efreet
+Firewing Phoenix
 Firmament Sage
 Flaccify
 Floodwater Dam
 Flowerfoot Swordmaster
 Force Spike
 Forensic Researcher
+Formidable Speaker
 Frazzle
 Freyalise, Skyshroud Partisan
 Frillscare Mentor
@@ -303,11 +308,13 @@ Liquify
 Lita, Mechanical Engineer
 Llanowar Greenwidow
 Lobber Crew
+Lockjaw Snapper
 Lofty Denial
 Loyal Retainers
 Luminous Broodmoth
 Lunar Force
 Lurking Roper
+Lydia Frye
 Maga, Traitor to Mortals
 Mage-Ring Responder
 Magebane Lizard
@@ -352,6 +359,7 @@ Moonshadow
 Moonstone Harbinger
 Morphling
 Mu Yanling
+Murkfiend Liege
 Mystic Genesis
 Nahiri, Heir of the Ancients
 Nanoform Sentinel
@@ -461,6 +469,7 @@ Sengir Autocrat
 Serene Heart
 Shard Phoenix
 Shivan Sand-Mage
+Sierra, Nuka's Biggest Fan
 Silkenfist Fighter
 Silkenfist Order
 Simic Ragworm
@@ -489,6 +498,7 @@ Steel Overseer
 Stensia Innkeeper
 Stitchwing Skaab
 Stone-Seeder Hierophant
+Stoneforge Mystic
 Sturdy Hatchling
 Summoned Dromedary
 Sunrise Cavalier
@@ -509,6 +519,7 @@ Thalakos Deceiver
 Thassa's Rebuff
 The Akroan War
 The Cinematic Phoenix
+The Disciple of Vess
 The Legend of Yangchen
 The Miniaturizer
 The Modern Age
@@ -521,6 +532,7 @@ Thing in the Ice
 Thistledown Players
 Thought Gorger
 Thoughtbind
+Thundering Djinn
 Tibalt's Trickery
 Ticking Mime Bomb
 Tideforce Elemental
@@ -550,6 +562,7 @@ Unshakable Tail
 Urtet, Remnant of Memnarch
 Vedalken Plotter
 Vhal, Scholar of Elements
+Vhal, Scholar of Prophecy
 Vigean Graftmage
 Vigilant Drake
 Vivien's Jaguar
@@ -565,6 +578,7 @@ Warren Instigator
 Warren Pilferers
 Watchful Blisterzoa
 Wild Wurm
+Willow Priestess
 Willow Satyr
 Wirewood Lodge
 Woolly Razorback

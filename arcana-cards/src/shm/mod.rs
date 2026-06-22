@@ -102,3 +102,5 @@ pub mod inescapable_brute;
 pub mod briarberry_cohort;
 pub mod morselhoarder;
 pub mod oona_s_gatewarden;
+pub mod lockjaw_snapper;
+pub mod thistledown_duo;

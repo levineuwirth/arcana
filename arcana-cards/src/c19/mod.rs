@@ -44,3 +44,4 @@ pub mod cliffside_rescuer;
 pub mod soul_of_zendikar;
 pub mod thought_sponge;
 pub mod pristine_skywise;
+pub mod angel_of_sanctions;

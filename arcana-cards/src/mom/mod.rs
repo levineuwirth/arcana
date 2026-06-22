@@ -186,3 +186,6 @@ pub mod streetwise_negotiator;
 pub mod thalia_and_the_gitrog_monster;
 pub mod archpriest_of_shadows;
 pub mod preening_champion;
+pub mod bola_slinger;
+pub mod furnace_gremlin;
+pub mod bloodfeather_phoenix;

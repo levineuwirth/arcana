@@ -68,3 +68,6 @@ pub mod veteran_brawlers;
 pub mod wall_of_vipers;
 pub mod rebel_informer;
 pub mod quicksilver_wall;
+pub mod bog_glider;
+pub mod spiketail_drake;
+pub mod troublesome_spirit;

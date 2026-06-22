@@ -37,3 +37,6 @@ pub mod bilbo_birthday_celebrant;
 pub mod frodo_adventurous_hobbit;
 pub mod gwaihir_greatest_of_the_eagles;
 pub mod shelob_dread_weaver;
+pub mod lobelia_defender_of_bag_end;
+pub mod sam_loyal_attendant;
+pub mod gimli_of_the_glittering_caves;

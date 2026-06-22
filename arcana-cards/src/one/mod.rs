@@ -142,3 +142,4 @@ pub mod geth_thane_of_contracts;
 pub mod necrosquito;
 pub mod kuldotha_cackler;
 pub mod evolved_spinoderm;
+pub mod quicksilver_fisher;

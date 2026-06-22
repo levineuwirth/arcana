@@ -51,3 +51,4 @@ pub mod enlistment_officer;
 pub mod fungal_shambler;
 pub mod goblin_legionnaire;
 pub mod cetavolver;
+pub mod dwarven_patrol;

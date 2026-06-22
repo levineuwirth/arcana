@@ -27,3 +27,4 @@ pub mod iron_man_titan_of_innovation;
 pub mod amy_rose;
 pub mod the_fifteenth_doctor;
 pub mod joel_resolute_survivor;
+pub mod pinkie_pie;

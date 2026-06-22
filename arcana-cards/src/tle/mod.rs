@@ -86,3 +86,6 @@ pub mod toph_earthbending_master;
 pub mod loyal_fire_sage;
 pub mod zuko_avatar_hunter;
 pub mod the_cabbage_merchant;
+pub mod toucan_puffin;
+pub mod air_nomad_student;
+pub mod bumi_eclectic_earthbender;

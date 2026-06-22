@@ -76,3 +76,4 @@ pub mod volrath_s_shapeshifter;
 pub mod masticore;
 pub mod putrid_imp;
 pub mod blazing_specter;
+pub mod dauthi_mercenary;

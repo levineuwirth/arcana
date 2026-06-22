@@ -110,3 +110,5 @@ pub mod spider_slayer_hatred_honed;
 pub mod spider_man_noir;
 pub mod guy_in_the_chair;
 pub mod spider_man_2099;
+pub mod mysterio_s_phantasm;
+pub mod silk_web_weaver;

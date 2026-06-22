@@ -32,3 +32,4 @@ pub mod mad_auntie;
 pub mod avian_changeling;
 pub mod pestermite;
 pub mod war_spike_changeling;
+pub mod countryside_crusher;

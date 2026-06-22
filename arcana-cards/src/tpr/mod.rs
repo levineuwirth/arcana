@@ -123,3 +123,4 @@ pub mod dauthi_slayer;
 pub mod soltari_monk;
 pub mod avenging_angel;
 pub mod spike_feeder;
+pub mod spike_hatcher;

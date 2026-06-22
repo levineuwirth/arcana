@@ -151,3 +151,5 @@ pub mod zurgo_thunder_s_decree;
 pub mod jeskai_shrinekeeper;
 pub mod sage_of_the_fang;
 pub mod attuned_hunter;
+pub mod gurmag_rakshasa;
+pub mod humbling_elder;

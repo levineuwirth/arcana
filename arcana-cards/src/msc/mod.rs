@@ -7,3 +7,4 @@ pub mod t_challa_the_black_panther;
 pub mod vision_synthezoid_avenger;
 pub mod invisible_woman;
 pub mod lucky_the_pizza_dog;
+pub mod mister_fantastic;

@@ -136,3 +136,5 @@ pub mod hellkite_punisher;
 pub mod vito_thorn_of_the_dusk_rose;
 pub mod spined_megalodon;
 pub mod tempered_veteran;
+pub mod radha_heart_of_keld;
+pub mod chandra_s_firemaw;

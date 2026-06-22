@@ -66,3 +66,4 @@ pub mod ghost_ship;
 pub mod squadron_hawk;
 pub mod ratcatcher;
 pub mod death_s_head_buzzard;
+pub mod court_hussar;

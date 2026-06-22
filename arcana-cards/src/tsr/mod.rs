@@ -119,3 +119,6 @@ pub mod homing_sliver;
 pub mod phantom_wurm;
 pub mod nightshade_assassin;
 pub mod duskrider_peregrine;
+pub mod sporoloth_ancient;
+pub mod big_game_hunter;
+pub mod tolarian_sentinel;

@@ -254,3 +254,4 @@ pub mod aurora_phoenix;
 pub mod guildsworn_prowler;
 pub mod zellix_sanity_flayer;
 pub mod halsin_emerald_archdruid;
+pub mod thunder_dragon;

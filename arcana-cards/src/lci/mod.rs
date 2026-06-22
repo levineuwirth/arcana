@@ -155,3 +155,7 @@ pub mod hulking_raptor;
 pub mod spyglass_siren;
 pub mod dauntless_dismantler;
 pub mod rampaging_spiketail;
+pub mod poison_dart_frog;
+pub mod bonehoard_dracosaur;
+pub mod goldfury_strider;
+pub mod palani_s_hatcher;

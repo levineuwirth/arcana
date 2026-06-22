@@ -54,3 +54,4 @@ pub mod riot_piker;
 pub mod rot_farm_skeleton;
 pub mod maze_rusher;
 pub mod aetherling;
+pub mod korozda_gorgon;

@@ -109,3 +109,4 @@ pub mod maulfist_squad;
 pub mod elegant_edgecrafters;
 pub mod whirler_virtuoso;
 pub mod glint_nest_crane;
+pub mod experimental_aviator;

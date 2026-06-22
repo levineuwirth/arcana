@@ -167,3 +167,5 @@ pub mod doomskar_titan;
 pub mod gods_hall_guardian;
 pub mod ascendant_spirit;
 pub mod arni_brokenbrow;
+pub mod masked_vandal;
+pub mod sarulf_realm_eater;

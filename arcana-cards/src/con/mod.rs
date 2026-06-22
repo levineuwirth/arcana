@@ -43,3 +43,4 @@ pub mod paragon_of_the_amesha;
 pub mod cliffrunner_behemoth;
 pub mod jhessian_balmgiver;
 pub mod pestilent_kathari;
+pub mod bloodhall_ooze;

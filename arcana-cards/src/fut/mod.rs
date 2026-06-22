@@ -30,3 +30,4 @@ pub mod tarox_bladewing;
 pub mod steamflogger_boss;
 pub mod aven_augur;
 pub mod bogardan_lancer;
+pub mod korlash_heir_to_blackblade;

@@ -36,3 +36,4 @@ pub mod arahbo_roar_of_the_world;
 pub mod nivix_guildmage;
 pub mod hungry_lynx;
 pub mod seht_s_tiger;
+pub mod ojutai_soul_of_winter;

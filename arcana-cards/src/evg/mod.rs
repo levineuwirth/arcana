@@ -15,3 +15,4 @@ pub mod allosaurus_rider;
 pub mod clickslither;
 pub mod heedless_one;
 pub mod elvish_harbinger;
+pub mod skirk_fire_marshal;

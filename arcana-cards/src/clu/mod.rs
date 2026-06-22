@@ -129,3 +129,5 @@ pub mod turret_ogre;
 pub mod apothecary_white;
 pub mod duskshell_crawler;
 pub mod lonis_genetics_expert;
+pub mod seraph_of_the_scales;
+pub mod orzhov_guildmage;

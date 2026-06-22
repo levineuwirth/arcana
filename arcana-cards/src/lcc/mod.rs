@@ -100,3 +100,7 @@ pub mod svyelun_of_sea_and_sky;
 pub mod don_andres_the_renegade;
 pub mod butcher_of_malakir;
 pub mod atzocan_seer;
+pub mod fathom_fleet_captain;
+pub mod storm_fleet_negotiator;
+pub mod port_razer;
+pub mod siren_stormtamer;

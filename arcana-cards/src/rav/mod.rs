@@ -76,3 +76,4 @@ pub mod hunted_phantasm;
 pub mod drake_familiar;
 pub mod circu_dimir_lobotomist;
 pub mod netherborn_phalanx;
+pub mod ethereal_usher;

@@ -90,3 +90,4 @@ pub mod book_devourer;
 pub mod conclave_guildmage;
 pub mod ral_s_staticaster;
 pub mod intrusive_packbeast;
+pub mod etrata_the_silencer;

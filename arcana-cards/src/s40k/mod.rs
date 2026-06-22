@@ -101,3 +101,5 @@ pub mod genestealer_locus;
 pub mod chronomancer;
 pub mod canoptek_tomb_sentinel;
 pub mod canoptek_wraith;
+pub mod shard_of_the_void_dragon;
+pub mod gargoyle_flock;

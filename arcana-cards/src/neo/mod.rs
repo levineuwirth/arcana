@@ -175,3 +175,6 @@ pub mod circuit_mender;
 pub mod guardians_of_oboro;
 pub mod go_shintai_of_lost_wisdom;
 pub mod iron_apprentice;
+pub mod gravelighter;
+pub mod chainflail_centipede;
+pub mod norika_yamazaki_the_poet;

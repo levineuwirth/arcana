@@ -84,3 +84,4 @@ pub mod butcher_of_the_horde;
 pub mod sage_of_the_inward_eye;
 pub mod anafenza_the_foremost;
 pub mod kin_tree_warden;
+pub mod efreet_weaponmaster;

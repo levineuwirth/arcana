@@ -44,3 +44,4 @@ pub mod grenzo_s_cutthroat;
 pub mod flamewright;
 pub mod marchesa_s_infiltrator;
 pub mod barbed_shocker;
+pub mod deal_broker;

@@ -53,3 +53,4 @@ pub mod tobias_doomed_conqueror;
 pub mod two_headed_hellkite;
 pub mod xyris_the_writhing_storm;
 pub mod tiller_engine;
+pub mod torsten_founder_of_benalia;

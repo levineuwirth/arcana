@@ -170,3 +170,4 @@ pub mod blossoming_tortoise;
 pub mod sweettooth_witch;
 pub mod realm_scorcher_hellkite;
 pub mod talion_s_messenger;
+pub mod high_fae_negotiator;

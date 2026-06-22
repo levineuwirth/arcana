@@ -63,3 +63,5 @@ pub mod threefold_thunderhulk;
 pub mod alibou_ancient_witness;
 pub mod thrummingbird;
 pub mod titania_protector_of_argoth;
+pub mod angel_of_the_ruins;
+pub mod mindless_automaton;

@@ -162,3 +162,6 @@ pub mod gravelgill_scoundrel;
 pub mod morcant_s_loyalist;
 pub mod deepchannel_duelist;
 pub mod reaping_willow;
+pub mod formidable_speaker;
+pub mod bristlebane_battler;
+pub mod scarblade_scout;

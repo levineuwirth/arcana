@@ -79,3 +79,6 @@ pub mod overseer_of_vault_76;
 pub mod the_motherlode_excavator;
 pub mod bighorner_rancher;
 pub mod nick_valentine_private_eye;
+pub mod alpha_deathclaw;
+pub mod sierra_nuka_s_biggest_fan;
+pub mod behemoth_of_vault_0;

@@ -162,3 +162,4 @@ pub mod intrepid_provisioner;
 pub mod demonic_taskmaster;
 pub mod drunau_corpse_trawler;
 pub mod griselbrand;
+pub mod indulgent_aristocrat;

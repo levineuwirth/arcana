@@ -134,3 +134,6 @@ pub mod molten_monstrosity;
 pub mod cleaving_skyrider;
 pub mod elvish_hydromancer;
 pub mod meria_scholar_of_antiquity;
+pub mod elas_il_kor_sadistic_pilgrim;
+pub mod knight_of_dawn_s_light;
+pub mod deathbloom_gardener;

@@ -38,3 +38,4 @@ pub mod eternal_skylord;
 pub mod stalwart_pathlighter;
 pub mod ruthless_deathfang;
 pub mod undead_alchemist;
+pub mod angel_of_glory_s_rise;

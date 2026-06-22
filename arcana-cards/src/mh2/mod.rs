@@ -134,3 +134,4 @@ pub mod rakdos_headliner;
 pub mod necromancer_s_familiar;
 pub mod arcbound_mouser;
 pub mod blazing_rootwalla;
+pub mod solitude;

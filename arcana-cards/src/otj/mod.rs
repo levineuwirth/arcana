@@ -142,3 +142,5 @@ pub mod voracious_varmint;
 pub mod intrepid_stablemaster;
 pub mod prosperity_tycoon;
 pub mod miriam_herd_whisperer;
+pub mod stubborn_burrowfiend;
+pub mod canyon_crab;

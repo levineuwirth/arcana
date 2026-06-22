@@ -89,3 +89,4 @@ pub mod nef_crop_entangler;
 pub mod plague_belcher;
 pub mod glyph_keeper;
 pub mod bontu_the_glorified;
+pub mod neheb_the_worthy;

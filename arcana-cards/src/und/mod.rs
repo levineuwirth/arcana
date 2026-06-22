@@ -21,3 +21,4 @@ pub mod cheatyface;
 pub mod carnivorous_death_parrot;
 pub mod avatar_of_me;
 pub mod jumbo_imp;
+pub mod skull_saucer;

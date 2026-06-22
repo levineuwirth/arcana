@@ -68,3 +68,4 @@ pub mod wall_of_tanglecord;
 pub mod flameborn_hellion;
 pub mod tangle_angler;
 pub mod blight_mamba;
+pub mod darkslick_drake;

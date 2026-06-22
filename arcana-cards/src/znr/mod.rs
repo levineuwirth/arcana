@@ -122,3 +122,4 @@ pub mod oran_rief_ooze;
 pub mod kitesail_cleric;
 pub mod relic_robber;
 pub mod moss_pit_skeleton;
+pub mod magmatic_channeler;

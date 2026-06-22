@@ -65,3 +65,4 @@ pub mod lightning_serpent;
 pub mod aurochs_herd;
 pub mod thermopod;
 pub mod phyrexian_ironfoot;
+pub mod phyrexian_snowcrusher;

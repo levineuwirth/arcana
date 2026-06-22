@@ -12,3 +12,4 @@ pub mod serra_s_embrace;
 pub mod demon_s_jester;
 pub mod stinkweed_imp;
 pub mod kuro_pitlord;
+pub mod soot_imp;

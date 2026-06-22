@@ -102,3 +102,4 @@ pub mod deep_spawn;
 pub mod knight_of_stromgald;
 pub mod ivory_gargoyle;
 pub mod kjeldoran_dead;
+pub mod thunder_wall;

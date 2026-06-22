@@ -167,3 +167,4 @@ pub mod sunspine_lynx;
 pub mod star_charter;
 pub mod glarb_calamity_s_augur;
 pub mod thornvault_forager;
+pub mod kitsa_otterball_elite;

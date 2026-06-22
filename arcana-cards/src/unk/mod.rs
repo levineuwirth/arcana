@@ -207,3 +207,5 @@ pub mod slobad_actually_just_fine;
 pub mod rafi_retro_racer;
 pub mod the_cookout_creator;
 pub mod lorthos_tentacled_terror;
+pub mod the_disciple_of_vess;
+pub mod the_spike_cactus;
