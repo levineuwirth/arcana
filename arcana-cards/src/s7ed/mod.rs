@@ -51,3 +51,4 @@ pub mod cloudchaser_eagle;
 pub mod wall_of_wonder;
 pub mod abyssal_horror;
 pub mod vigilant_drake;
+pub mod crimson_hellkite;

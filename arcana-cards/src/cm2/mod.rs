@@ -43,3 +43,4 @@ pub mod victory_s_herald;
 pub mod pentavus;
 pub mod avatar_of_woe;
 pub mod hostility;
+pub mod triskelavus;

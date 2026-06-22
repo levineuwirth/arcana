@@ -133,3 +133,6 @@ pub mod conspicuous_snoop;
 pub mod predatory_wurm;
 pub mod chandra_s_incinerator;
 pub mod hellkite_punisher;
+pub mod vito_thorn_of_the_dusk_rose;
+pub mod spined_megalodon;
+pub mod tempered_veteran;

@@ -281,3 +281,5 @@ pub mod slumbering_cerberus;
 pub mod guarded_heir;
 pub mod crypt_feaster;
 pub mod high_society_hunter;
+pub mod ambush_wolf;
+pub mod halana_and_alena_partners;

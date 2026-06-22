@@ -26,3 +26,4 @@ pub mod kratos_stoic_father;
 pub mod iron_man_titan_of_innovation;
 pub mod amy_rose;
 pub mod the_fifteenth_doctor;
+pub mod joel_resolute_survivor;

@@ -52,3 +52,4 @@ pub mod crypt_ripper;
 pub mod goblin_ruinblaster;
 pub mod bala_ged_thief;
 pub mod kazandu_blademaster;
+pub mod merfolk_seastalkers;

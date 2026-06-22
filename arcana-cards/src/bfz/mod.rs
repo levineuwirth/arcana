@@ -91,3 +91,4 @@ pub mod grove_rumbler;
 pub mod makindi_sliderunner;
 pub mod guardian_of_tazeem;
 pub mod blisterpod;
+pub mod akoum_firebird;

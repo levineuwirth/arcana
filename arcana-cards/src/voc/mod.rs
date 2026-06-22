@@ -40,3 +40,4 @@ pub mod rattlechains;
 pub mod angel_of_flight_alabaster;
 pub mod mirage_phalanx;
 pub mod drogskol_captain;
+pub mod hanged_executioner;

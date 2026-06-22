@@ -160,3 +160,5 @@ pub mod disruptor_of_currents;
 pub mod mudbutton_cursetosser;
 pub mod gravelgill_scoundrel;
 pub mod morcant_s_loyalist;
+pub mod deepchannel_duelist;
+pub mod reaping_willow;

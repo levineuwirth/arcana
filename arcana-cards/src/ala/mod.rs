@@ -76,3 +76,5 @@ pub mod caldera_hellion;
 pub mod deft_duelist;
 pub mod tar_fiend;
 pub mod rhox_charger;
+pub mod bloodthorn_taunter;
+pub mod godsire;

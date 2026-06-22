@@ -55,3 +55,5 @@ pub mod cloud_elemental;
 pub mod battlegrace_angel;
 pub mod duskhunter_bat;
 pub mod skyreach_manta;
+pub mod etched_monstrosity;
+pub mod viashino_slaughtermaster;

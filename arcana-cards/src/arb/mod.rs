@@ -40,3 +40,5 @@ pub mod esper_sojourners;
 pub mod deadshot_minotaur;
 pub mod marrow_chomper;
 pub mod monstrous_carabid;
+pub mod dragon_broodmother;
+pub mod messenger_falcons;

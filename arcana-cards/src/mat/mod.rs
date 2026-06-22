@@ -20,3 +20,5 @@ pub mod markov_baron;
 pub mod danitha_new_benalia_s_light;
 pub mod sigarda_font_of_blessings;
 pub mod tazri_stalwart_survivor;
+pub mod kolaghan_warmonger;
+pub mod nashi_moon_s_legacy;

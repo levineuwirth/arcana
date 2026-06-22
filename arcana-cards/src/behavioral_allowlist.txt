@@ -17,6 +17,7 @@ Abzan Devotee
 Access Denied
 Admiral Beckett Brass
 Agent of Treachery
+Agrus Kos, Spirit of Justice
 Aladdin
 Alert Heedbonder
 All Suns' Dawn
@@ -133,6 +134,7 @@ Deceiver Exarch
 Decimator Beetle
 Dedicated Dollmaker
 Deep-Slumber Titan
+Deepchannel Duelist
 Defiant Greatmaw
 Delay
 Descendant of Masumaro
@@ -176,6 +178,7 @@ Eternal Dragon
 Ethersworn Adjudicator
 Evaporate
 Evasive Action
+Evolved Spinoderm
 Faerie Trickery
 Fain, the Broker
 Falkenrath Forebear
@@ -206,6 +209,7 @@ Glimmerbell
 Glimmerpost
 Goblin Assassin
 Goblin Psychopath
+Goblin Sharpshooter
 Goblin Wizard
 Godo, Bandit Warlord
 Grafted Butcher
@@ -250,6 +254,7 @@ Intervene
 Into the Night
 Invert Polarity
 Inverted Iceberg
+Ioreth of the Healing House
 Ire of Kaminari
 Iron Spider, Stark Upgrade
 It'll Quench Ya!
@@ -351,6 +356,7 @@ Mystic Genesis
 Nahiri, Heir of the Ancients
 Nanoform Sentinel
 Narfi, Betrayer King
+Nashi, Moon's Legacy
 Necrogen Communion
 Necroskitter
 Negate
@@ -379,6 +385,7 @@ Permission Denied
 Peter Parker
 Phyrexian Colossus
 Phyrexian Infiltrator
+Phyrexian Ironfoot
 Pilgrim of the Ages
 Plasm Capture
 Polluted Bonds
@@ -389,6 +396,7 @@ Preyseizer Dragon
 Priest of the Haunted Edge
 Prince of Thralls
 Pristine Angel
+Pristine Skywise
 Progenitor Exarch
 Punish Ignorance
 Puppet Strings
@@ -425,6 +433,7 @@ Rootwater Matriarch
 Rubblebelt Braggart
 Rubinia Soulsinger
 Rune Snag
+Rune-Brand Juggler
 Sacred Ground
 Sage of Hours
 Sage of the Maze
@@ -481,6 +490,7 @@ Stensia Innkeeper
 Stitchwing Skaab
 Stone-Seeder Hierophant
 Sturdy Hatchling
+Summoned Dromedary
 Sunrise Cavalier
 Super Mutant Scavenger
 Superior Numbers
@@ -492,15 +502,18 @@ Teferi's Contingency
 Teferi, Master of Time
 Teferi, Temporal Archmage
 Teferi, Timebender
+Temp of the Damned
 Tenth District Veteran
 Tezzeret, Cruel Captain
 Thalakos Deceiver
 Thassa's Rebuff
 The Akroan War
+The Cinematic Phoenix
 The Legend of Yangchen
 The Miniaturizer
 The Modern Age
 The Reaper, King No More
+The Unspeakable
 The Vast Scrier
 The Wandering Minstrel
 Thermo-Alchemist
@@ -513,6 +526,7 @@ Ticking Mime Bomb
 Tideforce Elemental
 Tidewater Minion
 Tiger-Seal
+Tiller Engine
 Timestream Navigator
 Tombstone, Career Criminal
 Torchling

@@ -162,3 +162,4 @@ pub mod sabotender;
 pub mod firion_wild_rose_warrior;
 pub mod namazu_trader;
 pub mod rosa_resolute_white_mage;
+pub mod ice_flan;

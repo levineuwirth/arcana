@@ -93,3 +93,4 @@ pub mod nim_shambler;
 pub mod nim_shrieker;
 pub mod auriok_steelshaper;
 pub mod quicksilver_elemental;
+pub mod wall_of_blood;

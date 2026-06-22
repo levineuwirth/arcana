@@ -164,3 +164,6 @@ pub mod treetop_sentries;
 pub mod huskburster_swarm;
 pub mod finch_formation;
 pub mod sunspine_lynx;
+pub mod star_charter;
+pub mod glarb_calamity_s_augur;
+pub mod thornvault_forager;

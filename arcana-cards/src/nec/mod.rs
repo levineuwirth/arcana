@@ -29,3 +29,4 @@ pub mod aeronaut_admiral;
 pub mod yoshimaru_ever_faithful;
 pub mod rampant_rejuvenator;
 pub mod myojin_of_cryptic_dreams;
+pub mod ox_of_agonas;

@@ -203,3 +203,7 @@ pub mod sojourner_s_enforcermite;
 pub mod really_charming_prince;
 pub mod the_strixhaven_lorwyn_rover;
 pub mod the_powerful_dragon;
+pub mod slobad_actually_just_fine;
+pub mod rafi_retro_racer;
+pub mod the_cookout_creator;
+pub mod lorthos_tentacled_terror;

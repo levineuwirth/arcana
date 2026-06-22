@@ -99,3 +99,5 @@ pub mod heralds_of_tzeentch;
 pub mod ghyrson_starn_kelermorph;
 pub mod genestealer_locus;
 pub mod chronomancer;
+pub mod canoptek_tomb_sentinel;
+pub mod canoptek_wraith;

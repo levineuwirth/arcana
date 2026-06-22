@@ -124,3 +124,5 @@ pub mod ruric_thar_the_unbowed;
 pub mod ezuri_claw_of_progress;
 pub mod winged_coatl;
 pub mod glen_elendra_liege;
+pub mod figure_of_destiny;
+pub mod graveblade_marauder;

@@ -131,3 +131,6 @@ pub mod shiko_and_narset_unified;
 pub mod dragonlord_atarka;
 pub mod protector_of_the_wastes;
 pub mod baral_and_kari_zev;
+pub mod amphin_mutineer;
+pub mod carven_caryatid;
+pub mod thunderbreak_regent;

@@ -69,3 +69,5 @@ pub mod necroskitter;
 pub mod village_pillagers;
 pub mod ferrafor_young_yew;
 pub mod ashling_the_limitless;
+pub mod ingot_chewer;
+pub mod carnifex_demon;

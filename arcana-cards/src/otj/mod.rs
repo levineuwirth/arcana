@@ -138,3 +138,7 @@ pub mod irascible_wolverine;
 pub mod drover_grizzly;
 pub mod geralf_the_fleshwright;
 pub mod bristlepack_sentry;
+pub mod voracious_varmint;
+pub mod intrepid_stablemaster;
+pub mod prosperity_tycoon;
+pub mod miriam_herd_whisperer;

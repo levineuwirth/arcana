@@ -21,3 +21,4 @@ pub mod aura_shards;
 pub mod prison_term;
 pub mod garruk_wildspeaker;
 pub mod chorus_of_the_conclave;
+pub mod dominus_of_fealty;

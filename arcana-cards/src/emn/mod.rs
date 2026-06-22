@@ -72,3 +72,5 @@ pub mod markov_crusader;
 pub mod geist_of_the_archives;
 pub mod drownyard_behemoth;
 pub mod geist_of_the_lonely_vigil;
+pub mod mockery_of_nature;
+pub mod thalia_s_lancers;

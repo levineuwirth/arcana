@@ -154,3 +154,4 @@ pub mod meloku_the_clouded_mirror;
 pub mod imoti_celebrant_of_bounty;
 pub mod revenant;
 pub mod kinsbaile_courier;
+pub mod kangee_s_lieutenant;

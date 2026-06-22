@@ -71,3 +71,5 @@ pub mod havoc_sower;
 pub mod vile_redeemer;
 pub mod scion_summoner;
 pub mod sifter_of_skulls;
+pub mod stone_haven_outfitter;
+pub mod birthing_hulk;

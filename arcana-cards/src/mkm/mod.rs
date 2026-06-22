@@ -140,3 +140,6 @@ pub mod agency_outfitter;
 pub mod etrata_deadly_fugitive;
 pub mod absolving_lammasu;
 pub mod offender_at_large;
+pub mod agrus_kos_spirit_of_justice;
+pub mod festerleech;
+pub mod rune_brand_juggler;

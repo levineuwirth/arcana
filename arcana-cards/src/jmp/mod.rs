@@ -192,3 +192,4 @@ pub mod tinybones_trinket_thief;
 pub mod blessed_spirits;
 pub mod soul_of_the_harvest;
 pub mod sengir_vampire;
+pub mod storm_sculptor;

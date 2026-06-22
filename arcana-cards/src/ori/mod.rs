@@ -75,3 +75,4 @@ pub mod citadel_castellan;
 pub mod hixus_prison_warden;
 pub mod gaea_s_revenge;
 pub mod pharika_s_disciple;
+pub mod aven_battle_priest;

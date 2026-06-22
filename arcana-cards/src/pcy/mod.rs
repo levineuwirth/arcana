@@ -65,3 +65,6 @@ pub mod glittering_lynx;
 pub mod bog_elemental;
 pub mod branded_brawlers;
 pub mod veteran_brawlers;
+pub mod wall_of_vipers;
+pub mod rebel_informer;
+pub mod quicksilver_wall;

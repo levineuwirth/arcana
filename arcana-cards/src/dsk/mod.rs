@@ -134,3 +134,4 @@ pub mod appendage_amalgam;
 pub mod overlord_of_the_boilerbilges;
 pub mod unwilling_vessel;
 pub mod spineseeker_centipede;
+pub mod fear_of_infinity;

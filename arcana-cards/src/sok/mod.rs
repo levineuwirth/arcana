@@ -82,3 +82,5 @@ pub mod maga_traitor_to_mortals;
 pub mod ghost_lit_redeemer;
 pub mod shinen_of_fury_s_fire;
 pub mod skyfire_kirin;
+pub mod yuki_onna;
+pub mod shinen_of_fear_s_chill;

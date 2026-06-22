@@ -168,3 +168,5 @@ pub mod gallant_pie_wielder;
 pub mod warehouse_tabby;
 pub mod blossoming_tortoise;
 pub mod sweettooth_witch;
+pub mod realm_scorcher_hellkite;
+pub mod talion_s_messenger;

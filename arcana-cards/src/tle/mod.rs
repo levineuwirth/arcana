@@ -83,3 +83,6 @@ pub mod appa_aang_s_companion;
 pub mod fire_lord_ozai;
 pub mod momo_rambunctious_rascal;
 pub mod toph_earthbending_master;
+pub mod loyal_fire_sage;
+pub mod zuko_avatar_hunter;
+pub mod the_cabbage_merchant;

@@ -124,3 +124,5 @@ pub mod aetherjacket;
 pub mod fang_guardian;
 pub mod dracosaur_auxiliary;
 pub mod guardian_sunmare;
+pub mod howlsquad_heavy;
+pub mod mu_yanling_wind_rider;

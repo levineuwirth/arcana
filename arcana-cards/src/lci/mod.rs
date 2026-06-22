@@ -154,3 +154,4 @@ pub mod soaring_sandwing;
 pub mod hulking_raptor;
 pub mod spyglass_siren;
 pub mod dauntless_dismantler;
+pub mod rampaging_spiketail;

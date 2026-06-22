@@ -120,3 +120,6 @@ pub mod thunderous_orator;
 pub mod pilgrim_of_the_ages;
 pub mod radiant_scrollwielder;
 pub mod codie_vociferous_codex;
+pub mod combat_professor;
+pub mod tome_shredder;
+pub mod unwilling_ingredient;

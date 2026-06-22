@@ -88,3 +88,5 @@ pub mod pilfering_imp;
 pub mod narcomoeba;
 pub mod book_devourer;
 pub mod conclave_guildmage;
+pub mod ral_s_staticaster;
+pub mod intrusive_packbeast;

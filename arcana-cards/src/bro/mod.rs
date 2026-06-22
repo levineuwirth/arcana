@@ -141,3 +141,5 @@ pub mod urza_powerstone_prodigy;
 pub mod scrapwork_mutt;
 pub mod simian_simulacrum;
 pub mod hero_of_the_dunes;
+pub mod scrapwork_rager;
+pub mod a_geology_enthusiast;

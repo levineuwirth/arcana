@@ -108,3 +108,5 @@ pub mod chameleon_master_of_disguise;
 pub mod spider_man_brooklyn_visionary;
 pub mod spider_slayer_hatred_honed;
 pub mod spider_man_noir;
+pub mod guy_in_the_chair;
+pub mod spider_man_2099;

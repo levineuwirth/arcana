@@ -62,3 +62,6 @@ pub mod diamond_faerie;
 pub mod phobian_phantasm;
 pub mod rimefeather_owl;
 pub mod lightning_serpent;
+pub mod aurochs_herd;
+pub mod thermopod;
+pub mod phyrexian_ironfoot;

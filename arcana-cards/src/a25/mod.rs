@@ -64,3 +64,5 @@ pub mod shoreline_ranger;
 pub mod vendilion_clique;
 pub mod ghost_ship;
 pub mod squadron_hawk;
+pub mod ratcatcher;
+pub mod death_s_head_buzzard;

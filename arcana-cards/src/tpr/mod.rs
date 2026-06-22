@@ -121,3 +121,5 @@ pub mod mounted_archers;
 pub mod tradewind_rider;
 pub mod dauthi_slayer;
 pub mod soltari_monk;
+pub mod avenging_angel;
+pub mod spike_feeder;

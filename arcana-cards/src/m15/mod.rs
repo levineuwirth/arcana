@@ -82,3 +82,5 @@ pub mod sunblade_elf;
 pub mod dauntless_river_marshal;
 pub mod soul_of_shandalar;
 pub mod paragon_of_fierce_defiance;
+pub mod nightfire_giant;
+pub mod kird_chieftain;

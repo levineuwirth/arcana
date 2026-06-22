@@ -46,3 +46,4 @@ pub mod neverwinter_hydra;
 pub mod prosper_tome_bound;
 pub mod paradise_druid;
 pub mod radiant_solar;
+pub mod fiend_of_the_shadows;

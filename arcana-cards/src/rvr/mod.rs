@@ -115,3 +115,5 @@ pub mod borborygmos_enraged;
 pub mod truefire_captain;
 pub mod junktroller;
 pub mod stalking_vengeance;
+pub mod basilica_guards;
+pub mod wild_cantor;

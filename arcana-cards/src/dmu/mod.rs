@@ -132,3 +132,5 @@ pub mod sol_kanar_the_tainted;
 pub mod leaf_crowned_visionary;
 pub mod molten_monstrosity;
 pub mod cleaving_skyrider;
+pub mod elvish_hydromancer;
+pub mod meria_scholar_of_antiquity;

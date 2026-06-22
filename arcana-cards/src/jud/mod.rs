@@ -44,3 +44,4 @@ pub mod soulgorger_orgg;
 pub mod spellgorger_barbarian;
 pub mod aven_fogbringer;
 pub mod silver_seraph;
+pub mod jeska_warrior_adept;

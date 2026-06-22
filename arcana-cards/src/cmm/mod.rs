@@ -261,3 +261,4 @@ pub mod leori_sparktouched_hunter;
 pub mod gargadon;
 pub mod priest_of_the_blood_rite;
 pub mod mirri_weatherlight_duelist;
+pub mod herald_of_the_pantheon;

@@ -31,3 +31,4 @@ pub mod tymna_the_weaver;
 pub mod ludevic_necro_alchemist;
 pub mod ankle_shanker;
 pub mod filigree_angel;
+pub mod kraum_ludevic_s_opus;

@@ -160,3 +160,5 @@ pub mod fleshtaker;
 pub mod avacyn_angel_of_hope;
 pub mod intrepid_provisioner;
 pub mod demonic_taskmaster;
+pub mod drunau_corpse_trawler;
+pub mod griselbrand;

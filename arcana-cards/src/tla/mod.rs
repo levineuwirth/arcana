@@ -135,3 +135,4 @@ pub mod iguana_parrot;
 pub mod suki_kyoshi_warrior;
 pub mod cruel_administrator;
 pub mod earth_king_s_lieutenant;
+pub mod pirate_peddlers;

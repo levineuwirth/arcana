@@ -119,3 +119,6 @@ pub mod prowling_felidar;
 pub mod yasharn_implacable_earth;
 pub mod tuktuk_rubblefort;
 pub mod oran_rief_ooze;
+pub mod kitesail_cleric;
+pub mod relic_robber;
+pub mod moss_pit_skeleton;

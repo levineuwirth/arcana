@@ -204,3 +204,4 @@ pub mod quintorius_loremaster;
 pub mod bloodghast;
 pub mod stonecoil_serpent;
 pub mod harmonic_prodigy;
+pub mod archon_of_sun_s_grace;

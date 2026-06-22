@@ -132,3 +132,4 @@ pub mod loyal_gryff;
 pub mod stormrider_spirit;
 pub mod component_collector;
 pub mod purifying_dragon;
+pub mod brood_weaver;

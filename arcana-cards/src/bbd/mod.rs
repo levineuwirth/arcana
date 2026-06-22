@@ -107,3 +107,4 @@ pub mod true_name_nemesis;
 pub mod pir_imaginative_rascal;
 pub mod vampire_charmseeker;
 pub mod blaring_recruiter;
+pub mod regna_the_redeemer;

@@ -107,3 +107,6 @@ pub mod duskfang_mentor;
 pub mod luminous_broodmoth;
 pub mod sonorous_howlbonder;
 pub mod rooting_moloch;
+pub mod hornbash_mentor;
+pub mod almighty_brushwagg;
+pub mod general_kudro_of_drannith;

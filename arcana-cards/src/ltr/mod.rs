@@ -152,3 +152,4 @@ pub mod gandalf_white_rider;
 pub mod rohirrim_lancer;
 pub mod eagle_of_deliverance;
 pub mod legolas_master_archer;
+pub mod ioreth_of_the_healing_house;

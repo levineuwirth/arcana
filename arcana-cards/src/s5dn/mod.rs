@@ -51,3 +51,5 @@ pub mod solarion;
 pub mod spinal_parasite;
 pub mod ebon_drake;
 pub mod battered_golem;
+pub mod bringer_of_the_white_dawn;
+pub mod ferropede;

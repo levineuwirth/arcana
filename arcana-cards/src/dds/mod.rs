@@ -10,3 +10,4 @@ pub mod rubblebelt_raiders;
 pub mod spellheart_chimera;
 pub mod kamahl_pit_fighter;
 pub mod skarrgan_pit_skulk;
+pub mod the_unspeakable;

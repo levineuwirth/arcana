@@ -78,3 +78,4 @@ pub mod harold_and_bob_first_numens;
 pub mod overseer_of_vault_76;
 pub mod the_motherlode_excavator;
 pub mod bighorner_rancher;
+pub mod nick_valentine_private_eye;

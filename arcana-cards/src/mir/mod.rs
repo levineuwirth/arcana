@@ -111,3 +111,6 @@ pub mod harbor_guardian;
 pub mod vaporous_djinn;
 pub mod burning_shield_askari;
 pub mod teferi_s_drake;
+pub mod jungle_troll;
+pub mod hakim_loreweaver;
+pub mod purraj_of_urborg;

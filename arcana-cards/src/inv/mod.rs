@@ -114,3 +114,4 @@ pub mod armored_guardian;
 pub mod thornscape_master;
 pub mod pincer_spider;
 pub mod urborg_phantom;
+pub mod devouring_strossus;

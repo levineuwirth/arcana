@@ -163,3 +163,5 @@ pub mod flameskull;
 pub mod orcus_prince_of_undeath;
 pub mod westgate_regent;
 pub mod gelatinous_cube;
+pub mod plundering_barbarian;
+pub mod yuan_ti_malison;

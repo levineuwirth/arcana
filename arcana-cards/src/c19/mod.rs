@@ -42,3 +42,5 @@ pub mod thalia_s_geistcaller;
 pub mod greven_predator_captain;
 pub mod cliffside_rescuer;
 pub mod soul_of_zendikar;
+pub mod thought_sponge;
+pub mod pristine_skywise;

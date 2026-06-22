@@ -18,3 +18,4 @@ pub mod grendel_spawn_of_knull;
 pub mod prowler_misguided_mentor;
 pub mod mj_rising_star;
 pub mod ghost_spider_gwen_stacy;
+pub mod spider_man_peter_parker;

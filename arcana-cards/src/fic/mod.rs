@@ -66,3 +66,4 @@ pub mod heidegger_shinra_executive;
 pub mod wakka_devoted_guardian;
 pub mod the_destined_thief;
 pub mod aerith_last_ancient;
+pub mod alphinaud_leveilleur;

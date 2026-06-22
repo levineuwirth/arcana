@@ -173,3 +173,5 @@ pub mod biting_palm_ninja;
 pub mod replication_specialist;
 pub mod circuit_mender;
 pub mod guardians_of_oboro;
+pub mod go_shintai_of_lost_wisdom;
+pub mod iron_apprentice;

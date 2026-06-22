@@ -47,3 +47,4 @@ pub mod all_star_kicker;
 pub mod lifening_elemental;
 pub mod phyrexian_seedling;
 pub mod gobland;
+pub mod jeskai_baller;

@@ -36,3 +36,4 @@ pub mod legolas_greenleaf;
 pub mod bilbo_birthday_celebrant;
 pub mod frodo_adventurous_hobbit;
 pub mod gwaihir_greatest_of_the_eagles;
+pub mod shelob_dread_weaver;
