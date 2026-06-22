@@ -47,6 +47,12 @@ pub struct Snapshot {
     exile: usize,
     total_objects: usize,
     total_counters: u32,
+    /// Location-weighted counter sum: Σ (id+1)·(counters on that object).
+    /// Without this, MOVING a counter from one object to another
+    /// (Steel Dromedary, Spike creatures' "move a +1/+1 counter") leaves
+    /// `total_counters` unchanged and reads as a silent no-op. Strictly
+    /// finer than the total — detects relocation and per-object shifts.
+    counter_fingerprint: u64,
     /// Sum of visible_face across objects — so a transform (flip
     /// front↔back, e.g. werewolves / "transform this Saga") shows a
     /// delta even though it changes no count.
@@ -105,11 +111,13 @@ impl Snapshot {
                 state.objects.count_in_zone(Zone::Library(p)),
             ));
         }
-        let total_counters: u32 = state.objects.iter()
-            .map(|o| {
-                let kinds: Vec<_> = o.counters.keys().copied().collect();
-                kinds.iter().map(|k| o.count_counters(*k)).sum::<u32>()
-            })
+        let per_obj_counters = |o: &GameObject| -> u32 {
+            let kinds: Vec<_> = o.counters.keys().copied().collect();
+            kinds.iter().map(|k| o.count_counters(*k)).sum::<u32>()
+        };
+        let total_counters: u32 = state.objects.iter().map(per_obj_counters).sum();
+        let counter_fingerprint: u64 = state.objects.iter()
+            .map(|o| (o.id as u64 + 1) * per_obj_counters(o) as u64)
             .sum();
         let total_damage: u32 = state.objects.iter().map(|o| o.damage_marked).sum();
         let tapped = state.objects.iter().filter(|o| o.is_tapped()).count();
@@ -118,6 +126,7 @@ impl Snapshot {
             exile: state.objects.count_in_zone(Zone::Exile),
             total_objects: state.objects.iter().count(),
             total_counters,
+            counter_fingerprint,
             visible_faces: state.objects.iter().map(|o| o.visible_face as u32).sum(),
             control_fingerprint: state.objects.iter()
                 .map(|o| (o.id as u64 + 1) * (o.controller as u64 + 1)).sum(),
@@ -239,6 +248,10 @@ pub fn probe_triggered(reg: &CardRegistry, card_id: CardId) -> Vec<ProbeResult> 
         }
         state.objects.insert(src_obj);
         state.currently_resolving = Some(src);
+        // Removable counters on the source, so "remove a counter from
+        // this" triggers (Bristlebane's counter-removal, Spike creatures)
+        // delta instead of no-op'ing on a counterless source.
+        seed_source_counters(&mut state, src);
         // Saga fidelity: actually PLACE the lore counters on the source so
         // chapter dispatch that reads the COUNT (not just the event) fires.
         if let crate::triggers::TriggerCondition::CounterAdded { kind, chapter, .. } =
@@ -411,7 +424,17 @@ pub fn probe_activated(reg: &CardRegistry, card_id: CardId) -> Vec<ProbeResult> 
             toughness: Some(PtValue::Fixed(2)),
             ..Default::default()
         };
-        let mut src_obj = GameObject::new(src, 0, Zone::Battlefield, card_id, chars);
+        // Place the source where the ability is activated FROM: the
+        // graveyard for Unearth/Embalm/"return this from your graveyard"
+        // (Firewing Phoenix), the hand for cycling/channel — otherwise a
+        // "do X to/with this card in zone Z" effect finds no source in Z
+        // and reads as a silent no-op.
+        let src_zone = match ability.activation_zone {
+            crate::registry::ActivationZone::Graveyard => Zone::Graveyard(0),
+            crate::registry::ActivationZone::Hand => Zone::Hand(0),
+            crate::registry::ActivationZone::Battlefield => Zone::Battlefield,
+        };
+        let mut src_obj = GameObject::new(src, 0, src_zone, card_id, chars);
         // Transform back-face seeding, mirroring the triggered-probe
         // source: "{cost}: Transform this" activations must flip
         // visible_face instead of hitting the no-back fallback.
@@ -420,6 +443,10 @@ pub fn probe_activated(reg: &CardRegistry, card_id: CardId) -> Vec<ProbeResult> 
         }
         state.objects.insert(src_obj);
         state.currently_resolving = Some(src);
+        // Removable counters on the source (see seed_source_counters):
+        // "{cost}, Remove a +1/+1 counter: …" (Spike Feeder, Fertilid)
+        // acts on a real counter instead of no-op'ing.
+        seed_source_counters(&mut state, src);
         let stack_spell = add_dummy_stack_spell(&mut state);
         let dummy = first_battlefield_creature(&state, 0);
         let targets = selection_for(&state, &ability.target_requirements, dummy, stack_spell);
@@ -440,6 +467,138 @@ pub fn probe_activated(reg: &CardRegistry, card_id: CardId) -> Vec<ProbeResult> 
         }
         let after = Snapshot::capture(&state);
         out.push(ProbeResult { had_effects, observable_delta: before != after });
+    }
+    out
+}
+
+/// Top-level variant name of an effect (e.g. `DealDamage`, `Destroy`),
+/// derived from its Debug form. Used by the triage classifier to bucket
+/// silent no-ops by mechanism.
+fn effect_label(e: &Effect) -> String {
+    let s = format!("{e:?}");
+    s.split(|c: char| c == '{' || c == '(' || c == ' ' || c == '[')
+        .next().unwrap_or("?").to_string()
+}
+
+/// DIAGNOSTIC (not a gate): for each ability whose probe is a silent
+/// no-op, return `(surface, first_effect_label)` — surface ∈
+/// {`spell`,`trig`,`act`}. Mirrors the three probes' verdict logic
+/// exactly (same seeding, same synth_event skip-on-None for triggers) so
+/// the buckets line up 1:1 with the gate's flag set. Lets the audit see
+/// WHAT each residual no-op does, so an effect that should ALWAYS delta
+/// (DealDamage/Destroy/Draw/Mill/CreateToken) standing out in the
+/// buckets is a real-bug candidate, not a harness limit.
+pub fn noop_mechanisms(reg: &CardRegistry, card_id: CardId) -> Vec<(&'static str, String)> {
+    let mut out = Vec::new();
+    let Some(def) = reg.get(card_id) else { return out; };
+    // ---- spell ----
+    if let Some(spell) = def.spell_ability.as_ref() {
+        let mut state = populated_state(reg);
+        let src = state.allocate_object_id();
+        state.objects.insert(GameObject::new(
+            src, 0, Zone::Stack, card_id, Characteristics::default()));
+        state.currently_resolving = Some(src);
+        let stack_spell = add_dummy_stack_spell(&mut state);
+        let dummy = first_battlefield_creature(&state, 0);
+        let targets = selection_for(&state, &spell.target_requirements, dummy, stack_spell);
+        let entry = StackEntry::new_spell(
+            src, 0, card_id, Characteristics::default(), targets, Vec::new(), Some(3));
+        let before = Snapshot::capture(&state);
+        let effects = (spell.effect)(&state, &entry, reg);
+        let label = effects.first().map(effect_label).unwrap_or_else(|| "?".into());
+        let had = !effects.is_empty();
+        for eff in flatten_sequences(effects) {
+            eff.execute(&mut state);
+            if state.pending_choice.is_some() { break; }
+        }
+        if had && before == Snapshot::capture(&state) { out.push(("spell", label)); }
+    }
+    // ---- triggered (mirror probe_triggered) ----
+    for ability in &def.triggered_abilities {
+        let mut state = populated_state(reg);
+        let src = state.allocate_object_id();
+        let chars = Characteristics {
+            types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(2)), toughness: Some(PtValue::Fixed(2)),
+            ..Default::default()
+        };
+        let from_graveyard = matches!(ability.trigger_condition,
+            crate::triggers::TriggerCondition::SelfDies)
+            || (ability.trigger_zones.iter().any(|z| matches!(z, Zone::Graveyard(_)))
+                && !ability.trigger_zones.iter().any(|z| matches!(z, Zone::Battlefield)));
+        let src_zone = if from_graveyard { Zone::Graveyard(0) } else { Zone::Battlefield };
+        let mut src_obj = GameObject::new(src, 0, src_zone, card_id, chars);
+        if let Some(back) = def.alternate_face.as_ref().and_then(|a| a.as_transform()) {
+            src_obj.back_face_characteristics = Some(back.characteristics.clone());
+        }
+        state.objects.insert(src_obj);
+        state.currently_resolving = Some(src);
+        seed_source_counters(&mut state, src);
+        if let crate::triggers::TriggerCondition::CounterAdded { kind, chapter, .. } =
+            &ability.trigger_condition
+        {
+            state.place_counters(crate::replacement::CounterTarget::Object(src),
+                kind.unwrap_or(crate::types::CounterKind::Lore), chapter.unwrap_or(1));
+        }
+        let stack_spell = add_dummy_stack_spell(&mut state);
+        let dummy = first_battlefield_creature(&state, 0);
+        let targets = selection_for(&state, &ability.target_requirements, dummy, stack_spell);
+        let synth = synth_event(&ability.trigger_condition, src, 0, stack_spell, dummy);
+        let event = synth.clone().unwrap_or(crate::events::GameEvent::EntersBattlefield {
+            object_id: src, from_zone: Zone::Stack, was_cast: true });
+        let pt = crate::triggers::PendingTrigger {
+            effect_override: None, source: src, trigger_id: ability.id,
+            controller: 0, trigger_event: event, targets,
+        };
+        let before = Snapshot::capture(&state);
+        let effects = (ability.effect)(&state, &pt, reg);
+        let label = effects.first().map(effect_label).unwrap_or_else(|| "?".into());
+        let had = !effects.is_empty();
+        for eff in flatten_sequences(effects) {
+            eff.execute(&mut state);
+            if state.pending_choice.is_some() { break; }
+        }
+        if synth.is_some() && had && before == Snapshot::capture(&state) {
+            out.push(("trig", label));
+        }
+    }
+    // ---- activated (mirror probe_activated) ----
+    for (i, ability) in def.activated_abilities.iter().enumerate() {
+        let mut state = populated_state(reg);
+        let src = state.allocate_object_id();
+        let chars = Characteristics {
+            types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(2)), toughness: Some(PtValue::Fixed(2)),
+            ..Default::default()
+        };
+        let src_zone = match ability.activation_zone {
+            crate::registry::ActivationZone::Graveyard => Zone::Graveyard(0),
+            crate::registry::ActivationZone::Hand => Zone::Hand(0),
+            crate::registry::ActivationZone::Battlefield => Zone::Battlefield,
+        };
+        let mut src_obj = GameObject::new(src, 0, src_zone, card_id, chars);
+        if let Some(back) = def.alternate_face.as_ref().and_then(|a| a.as_transform()) {
+            src_obj.back_face_characteristics = Some(back.characteristics.clone());
+        }
+        state.objects.insert(src_obj);
+        state.currently_resolving = Some(src);
+        seed_source_counters(&mut state, src);
+        let stack_spell = add_dummy_stack_spell(&mut state);
+        let dummy = first_battlefield_creature(&state, 0);
+        let targets = selection_for(&state, &ability.target_requirements, dummy, stack_spell);
+        let ctx = crate::registry::ActivationContext {
+            source: src, controller: 0, ability_index: i, targets,
+            x_value: Some(3), card_id,
+        };
+        let before = Snapshot::capture(&state);
+        let effects = (ability.effect)(&state, &ctx, reg);
+        let label = effects.first().map(effect_label).unwrap_or_else(|| "?".into());
+        let had = !effects.is_empty();
+        for eff in flatten_sequences(effects) {
+            eff.execute(&mut state);
+            if state.pending_choice.is_some() { break; }
+        }
+        if had && before == Snapshot::capture(&state) { out.push(("act", label)); }
     }
     out
 }
@@ -571,6 +730,12 @@ fn populated_state(reg: &CardRegistry) -> GameState {
         make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::INSTANT.into());
         make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::SORCERY.into());
         make_typed_card(&mut state, p, Zone::Graveyard(p), TypeLine::ENCHANTMENT.into());
+        // A multi-type ARTIFACT CREATURE card so "return target artifact
+        // creature card from your graveyard" (Skeleton Shard) and other
+        // type-intersection graveyard returns/reanimation find a match;
+        // the single-type cards above miss the AND of two types.
+        make_typed_card(&mut state, p, Zone::Graveyard(p),
+            crate::types::TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE).into());
         let dead = make_tribal_creature(&mut state, p, Zone::Graveyard(p), &tribes);
         dead_ids[p as usize] = dead;
     }
@@ -780,6 +945,23 @@ fn make_typed_card(state: &mut GameState, owner: PlayerId, zone: Zone, types: Ty
     id
 }
 
+/// Seed a few removable counters on the probe source so "remove a +1/+1
+/// / -1/-1 / charge counter from this" abilities (Triskelion, the Spike
+/// creatures, Bristlebane's counter-removal trigger, Fertilid) act on a
+/// real counter instead of reading as a silent no-op. A real activation
+/// or trigger of those abilities can only happen with the counter already
+/// present, so a delta here is genuine; abilities that don't touch the
+/// source's counters are unaffected (seeding never manufactures a delta
+/// on its own — it only changes the BEFORE baseline, which both snapshots
+/// share).
+fn seed_source_counters(state: &mut GameState, src: ObjectId) {
+    use crate::types::CounterKind as CK;
+    use crate::replacement::CounterTarget;
+    for kind in [CK::PlusOnePlusOne, CK::MinusOneMinusOne, CK::Charge] {
+        state.place_counters(CounterTarget::Object(src), kind, 2);
+    }
+}
+
 /// Mirror of the engine's resolution-time flattening (see
 /// `engine::flatten_sequences`): unwrap top-level `Sequence`s so a
 /// multi-choice sequence parks step-by-step rather than running
@@ -848,8 +1030,15 @@ fn legal_target(
     req: &crate::targets::TargetRequirement,
     stack_spell: ObjectId,
 ) -> Option<TargetChoice> {
+    // Exclude the object currently resolving: a spell/ability can't pick
+    // the very object resolving it as its target. Without this, "counter
+    // target spell" / "copy target spell" chose the probe's own source
+    // (lowest-id stack object, with no stack ENTRY) and Counter found
+    // nothing to remove — a probe artifact that no-op'd ~90 counters.
+    let resolving = state.currently_resolving;
     let mut ids: Vec<ObjectId> = state.objects.iter()
         .filter(|o| o.zone != Zone::Library(o.owner))
+        .filter(|o| Some(o.id) != resolving)
         .map(|o| o.id).collect();
     ids.push(stack_spell);
     // Ability stack entries aren't GameObjects — push their entry ids

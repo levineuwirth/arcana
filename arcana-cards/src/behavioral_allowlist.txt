@@ -1,20 +1,31 @@
 # Behavioral-audit allowlist — spell / triggered / activated resolvers the
 # silent-no-op probe flags that are NOT bugs to fix now: harness limitations
-# the generic probe state can't satisfy. Classes: tribal/Gate/basic-subtype
-# counts & tutors not seeded; cost-/mode-dependent activated effects (no cost
-# paid); and — since per-condition trigger synthesis — Saga chapters, transform/
-# werewolf, and other context-rich triggers that fire faithfully but need multi-
-# step chapter/face/combat state to show a delta in a single-event probe.
-# The gate asserts suspects ⊆ this list + panics==0, so a NEW silent no-op (a
-# future ForEach/subtype_filter-class bug) fails CI. The trigger block is an
-# un-triaged baseline — mine it for real bugs (like subtype_filter) and SHRINK
-# it; never grow without confirming the card is a genuine false-positive.
-A-Cauldron Familiar
+# the generic probe state can't satisfy. After the 2026-06 probe-fidelity pass
+# this list was AUDITED end-to-end and shrunk 579 -> 417: the residual buckets
+# are all explicable harness limits, none a real engine silent-no-op.
+# Dominant residual classes (see behavioral_triage::classify_noop_mechanisms):
+#   * untap with nothing tapped of the right kind (untap-self / untap-by-
+#     subtype-or-color); creatures are seeded untapped for tap-target fidelity.
+#   * ForEach over an empty dynamic target set (X = matching permanents = 0).
+#   * dynamic count = 0 (Pump/GainLife/Draw/Mill/DealDamage X = Shrines / oil /
+#     snow / cards-drawn-this-turn, none seeded to a nonzero value).
+#   * gain control of an unconstrained target -> own creature = no-op.
+#   * RemoveCounters from a target / counter kind the probe did not seed.
+#   * coin flip, day/night, extra turn, Suspect, monarch — not fingerprinted.
+#   * put a narrow card type from hand (planeswalker / specific subtype) not in
+#     the 2-card probe hand; reanimate the dying object (never moved to gy).
+#   * a few gen-GAPs: a graveyard-return ability modeled with an
+#     ActivationZone::Battlefield placeholder (cannot work as written either).
+# The 2026-06 pass reclaimed 162 by: probe_activated placing the source in its
+# activation zone (graveyard/hand); seeding removable counters on the source; a
+# location-weighted counter fingerprint (catches counter MOVES); and excluding
+# the currently-resolving object from target selection (fixed ~90 counter-
+# target-spell probes that were picking their own source, which has no stack
+# entry). The gate asserts suspects are a subset of this list + panics==0, so a
+# NEW silent no-op (a future ForEach/subtype_filter-class bug) fails CI. Keep
+# SHRINKING via probe fidelity; never grow without confirming a genuine FP.
 A-Llanowar Greenwidow
 A-Raiyuu, Storm's Edge
-Absorb Energy
-Abzan Devotee
-Access Denied
 Admiral Beckett Brass
 Agent of Treachery
 Agrus Kos, Spirit of Justice
@@ -22,7 +33,6 @@ Aladdin
 Alert Heedbonder
 All Suns' Dawn
 Altar Golem
-Altar of the Wretched
 Ambling Stormshell
 Amulet of Vigor
 Angel of Eternal Dawn
@@ -41,17 +51,13 @@ Auriok Transfixer
 Avarice Totem
 Ayara, Widow of the Realm
 Azor's Elocutors
-Bag Check
 Baldur's Gate
 Ballynock Trapper
 Baloth Packhunter
-Bane's Contingency
 Barbed Servitor
 Basilisk Gate
 Battered Golem
 Beguiler of Wills
-Belligerent Hatchling
-Bin Chicken
 Biogenic Ooze
 Black Carriage
 Black Market Tycoon
@@ -59,31 +65,24 @@ Blinkmoth Well
 Blisterspit Gremlin
 Blizzard Elemental
 Bloodcrazed Hoplite
-Bloodsoaked Champion
 Bloodtithe Harvester
 Boon of Boseiju
-Brackish Trudge
 Breaching Hippocamp
 Brimstone Trebuchet
 Brimstone Vandal
-Bristlebane Battler
 Bulwark
 Bumi, Eclectic Earthbender
 Burst of Energy
 Cadira, Caller of the Small
 Calamitous Cave-In
 Callous Oppressor
-Cancel
-Canopy Crawler
 Captivating Vampire
 Celestus Sanctifier
-Ceremonious Rejection
 Chain Stasis
 Chainbreaker
 Chained Brute
 Chainer, Dementia Master
 Chakram Retriever
-Chamber Sentry
 Chandra, Fire of Kaladesh
 Chandra, Gremlin Wrangler
 Chandra, Legacy of Fire
@@ -94,30 +93,19 @@ Cinderhaze Wretch
 City of Traitors
 Civic Gardener
 Claire D'Loon, Joy Sculptor
-Clattering Augur
-Clay Revenant
-Cleaving Reaper
 Clever Conjurer
 Clockwork Beast
 Clockwork Steed
 Clockwork Swarm
 Clone Legion
 Cloudpost
-Coffin Puppets
 Colossus of Sardia
 Commodore Guff
 Companion of the Trials
 Component Collector
-Concerted Defense
 Conifer Wurm
-Convolute
 Corpse Cur
 Corridor Monitor
-Corrupted Resolve
-Counterbore
-Counterlash
-Counterpoint
-Counterspell
 Creepy Doll
 Cult Conscript
 Cybermat
@@ -125,81 +113,48 @@ Cytoplast Manipulator
 Dack Fayden
 Danitha, Benalia's Hope
 Dark Suspicions
-Daru Stinger
 Dauntless Aven
-Dazzling Denial
 Death Watch
-Deathless Ancient
-Deathless Behemoth
-Deathless Pilot
 Deceiver Exarch
 Decimator Beetle
 Dedicated Dollmaker
 Deep-Slumber Titan
 Deepchannel Duelist
 Defiant Greatmaw
-Delay
 Descendant of Masumaro
-Desertion
-Despoiler of Souls
-Devious Cover-Up
 Devoted Druid
 Diamond Faerie
 Disa the Restless
-Dispersal Shield
-Dissipate
-Divert Disaster
-Don't Make a Sound
 Donal, Herald of Wings
-Double Negative
 Dragonlord Silumgar
 Dread Slaver
-Dread Wanderer
 Drey Keeper
 Drooling Ogre
 Drover of the Swine
-Drownyard Temple
 Dumb Ass
 Durable Coilbug
-Dutiful Griffin
 Dwarven Patrol
-Earthquake Dragon
 Ebon Praetor
 Elder Druid
 Eldest Dragon Highlander
-Eldrazi Ravager
-Electrosiphon
 Elvish Scout
 Elvish Vatkeeper
 Empress Galina
-Encumbered Reejerey
 Endbringer
 Enduring Friendship
 Eon Frolicker
-Ertai's Trickery
-Eternal Dragon
 Ethersworn Adjudicator
 Evaporate
-Evasive Action
 Evolved Spinoderm
-Faerie Trickery
 Fain, the Broker
-Falkenrath Forebear
-Feasting Troll King
-Fell Beast of Mordor
 Fickle Efreet
-Firewing Phoenix
 Firmament Sage
-Flaccify
 Floodwater Dam
 Flowerfoot Swordmaster
-Force Spike
 Forensic Researcher
 Formidable Speaker
-Frazzle
 Freyalise, Skyshroud Partisan
 Frillscare Mentor
-Fuel for the Cause
 Furgul, Quag Nurturer
 Futurist Operative
 Fyndhorn Brownie
@@ -207,7 +162,6 @@ Galvanic Juggernaut
 Gates Ablaze
 Gavony Dawnguard
 Gelectrode
-Geralf's Masterpiece
 Ghoulsteed
 Giant Ambush Beetle
 Glimmerbell
@@ -217,7 +171,6 @@ Goblin Psychopath
 Goblin Sharpshooter
 Goblin Wizard
 Godo, Bandit Warlord
-Grafted Butcher
 Greater Morphling
 Greenside Watcher
 Groundskeeper
@@ -228,14 +181,9 @@ Gustcloak Harrier
 Gustcloak Runner
 Gustcloak Sentinel
 Gustcloak Skirmisher
-Gutterbones
 Hana Kami
-Haunt of the Dead Marshes
-Haunted Dead
 Havi, the All-Father
 Heartmender
-Hinder
-Hisoka's Defiance
 Hivis of the Scale
 Honden of Cleansing Fire
 Honden of Infinite Rage
@@ -250,24 +198,18 @@ Imaryll, Elfhame Elite
 Impetuous Devils
 Incandescent Soulstoke
 Incubation Triformer
-Induce Paranoia
 Initiate's Companion
 Innocence Kami
 Inspired Sprite
 Interface Ace
-Intervene
 Into the Night
-Invert Polarity
 Inverted Iceberg
 Ioreth of the Healing House
 Ire of Kaminari
 Iron Spider, Stark Upgrade
-It'll Quench Ya!
 Iwamori of the Open Fist
-Ixidor's Will
 J. Jonah Jameson
 Jace, Ingenious Mind-Mage
-Jaded Response
 Jandor's Saddlebags
 Jaws of Defeat
 Jungle Creeper
@@ -277,12 +219,10 @@ Karlach, Tiefling Berserker
 Karlach, Tiefling Spellrager
 Karlach, Tiefling Zealot
 Karona, False God
-Karstoderm
 Kellogg, Dangerous Mind
 Kelpie Guide
 Keruga, the Macrosage
 Kindlespark Duo
-Kindred Denial
 King Darien XLVIII
 Kiora's Follower
 Kiora, Behemoth Beckoner
@@ -291,144 +231,94 @@ Kjeldoran Javelineer
 Knight of Valor
 Koh, the Face Stealer
 Koll, the Forgemaster
-Kraul Swarm
 Kuldotha Cackler
-Kuldotha Phoenix
 Kumano Faces Kakkazan
 Kydele, Chosen of Kruphix
 Labyrinth Guardian
-Lapse of Certainty
-Lay Bare
 Leonin Battlemage
 Lifeline
 Lightning-Rig Crew
-Lily Bowen, Raging Grandma
 Lingering Phantom
-Liquify
 Lita, Mechanical Engineer
-Llanowar Greenwidow
 Lobber Crew
 Lockjaw Snapper
-Lofty Denial
 Loyal Retainers
 Luminous Broodmoth
 Lunar Force
 Lurking Roper
 Lydia Frye
-Maga, Traitor to Mortals
 Mage-Ring Responder
 Magebane Lizard
 Magewright's Stone
-Magma Phoenix
-Magmaroth
 Magnetic Snuffler
 Mana Crypt
-Mana Drain
-Mana Leak
-Mana Sculpt
-Mana Tithe
 Mandate of Abaddon
 Marchesa, the Black Rose
-Marketback Walker
 Master Pakku
 Master Thief
 Medicine Runner
 Medomai the Ageless
 Memnarch
-Memory Lapse
 Merchant of Many Hats
 Merieke Ri Berit
 Merrow Bonegnawer
 Merrow Commerce
-Metalwork Colossus
 Midnight Guard
 Mijae Djinn
 Militia Rallier
-Minamo's Meddling
 Minamo, School at Water's Edge
-Mindstatic
 Mine Layer
 Minion of the Mighty
-Minor Misstep
 Mirran Spy
 Mirror Universe
 Mishra's Helix
 Mole Worms
-Molten Hydra
-Moonshadow
 Moonstone Harbinger
 Morphling
 Mu Yanling
 Murkfiend Liege
-Mystic Genesis
 Nahiri, Heir of the Ancients
 Nanoform Sentinel
-Narfi, Betrayer King
 Nashi, Moon's Legacy
 Necrogen Communion
 Necroskitter
-Negate
-Nemesis Phoenix
 Nether Spirit
 Nettle Drone
 Nettle Sentinel
-Neutralizing Blast
 Nicol Bolas, Planeswalker
 Nimbleclaw Adept
-Nix
-No More Lies
 Noise Marine
-Noxious Hatchling
 Odunos River Trawler
 Old Man of the Sea
 Onakke Oathkeeper
 Open the Vaults
-Oppressive Will
-Outwit
 Ovalchase Daredevil
-Override
 Pack Mastiff
 Pendelhaven Elder
-Permission Denied
 Peter Parker
 Phyrexian Colossus
 Phyrexian Infiltrator
 Phyrexian Ironfoot
-Pilgrim of the Ages
-Plasm Capture
 Polluted Bonds
 Powerstone Shard
 Praetor's Counsel
 Preeminent Captain
-Preyseizer Dragon
 Priest of the Haunted Edge
 Prince of Thralls
 Pristine Angel
 Pristine Skywise
 Progenitor Exarch
-Punish Ignorance
 Puppet Strings
-Purple Pentapus
-Put Away
-Quench
 Radagast the Brown
 Raggadragga, Goreguts Boss
 Ragost, Deft Gastronaut
 Raiyuu, Storm's Edge
-Rakshasa's Disdain
 Ral Zarek
 Raph & Leo, Sibling Rivals
-Rebuff the Wicked
-Reinterpret
-Reject Imperfection
 Relic Barrier
-Reluctant Dounguard
-Render Silent
 Repeat Offender
-Resurrected Cultist
 Revered Unicorn
 Revive
-Revolutionary Rebuff
 Rime Tender
 Rishadan Dockhand
 Rishadan Port
@@ -440,7 +330,6 @@ Rona, Herald of Invasion
 Rootwater Matriarch
 Rubblebelt Braggart
 Rubinia Soulsinger
-Rune Snag
 Rune-Brand Juggler
 Sacred Ground
 Sage of Hours
@@ -452,30 +341,22 @@ Sandstorm Salvager
 Sanitarium Skeleton
 Saryth, the Viper's Fang
 Satsuki, the Living Lore
-Savage Firecat
-Scarecrone
-Scattering Stroke
 Scoria Wurm
 Scourge of the Throne
 Scrib Nibblers
 Scroll of Isildur
 Scuttling Sliver
 Second Chance
-Second Guess
 Seedship Broodtender
 Seeker of Skybreak
 Seer of the Bright Side
 Sengir Autocrat
 Serene Heart
-Shard Phoenix
 Shivan Sand-Mage
 Sierra, Nuka's Biggest Fan
 Silkenfist Fighter
 Silkenfist Order
 Simic Ragworm
-Skarrgan Firebird
-Skeleton Crew
-Skeleton Shard
 Skittering Skirge
 Skred
 Skyfire Kirin
@@ -485,30 +366,16 @@ Soliton
 Sorin, Imperious Bloodlord
 Sower of Temptation
 Sparring Mummy
-Spell Crumple
-Spell Pierce
-Spell Rupture
-Spell Stutter
-Spell Suck
-Spell Swindle
-Spell Syphon
-Spelljack
-Spike Cannibal
 Steel Overseer
 Stensia Innkeeper
-Stitchwing Skaab
 Stone-Seeder Hierophant
 Stoneforge Mystic
-Sturdy Hatchling
-Summoned Dromedary
 Sunrise Cavalier
 Super Mutant Scavenger
 Superior Numbers
 Swarm of Locus
 Synod Artificer
 Tadeas, Juniper Ascendant
-Tale's End
-Teferi's Contingency
 Teferi, Master of Time
 Teferi, Temporal Archmage
 Teferi, Timebender
@@ -516,7 +383,6 @@ Temp of the Damned
 Tenth District Veteran
 Tezzeret, Cruel Captain
 Thalakos Deceiver
-Thassa's Rebuff
 The Akroan War
 The Cinematic Phoenix
 The Disciple of Vess
@@ -530,10 +396,7 @@ The Wandering Minstrel
 Thermo-Alchemist
 Thing in the Ice
 Thistledown Players
-Thought Gorger
-Thoughtbind
 Thundering Djinn
-Tibalt's Trickery
 Ticking Mime Bomb
 Tideforce Elemental
 Tidewater Minion
@@ -548,32 +411,22 @@ Traxos, Scourge of Kroog
 Triceraton Commander
 Trickster Mage
 Tunnel Rats
-Turn Aside
 Two-Headed Giant
 Tyvar, Jubilant Brawler
 Unbender Tine
-Undead Gladiator
-Undersimplify
 Unholy Indenture
 Unified Lunge
-Unravel
 Unruly Catapult
-Unshakable Tail
 Urtet, Remnant of Memnarch
 Vedalken Plotter
 Vhal, Scholar of Elements
 Vhal, Scholar of Prophecy
 Vigean Graftmage
 Vigilant Drake
-Vivien's Jaguar
 Vodalian Mindsinger
-Vogar, Necropolis Tyrant
-Voidslime
 Volatile Rig
 Voltaic Construct
-Voracious Hatchling
 Vulshok Battlemaster
-Walking Archive
 Warren Instigator
 Warren Pilferers
 Watchful Blisterzoa

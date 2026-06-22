@@ -1368,6 +1368,82 @@ mod tests {
 
 #[cfg(test)]
 mod behavioral_triage {
+    /// Diagnostic: print every silent-no-op card with the surface(s) it
+    /// flags on (`spell`/`trig`/`act`), one per line, sorted. Capture
+    /// before/after a probe change to see exactly which cards a fidelity
+    /// improvement reclaims (dropped = now genuinely verified) vs. which
+    /// remain harness-limited. Lines: `SURFACES\tName`.
+    #[test]
+    #[ignore]
+    fn list_all_noops() {
+        let mut reg = arcana_core::registry::CardRegistry::new();
+        let n = crate::register_all::register_all(&mut reg);
+        let mut rows: Vec<String> = Vec::new();
+        for cid in 0..n as u32 {
+            let name = reg.get(cid)
+                .and_then(|d| reg.interner().resolve(d.name))
+                .unwrap_or("?").to_string();
+            let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let s = arcana_core::behavioral::probe_spell(&reg, cid)
+                    .map(|r| r.is_silent_noop()).unwrap_or(false);
+                let t = arcana_core::behavioral::probe_triggered(&reg, cid)
+                    .iter().any(|r| r.is_silent_noop());
+                let a = arcana_core::behavioral::probe_activated(&reg, cid)
+                    .iter().any(|r| r.is_silent_noop());
+                (s, t, a)
+            }));
+            match res {
+                Ok((s, t, a)) if s || t || a => {
+                    let mut tags = Vec::new();
+                    if s { tags.push("spell"); }
+                    if t { tags.push("trig"); }
+                    if a { tags.push("act"); }
+                    rows.push(format!("{}\t{}", tags.join(","), name));
+                }
+                Ok(_) => {}
+                Err(_) => rows.push(format!("PANIC\t{}", name)),
+            }
+        }
+        rows.sort();
+        eprintln!("NOOP_COUNT {}", rows.len());
+        for r in &rows { eprintln!("NOOP_ROW {r}"); }
+    }
+
+    /// Bucket every residual silent-no-op by (surface, first-effect
+    /// variant). A bucket whose effect should ALWAYS move state
+    /// (DealDamage/Destroy/DrawCards/Mill/CreateToken/Reanimate/GainLife)
+    /// is a real-bug candidate — the ForEach/subtype silent-no-op class.
+    /// Conditionally-no-op effects (RemoveCounters with no counter, untap
+    /// with nothing tapped, dynamic-X=0, control-change with no target)
+    /// are the expected harness limits.
+    #[test]
+    #[ignore]
+    fn classify_noop_mechanisms() {
+        use std::collections::BTreeMap;
+        let mut reg = arcana_core::registry::CardRegistry::new();
+        let n = crate::register_all::register_all(&mut reg);
+        let mut buckets: BTreeMap<String, usize> = BTreeMap::new();
+        let mut examples: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        for cid in 0..n as u32 {
+            let name = reg.get(cid)
+                .and_then(|d| reg.interner().resolve(d.name))
+                .unwrap_or("?").to_string();
+            let mechs = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
+                arcana_core::behavioral::noop_mechanisms(&reg, cid))).unwrap_or_default();
+            for (surface, label) in mechs {
+                let key = format!("{surface}\t{label}");
+                *buckets.entry(key.clone()).or_default() += 1;
+                let e = examples.entry(key).or_default();
+                if e.len() < 5 { e.push(name.clone()); }
+            }
+        }
+        let mut rows: Vec<_> = buckets.into_iter().collect();
+        rows.sort_by(|a, b| b.1.cmp(&a.1));
+        for (key, count) in &rows {
+            eprintln!("MECH {count:4}  {key}   e.g. {:?}", examples[key]);
+        }
+    }
+
     #[test]
     #[ignore]
     fn classify_trigger_noops() {
