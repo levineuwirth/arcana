@@ -186,3 +186,6 @@ pub mod linvala_keeper_of_silence;
 pub mod tempting_witch;
 pub mod angel_of_the_dire_hour;
 pub mod gravewaker;
+pub mod windstorm_drake;
+pub mod chained_brute;
+pub mod tinybones_trinket_thief;

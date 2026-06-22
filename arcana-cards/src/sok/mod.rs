@@ -76,3 +76,7 @@ pub mod moonbow_illusionist;
 pub mod shinen_of_stars_light;
 pub mod kiri_onna;
 pub mod torii_watchward;
+pub mod hand_of_honor;
+pub mod iizuka_the_ruthless;
+pub mod maga_traitor_to_mortals;
+pub mod ghost_lit_redeemer;

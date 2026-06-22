@@ -79,3 +79,5 @@ pub mod sultai_scavenger;
 pub mod savage_knuckleblade;
 pub mod jeskai_windscout;
 pub mod kheru_bloodsucker;
+pub mod war_name_aspirant;
+pub mod butcher_of_the_horde;

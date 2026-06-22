@@ -10,3 +10,4 @@ pub mod avatar_of_discord;
 pub mod hunting_moa;
 pub mod ethersworn_shieldmage;
 pub mod pale_recluse;
+pub mod memnarch;

@@ -50,3 +50,4 @@ pub mod spire_phantasm;
 pub mod noble_banneret;
 pub mod custodi_soulcaller;
 pub mod smuggler_captain;
+pub mod ravenous_leucrocota;

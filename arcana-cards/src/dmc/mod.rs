@@ -50,3 +50,4 @@ pub mod orca_siege_demon;
 pub mod traxos_scourge_of_kroog;
 pub mod ohabi_caleria;
 pub mod tobias_doomed_conqueror;
+pub mod two_headed_hellkite;

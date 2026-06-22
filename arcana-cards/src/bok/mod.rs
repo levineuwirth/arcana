@@ -76,3 +76,7 @@ pub mod isao_enlightened_bushi;
 pub mod quillmane_baku;
 pub mod toshiro_umezawa;
 pub mod chisei_heart_of_oceans;
+pub mod shimmering_glasskite;
+pub mod floodbringer;
+pub mod petalmane_baku;
+pub mod kodama_of_the_center_tree;

@@ -114,3 +114,4 @@ pub mod basalt_gargoyle;
 pub mod riftwing_cloudskate;
 pub mod stronghold_rats;
 pub mod knight_of_sursi;
+pub mod tombstalker;

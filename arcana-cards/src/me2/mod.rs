@@ -97,3 +97,4 @@ pub mod snow_fortress;
 pub mod spore_flower;
 pub mod joven_s_ferrets;
 pub mod screeching_drake;
+pub mod musician;

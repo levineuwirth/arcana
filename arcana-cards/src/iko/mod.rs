@@ -101,3 +101,6 @@ pub mod slitherwisp;
 pub mod momentum_rumbler;
 pub mod lurrus_of_the_dream_den;
 pub mod blisterspit_gremlin;
+pub mod lurking_deadeye;
+pub mod stormwild_capridor;
+pub mod duskfang_mentor;

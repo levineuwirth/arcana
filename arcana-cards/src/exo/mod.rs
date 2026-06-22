@@ -39,3 +39,4 @@ pub mod dauthi_cutthroat;
 pub mod mirozel;
 pub mod spike_weaver;
 pub mod spike_cannibal;
+pub mod skyshroud_war_beast;

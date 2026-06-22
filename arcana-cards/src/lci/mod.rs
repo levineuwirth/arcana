@@ -145,3 +145,7 @@ pub mod bedrock_tortoise;
 pub mod belligerent_yearling;
 pub mod tishana_s_tidebinder;
 pub mod trumpeting_carnosaur;
+pub mod abuelo_ancestral_echo;
+pub mod preacher_of_the_schism;
+pub mod the_mycotyrant;
+pub mod council_of_echoes;

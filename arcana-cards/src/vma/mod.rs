@@ -72,3 +72,5 @@ pub mod palinchron;
 pub mod simian_grunts;
 pub mod krovikan_sorcerer;
 pub mod psychatog;
+pub mod volrath_s_shapeshifter;
+pub mod masticore;

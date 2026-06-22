@@ -66,3 +66,4 @@ pub mod everflame_eidolon;
 pub mod archetype_of_finality;
 pub mod black_oak_of_odunos;
 pub mod archetype_of_aggression;
+pub mod sphinx_s_disciple;

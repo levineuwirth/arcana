@@ -99,3 +99,7 @@ pub mod screeching_buzzard;
 pub mod virtus_the_veiled;
 pub mod boldwyr_intimidator;
 pub mod soulblade_renewer;
+pub mod lore_weaver;
+pub mod sylvia_brightspear;
+pub mod brightling;
+pub mod soulblade_corrupter;

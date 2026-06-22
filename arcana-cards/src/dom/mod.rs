@@ -88,3 +88,7 @@ pub mod urgoros_the_empty_one;
 pub mod daring_archaeologist;
 pub mod dauntless_bodyguard;
 pub mod stronghold_confessor;
+pub mod ghitu_chronicler;
+pub mod sergeant_at_arms;
+pub mod evra_halcyon_witness;
+pub mod goblin_chainwhirler;

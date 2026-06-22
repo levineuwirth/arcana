@@ -121,3 +121,5 @@ pub mod blacklance_paragon;
 pub mod eye_collector;
 pub mod harmonious_archon;
 pub mod belle_of_the_brawl;
+pub mod seven_dwarves;
+pub mod tome_raider;

@@ -159,3 +159,8 @@ pub mod dream_spoilers;
 pub mod gingerbrute;
 pub mod johann_apprentice_sorcerer;
 pub mod diminisher_witch;
+pub mod troublemaker_ouphe;
+pub mod snaremaster_sprite;
+pub mod discerning_financier;
+pub mod skewer_slinger;
+pub mod sleep_cursed_faerie;

@@ -128,3 +128,5 @@ pub mod niambi_esteemed_speaker;
 pub mod feline_sovereign;
 pub mod valorous_steed;
 pub mod warded_battlements;
+pub mod llanowar_visionary;
+pub mod conspicuous_snoop;

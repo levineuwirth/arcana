@@ -22,3 +22,4 @@ pub mod nathan_drake_treasure_hunter;
 pub mod black_panther_wakandan_king;
 pub mod kratos_god_of_war;
 pub mod knuckles_the_echidna;
+pub mod kratos_stoic_father;

@@ -119,3 +119,6 @@ pub mod hypersonic_dragon;
 pub mod war_screecher;
 pub mod golgari_guildmage;
 pub mod roc_charger;
+pub mod herald_of_ilharg;
+pub mod sumala_rumblers;
+pub mod utvara_scalper;

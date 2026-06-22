@@ -161,3 +161,5 @@ pub mod dragonkin_berserker;
 pub mod koll_the_forgemaster;
 pub mod firja_judge_of_valor;
 pub mod hailstorm_valkyrie;
+pub mod skemfar_shadowsage;
+pub mod renegade_reaper;

@@ -114,3 +114,6 @@ pub mod gastal_raider;
 pub mod skystreak_engineer;
 pub mod boom_scholar;
 pub mod draconautics_engineer;
+pub mod mendicant_core_guidelight;
+pub mod cloudspire_coordinator;
+pub mod samut_the_driving_force;

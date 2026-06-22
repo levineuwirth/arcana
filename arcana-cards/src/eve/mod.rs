@@ -74,3 +74,5 @@ pub mod sturdy_hatchling;
 pub mod stillmoon_cavalier;
 pub mod hateflayer;
 pub mod needle_specter;
+pub mod dream_thief;
+pub mod aerie_ouphes;

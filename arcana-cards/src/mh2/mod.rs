@@ -128,3 +128,4 @@ pub mod landscaper_colos;
 pub mod bloodbraid_marauder;
 pub mod glorious_enforcer;
 pub mod breathless_knight;
+pub mod breya_s_apprentice;

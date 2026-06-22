@@ -131,3 +131,6 @@ pub mod gibbering_kami;
 pub mod soratami_seer;
 pub mod mothrider_samurai;
 pub mod myojin_of_seeing_winds;
+pub mod hisoka_s_guard;
+pub mod myojin_of_cleansing_fire;
+pub mod soratami_rainshaper;

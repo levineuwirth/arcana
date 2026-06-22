@@ -42,3 +42,4 @@ pub mod fog_of_gnats;
 pub mod multani_s_acolyte;
 pub mod weatherseed_treefolk;
 pub mod defender_of_chaos;
+pub mod molten_hydra;

@@ -106,3 +106,5 @@ pub mod avarax;
 pub mod wall_of_junk;
 pub mod phyrexian_debaser;
 pub mod voice_of_all;
+pub mod phantom_nishoba;
+pub mod spectral_lynx;

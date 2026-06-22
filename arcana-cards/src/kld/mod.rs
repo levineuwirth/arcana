@@ -102,3 +102,5 @@ pub mod bristling_hydra;
 pub mod peema_outrider;
 pub mod aetherstorm_roc;
 pub mod scrapheap_scrounger;
+pub mod longtusk_cub;
+pub mod maulfist_doorbuster;

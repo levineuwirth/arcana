@@ -19,3 +19,4 @@ pub mod aether_figment;
 pub mod reaper_of_the_wilds;
 pub mod phantasmal_dragon;
 pub mod krovikan_mist;
+pub mod mold_shambler;

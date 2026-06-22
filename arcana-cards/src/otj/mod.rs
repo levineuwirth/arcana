@@ -132,3 +132,7 @@ pub mod bonny_pall_clearcutter;
 pub mod breeches_the_blastmaker;
 pub mod reckless_lackey;
 pub mod honest_rutstein;
+pub mod cunning_coyote;
+pub mod blacksnag_buzzard;
+pub mod irascible_wolverine;
+pub mod drover_grizzly;

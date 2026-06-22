@@ -52,3 +52,4 @@ pub mod pharika_god_of_affliction;
 pub mod pheres_band_warchief;
 pub mod dawnbringer_charioteers;
 pub mod sage_of_hours;
+pub mod keranos_god_of_storms;

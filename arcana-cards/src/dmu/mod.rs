@@ -120,3 +120,8 @@ pub mod juniper_order_rootweaver;
 pub mod jodah_the_unifier;
 pub mod battlefly_swarm;
 pub mod vodalian_mindsinger;
+pub mod argivian_cavalier;
+pub mod a_rulik_mons_warren_chief;
+pub mod benalish_faithbonder;
+pub mod shivan_devastator;
+pub mod defiler_of_vigor;

@@ -150,3 +150,5 @@ pub mod nymris_oona_s_trickster;
 pub mod soul_of_eternity;
 pub mod opposition_agent;
 pub mod elvish_dreadlord;
+pub mod meloku_the_clouded_mirror;
+pub mod imoti_celebrant_of_bounty;

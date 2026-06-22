@@ -52,3 +52,4 @@ pub mod dragonsoul_knight;
 pub mod hikari_twilight_guardian;
 pub mod thief_of_hope;
 pub mod cloud_elemental;
+pub mod battlegrace_angel;

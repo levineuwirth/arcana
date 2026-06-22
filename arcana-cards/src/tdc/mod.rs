@@ -123,3 +123,4 @@ pub mod monastery_mentor;
 pub mod weathered_sentinels;
 pub mod neriv_crackling_vanguard;
 pub mod jaddi_offshoot;
+pub mod necropolis_fiend;

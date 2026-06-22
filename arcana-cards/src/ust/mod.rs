@@ -75,3 +75,6 @@ pub mod hydradoodle;
 pub mod chivalrous_chevalier;
 pub mod overt_operative;
 pub mod spike_tournament_grinder;
+pub mod steady_handed_mook;
+pub mod party_crasher;
+pub mod defective_detective;

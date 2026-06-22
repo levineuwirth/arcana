@@ -48,3 +48,4 @@ pub mod umara_raptor;
 pub mod living_tsunami;
 pub mod devout_lightcaster;
 pub mod roil_elemental;
+pub mod crypt_ripper;

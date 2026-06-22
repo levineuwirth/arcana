@@ -113,3 +113,5 @@ pub mod mine_layer;
 pub mod crashing_centaur;
 pub mod chlorophant;
 pub mod bloodcurdler;
+pub mod sarcatog;
+pub mod thought_nibbler;

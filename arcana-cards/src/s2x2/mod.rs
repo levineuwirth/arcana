@@ -116,3 +116,6 @@ pub mod webweaver_changeling;
 pub mod disciple_of_the_ring;
 pub mod child_of_alara;
 pub mod aven_initiate;
+pub mod kederekt_leviathan;
+pub mod militia_bugler;
+pub mod mistfire_adept;

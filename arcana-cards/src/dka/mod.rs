@@ -42,3 +42,5 @@ pub mod stormbound_geist;
 pub mod vengeful_vampire;
 pub mod erdwal_ripper;
 pub mod gravetiller_wurm;
+pub mod niblis_of_the_breath;
+pub mod elgaud_inquisitor;

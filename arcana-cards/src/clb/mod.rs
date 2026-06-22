@@ -235,3 +235,8 @@ pub mod avenging_hunter;
 pub mod sailors_bane;
 pub mod faceless_one;
 pub mod mold_folk;
+pub mod cadira_caller_of_the_small;
+pub mod intellect_devourer;
+pub mod galepowder_mage;
+pub mod hunted_horror;
+pub mod gut_true_soul_zealot;

@@ -41,3 +41,5 @@ pub mod impatient_iguana;
 pub mod cyclopean_titan;
 pub mod control_win_condition;
 pub mod priority_avenger;
+pub mod swarm_of_locus;
+pub mod queue_of_beetles;

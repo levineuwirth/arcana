@@ -77,3 +77,5 @@ pub mod suki_kyoshi_captain;
 pub mod lion_vulture;
 pub mod sokka_and_suki;
 pub mod the_blue_spirit;
+pub mod fire_nation_archers;
+pub mod zuko_seeking_honor;

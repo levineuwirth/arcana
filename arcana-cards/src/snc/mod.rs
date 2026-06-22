@@ -143,3 +143,6 @@ pub mod black_market_tycoon;
 pub mod lord_xander_the_collector;
 pub mod spara_s_adjudicators;
 pub mod jetmir_nexus_of_revels;
+pub mod celestial_regulator;
+pub mod mayhem_patrol;
+pub mod echo_inspector;

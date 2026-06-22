@@ -157,3 +157,4 @@ pub mod wall_of_distortion;
 pub mod cavern_crawler;
 pub mod deepwood_legate;
 pub mod flailing_manticore;
+pub mod charmed_griffin;

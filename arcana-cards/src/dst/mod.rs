@@ -56,3 +56,4 @@ pub mod karstoderm;
 pub mod razor_golem;
 pub mod pteron_ghost;
 pub mod grimclaw_bats;
+pub mod mephitic_ooze;

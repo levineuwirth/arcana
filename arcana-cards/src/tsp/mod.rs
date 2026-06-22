@@ -44,3 +44,4 @@ pub mod savage_thallid;
 pub mod subterranean_shambler;
 pub mod skulking_knight;
 pub mod evil_eye_of_urborg;
+pub mod flickering_spirit;

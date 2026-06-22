@@ -46,3 +46,5 @@ pub mod layla_hassan;
 pub mod havi_the_all_father;
 pub mod evie_frye;
 pub mod haytham_kenway;
+pub mod ezio_blade_of_vengeance;
+pub mod edward_kenway;

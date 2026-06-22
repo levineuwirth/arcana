@@ -26,3 +26,4 @@ pub mod myojin_of_roaring_blades;
 pub mod indomitable_archangel;
 pub mod myojin_of_blooming_dawn;
 pub mod aeronaut_admiral;
+pub mod yoshimaru_ever_faithful;

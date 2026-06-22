@@ -194,3 +194,8 @@ pub mod renegade_bull;
 pub mod redoubled_stormsinger;
 pub mod yahenni_undying_partisan;
 pub mod brudiclad_telchor_engineer;
+pub mod ao_the_dawn_sky;
+pub mod woe_strider;
+pub mod veinwitch_coven;
+pub mod goldvein_hydra;
+pub mod mirrorwing_dragon;

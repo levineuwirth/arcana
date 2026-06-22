@@ -78,3 +78,5 @@ pub mod living_totem;
 pub mod resolute_archangel;
 pub mod coral_barrier;
 pub mod carrion_crow;
+pub mod sunblade_elf;
+pub mod dauntless_river_marshal;

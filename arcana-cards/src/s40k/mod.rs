@@ -90,3 +90,7 @@ pub mod canoptek_spyder;
 pub mod thunderwolf_cavalry;
 pub mod lucius_the_eternal;
 pub mod venomcrawler;
+pub mod pink_horror;
+pub mod aspiring_champion;
+pub mod redemptor_dreadnought;
+pub mod haruspex;

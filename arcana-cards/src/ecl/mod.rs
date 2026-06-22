@@ -148,3 +148,6 @@ pub mod prismabasher;
 pub mod rooftop_percher;
 pub mod sun_dappled_celebrant;
 pub mod champions_of_the_perfect;
+pub mod dream_seizer;
+pub mod shore_lurker;
+pub mod encumbered_reejerey;

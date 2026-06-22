@@ -79,3 +79,4 @@ pub mod vizier_of_many_faces;
 pub mod junk_winder;
 pub mod duskana_the_rage_mother;
 pub mod esix_fractal_bloom;
+pub mod merchant_of_truth;

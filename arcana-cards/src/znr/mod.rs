@@ -113,3 +113,4 @@ pub mod legion_angel;
 pub mod master_of_winds;
 pub mod skyclave_shadowcat;
 pub mod expedition_diviner;
+pub mod tazeem_raptor;

@@ -131,3 +131,6 @@ pub mod argothian_sprite;
 pub mod aeronaut_cavalry;
 pub mod rescue_retriever;
 pub mod razorlash_transmogrant;
+pub mod battery_bearer;
+pub mod obstinate_baloth;
+pub mod airlift_chaplain;

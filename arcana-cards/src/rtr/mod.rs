@@ -80,3 +80,5 @@ pub mod trestle_troll;
 pub mod skymark_roc;
 pub mod skyline_predator;
 pub mod korozda_monitor;
+pub mod lobber_crew;
+pub mod rix_maadi_guildmage;

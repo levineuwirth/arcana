@@ -98,3 +98,4 @@ pub mod horde_of_boggarts;
 pub mod tattermunge_duo;
 pub mod prismwake_merrow;
 pub mod leech_bonder;
+pub mod inescapable_brute;

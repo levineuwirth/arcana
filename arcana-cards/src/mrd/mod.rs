@@ -89,3 +89,6 @@ pub mod vulshok_battlemaster;
 pub mod psychic_membrane;
 pub mod lumengrid_sentinel;
 pub mod goblin_war_wagon;
+pub mod nim_shambler;
+pub mod nim_shrieker;
+pub mod auriok_steelshaper;

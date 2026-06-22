@@ -154,3 +154,5 @@ pub mod wretched_gryff;
 pub mod mausoleum_wanderer;
 pub mod splinterfright;
 pub mod sigarda_host_of_herons;
+pub mod zealous_conscripts;
+pub mod tower_geist;

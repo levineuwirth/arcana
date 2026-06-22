@@ -120,3 +120,5 @@ pub mod wilson_majestic_bear;
 pub mod lukamina_hawk_form;
 pub mod karlach_tiefling_zealot;
 pub mod lukamina_moon_druid;
+pub mod vhal_eager_scholar;
+pub mod alora_rogue_companion;

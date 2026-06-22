@@ -43,3 +43,4 @@ pub mod skyship_stalker;
 pub mod catti_brie_of_mithral_hall;
 pub mod chameleon_colossus;
 pub mod neverwinter_hydra;
+pub mod prosper_tome_bound;

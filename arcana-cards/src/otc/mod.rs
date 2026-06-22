@@ -80,3 +80,6 @@ pub mod dune_chanter;
 pub mod yuma_proud_protector;
 pub mod dire_fleet_ravager;
 pub mod dire_fleet_daredevil;
+pub mod nighthawk_scavenger;
+pub mod thieving_skydiver;
+pub mod perennial_behemoth;

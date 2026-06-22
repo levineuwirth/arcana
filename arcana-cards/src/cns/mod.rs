@@ -42,3 +42,5 @@ pub mod whispergear_sneak;
 pub mod canal_dredger;
 pub mod grenzo_s_cutthroat;
 pub mod flamewright;
+pub mod marchesa_s_infiltrator;
+pub mod barbed_shocker;

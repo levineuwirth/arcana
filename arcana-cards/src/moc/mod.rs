@@ -86,3 +86,6 @@ pub mod knight_of_the_white_orchid;
 pub mod hedron_detonator;
 pub mod knight_exemplar;
 pub mod sunscorch_regent;
+pub mod silverwing_squadron;
+pub mod sidar_jabari_of_zhalfir;
+pub mod first_sphere_gargantua;

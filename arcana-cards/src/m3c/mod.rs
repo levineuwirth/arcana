@@ -23,3 +23,4 @@ pub mod razorfield_ripper;
 pub mod sage_of_the_maze;
 pub mod cayth_famed_mechanist;
 pub mod wonderscape_sage;
+pub mod aurora_shifter;

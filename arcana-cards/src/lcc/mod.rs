@@ -93,3 +93,8 @@ pub mod topiary_stomper;
 pub mod shifting_ceratops;
 pub mod redemption_choir;
 pub mod zacama_primal_calamity;
+pub mod benthic_biomancer;
+pub mod marauding_raptor;
+pub mod scion_of_calamity;
+pub mod svyelun_of_sea_and_sky;
+pub mod don_andres_the_renegade;

@@ -133,3 +133,5 @@ pub mod gleaming_geardrake;
 pub mod ezrim_agency_chief;
 pub mod rakish_scoundrel;
 pub mod steamcore_scholar;
+pub mod snarling_gorehound;
+pub mod unyielding_gatekeeper;

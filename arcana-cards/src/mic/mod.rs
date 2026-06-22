@@ -34,3 +34,5 @@ pub mod cemetery_reaper;
 pub mod eloise_nephalia_sleuth;
 pub mod verdurous_gearhulk;
 pub mod gleaming_overseer;
+pub mod eternal_skylord;
+pub mod stalwart_pathlighter;

@@ -137,3 +137,6 @@ pub mod blightbeetle;
 pub mod boreal_elemental;
 pub mod herald_of_the_sun;
 pub mod overgrowth_elemental;
+pub mod voracious_hydra;
+pub mod thicket_crasher;
+pub mod metropolis_sprite;

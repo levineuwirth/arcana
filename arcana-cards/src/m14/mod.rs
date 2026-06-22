@@ -54,3 +54,4 @@ pub mod seraph_of_the_sword;
 pub mod cyclops_tyrant;
 pub mod merfolk_spy;
 pub mod lifebane_zombie;
+pub mod angelic_wall;

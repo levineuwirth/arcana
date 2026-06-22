@@ -121,3 +121,6 @@ pub mod cursed_wombat;
 pub mod the_necrobloom;
 pub mod writhing_chrysalis;
 pub mod a_ocelot_pride;
+pub mod rosheen_roaring_prophet;
+pub mod emrakul_s_messenger;
+pub mod eldrazi_linebreaker;

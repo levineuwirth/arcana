@@ -66,3 +66,6 @@ pub mod synth_eradicator;
 pub mod tato_farmer;
 pub mod powder_ganger;
 pub mod thrill_kill_disciple;
+pub mod assaultron_dominator;
+pub mod ed_e_lonesome_eyebot;
+pub mod sentinel_sarah_lyons;

@@ -40,6 +40,7 @@ Azor's Elocutors
 Bag Check
 Baldur's Gate
 Ballynock Trapper
+Baloth Packhunter
 Bane's Contingency
 Barbed Servitor
 Basilisk Gate
@@ -57,10 +58,12 @@ Bloodsoaked Champion
 Bloodtithe Harvester
 Boon of Boseiju
 Brackish Trudge
+Breaching Hippocamp
 Brimstone Trebuchet
 Brimstone Vandal
 Bulwark
 Burst of Energy
+Cadira, Caller of the Small
 Calamitous Cave-In
 Callous Oppressor
 Cancel
@@ -70,6 +73,7 @@ Celestus Sanctifier
 Ceremonious Rejection
 Chain Stasis
 Chainbreaker
+Chained Brute
 Chainer, Dementia Master
 Chakram Retriever
 Chamber Sentry
@@ -145,11 +149,13 @@ Durable Coilbug
 Dutiful Griffin
 Ebon Praetor
 Elder Druid
+Eldest Dragon Highlander
 Eldrazi Ravager
 Electrosiphon
 Elvish Scout
 Elvish Vatkeeper
 Empress Galina
+Encumbered Reejerey
 Endbringer
 Eon Frolicker
 Ertai's Trickery
@@ -274,10 +280,12 @@ Lingering Phantom
 Liquify
 Lita, Mechanical Engineer
 Llanowar Greenwidow
+Lobber Crew
 Lofty Denial
 Loyal Retainers
 Lunar Force
 Lurking Roper
+Maga, Traitor to Mortals
 Mage-Ring Responder
 Magebane Lizard
 Magewright's Stone
@@ -296,6 +304,7 @@ Master Pakku
 Master Thief
 Medicine Runner
 Medomai the Ageless
+Memnarch
 Memory Lapse
 Merchant of Many Hats
 Merieke Ri Berit
@@ -314,6 +323,7 @@ Mirran Spy
 Mirror Universe
 Mishra's Helix
 Mole Worms
+Molten Hydra
 Moonshadow
 Moonstone Harbinger
 Morphling
@@ -323,6 +333,7 @@ Nahiri, Heir of the Ancients
 Nanoform Sentinel
 Narfi, Betrayer King
 Necrogen Communion
+Necroskitter
 Negate
 Nemesis Phoenix
 Nether Spirit
@@ -426,6 +437,7 @@ Skeleton Crew
 Skeleton Shard
 Skittering Skirge
 Skred
+Sleep-Cursed Faerie
 Soliton
 Sorin, Imperious Bloodlord
 Sower of Temptation
@@ -447,6 +459,7 @@ Sturdy Hatchling
 Sunrise Cavalier
 Super Mutant Scavenger
 Superior Numbers
+Swarm of Locus
 Synod Artificer
 Tadeas, Juniper Ascendant
 Tale's End

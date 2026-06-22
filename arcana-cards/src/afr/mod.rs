@@ -153,3 +153,7 @@ pub mod a_dwarfhold_champion;
 pub mod a_bruenor_battlehammer;
 pub mod eccentric_apprentice;
 pub mod earth_cult_elemental;
+pub mod inferno_of_the_star_mounts;
+pub mod asmodeus_the_archfiend;
+pub mod aberrant_mind_sorcerer;
+pub mod intrepid_outlander;

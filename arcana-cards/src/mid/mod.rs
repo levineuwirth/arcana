@@ -127,3 +127,6 @@ pub mod celestus_sanctifier;
 pub mod voldaren_stinger;
 pub mod storm_skreelix;
 pub mod crossroads_candleguide;
+pub mod briarbridge_tracker;
+pub mod loyal_gryff;
+pub mod stormrider_spirit;

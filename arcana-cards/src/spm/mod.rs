@@ -101,3 +101,5 @@ pub mod molten_man_inferno_incarnate;
 pub mod shriek_treblemaker;
 pub mod doc_ock_sinister_scientist;
 pub mod spiders_man_heroic_horde;
+pub mod city_pigeon;
+pub mod vulture_scheming_scavenger;

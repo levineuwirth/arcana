@@ -136,3 +136,7 @@ pub mod salt_road_packbeast;
 pub mod ureni_the_song_unending;
 pub mod adorned_crocodile;
 pub mod shiko_paragon_of_the_way;
+pub mod skirmish_rhino;
+pub mod voice_of_victory;
+pub mod krotiq_nestguard;
+pub mod rot_curse_rakshasa;

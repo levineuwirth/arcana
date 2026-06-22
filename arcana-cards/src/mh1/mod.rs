@@ -77,3 +77,4 @@ pub mod goblin_champion;
 pub mod moonblade_shinobi;
 pub mod orcish_hellraiser;
 pub mod nimble_mongoose;
+pub mod ore_scale_guardian;

@@ -42,3 +42,8 @@ pub mod seton_s_scout;
 pub mod balshan_collaborator;
 pub mod major_teroh;
 pub mod hydromorph_gull;
+pub mod aven_trooper;
+pub mod zombie_trailblazer;
+pub mod hypnox;
+pub mod pardic_collaborator;
+pub mod pitchstone_wall;

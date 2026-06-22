@@ -55,3 +55,4 @@ pub mod skyshroud_condor;
 pub mod pallimud;
 pub mod flailing_drake;
 pub mod ranger_en_vec;
+pub mod eladamri_lord_of_leaves;

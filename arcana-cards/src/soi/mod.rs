@@ -85,3 +85,6 @@ pub mod incorrigible_youths;
 pub mod pale_rider_of_trostad;
 pub mod morkrut_necropod;
 pub mod runaway_carriage;
+pub mod flameblade_angel;
+pub mod nephalia_moondrakes;
+pub mod markov_dreadknight;

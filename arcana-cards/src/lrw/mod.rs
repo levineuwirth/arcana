@@ -84,3 +84,4 @@ pub mod brigid_hero_of_kinsbaile;
 pub mod benthicore;
 pub mod wort_boggart_auntie;
 pub mod dawnfluke;
+pub mod boggart_loggers;

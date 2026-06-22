@@ -143,3 +143,8 @@ pub mod boromir_warden_of_the_tower;
 pub mod sauron_the_necromancer;
 pub mod sharkey_tyrant_of_the_shire;
 pub mod ithilien_kingfisher;
+pub mod the_watcher_in_the_water;
+pub mod glorfindel_dauntless_rescuer;
+pub mod mirkwood_spider;
+pub mod sauron_the_lidless_eye;
+pub mod eagles_of_the_north;

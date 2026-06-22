@@ -101,3 +101,6 @@ pub mod moseo_vein_s_new_dean;
 pub mod informed_inkwright;
 pub mod essenceknit_scholar;
 pub mod shopkeeper_s_bane;
+pub mod silverquill_the_disputant;
+pub mod snooping_page;
+pub mod pterafractyl;

@@ -30,3 +30,4 @@ pub mod mercurial_kite;
 pub mod karona_false_god;
 pub mod ageless_sentinels;
 pub mod dawn_elemental;
+pub mod raven_guild_master;

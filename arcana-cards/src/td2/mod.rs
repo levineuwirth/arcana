@@ -13,3 +13,4 @@ pub mod spire_serpent;
 pub mod rot_wolf;
 pub mod plague_myr;
 pub mod desecration_elemental;
+pub mod darksteel_gargoyle;

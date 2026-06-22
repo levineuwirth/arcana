@@ -101,3 +101,7 @@ pub mod shredder_unrelenting;
 pub mod south_wind_avatar;
 pub mod donatello_mutant_mechanic;
 pub mod venus_torn_between_worlds;
+pub mod raphael_ninja_destroyer;
+pub mod prehistoric_pet;
+pub mod krang_shredder;
+pub mod leonardo_big_brother;

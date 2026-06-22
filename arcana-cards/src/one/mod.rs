@@ -135,3 +135,6 @@ pub mod furnace_punisher;
 pub mod cephalopod_sentry;
 pub mod ria_ivor_bane_of_bladehold;
 pub mod argentum_masticore;
+pub mod rustvine_cultivator;
+pub mod ichorspit_basilisk;
+pub mod predation_steward;

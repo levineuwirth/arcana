@@ -41,3 +41,4 @@ pub mod phantom_centaur;
 pub mod balthor_the_defiled;
 pub mod battlewise_aven;
 pub mod soulgorger_orgg;
+pub mod spellgorger_barbarian;

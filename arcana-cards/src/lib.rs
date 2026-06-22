@@ -1213,8 +1213,14 @@ mod tests {
         // are independent. Work items are strided across threads; results
         // merge commutatively (min / sum / max), so thread scheduling never
         // changes the outcome.
+        // Cap fan-out to bound peak RSS. Each game can grow to OBJ_CAP live
+        // objects; with the catalog now ~18k cards more random decks reach
+        // large (bounded) boards, so full-core concurrency can OOM the box
+        // (observed: SIGKILL under full parallelism, while every game passes
+        // run serially). 8-wide keeps peak memory safe and still runs all
+        // GAMES — thread scheduling never changes per-game outcomes.
         let nthreads = std::thread::available_parallelism()
-            .map(|n| n.get()).unwrap_or(4).min(total.max(1)).max(1);
+            .map(|n| n.get()).unwrap_or(4).min(total.max(1)).min(8).max(1);
         let reg_ref = &reg;
         let (valid_ref, basics_ref) = (&valid[..], &basics[..]);
         let work_ref = &work[..];

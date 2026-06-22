@@ -103,3 +103,6 @@ pub mod frenetic_efreet;
 pub mod granger_guildmage;
 pub mod mist_dragon;
 pub mod tainted_specter;
+pub mod emberwilde_caliph;
+pub mod mindbender_spores;
+pub mod sawback_manticore;

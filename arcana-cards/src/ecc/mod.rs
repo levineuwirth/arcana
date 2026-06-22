@@ -65,3 +65,4 @@ pub mod massacre_girl_known_killer;
 pub mod auntie_ool_cursewretch;
 pub mod muldrotha_the_gravetide;
 pub mod grim_poppet;
+pub mod necroskitter;

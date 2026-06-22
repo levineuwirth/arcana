@@ -67,3 +67,5 @@ pub mod goblin_freerunner;
 pub mod thought_harvester;
 pub mod tyrant_of_valakut;
 pub mod inverter_of_truth;
+pub mod havoc_sower;
+pub mod vile_redeemer;

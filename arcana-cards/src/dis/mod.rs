@@ -48,3 +48,4 @@ pub mod slithering_shade;
 pub mod walking_archive;
 pub mod isperia_the_inscrutable;
 pub mod jagged_poppet;
+pub mod enigma_eidolon;

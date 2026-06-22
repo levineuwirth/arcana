@@ -59,3 +59,5 @@ pub mod jor_kadeen_the_prevailer;
 pub mod pia_nalaar;
 pub mod bloodthirsty_aerialist;
 pub mod bronze_guardian;
+pub mod plaxcaster_frogling;
+pub mod leyline_prowler;

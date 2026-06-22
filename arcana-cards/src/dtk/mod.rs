@@ -87,3 +87,4 @@ pub mod cunning_breezedancer;
 pub mod ojutai_exemplars;
 pub mod aerie_bowmasters;
 pub mod qarsi_sadist;
+pub mod servant_of_the_scale;

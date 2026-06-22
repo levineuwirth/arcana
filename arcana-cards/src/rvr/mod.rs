@@ -110,3 +110,5 @@ pub mod tajic_legion_s_edge;
 pub mod sewer_shambler;
 pub mod persistent_petitioners;
 pub mod burning_tree_vandal;
+pub mod golgari_thug;
+pub mod borborygmos_enraged;

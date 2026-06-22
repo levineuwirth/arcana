@@ -154,3 +154,5 @@ pub mod bria_riptide_rogue;
 pub mod warren_warleader;
 pub mod persistent_marshstalker;
 pub mod steampath_charger;
+pub mod daggerfang_duo;
+pub mod rottenmouth_viper;

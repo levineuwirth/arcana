@@ -18,3 +18,5 @@ pub mod gold_forged_thopteryx;
 pub mod jolrael_voice_of_zhalfir;
 pub mod markov_baron;
 pub mod danitha_new_benalia_s_light;
+pub mod sigarda_font_of_blessings;
+pub mod tazri_stalwart_survivor;

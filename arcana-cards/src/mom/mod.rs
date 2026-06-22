@@ -176,3 +176,8 @@ pub mod phyrexian_censor;
 pub mod fearless_skald;
 pub mod inga_and_esika;
 pub mod halo_forager;
+pub mod botanical_brawler;
+pub mod consuming_aetherborn;
+pub mod portent_tracker;
+pub mod xerex_strobe_knight;
+pub mod onakke_javelineer;

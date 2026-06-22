@@ -40,3 +40,5 @@ pub mod tuvasa_the_sunlit;
 pub mod elderwood_scion;
 pub mod kestia_the_cultivator;
 pub mod silent_sentinel;
+pub mod thantis_the_warweaver;
+pub mod varchild_betrayer_of_kjeldor;
