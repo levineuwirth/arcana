@@ -86,6 +86,13 @@ struct Args {
     /// compiled slot count). One `cargo check` + one `cargo test`
     /// per chunk instead of per card.
     batch: Option<usize>,
+    /// `Some(set)` → verify ONLY the supported rows whose
+    /// `{idx:03}_{slug}` basename is in this set (read from `--only
+    /// <file>`, one basename per line; `.txt`/`.rs` suffix and any
+    /// directory are stripped). Scopes a per-wave run to just the
+    /// freshly-generated cards instead of recompiling the whole
+    /// cumulative pool (~20x faster). Omit for a full-pool sweep.
+    only: Option<std::collections::HashSet<String>>,
 }
 
 fn parse_args(raw: Vec<String>) -> Result<Args> {
@@ -94,6 +101,7 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
     let mut output: Option<PathBuf> = None;
     let mut layer1_only = false;
     let mut batch: Option<usize> = None;
+    let mut only: Option<std::collections::HashSet<String>> = None;
     let mut it = raw.into_iter();
     while let Some(a) = it.next() {
         match a.as_str() {
@@ -113,6 +121,26 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
                 ))
             }
             "--layer1-only" => layer1_only = true,
+            "--only" => {
+                let path = it.next().ok_or_else(|| anyhow!("--only needs a file"))?;
+                let text = std::fs::read_to_string(&path)
+                    .with_context(|| format!("reading --only file {path}"))?;
+                let set: std::collections::HashSet<String> = text
+                    .lines()
+                    .map(|l| l.trim())
+                    .filter(|l| !l.is_empty())
+                    .map(|l| {
+                        // Accept full paths and .txt/.rs suffixes; key on the
+                        // bare `{idx}_{slug}` basename.
+                        let base = l.rsplit('/').next().unwrap_or(l);
+                        base.strip_suffix(".txt")
+                            .or_else(|| base.strip_suffix(".rs"))
+                            .unwrap_or(base)
+                            .to_string()
+                    })
+                    .collect();
+                only = Some(set);
+            }
             "--batch" => {
                 // Optional value: `--batch` (default chunk) or
                 // `--batch 64`. Peek; if the next arg parses as a
@@ -133,6 +161,8 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
                      --cards-dir    where the <idx>_<slug>.rs candidates live (default: --dir)\n\
                      --output       report JSONL (default: <dir>/verify-report.jsonl)\n\
                      --layer1-only  skip the structural (layer-2) check\n\
+                     --only <file>  verify only the {{idx}}_{{slug}} basenames listed\n\
+                     \x20              in <file> (one per line) — scopes to one wave\n\
                      --batch [K]    batched mode: one cargo check + one cargo\n\
                      \x20              test per K-card chunk (default K = slot count).\n\
                      \x20              The throughput lever for large runs."
@@ -145,7 +175,7 @@ fn parse_args(raw: Vec<String>) -> Result<Args> {
     let dir = dir.ok_or_else(|| anyhow!("--dir is required"))?;
     let cards_dir = cards_dir.unwrap_or_else(|| dir.clone());
     let output = output.unwrap_or_else(|| dir.join("verify-report.jsonl"));
-    Ok(Args { dir, cards_dir, output, layer1_only, batch })
+    Ok(Args { dir, cards_dir, output, layer1_only, batch, only })
 }
 
 fn real_main() -> Result<bool> {
@@ -178,10 +208,21 @@ fn real_main() -> Result<bool> {
     // Restore the scratch slot no matter how we leave.
     let _restore = ScratchGuard;
 
-    let supported: Vec<&DumpRow> = rows.iter().filter(|r| r.supported).collect();
+    let supported: Vec<&DumpRow> = rows
+        .iter()
+        .filter(|r| r.supported)
+        .filter(|r| match &args.only {
+            // Scope to just this wave's basenames (~20x faster than the
+            // full cumulative pool). Keyed on `{idx:03}_{slug}` to match the
+            // candidate `.rs` filename exactly.
+            Some(set) => set.contains(&format!("{:03}_{}", r.idx, r.slug)),
+            None => true,
+        })
+        .collect();
     eprintln!(
-        "verify_dir: {} supported card(s){}{}",
+        "verify_dir: {} supported card(s){}{}{}",
         supported.len(),
+        if args.only.is_some() { " (--only scoped)" } else { "" },
         if args.layer1_only { " (layer-1 only)" } else { "" },
         match args.batch {
             Some(k) => format!(" (batched, chunk={k})"),
