@@ -104,3 +104,5 @@ pub mod morselhoarder;
 pub mod oona_s_gatewarden;
 pub mod lockjaw_snapper;
 pub mod thistledown_duo;
+pub mod safehold_duo;
+pub mod slinking_giant;

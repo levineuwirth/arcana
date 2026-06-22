@@ -137,3 +137,6 @@ pub mod meria_scholar_of_antiquity;
 pub mod elas_il_kor_sadistic_pilgrim;
 pub mod knight_of_dawn_s_light;
 pub mod deathbloom_gardener;
+pub mod astor_bearer_of_blades;
+pub mod knight_of_dusk_s_shadow;
+pub mod raff_weatherlight_stalwart;

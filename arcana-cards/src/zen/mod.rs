@@ -54,3 +54,4 @@ pub mod bala_ged_thief;
 pub mod kazandu_blademaster;
 pub mod merfolk_seastalkers;
 pub mod tuktuk_grunts;
+pub mod makindi_shieldmate;

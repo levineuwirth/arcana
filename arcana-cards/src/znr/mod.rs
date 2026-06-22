@@ -123,3 +123,5 @@ pub mod kitesail_cleric;
 pub mod relic_robber;
 pub mod moss_pit_skeleton;
 pub mod magmatic_channeler;
+pub mod relic_golem;
+pub mod cunning_geysermage;

@@ -144,3 +144,6 @@ pub mod prosperity_tycoon;
 pub mod miriam_herd_whisperer;
 pub mod stubborn_burrowfiend;
 pub mod canyon_crab;
+pub mod spinewoods_armadillo;
+pub mod prairie_dog;
+pub mod raven_of_fell_omens;

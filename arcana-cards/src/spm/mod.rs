@@ -112,3 +112,8 @@ pub mod guy_in_the_chair;
 pub mod spider_man_2099;
 pub mod mysterio_s_phantasm;
 pub mod silk_web_weaver;
+pub mod stegron_the_dinosaur_man;
+pub mod lizard_connors_s_curse;
+pub mod spider_manifestation;
+pub mod superior_foes_of_spider_man;
+pub mod spider_uk;

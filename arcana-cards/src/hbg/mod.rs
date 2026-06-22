@@ -130,3 +130,6 @@ pub mod liara_of_the_flaming_fist;
 pub mod lukamina_bear_form;
 pub mod vhal_scholar_of_prophecy;
 pub mod viconia_nightsinger_s_disciple;
+pub mod imoen_wise_trickster;
+pub mod ambergris_agent_of_law;
+pub mod wilson_subtle_bear;

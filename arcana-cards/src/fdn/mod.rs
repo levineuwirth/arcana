@@ -289,3 +289,5 @@ pub mod fiendish_panda;
 pub mod cloudblazer;
 pub mod imperious_perfect;
 pub mod fanatical_firebrand;
+pub mod voracious_greatshark;
+pub mod crow_of_dark_tidings;

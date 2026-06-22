@@ -115,3 +115,4 @@ pub mod dual_sun_adepts;
 pub mod monoist_circuit_feeder;
 pub mod insatiable_skittermaw;
 pub mod chrome_companion;
+pub mod blade_of_the_swarm;

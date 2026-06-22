@@ -89,3 +89,4 @@ pub mod ryan_sinclair;
 pub mod dalek_drone;
 pub mod donna_noble;
 pub mod the_beast_deathless_prince;
+pub mod the_eighth_doctor;

@@ -53,3 +53,4 @@ pub mod jeskai_barricade;
 pub mod abzan_skycaptain;
 pub mod shockmaw_dragon;
 pub mod mardu_shadowspear;
+pub mod destructor_dragon;

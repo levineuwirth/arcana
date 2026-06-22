@@ -67,3 +67,5 @@ pub mod murderous_redcap;
 pub mod firewing_phoenix;
 pub mod basking_rootwalla;
 pub mod whirlwind_adept;
+pub mod leovold_emissary_of_trest;
+pub mod walker_of_the_grove;

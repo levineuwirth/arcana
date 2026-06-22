@@ -49,3 +49,4 @@ pub mod phyrexian_seedling;
 pub mod gobland;
 pub mod jeskai_baller;
 pub mod sigardian_evangel;
+pub mod vuzzle_spaceship;

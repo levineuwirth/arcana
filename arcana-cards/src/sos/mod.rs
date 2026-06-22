@@ -114,3 +114,5 @@ pub mod practiced_scrollsmith;
 pub mod scolding_administrator;
 pub mod tackle_artist;
 pub mod summoned_dromedary;
+pub mod molten_core_maestro;
+pub mod colossus_of_the_blood_age;

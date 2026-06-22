@@ -144,3 +144,5 @@ pub mod hero_of_the_dunes;
 pub mod scrapwork_rager;
 pub mod a_geology_enthusiast;
 pub mod reconstructed_thopter;
+pub mod tocasia_s_onulet;
+pub mod tower_worker;

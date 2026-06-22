@@ -92,3 +92,5 @@ pub mod gurmag_drowner;
 pub mod marang_river_skeleton;
 pub mod kolaghan_forerunners;
 pub mod necromaster_dragon;
+pub mod ambuscade_shaman;
+pub mod boltwing_marauder;

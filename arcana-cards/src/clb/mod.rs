@@ -255,3 +255,8 @@ pub mod guildsworn_prowler;
 pub mod zellix_sanity_flayer;
 pub mod halsin_emerald_archdruid;
 pub mod thunder_dragon;
+pub mod bhaal_lord_of_murder;
+pub mod undermountain_adventurer;
+pub mod vicious_battlerager;
+pub mod battle_angels_of_tyr;
+pub mod plague_spitter;

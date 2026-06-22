@@ -169,3 +169,7 @@ pub mod ascendant_spirit;
 pub mod arni_brokenbrow;
 pub mod masked_vandal;
 pub mod sarulf_realm_eater;
+pub mod shepherd_of_the_cosmos;
+pub mod a_thornmantle_striker;
+pub mod jarl_of_the_forsaken;
+pub mod doomskar_oracle;

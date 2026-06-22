@@ -57,3 +57,4 @@ pub mod gnarled_scarhide;
 pub mod kruphix_god_of_horizons;
 pub mod supply_line_cranes;
 pub mod master_of_the_feast;
+pub mod riptide_chimera;

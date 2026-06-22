@@ -73,3 +73,4 @@ pub mod ingot_chewer;
 pub mod carnifex_demon;
 pub mod slithermuse;
 pub mod shriekmaw;
+pub mod midnight_banshee;

@@ -89,3 +89,5 @@ pub mod dauntless_dourbark;
 pub mod bog_hoodlums;
 pub mod thoughtweft_trio;
 pub mod hunter_of_eyeblights;
+pub mod mournwhelk;
+pub mod guardian_of_cloverdell;

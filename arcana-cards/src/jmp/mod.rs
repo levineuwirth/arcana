@@ -193,3 +193,8 @@ pub mod blessed_spirits;
 pub mod soul_of_the_harvest;
 pub mod sengir_vampire;
 pub mod storm_sculptor;
+pub mod lightning_shrieker;
+pub mod weaver_of_lightning;
+pub mod furnace_whelp;
+pub mod roving_keep;
+pub mod nocturnal_feeder;

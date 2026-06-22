@@ -63,3 +63,4 @@ pub mod plaxcaster_frogling;
 pub mod leyline_prowler;
 pub mod hunted_lammasu;
 pub mod ezzaroot_channeler;
+pub mod sanctum_gargoyle;

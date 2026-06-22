@@ -158,3 +158,4 @@ pub mod gimli_mournful_avenger;
 pub mod saruman_of_many_colors;
 pub mod gothmog_morgul_lieutenant;
 pub mod omer_of_the_riddermark;
+pub mod samwise_the_stouthearted;

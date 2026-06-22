@@ -120,3 +120,4 @@ pub mod wild_cantor;
 pub mod azorius_guildmage;
 pub mod mourning_thrull;
 pub mod fblthp_the_lost;
+pub mod izzet_guildmage;

@@ -141,3 +141,4 @@ pub mod suki_courageous_rescuer;
 pub mod foggy_swamp_spirit_keeper;
 pub mod sokka_tenacious_tactician;
 pub mod katara_bending_prodigy;
+pub mod sun_warriors;

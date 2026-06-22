@@ -104,3 +104,6 @@ pub mod fathom_fleet_captain;
 pub mod storm_fleet_negotiator;
 pub mod port_razer;
 pub mod siren_stormtamer;
+pub mod kumena_tyrant_of_orazca;
+pub mod elenda_s_hierophant;
+pub mod hakbal_of_the_surging_soul;

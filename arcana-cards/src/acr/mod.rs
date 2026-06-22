@@ -51,3 +51,4 @@ pub mod edward_kenway;
 pub mod ezio_brash_novice;
 pub mod lydia_frye;
 pub mod alexios_deimos_of_kosmos;
+pub mod eivor_wolf_kissed;

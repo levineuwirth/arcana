@@ -27,3 +27,4 @@ pub mod magus_of_the_library;
 pub mod timbermare;
 pub mod hedge_troll;
 pub mod volcano_hellion;
+pub mod psychotrope_thallid;

@@ -143,3 +143,6 @@ pub mod necrosquito;
 pub mod kuldotha_cackler;
 pub mod evolved_spinoderm;
 pub mod quicksilver_fisher;
+pub mod flensing_raptor;
+pub mod blightbelly_rat;
+pub mod magmatic_sprinter;

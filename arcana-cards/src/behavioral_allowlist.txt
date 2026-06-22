@@ -76,6 +76,7 @@ Burst of Energy
 Cadira, Caller of the Small
 Calamitous Cave-In
 Callous Oppressor
+Captain of the Mists
 Captivating Vampire
 Celestus Sanctifier
 Chain Stasis
@@ -147,6 +148,7 @@ Ethersworn Adjudicator
 Evaporate
 Evolved Spinoderm
 Fain, the Broker
+Famished Paladin
 Fickle Efreet
 Firmament Sage
 Floodwater Dam
@@ -242,6 +244,7 @@ Lingering Phantom
 Lita, Mechanical Engineer
 Lobber Crew
 Lockjaw Snapper
+Loxodon Peacekeeper
 Loyal Retainers
 Luminous Broodmoth
 Lunar Force
@@ -252,6 +255,7 @@ Magebane Lizard
 Magewright's Stone
 Magnetic Snuffler
 Mana Crypt
+Mana Leech
 Mandate of Abaddon
 Marchesa, the Black Rose
 Master Pakku
@@ -366,11 +370,13 @@ Soliton
 Sorin, Imperious Bloodlord
 Sower of Temptation
 Sparring Mummy
+Spider Manifestation
 Steel Overseer
 Stensia Innkeeper
 Stone-Seeder Hierophant
 Stoneforge Mystic
 Sunrise Cavalier
+Sunstrike Legionnaire
 Super Mutant Scavenger
 Superior Numbers
 Swarm of Locus
@@ -389,6 +395,7 @@ The Disciple of Vess
 The Legend of Yangchen
 The Miniaturizer
 The Modern Age
+The Mox Painter
 The Reaper, King No More
 The Unspeakable
 The Vast Scrier

@@ -87,3 +87,5 @@ pub mod unesh_criosphinx_sovereign;
 pub mod banewhip_punisher;
 pub mod earthshaker_khenra;
 pub mod wildfire_eternal;
+pub mod sinuous_striker;
+pub mod wasp_of_the_bitter_end;

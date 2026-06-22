@@ -135,3 +135,4 @@ pub mod necromancer_s_familiar;
 pub mod arcbound_mouser;
 pub mod blazing_rootwalla;
 pub mod solitude;
+pub mod dragon_s_rage_channeler;

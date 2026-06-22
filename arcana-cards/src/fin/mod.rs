@@ -166,3 +166,5 @@ pub mod ice_flan;
 pub mod seifer_almasy;
 pub mod weapons_vendor;
 pub mod squall_seed_mercenary;
+pub mod yuna_hope_of_spira;
+pub mod cloud_midgar_mercenary;

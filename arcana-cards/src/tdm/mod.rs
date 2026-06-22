@@ -153,3 +153,7 @@ pub mod sage_of_the_fang;
 pub mod attuned_hunter;
 pub mod gurmag_rakshasa;
 pub mod humbling_elder;
+pub mod fleeting_effigy;
+pub mod bone_cairn_butcher;
+pub mod host_of_the_hereafter;
+pub mod veteran_ice_climber;

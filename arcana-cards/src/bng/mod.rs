@@ -72,3 +72,6 @@ pub mod chorus_of_the_tides;
 pub mod herald_of_torment;
 pub mod impetuous_sunchaser;
 pub mod flitterstep_eidolon;
+pub mod vortex_elemental;
+pub mod nessian_demolok;
+pub mod thunder_brute;

@@ -8,3 +8,4 @@ pub mod generous_plunderer;
 pub mod harvester_of_misery;
 pub mod loot_the_key_to_everything;
 pub mod hostile_investigator;
+pub mod bristlebud_farmer;

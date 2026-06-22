@@ -127,3 +127,4 @@ pub mod guardian_sunmare;
 pub mod howlsquad_heavy;
 pub mod mu_yanling_wind_rider;
 pub mod risen_necroregent;
+pub mod far_fortune_end_boss;

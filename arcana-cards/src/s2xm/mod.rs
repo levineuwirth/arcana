@@ -106,3 +106,4 @@ pub mod vengevine;
 pub mod glaze_fiend;
 pub mod sentinel_of_the_pearl_trident;
 pub mod stoneforge_mystic;
+pub mod faerie_mechanist;

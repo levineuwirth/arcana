@@ -46,3 +46,4 @@ pub mod aven_fogbringer;
 pub mod silver_seraph;
 pub mod jeska_warrior_adept;
 pub mod wormfang_crab;
+pub mod earsplitting_rats;

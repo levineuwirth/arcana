@@ -54,3 +54,4 @@ pub mod ravenous_leucrocota;
 pub mod vaporkin;
 pub mod hundred_handed_one;
 pub mod illusionary_informant;
+pub mod havengul_vampire;

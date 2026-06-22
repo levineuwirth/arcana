@@ -113,3 +113,6 @@ pub mod general_traag_heart_of_stone;
 pub mod rocksteady_crash_courser;
 pub mod fugitive_droid;
 pub mod rat_king_verminister;
+pub mod jennika_bad_apple_big_sister;
+pub mod technodrome;
+pub mod transdimensional_bovine;

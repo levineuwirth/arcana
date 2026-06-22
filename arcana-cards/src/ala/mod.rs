@@ -80,3 +80,4 @@ pub mod bloodthorn_taunter;
 pub mod godsire;
 pub mod archdemon_of_unx;
 pub mod skeletal_kathari;
+pub mod grixis_battlemage;

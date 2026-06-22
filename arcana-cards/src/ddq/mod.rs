@@ -11,3 +11,4 @@ pub mod scrapskin_drake;
 pub mod abattoir_ghoul;
 pub mod gryff_vanguard;
 pub mod unbreathing_horde;
+pub mod captain_of_the_mists;

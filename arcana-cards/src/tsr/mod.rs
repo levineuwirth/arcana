@@ -122,3 +122,4 @@ pub mod duskrider_peregrine;
 pub mod sporoloth_ancient;
 pub mod big_game_hunter;
 pub mod tolarian_sentinel;
+pub mod clockwork_hydra;

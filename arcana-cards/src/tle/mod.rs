@@ -89,3 +89,4 @@ pub mod the_cabbage_merchant;
 pub mod toucan_puffin;
 pub mod air_nomad_student;
 pub mod bumi_eclectic_earthbender;
+pub mod fang_roku_s_companion;

@@ -21,3 +21,4 @@ pub mod goblin_rabblemaster;
 pub mod tidal_courier;
 pub mod master_of_waves;
 pub mod warren_instigator;
+pub mod inkfathom_divers;

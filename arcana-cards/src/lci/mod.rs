@@ -159,3 +159,7 @@ pub mod poison_dart_frog;
 pub mod bonehoard_dracosaur;
 pub mod goldfury_strider;
 pub mod palani_s_hatcher;
+pub mod kutzil_malamet_exemplar;
+pub mod warden_of_the_inner_sky;
+pub mod nurturing_bristleback;
+pub mod river_herald_guide;

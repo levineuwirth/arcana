@@ -39,3 +39,5 @@ pub mod stalwart_pathlighter;
 pub mod ruthless_deathfang;
 pub mod undead_alchemist;
 pub mod angel_of_glory_s_rise;
+pub mod liliana_s_devotee;
+pub mod diregraf_colossus;

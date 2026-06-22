@@ -165,3 +165,5 @@ pub mod westgate_regent;
 pub mod gelatinous_cube;
 pub mod plundering_barbarian;
 pub mod yuan_ti_malison;
+pub mod chaos_channeler;
+pub mod hobgoblin_bandit_lord;

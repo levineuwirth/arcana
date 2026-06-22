@@ -44,3 +44,5 @@ pub mod argothian_enchantress;
 pub mod havoc_demon;
 pub mod giant_solifuge;
 pub mod soulcatcher;
+pub mod centaur_chieftain;
+pub mod flinthoof_boar;

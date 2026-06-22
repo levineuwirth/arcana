@@ -66,3 +66,4 @@ pub mod aurochs_herd;
 pub mod thermopod;
 pub mod phyrexian_ironfoot;
 pub mod phyrexian_snowcrusher;
+pub mod rimescale_dragon;

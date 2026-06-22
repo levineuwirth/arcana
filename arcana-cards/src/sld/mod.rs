@@ -28,3 +28,4 @@ pub mod amy_rose;
 pub mod the_fifteenth_doctor;
 pub mod joel_resolute_survivor;
 pub mod pinkie_pie;
+pub mod wolverine_best_there_is;

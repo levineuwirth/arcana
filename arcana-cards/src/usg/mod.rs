@@ -87,3 +87,5 @@ pub mod pendrell_drake;
 pub mod citanul_centaurs;
 pub mod endless_wurm;
 pub mod somnophore;
+pub mod mana_leech;
+pub mod witch_engine;

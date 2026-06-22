@@ -209,3 +209,5 @@ pub mod the_cookout_creator;
 pub mod lorthos_tentacled_terror;
 pub mod the_disciple_of_vess;
 pub mod the_spike_cactus;
+pub mod the_mox_painter;
+pub mod wistful_puppeteer;

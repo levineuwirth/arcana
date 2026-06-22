@@ -148,3 +148,6 @@ pub mod belligerent_guest;
 pub mod hiveheart_shaman;
 pub mod patchwork_crawler;
 pub mod heron_blessed_geist;
+pub mod toxrill_the_corrosive;
+pub mod sigardian_paladin;
+pub mod dreadlight_monstrosity;

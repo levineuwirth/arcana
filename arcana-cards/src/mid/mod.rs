@@ -134,3 +134,4 @@ pub mod component_collector;
 pub mod purifying_dragon;
 pub mod brood_weaver;
 pub mod tainted_adversary;
+pub mod famished_foragers;

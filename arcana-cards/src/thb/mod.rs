@@ -129,3 +129,4 @@ pub mod threnody_singer;
 pub mod shimmerwing_chimera;
 pub mod incendiary_oracle;
 pub mod purphoros_bronze_blooded;
+pub mod archon_of_falling_stars;

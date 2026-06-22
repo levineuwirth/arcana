@@ -32,3 +32,4 @@ pub mod ageless_sentinels;
 pub mod dawn_elemental;
 pub mod raven_guild_master;
 pub mod cabal_interrogator;
+pub mod dragon_tyrant;

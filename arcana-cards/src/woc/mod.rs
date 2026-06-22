@@ -11,3 +11,4 @@ pub mod ox_drover;
 pub mod tegwyll_duke_of_splendor;
 pub mod shadow_puppeteers;
 pub mod alela_cunning_conqueror;
+pub mod nettling_nuisance;

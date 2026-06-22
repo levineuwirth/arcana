@@ -128,3 +128,5 @@ pub mod figure_of_destiny;
 pub mod graveblade_marauder;
 pub mod murkfiend_liege;
 pub mod emiel_the_blessed;
+pub mod advanced_stitchwing;
+pub mod mindwrack_liege;

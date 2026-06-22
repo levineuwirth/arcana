@@ -28,3 +28,4 @@ pub mod broodstar;
 pub mod rotting_rats;
 pub mod arcbound_crusher;
 pub mod rockslide_elemental;
+pub mod living_hive;

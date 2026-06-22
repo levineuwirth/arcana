@@ -42,3 +42,4 @@ pub mod marrow_chomper;
 pub mod monstrous_carabid;
 pub mod dragon_broodmother;
 pub mod messenger_falcons;
+pub mod naya_sojourners;

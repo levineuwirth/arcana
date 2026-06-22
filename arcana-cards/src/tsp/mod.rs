@@ -51,3 +51,4 @@ pub mod spectral_force;
 pub mod unyaro_bees;
 pub mod tivadar_of_thorn;
 pub mod mana_skimmer;
+pub mod viashino_bladescout;

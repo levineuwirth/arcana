@@ -103,3 +103,7 @@ pub mod canoptek_tomb_sentinel;
 pub mod canoptek_wraith;
 pub mod shard_of_the_void_dragon;
 pub mod gargoyle_flock;
+pub mod inquisitor_greyfax;
+pub mod atalan_jackal;
+pub mod flayed_one;
+pub mod mutalith_vortex_beast;

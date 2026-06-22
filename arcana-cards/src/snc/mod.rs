@@ -157,3 +157,7 @@ pub mod angel_of_suffering;
 pub mod urabrask_heretic_praetor;
 pub mod a_shattered_seraph;
 pub mod obscura_interceptor;
+pub mod plasma_jockey;
+pub mod high_rise_sawjack;
+pub mod raffine_scheming_seer;
+pub mod rhox_pummeler;

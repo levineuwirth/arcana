@@ -49,3 +49,5 @@ pub mod skirk_alarmist;
 pub mod celestial_gatekeeper;
 pub mod mistform_wakecaster;
 pub mod vexing_beetle;
+pub mod sunstrike_legionnaire;
+pub mod wall_of_hope;

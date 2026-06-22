@@ -66,3 +66,4 @@ pub mod mnemonic_wall;
 pub mod undercity_troll;
 pub mod blizzard_specter;
 pub mod splatter_thug;
+pub mod lord_of_the_pit;

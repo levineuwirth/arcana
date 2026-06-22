@@ -137,3 +137,4 @@ pub mod spineseeker_centipede;
 pub mod fear_of_infinity;
 pub mod floodpits_drowner;
 pub mod fear_of_falling;
+pub mod intruding_soulrager;

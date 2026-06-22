@@ -165,3 +165,8 @@ pub mod reaping_willow;
 pub mod formidable_speaker;
 pub mod bristlebane_battler;
 pub mod scarblade_scout;
+pub mod moonlit_lamenter;
+pub mod creakwood_safewright;
+pub mod deceit;
+pub mod safewright_cavalry;
+pub mod loch_mare;

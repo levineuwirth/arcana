@@ -52,3 +52,5 @@ pub mod borborygmos;
 pub mod sky_swallower;
 pub mod stratozeppelid;
 pub mod ghor_clan_bloodscale;
+pub mod gristleback;
+pub mod tibor_and_lumia;

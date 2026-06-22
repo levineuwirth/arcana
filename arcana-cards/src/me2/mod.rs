@@ -103,3 +103,5 @@ pub mod knight_of_stromgald;
 pub mod ivory_gargoyle;
 pub mod kjeldoran_dead;
 pub mod thunder_wall;
+pub mod orcish_veteran;
+pub mod lim_d_l_s_high_guard;

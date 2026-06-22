@@ -60,3 +60,4 @@ pub mod pit_imp;
 pub mod minion_of_the_wastes;
 pub mod quickening_licid;
 pub mod chaotic_goo;
+pub mod thalakos_dreamsower;

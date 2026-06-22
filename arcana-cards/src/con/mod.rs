@@ -44,3 +44,4 @@ pub mod cliffrunner_behemoth;
 pub mod jhessian_balmgiver;
 pub mod pestilent_kathari;
 pub mod bloodhall_ooze;
+pub mod mirror_sigil_sergeant;

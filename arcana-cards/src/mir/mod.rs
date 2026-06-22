@@ -114,3 +114,5 @@ pub mod teferi_s_drake;
 pub mod jungle_troll;
 pub mod hakim_loreweaver;
 pub mod purraj_of_urborg;
+pub mod shaper_guildmage;
+pub mod uktabi_faerie;

@@ -159,3 +159,5 @@ pub mod deepwood_legate;
 pub mod flailing_manticore;
 pub mod charmed_griffin;
 pub mod kyren_glider;
+pub mod drake_hatchling;
+pub mod timid_drake;

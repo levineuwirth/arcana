@@ -6,3 +6,4 @@ pub mod skyhunter_strike_force;
 pub mod kenrith_the_returned_king;
 pub mod brenard_ginger_sculptor;
 pub mod hellkite_tyrant;
+pub mod the_haunt_of_hightower;

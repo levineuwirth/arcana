@@ -264,3 +264,4 @@ pub mod mirri_weatherlight_duelist;
 pub mod herald_of_the_pantheon;
 pub mod rakka_mar;
 pub mod spitebellows;
+pub mod twisted_abomination;

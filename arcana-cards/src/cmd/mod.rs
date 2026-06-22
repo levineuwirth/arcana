@@ -22,3 +22,5 @@ pub mod prison_term;
 pub mod garruk_wildspeaker;
 pub mod chorus_of_the_conclave;
 pub mod dominus_of_fealty;
+pub mod numot_the_devastator;
+pub mod gomazoa;

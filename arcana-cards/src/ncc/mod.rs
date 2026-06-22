@@ -64,3 +64,7 @@ pub mod parnesse_the_subtle_brush;
 pub mod henzie_toolbox_torre;
 pub mod kros_defense_contractor;
 pub mod tivit_seller_of_secrets;
+pub mod wave_of_rats;
+pub mod denry_klin_editor_in_chief;
+pub mod zurzoth_chaos_rider;
+pub mod phabine_boss_s_confidant;

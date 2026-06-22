@@ -134,3 +134,8 @@ pub mod baral_and_kari_zev;
 pub mod amphin_mutineer;
 pub mod carven_caryatid;
 pub mod thunderbreak_regent;
+pub mod elsha_threefold_master;
+pub mod gravecrawler;
+pub mod betor_ancestor_s_voice;
+pub mod transcendent_dragon;
+pub mod crashing_drawbridge;

@@ -100,3 +100,7 @@ pub mod prognostic_sphinx;
 pub mod suspicious_bookcase;
 pub mod aesi_tyrant_of_gyre_strait;
 pub mod skola_grovedancer;
+pub mod giggling_skitterspike;
+pub mod kianne_corrupted_memory;
+pub mod kardur_doomscourge;
+pub mod grim_flayer;
