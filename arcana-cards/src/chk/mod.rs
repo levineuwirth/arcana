@@ -136,3 +136,4 @@ pub mod myojin_of_cleansing_fire;
 pub mod soratami_rainshaper;
 pub mod rootrunner;
 pub mod burr_grafter;
+pub mod bloodthirsty_ogre;

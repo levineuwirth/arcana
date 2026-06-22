@@ -141,3 +141,7 @@ pub mod conduit_goblin;
 pub mod guardian_of_the_forgotten;
 pub mod evolution_witness;
 pub mod aerie_auxiliary;
+pub mod emperor_of_bones;
+pub mod amped_raptor;
+pub mod smelted_chargebug;
+pub mod junk_diver;

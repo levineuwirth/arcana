@@ -165,3 +165,4 @@ pub mod nurturing_bristleback;
 pub mod river_herald_guide;
 pub mod deathcap_marionette;
 pub mod mineshaft_spider;
+pub mod sanguine_evangelist;

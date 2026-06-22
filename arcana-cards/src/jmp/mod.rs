@@ -200,3 +200,4 @@ pub mod roving_keep;
 pub mod nocturnal_feeder;
 pub mod windreader_sphinx;
 pub mod voice_of_the_provinces;
+pub mod nightshade_stinger;

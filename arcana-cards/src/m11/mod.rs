@@ -26,3 +26,5 @@ pub mod arc_runner;
 pub mod cloud_crusader;
 pub mod magma_phoenix;
 pub mod vengeful_archon;
+pub mod ancient_hellkite;
+pub mod goldenglow_moth;

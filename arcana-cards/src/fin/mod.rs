@@ -171,3 +171,5 @@ pub mod cloud_midgar_mercenary;
 pub mod magic_pot;
 pub mod cloud_of_darkness;
 pub mod ambrosia_whiteheart;
+pub mod delivery_moogle;
+pub mod locke_cole;

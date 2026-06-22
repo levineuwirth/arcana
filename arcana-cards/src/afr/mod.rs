@@ -168,3 +168,6 @@ pub mod yuan_ti_malison;
 pub mod chaos_channeler;
 pub mod hobgoblin_bandit_lord;
 pub mod dragon_turtle;
+pub mod tiamat;
+pub mod old_gnawbone;
+pub mod yuan_ti_fang_blade;

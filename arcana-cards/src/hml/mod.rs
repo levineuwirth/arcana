@@ -30,3 +30,4 @@ pub mod black_carriage;
 pub mod sengir_bats;
 pub mod heart_wolf;
 pub mod soraya_the_falconer;
+pub mod rashka_the_slayer;

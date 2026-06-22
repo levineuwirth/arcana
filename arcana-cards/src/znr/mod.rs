@@ -126,3 +126,6 @@ pub mod magmatic_channeler;
 pub mod relic_golem;
 pub mod cunning_geysermage;
 pub mod swarm_shambler;
+pub mod a_oran_rief_ooze;
+pub mod a_master_of_winds;
+pub mod lullmage_s_familiar;

@@ -8,3 +8,5 @@ pub mod hell_s_thunder;
 pub mod hussar_patrol;
 pub mod faerie_impostor;
 pub mod aquamorph_entity;
+pub mod echo_tracer;
+pub mod shambling_remains;

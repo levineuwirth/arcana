@@ -270,3 +270,4 @@ pub mod heliod_god_of_the_sun;
 pub mod rapacious_one;
 pub mod judith_the_scourge_diva;
 pub mod mire_triton;
+pub mod inferno_titan;

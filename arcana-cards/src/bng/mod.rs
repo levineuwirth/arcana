@@ -75,3 +75,4 @@ pub mod flitterstep_eidolon;
 pub mod vortex_elemental;
 pub mod nessian_demolok;
 pub mod thunder_brute;
+pub mod snake_of_the_golden_grove;

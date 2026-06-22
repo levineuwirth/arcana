@@ -12,3 +12,4 @@ pub mod mangled_soulrager;
 pub mod wingbright_thief;
 pub mod enduring_friendship;
 pub mod wary_zone_guard;
+pub mod eager_flameguide;

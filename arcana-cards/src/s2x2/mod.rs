@@ -131,3 +131,7 @@ pub mod emiel_the_blessed;
 pub mod advanced_stitchwing;
 pub mod mindwrack_liege;
 pub mod bloodwater_entity;
+pub mod roon_of_the_hidden_realm;
+pub mod allosaurus_shepherd;
+pub mod firesong_and_sunspeaker;
+pub mod aethersnipe;

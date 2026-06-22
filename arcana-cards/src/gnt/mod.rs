@@ -13,3 +13,4 @@ pub mod always_watching;
 pub mod soulblade_djinn;
 pub mod goblin_goliath;
 pub mod avatar_of_growth;
+pub mod rot_hulk;

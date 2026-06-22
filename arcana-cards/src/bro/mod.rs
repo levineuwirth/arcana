@@ -153,3 +153,5 @@ pub mod feldon_ronom_excavator;
 pub mod terror_ballista;
 pub mod gwenna_eyes_of_gaea;
 pub mod a_haywire_mite;
+pub mod a_urza_powerstone_prodigy;
+pub mod ashnod_s_harvester;

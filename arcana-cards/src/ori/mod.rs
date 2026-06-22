@@ -77,3 +77,5 @@ pub mod gaea_s_revenge;
 pub mod pharika_s_disciple;
 pub mod aven_battle_priest;
 pub mod possessed_skaab;
+pub mod charging_griffin;
+pub mod avaricious_dragon;

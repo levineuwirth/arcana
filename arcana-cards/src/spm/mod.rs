@@ -117,3 +117,5 @@ pub mod lizard_connors_s_curse;
 pub mod spider_manifestation;
 pub mod superior_foes_of_spider_man;
 pub mod spider_uk;
+pub mod masked_meower;
+pub mod flash_thompson_spider_fan;

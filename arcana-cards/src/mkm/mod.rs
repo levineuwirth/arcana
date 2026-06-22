@@ -146,3 +146,4 @@ pub mod rune_brand_juggler;
 pub mod judith_carnage_connoisseur;
 pub mod alquist_proft_master_sleuth;
 pub mod trostani_three_whispers;
+pub mod shady_informant;

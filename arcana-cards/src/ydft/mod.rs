@@ -8,3 +8,5 @@ pub mod fuel_tank_feaster;
 pub mod mitotic_ultimus;
 pub mod arius_flyby_trawler;
 pub mod tsagan_raider_warlord;
+pub mod terrors_of_the_track;
+pub mod speedbrood_stalker;

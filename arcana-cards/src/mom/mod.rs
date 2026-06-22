@@ -191,3 +191,6 @@ pub mod furnace_gremlin;
 pub mod bloodfeather_phoenix;
 pub mod orthion_hero_of_lavabrink;
 pub mod trailblazing_historian;
+pub mod joyful_stormsculptor;
+pub mod placid_rottentail;
+pub mod hidetsugu_and_kairi;

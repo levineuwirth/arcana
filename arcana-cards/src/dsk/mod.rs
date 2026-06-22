@@ -138,3 +138,5 @@ pub mod fear_of_infinity;
 pub mod floodpits_drowner;
 pub mod fear_of_falling;
 pub mod intruding_soulrager;
+pub mod the_jolly_balloon_man;
+pub mod rootwise_survivor;

@@ -109,3 +109,7 @@ pub mod elenda_s_hierophant;
 pub mod hakbal_of_the_surging_soul;
 pub mod drover_of_the_mighty;
 pub mod dinosaur_egg;
+pub mod merfolk_skydiver;
+pub mod francisco_fowl_marauder;
+pub mod emperor_mihail_ii;
+pub mod curious_altisaur;

@@ -138,3 +138,8 @@ pub mod solitude;
 pub mod dragon_s_rage_channeler;
 pub mod sanctuary_raptor;
 pub mod archon_of_cruelty;
+pub mod zabaz_the_glimmerwasp;
+pub mod rift_sower;
+pub mod skirge_familiar;
+pub mod hell_mongrel;
+pub mod general_ferrous_rokiric;

@@ -66,3 +66,5 @@ pub mod ezzaroot_channeler;
 pub mod sanctum_gargoyle;
 pub mod gluttonous_troll;
 pub mod charmbreaker_devils;
+pub mod dualcaster_mage;
+pub mod osgir_the_reconstructor;

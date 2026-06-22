@@ -116,3 +116,4 @@ pub mod hakim_loreweaver;
 pub mod purraj_of_urborg;
 pub mod shaper_guildmage;
 pub mod uktabi_faerie;
+pub mod discordant_spirit;

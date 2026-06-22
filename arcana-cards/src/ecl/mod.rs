@@ -171,3 +171,4 @@ pub mod deceit;
 pub mod safewright_cavalry;
 pub mod loch_mare;
 pub mod crossroads_watcher;
+pub mod voracious_tome_skimmer;

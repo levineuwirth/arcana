@@ -144,3 +144,5 @@ pub mod yarok_s_fenlurker;
 pub mod loxodon_lifechanter;
 pub mod cavalier_of_dawn;
 pub mod immortal_phoenix;
+pub mod cavalier_of_night;
+pub mod savage_gorger;

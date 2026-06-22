@@ -93,3 +93,4 @@ pub mod guardian_of_tazeem;
 pub mod blisterpod;
 pub mod akoum_firebird;
 pub mod incubator_drone;
+pub mod eldrazi_skyspawner;

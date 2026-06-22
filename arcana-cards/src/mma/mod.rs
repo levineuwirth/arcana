@@ -33,3 +33,4 @@ pub mod avian_changeling;
 pub mod pestermite;
 pub mod war_spike_changeling;
 pub mod countryside_crusher;
+pub mod mothdust_changeling;

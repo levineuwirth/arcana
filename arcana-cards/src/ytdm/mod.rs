@@ -8,3 +8,4 @@ pub mod runeblade_raiser;
 pub mod pampered_loamfrill;
 pub mod dalkovan_outrider;
 pub mod dragonblood_twins;
+pub mod audacious_knuckleblade;

@@ -43,3 +43,4 @@ pub mod gimli_of_the_glittering_caves;
 pub mod mirkwood_elk;
 pub mod lord_of_the_nazg_l;
 pub mod denethor_stone_seer;
+pub mod monstrosity_of_the_lake;

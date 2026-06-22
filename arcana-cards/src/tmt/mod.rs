@@ -118,3 +118,8 @@ pub mod technodrome;
 pub mod transdimensional_bovine;
 pub mod april_o_neil_kunoichi_trainee;
 pub mod mighty_mutanimals;
+pub mod action_news_crew;
+pub mod casey_jones_jury_rig_justiciar;
+pub mod slash_reptile_rampager;
+pub mod oroku_saki_shredder_rising;
+pub mod donatello_gadget_master;

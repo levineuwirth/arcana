@@ -293,3 +293,7 @@ pub mod voracious_greatshark;
 pub mod crow_of_dark_tidings;
 pub mod armasaur_guide;
 pub mod rune_sealed_wall;
+pub mod cat_collector;
+pub mod diamond_mare;
+pub mod beast_kin_ranger;
+pub mod dazzling_angel;

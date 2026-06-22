@@ -136,3 +136,5 @@ pub mod blade_juggler;
 pub mod rakdos_trumpeter;
 pub mod spawn_of_mayhem;
 pub mod pyrewild_shaman;
+pub mod firemane_avenger;
+pub mod headliner_scarlett;

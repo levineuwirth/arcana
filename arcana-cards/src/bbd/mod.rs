@@ -110,3 +110,4 @@ pub mod blaring_recruiter;
 pub mod regna_the_redeemer;
 pub mod soaring_show_off;
 pub mod chakram_slinger;
+pub mod ley_weaver;

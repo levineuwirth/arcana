@@ -55,3 +55,5 @@ pub mod dwarven_patrol;
 pub mod coastal_drake;
 pub mod minotaur_illusionist;
 pub mod desolation_angel;
+pub mod cromat;
+pub mod kavu_glider;

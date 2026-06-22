@@ -70,3 +70,4 @@ pub mod stonewright;
 pub mod hound_of_griselbrand;
 pub mod galvanic_alchemist;
 pub mod wolfir_silverheart;
+pub mod searchlight_geist;

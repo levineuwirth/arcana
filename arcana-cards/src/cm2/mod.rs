@@ -45,3 +45,4 @@ pub mod avatar_of_woe;
 pub mod hostility;
 pub mod triskelavus;
 pub mod desolation_giant;
+pub mod necroplasm;

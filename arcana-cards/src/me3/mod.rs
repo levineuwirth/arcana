@@ -112,3 +112,5 @@ pub mod spiny_starfish;
 pub mod tuknir_deathlock;
 pub mod bartel_runeaxe;
 pub mod willow_priestess;
+pub mod fire_drake;
+pub mod hazezon_tamar;

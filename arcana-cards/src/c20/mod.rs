@@ -54,3 +54,6 @@ pub mod pako_arcane_retriever;
 pub mod shabraz_the_skyshark;
 pub mod capricopian;
 pub mod karametra_god_of_harvests;
+pub mod ravenous_gigantotherium;
+pub mod silvar_devourer_of_the_free;
+pub mod fireflux_squad;

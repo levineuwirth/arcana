@@ -78,3 +78,5 @@ pub mod dream_thief;
 pub mod aerie_ouphes;
 pub mod impelled_giant;
 pub mod hotheaded_giant;
+pub mod merrow_levitator;
+pub mod grazing_kelpie;

@@ -44,3 +44,4 @@ pub mod hanged_executioner;
 pub mod crimson_honor_guard;
 pub mod timin_youthful_geist;
 pub mod hollowhenge_overlord;
+pub mod scion_of_opulence;

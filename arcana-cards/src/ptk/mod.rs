@@ -68,3 +68,4 @@ pub mod ma_chao_western_warrior;
 pub mod zuo_ci_the_mocking_sage;
 pub mod zhang_he_wei_general;
 pub mod cao_ren_wei_commander;
+pub mod zhao_zilong_tiger_general;

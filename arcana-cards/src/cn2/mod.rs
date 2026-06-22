@@ -58,3 +58,5 @@ pub mod havengul_vampire;
 pub mod domesticated_hydra;
 pub mod guul_draz_specter;
 pub mod nessian_asp;
+pub mod guardian_of_the_gateless;
+pub mod custodi_peacekeeper;

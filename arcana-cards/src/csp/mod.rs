@@ -69,3 +69,4 @@ pub mod phyrexian_snowcrusher;
 pub mod rimescale_dragon;
 pub mod steam_spitter;
 pub mod boreal_griffin;
+pub mod stromgald_crusader;

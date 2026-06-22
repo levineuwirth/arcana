@@ -29,3 +29,5 @@ pub mod the_fifteenth_doctor;
 pub mod joel_resolute_survivor;
 pub mod pinkie_pie;
 pub mod wolverine_best_there_is;
+pub mod the_ghoul_gunslinger;
+pub mod dr_eggman;

@@ -47,3 +47,5 @@ pub mod soulcatcher;
 pub mod centaur_chieftain;
 pub mod flinthoof_boar;
 pub mod ghitu_slinger;
+pub mod wake_of_vultures;
+pub mod sprite_noble;

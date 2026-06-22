@@ -141,3 +141,4 @@ pub mod chandra_s_firemaw;
 pub mod leafkin_avenger;
 pub mod ornery_dilophosaur;
 pub mod basri_s_lieutenant;
+pub mod thieves_guild_enforcer;

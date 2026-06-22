@@ -54,3 +54,5 @@ pub mod stratozeppelid;
 pub mod ghor_clan_bloodscale;
 pub mod gristleback;
 pub mod tibor_and_lumia;
+pub mod shrieking_grotesque;
+pub mod harrier_griffin;

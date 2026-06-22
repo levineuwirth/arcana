@@ -86,3 +86,6 @@ pub mod yuki_onna;
 pub mod shinen_of_fear_s_chill;
 pub mod shinen_of_flight_s_wings;
 pub mod kami_of_the_tended_garden;
+pub mod eiganjo_free_riders;
+pub mod jiwari_the_earth_aflame;
+pub mod kemuri_onna;

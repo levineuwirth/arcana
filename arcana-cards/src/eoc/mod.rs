@@ -66,3 +66,4 @@ pub mod titania_protector_of_argoth;
 pub mod angel_of_the_ruins;
 pub mod mindless_automaton;
 pub mod szarel_genesis_shepherd;
+pub mod soul_of_windgrace;

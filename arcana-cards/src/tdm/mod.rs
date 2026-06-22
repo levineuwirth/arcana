@@ -161,3 +161,4 @@ pub mod lasyd_prowler;
 pub mod sunset_strikemaster;
 pub mod boulderborn_dragon;
 pub mod stadium_headliner;
+pub mod meticulous_artisan;

@@ -144,3 +144,7 @@ pub mod katara_bending_prodigy;
 pub mod sun_warriors;
 pub mod cat_owl;
 pub mod zhao_ruthless_admiral;
+pub mod wolfbat;
+pub mod katara_water_tribe_s_hope;
+pub mod momo_friendly_flier;
+pub mod cat_gator;

@@ -34,3 +34,4 @@ pub mod raven_guild_master;
 pub mod cabal_interrogator;
 pub mod dragon_tyrant;
 pub mod sliver_overlord;
+pub mod trap_digger;

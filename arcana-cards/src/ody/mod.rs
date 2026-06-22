@@ -120,3 +120,5 @@ pub mod luminous_guardian;
 pub mod mystic_crusader;
 pub mod pilgrim_of_virtue;
 pub mod balshan_griffin;
+pub mod pulsating_illusion;
+pub mod krosan_avenger;

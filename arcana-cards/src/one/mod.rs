@@ -148,3 +148,7 @@ pub mod blightbelly_rat;
 pub mod magmatic_sprinter;
 pub mod mondrak_glory_dominus;
 pub mod incisor_glider;
+pub mod karumonix_the_rat_king;
+pub mod serum_sovereign;
+pub mod solphim_mayhem_dominus;
+pub mod stinging_hivemaster;

@@ -171,3 +171,7 @@ pub mod kitsa_otterball_elite;
 pub mod mabel_heir_to_cragflame;
 pub mod zoraline_cosmos_caller;
 pub mod wick_the_whorled_mind;
+pub mod byrke_long_ear_of_the_law;
+pub mod wax_wane_witness;
+pub mod hired_claw;
+pub mod hivespine_wolverine;

@@ -125,3 +125,4 @@ pub mod tolarian_sentinel;
 pub mod clockwork_hydra;
 pub mod thallid_germinator;
 pub mod stormcloud_djinn;
+pub mod mirri_the_cursed;

@@ -110,3 +110,6 @@ pub mod mutalith_vortex_beast;
 pub mod lord_of_change;
 pub mod bloodthirster;
 pub mod poxwalkers;
+pub mod necron_deathmark;
+pub mod genestealer_patriarch;
+pub mod screamer_killer;

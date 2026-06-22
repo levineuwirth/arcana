@@ -212,3 +212,6 @@ pub mod the_spike_cactus;
 pub mod the_mox_painter;
 pub mod wistful_puppeteer;
 pub mod windy_city_aven;
+pub mod farseeing_flockmate;
+pub mod crow_scarer;
+pub mod the_rhystic_storyteller;

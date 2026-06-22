@@ -35,3 +35,4 @@ pub mod akoum_battlesinger;
 pub mod tideforce_elemental;
 pub mod thada_adel_acquisitor;
 pub mod bojuka_brigand;
+pub mod cunning_sparkmage;

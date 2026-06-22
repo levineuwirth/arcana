@@ -35,3 +35,4 @@ pub mod elder_spawn;
 pub mod marble_priest;
 pub mod lord_magnus;
 pub mod infernal_medusa;
+pub mod pixie_queen;

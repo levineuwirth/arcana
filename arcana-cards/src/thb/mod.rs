@@ -131,3 +131,4 @@ pub mod incendiary_oracle;
 pub mod purphoros_bronze_blooded;
 pub mod archon_of_falling_stars;
 pub mod chainweb_aracnir;
+pub mod dream_trawler;

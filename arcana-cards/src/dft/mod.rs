@@ -134,3 +134,4 @@ pub mod autarch_mammoth;
 pub mod gastal_thrillseeker;
 pub mod district_mascot;
 pub mod veteran_beastrider;
+pub mod diversion_unit;

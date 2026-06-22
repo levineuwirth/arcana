@@ -150,3 +150,7 @@ pub mod raven_of_fell_omens;
 pub mod kambal_profiteering_mayor;
 pub mod rambling_possum;
 pub mod colossal_rattlewurm;
+pub mod resilient_roadrunner;
+pub mod wanted_griffin;
+pub mod ornery_tumblewagg;
+pub mod unscrupulous_contractor;

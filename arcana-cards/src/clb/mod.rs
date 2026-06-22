@@ -263,3 +263,4 @@ pub mod plague_spitter;
 pub mod raphael_fiendish_savior;
 pub mod sweet_gum_recluse;
 pub mod rug_of_smothering;
+pub mod goblin_spymaster;

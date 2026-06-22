@@ -103,3 +103,4 @@ pub mod god_eternal_rhonas;
 pub mod guildpact_informant;
 pub mod shriekdiver;
 pub mod rubblebelt_rioters;
+pub mod dreadhorde_butcher;

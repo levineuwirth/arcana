@@ -74,3 +74,5 @@ pub mod carnifex_demon;
 pub mod slithermuse;
 pub mod shriekmaw;
 pub mod midnight_banshee;
+pub mod jubilation;
+pub mod omnath_locus_of_rage;

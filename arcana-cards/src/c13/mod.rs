@@ -36,3 +36,4 @@ pub mod marrow_bats;
 pub mod raven_familiar;
 pub mod goblin_sharpshooter;
 pub mod drumhunter;
+pub mod krosan_warchief;

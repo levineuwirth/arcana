@@ -119,3 +119,6 @@ pub mod colossus_of_the_blood_age;
 pub mod berta_wise_extrapolator;
 pub mod inkshape_demonstrator;
 pub mod pensive_professor;
+pub mod elemental_mascot;
+pub mod forum_necroscribe;
+pub mod noxious_newt;

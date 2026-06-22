@@ -71,3 +71,4 @@ pub mod noctis_heir_apparent;
 pub mod cloud_ex_soldier;
 pub mod terra_herald_of_hope;
 pub mod vincent_vengeful_atoner;
+pub mod red_xiii_proud_warrior;

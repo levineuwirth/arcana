@@ -30,3 +30,5 @@ pub mod yoshimaru_ever_faithful;
 pub mod rampant_rejuvenator;
 pub mod myojin_of_cryptic_dreams;
 pub mod ox_of_agonas;
+pub mod katsumasa_the_animator;
+pub mod spearbreaker_behemoth;

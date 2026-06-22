@@ -159,3 +159,7 @@ pub mod saruman_of_many_colors;
 pub mod gothmog_morgul_lieutenant;
 pub mod omer_of_the_riddermark;
 pub mod samwise_the_stouthearted;
+pub mod shadowfax_lord_of_horses;
+pub mod nazg_l;
+pub mod galadriel_gift_giver;
+pub mod owyn_fearless_knight;

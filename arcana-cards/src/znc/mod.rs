@@ -22,3 +22,4 @@ pub mod marang_river_prowler;
 pub mod marsh_flitter;
 pub mod lazav_dimir_mastermind;
 pub mod invisible_stalker;
+pub mod embodiment_of_insight;

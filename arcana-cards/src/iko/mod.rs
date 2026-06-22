@@ -110,3 +110,4 @@ pub mod rooting_moloch;
 pub mod hornbash_mentor;
 pub mod almighty_brushwagg;
 pub mod general_kudro_of_drannith;
+pub mod excavation_mole;

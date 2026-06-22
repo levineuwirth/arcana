@@ -166,3 +166,6 @@ pub mod indulgent_aristocrat;
 pub mod bloodhall_priest;
 pub mod olivia_voldaren;
 pub mod drogskol_shieldmate;
+pub mod voldaren_duelist;
+pub mod niblis_of_the_urn;
+pub mod festerhide_boar;

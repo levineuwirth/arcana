@@ -92,3 +92,5 @@ pub mod hunter_of_eyeblights;
 pub mod mournwhelk;
 pub mod guardian_of_cloverdell;
 pub mod kinsbaile_balloonist;
+pub mod glen_elendra_pranksters;
+pub mod wispmare;

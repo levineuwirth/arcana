@@ -106,3 +106,4 @@ pub mod queen_s_agent;
 pub mod duskborne_skymarcher;
 pub mod ruthless_knave;
 pub mod jade_guardian;
+pub mod bishop_of_rebirth;

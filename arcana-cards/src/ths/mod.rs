@@ -94,3 +94,4 @@ pub mod kragma_warcaller;
 pub mod breaching_hippocamp;
 pub mod nimbus_naiad;
 pub mod sentry_of_the_underworld;
+pub mod tymaret_the_murder_king;

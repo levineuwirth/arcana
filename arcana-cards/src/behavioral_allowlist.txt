@@ -67,6 +67,7 @@ Blisterspit Gremlin
 Blizzard Elemental
 Bloodcrazed Hoplite
 Bloodthirster
+Bloodthirsty Ogre
 Bloodtithe Harvester
 Boon of Boseiju
 Breaching Hippocamp
@@ -155,6 +156,7 @@ Fain, the Broker
 Famished Paladin
 Fickle Efreet
 Firmament Sage
+Flash Thompson, Spider-Fan
 Floodwater Dam
 Flowerfoot Swordmaster
 Forensic Researcher
@@ -242,6 +244,7 @@ Kuldotha Cackler
 Kumano Faces Kakkazan
 Kydele, Chosen of Kruphix
 Labyrinth Guardian
+Leitmotif Composer
 Leonin Battlemage
 Lifeline
 Lightning-Rig Crew
@@ -272,6 +275,7 @@ Merchant of Many Hats
 Merieke Ri Berit
 Merrow Bonegnawer
 Merrow Commerce
+Merrow Levitator
 Midnight Guard
 Mijae Djinn
 Militia Rallier
@@ -289,6 +293,7 @@ Murkfiend Liege
 Nahiri, Heir of the Ancients
 Nanoform Sentinel
 Nashi, Moon's Legacy
+Nazgûl
 Necrogen Communion
 Necroskitter
 Nether Spirit
@@ -309,6 +314,7 @@ Peter Parker
 Phyrexian Colossus
 Phyrexian Infiltrator
 Phyrexian Ironfoot
+Piper of the Swarm
 Polluted Bonds
 Powerstone Shard
 Praetor's Counsel
@@ -325,6 +331,7 @@ Ragost, Deft Gastronaut
 Raiyuu, Storm's Edge
 Ral Zarek
 Raph & Leo, Sibling Rivals
+Red XIII, Proud Warrior
 Relic Barrier
 Repeat Offender
 Revered Unicorn

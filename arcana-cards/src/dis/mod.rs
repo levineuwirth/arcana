@@ -49,3 +49,5 @@ pub mod walking_archive;
 pub mod isperia_the_inscrutable;
 pub mod jagged_poppet;
 pub mod enigma_eidolon;
+pub mod soulsworn_jury;
+pub mod unliving_psychopath;
