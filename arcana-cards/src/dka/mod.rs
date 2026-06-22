@@ -46,3 +46,4 @@ pub mod niblis_of_the_breath;
 pub mod elgaud_inquisitor;
 pub mod moonveil_dragon;
 pub mod geralf_s_messenger;
+pub mod markov_blademaster;

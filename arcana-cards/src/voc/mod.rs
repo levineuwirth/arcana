@@ -41,3 +41,6 @@ pub mod angel_of_flight_alabaster;
 pub mod mirage_phalanx;
 pub mod drogskol_captain;
 pub mod hanged_executioner;
+pub mod crimson_honor_guard;
+pub mod timin_youthful_geist;
+pub mod hollowhenge_overlord;

@@ -116,3 +116,5 @@ pub mod rat_king_verminister;
 pub mod jennika_bad_apple_big_sister;
 pub mod technodrome;
 pub mod transdimensional_bovine;
+pub mod april_o_neil_kunoichi_trainee;
+pub mod mighty_mutanimals;

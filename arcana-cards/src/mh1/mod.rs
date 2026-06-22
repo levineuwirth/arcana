@@ -85,3 +85,5 @@ pub mod knight_of_old_benalia;
 pub mod carrion_feeder;
 pub mod igneous_elemental;
 pub mod thundering_djinn;
+pub mod farmstead_gleaner;
+pub mod sisay_weatherlight_captain;

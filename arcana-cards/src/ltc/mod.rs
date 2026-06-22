@@ -42,3 +42,4 @@ pub mod sam_loyal_attendant;
 pub mod gimli_of_the_glittering_caves;
 pub mod mirkwood_elk;
 pub mod lord_of_the_nazg_l;
+pub mod denethor_stone_seer;

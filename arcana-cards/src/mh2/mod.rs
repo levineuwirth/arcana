@@ -136,3 +136,5 @@ pub mod arcbound_mouser;
 pub mod blazing_rootwalla;
 pub mod solitude;
 pub mod dragon_s_rage_channeler;
+pub mod sanctuary_raptor;
+pub mod archon_of_cruelty;

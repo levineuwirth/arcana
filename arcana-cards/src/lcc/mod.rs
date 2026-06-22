@@ -107,3 +107,5 @@ pub mod siren_stormtamer;
 pub mod kumena_tyrant_of_orazca;
 pub mod elenda_s_hierophant;
 pub mod hakbal_of_the_surging_soul;
+pub mod drover_of_the_mighty;
+pub mod dinosaur_egg;

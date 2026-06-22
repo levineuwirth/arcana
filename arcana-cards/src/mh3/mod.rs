@@ -138,3 +138,6 @@ pub mod reckless_pyrosurfer;
 pub mod voltstorm_angel;
 pub mod springheart_nantuko;
 pub mod conduit_goblin;
+pub mod guardian_of_the_forgotten;
+pub mod evolution_witness;
+pub mod aerie_auxiliary;

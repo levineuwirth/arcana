@@ -291,3 +291,5 @@ pub mod imperious_perfect;
 pub mod fanatical_firebrand;
 pub mod voracious_greatshark;
 pub mod crow_of_dark_tidings;
+pub mod armasaur_guide;
+pub mod rune_sealed_wall;

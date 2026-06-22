@@ -67,3 +67,5 @@ pub mod thermopod;
 pub mod phyrexian_ironfoot;
 pub mod phyrexian_snowcrusher;
 pub mod rimescale_dragon;
+pub mod steam_spitter;
+pub mod boreal_griffin;

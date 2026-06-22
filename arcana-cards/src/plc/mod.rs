@@ -28,3 +28,4 @@ pub mod timbermare;
 pub mod hedge_troll;
 pub mod volcano_hellion;
 pub mod psychotrope_thallid;
+pub mod lavacore_elemental;

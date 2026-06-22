@@ -64,3 +64,5 @@ pub mod leyline_prowler;
 pub mod hunted_lammasu;
 pub mod ezzaroot_channeler;
 pub mod sanctum_gargoyle;
+pub mod gluttonous_troll;
+pub mod charmbreaker_devils;

@@ -142,3 +142,5 @@ pub mod foggy_swamp_spirit_keeper;
 pub mod sokka_tenacious_tactician;
 pub mod katara_bending_prodigy;
 pub mod sun_warriors;
+pub mod cat_owl;
+pub mod zhao_ruthless_admiral;

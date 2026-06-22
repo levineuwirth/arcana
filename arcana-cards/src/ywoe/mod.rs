@@ -11,3 +11,5 @@ pub mod high_fae_prankster;
 pub mod drover_of_the_swine;
 pub mod heir_to_dragonfire;
 pub mod dedicated_dollmaker;
+pub mod jewel_mine_overseer;
+pub mod talion_s_throneguard;

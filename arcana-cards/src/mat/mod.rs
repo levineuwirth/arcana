@@ -23,3 +23,4 @@ pub mod tazri_stalwart_survivor;
 pub mod kolaghan_warmonger;
 pub mod nashi_moon_s_legacy;
 pub mod tyvar_the_bellicose;
+pub mod jirina_dauntless_general;

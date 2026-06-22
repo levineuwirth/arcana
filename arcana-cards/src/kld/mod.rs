@@ -111,3 +111,5 @@ pub mod whirler_virtuoso;
 pub mod glint_nest_crane;
 pub mod experimental_aviator;
 pub mod master_trinketeer;
+pub mod aethertorch_renegade;
+pub mod hightide_hermit;

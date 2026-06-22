@@ -161,3 +161,5 @@ pub mod charmed_griffin;
 pub mod kyren_glider;
 pub mod drake_hatchling;
 pub mod timid_drake;
+pub mod caustic_wasps;
+pub mod aerial_caravan;

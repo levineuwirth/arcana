@@ -147,3 +147,6 @@ pub mod canyon_crab;
 pub mod spinewoods_armadillo;
 pub mod prairie_dog;
 pub mod raven_of_fell_omens;
+pub mod kambal_profiteering_mayor;
+pub mod rambling_possum;
+pub mod colossal_rattlewurm;

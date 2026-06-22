@@ -139,3 +139,5 @@ pub mod gravecrawler;
 pub mod betor_ancestor_s_voice;
 pub mod transcendent_dragon;
 pub mod crashing_drawbridge;
+pub mod atarka_world_render;
+pub mod parapet_thrasher;

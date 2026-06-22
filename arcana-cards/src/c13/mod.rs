@@ -35,3 +35,4 @@ pub mod marath_will_of_the_wild;
 pub mod marrow_bats;
 pub mod raven_familiar;
 pub mod goblin_sharpshooter;
+pub mod drumhunter;

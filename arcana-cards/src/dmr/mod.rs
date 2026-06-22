@@ -116,3 +116,4 @@ pub mod body_snatcher;
 pub mod werebear;
 pub mod sol_kanar_the_swamp_king;
 pub mod aven_fisher;
+pub mod xira_arien;

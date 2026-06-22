@@ -161,3 +161,6 @@ pub mod plasma_jockey;
 pub mod high_rise_sawjack;
 pub mod raffine_scheming_seer;
 pub mod rhox_pummeler;
+pub mod sanguine_spy;
+pub mod aven_heartstabber;
+pub mod a_psionic_snoop;

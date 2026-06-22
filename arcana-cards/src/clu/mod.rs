@@ -133,3 +133,6 @@ pub mod seraph_of_the_scales;
 pub mod orzhov_guildmage;
 pub mod duskmantle_seer;
 pub mod blade_juggler;
+pub mod rakdos_trumpeter;
+pub mod spawn_of_mayhem;
+pub mod pyrewild_shaman;

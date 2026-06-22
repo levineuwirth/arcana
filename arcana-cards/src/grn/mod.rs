@@ -91,3 +91,5 @@ pub mod conclave_guildmage;
 pub mod ral_s_staticaster;
 pub mod intrusive_packbeast;
 pub mod etrata_the_silencer;
+pub mod nullhide_ferox;
+pub mod house_guildmage;

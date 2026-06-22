@@ -71,3 +71,4 @@ pub mod quicksilver_wall;
 pub mod bog_glider;
 pub mod spiketail_drake;
 pub mod troublesome_spirit;
+pub mod chilling_apparition;

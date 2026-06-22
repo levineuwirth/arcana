@@ -38,3 +38,4 @@ pub mod stoic_farmer;
 pub mod miara_thorn_of_the_glade;
 pub mod sylvan_messenger;
 pub mod wolverine_riders;
+pub mod marwyn_the_nurturer;

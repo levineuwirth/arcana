@@ -73,3 +73,4 @@ pub mod scion_summoner;
 pub mod sifter_of_skulls;
 pub mod stone_haven_outfitter;
 pub mod birthing_hulk;
+pub mod eldrazi_displacer;

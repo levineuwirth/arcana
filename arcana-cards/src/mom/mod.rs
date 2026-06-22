@@ -189,3 +189,5 @@ pub mod preening_champion;
 pub mod bola_slinger;
 pub mod furnace_gremlin;
 pub mod bloodfeather_phoenix;
+pub mod orthion_hero_of_lavabrink;
+pub mod trailblazing_historian;

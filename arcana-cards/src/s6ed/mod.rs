@@ -44,3 +44,4 @@ pub mod pearl_dragon;
 pub mod mischievous_poltergeist;
 pub mod blighted_shaman;
 pub mod harmattan_efreet;
+pub mod spitting_drake;

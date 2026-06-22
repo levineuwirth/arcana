@@ -83,3 +83,4 @@ pub mod kodama_of_the_center_tree;
 pub mod patron_of_the_akki;
 pub mod soratami_mindsweeper;
 pub mod kami_of_the_honored_dead;
+pub mod kaijin_of_the_vanishing_touch;

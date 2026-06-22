@@ -50,3 +50,4 @@ pub mod gobland;
 pub mod jeskai_baller;
 pub mod sigardian_evangel;
 pub mod vuzzle_spaceship;
+pub mod anax_and_cymede_kynaios_and_tiro;

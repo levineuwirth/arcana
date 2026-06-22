@@ -265,3 +265,8 @@ pub mod herald_of_the_pantheon;
 pub mod rakka_mar;
 pub mod spitebellows;
 pub mod twisted_abomination;
+pub mod puresteel_paladin;
+pub mod heliod_god_of_the_sun;
+pub mod rapacious_one;
+pub mod judith_the_scourge_diva;
+pub mod mire_triton;

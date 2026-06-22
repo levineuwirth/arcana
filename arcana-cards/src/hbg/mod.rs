@@ -133,3 +133,8 @@ pub mod viconia_nightsinger_s_disciple;
 pub mod imoen_wise_trickster;
 pub mod ambergris_agent_of_law;
 pub mod wilson_subtle_bear;
+pub mod lukamina_crocodile_form;
+pub mod vhal_scholar_of_tactics;
+pub mod shadowheart_sharran_cleric;
+pub mod lae_zel_callous_warrior;
+pub mod skanos_white_dragon_vassal;

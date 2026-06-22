@@ -157,3 +157,7 @@ pub mod fleeting_effigy;
 pub mod bone_cairn_butcher;
 pub mod host_of_the_hereafter;
 pub mod veteran_ice_climber;
+pub mod lasyd_prowler;
+pub mod sunset_strikemaster;
+pub mod boulderborn_dragon;
+pub mod stadium_headliner;

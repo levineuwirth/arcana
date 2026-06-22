@@ -7,3 +7,4 @@ pub mod great_fang_chroniclers;
 pub mod fuel_tank_feaster;
 pub mod mitotic_ultimus;
 pub mod arius_flyby_trawler;
+pub mod tsagan_raider_warlord;

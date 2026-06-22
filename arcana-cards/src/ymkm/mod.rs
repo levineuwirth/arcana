@@ -7,3 +7,5 @@ pub mod furgul_quag_nurturer;
 pub mod snarlfang_vermin;
 pub mod perforator_crocodile;
 pub mod rampaging_ursaguana;
+pub mod concert_kaboomist;
+pub mod veko_death_s_doorkeeper;

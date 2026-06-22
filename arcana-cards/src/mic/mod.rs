@@ -41,3 +41,4 @@ pub mod undead_alchemist;
 pub mod angel_of_glory_s_rise;
 pub mod liliana_s_devotee;
 pub mod diregraf_colossus;
+pub mod kurbis_harvest_celebrant;

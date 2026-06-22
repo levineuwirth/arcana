@@ -146,3 +146,5 @@ pub mod quicksilver_fisher;
 pub mod flensing_raptor;
 pub mod blightbelly_rat;
 pub mod magmatic_sprinter;
+pub mod mondrak_glory_dominus;
+pub mod incisor_glider;

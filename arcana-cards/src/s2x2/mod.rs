@@ -130,3 +130,4 @@ pub mod murkfiend_liege;
 pub mod emiel_the_blessed;
 pub mod advanced_stitchwing;
 pub mod mindwrack_liege;
+pub mod bloodwater_entity;

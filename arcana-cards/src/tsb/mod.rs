@@ -35,3 +35,4 @@ pub mod valor;
 pub mod witch_hunter;
 pub mod swamp_mosquito;
 pub mod shadow_guildmage;
+pub mod defiant_vanguard;

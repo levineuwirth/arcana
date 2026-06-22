@@ -143,3 +143,4 @@ pub mod metropolis_sprite;
 pub mod yarok_s_fenlurker;
 pub mod loxodon_lifechanter;
 pub mod cavalier_of_dawn;
+pub mod immortal_phoenix;

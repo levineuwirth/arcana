@@ -90,3 +90,4 @@ pub mod dalek_drone;
 pub mod donna_noble;
 pub mod the_beast_deathless_prince;
 pub mod the_eighth_doctor;
+pub mod jenny_generated_anomaly;

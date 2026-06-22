@@ -19,3 +19,4 @@ pub mod jedit_s_dragoons;
 pub mod greater_stone_spirit;
 pub mod slith_strider;
 pub mod pygmy_pyrosaur;
+pub mod plated_geopede;

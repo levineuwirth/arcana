@@ -44,3 +44,4 @@ pub mod weatherseed_treefolk;
 pub mod defender_of_chaos;
 pub mod molten_hydra;
 pub mod eviscerator;
+pub mod radiant_s_dragoons;

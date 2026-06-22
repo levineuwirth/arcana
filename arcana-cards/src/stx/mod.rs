@@ -123,3 +123,5 @@ pub mod codie_vociferous_codex;
 pub mod combat_professor;
 pub mod tome_shredder;
 pub mod unwilling_ingredient;
+pub mod accomplished_alchemist;
+pub mod cogwork_archivist;

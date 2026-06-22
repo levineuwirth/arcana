@@ -77,3 +77,5 @@ pub mod drake_familiar;
 pub mod circu_dimir_lobotomist;
 pub mod netherborn_phalanx;
 pub mod ethereal_usher;
+pub mod vindictive_mob;
+pub mod sisters_of_stone_death;

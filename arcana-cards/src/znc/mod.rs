@@ -21,3 +21,4 @@ pub mod oona_queen_of_the_fae;
 pub mod marang_river_prowler;
 pub mod marsh_flitter;
 pub mod lazav_dimir_mastermind;
+pub mod invisible_stalker;

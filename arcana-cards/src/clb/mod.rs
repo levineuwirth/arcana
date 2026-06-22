@@ -260,3 +260,6 @@ pub mod undermountain_adventurer;
 pub mod vicious_battlerager;
 pub mod battle_angels_of_tyr;
 pub mod plague_spitter;
+pub mod raphael_fiendish_savior;
+pub mod sweet_gum_recluse;
+pub mod rug_of_smothering;

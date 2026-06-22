@@ -21,3 +21,4 @@ pub mod blood_ogre;
 pub mod skarrgan_firebird;
 pub mod oran_rief_hydra;
 pub mod archfiend_of_depravity;
+pub mod icefall_regent;

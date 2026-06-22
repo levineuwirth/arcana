@@ -168,3 +168,6 @@ pub mod star_charter;
 pub mod glarb_calamity_s_augur;
 pub mod thornvault_forager;
 pub mod kitsa_otterball_elite;
+pub mod mabel_heir_to_cragflame;
+pub mod zoraline_cosmos_caller;
+pub mod wick_the_whorled_mind;

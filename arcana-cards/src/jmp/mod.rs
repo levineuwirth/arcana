@@ -198,3 +198,5 @@ pub mod weaver_of_lightning;
 pub mod furnace_whelp;
 pub mod roving_keep;
 pub mod nocturnal_feeder;
+pub mod windreader_sphinx;
+pub mod voice_of_the_provinces;

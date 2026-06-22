@@ -178,3 +178,6 @@ pub mod iron_apprentice;
 pub mod gravelighter;
 pub mod chainflail_centipede;
 pub mod norika_yamazaki_the_poet;
+pub mod sunblade_samurai;
+pub mod a_futurist_operative;
+pub mod kairi_the_swirling_sky;

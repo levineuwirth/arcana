@@ -24,6 +24,7 @@
 # entry). The gate asserts suspects are a subset of this list + panics==0, so a
 # NEW silent no-op (a future ForEach/subtype_filter-class bug) fails CI. Keep
 # SHRINKING via probe fidelity; never grow without confirming a genuine FP.
+A-Futurist Operative
 A-Llanowar Greenwidow
 A-Raiyuu, Storm's Edge
 Admiral Beckett Brass
@@ -65,6 +66,7 @@ Blinkmoth Well
 Blisterspit Gremlin
 Blizzard Elemental
 Bloodcrazed Hoplite
+Bloodthirster
 Bloodtithe Harvester
 Boon of Boseiju
 Breaching Hippocamp
@@ -78,6 +80,7 @@ Calamitous Cave-In
 Callous Oppressor
 Captain of the Mists
 Captivating Vampire
+Cat-Owl
 Celestus Sanctifier
 Chain Stasis
 Chainbreaker
@@ -95,6 +98,7 @@ City of Traitors
 Civic Gardener
 Claire D'Loon, Joy Sculptor
 Clever Conjurer
+Clockwork Avian
 Clockwork Beast
 Clockwork Steed
 Clockwork Swarm
@@ -191,6 +195,7 @@ Honden of Cleansing Fire
 Honden of Infinite Rage
 Honden of Night's Reach
 Honden of Seeing Winds
+Horned Stoneseeker
 Horseshoe Crab
 Huatli, Dinosaur Knight
 Hydro-Man, Fluid Felon
@@ -294,6 +299,7 @@ Nimbleclaw Adept
 Noise Marine
 Odunos River Trawler
 Old Man of the Sea
+Olivia Voldaren
 Onakke Oathkeeper
 Open the Vaults
 Ovalchase Daredevil
@@ -334,6 +340,7 @@ Rona, Herald of Invasion
 Rootwater Matriarch
 Rubblebelt Braggart
 Rubinia Soulsinger
+Rug of Smothering
 Rune-Brand Juggler
 Sacred Ground
 Sage of Hours
@@ -356,6 +363,7 @@ Seeker of Skybreak
 Seer of the Bright Side
 Sengir Autocrat
 Serene Heart
+Shadowheart, Sharran Cleric
 Shivan Sand-Mage
 Sierra, Nuka's Biggest Fan
 Silkenfist Fighter
@@ -365,6 +373,7 @@ Skittering Skirge
 Skred
 Skyfire Kirin
 Sleep-Cursed Faerie
+Sliver Overlord
 Slumbering Cerberus
 Soliton
 Sorin, Imperious Bloodlord
@@ -416,6 +425,7 @@ Touchstone
 Trampled Lotus
 Traxos, Scourge of Kroog
 Triceraton Commander
+Triceraton Regenta
 Trickster Mage
 Tunnel Rats
 Two-Headed Giant

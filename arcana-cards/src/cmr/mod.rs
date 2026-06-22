@@ -155,3 +155,6 @@ pub mod imoti_celebrant_of_bounty;
 pub mod revenant;
 pub mod kinsbaile_courier;
 pub mod kangee_s_lieutenant;
+pub mod colfenor_the_last_yew;
+pub mod coastline_marauders;
+pub mod slith_ascendant;

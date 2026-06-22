@@ -91,3 +91,4 @@ pub mod imperious_oligarch;
 pub mod grasping_thrull;
 pub mod senate_courier;
 pub mod combine_guildmage;
+pub mod senate_guildmage;

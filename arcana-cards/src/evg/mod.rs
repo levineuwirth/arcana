@@ -16,3 +16,4 @@ pub mod clickslither;
 pub mod heedless_one;
 pub mod elvish_harbinger;
 pub mod skirk_fire_marshal;
+pub mod ambush_commander;

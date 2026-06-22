@@ -49,3 +49,4 @@ pub mod frostwind_invoker;
 pub mod hand_of_emrakul;
 pub mod champion_s_drake;
 pub mod bramblesnap;
+pub mod deathless_angel;

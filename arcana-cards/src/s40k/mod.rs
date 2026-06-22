@@ -107,3 +107,6 @@ pub mod inquisitor_greyfax;
 pub mod atalan_jackal;
 pub mod flayed_one;
 pub mod mutalith_vortex_beast;
+pub mod lord_of_change;
+pub mod bloodthirster;
+pub mod poxwalkers;

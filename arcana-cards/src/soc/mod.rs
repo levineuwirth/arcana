@@ -209,3 +209,6 @@ pub mod creakwood_liege;
 pub mod veyran_voice_of_duality;
 pub mod gilded_goose;
 pub mod atsushi_the_blazing_sky;
+pub mod relic_retriever;
+pub mod troyan_gutsy_explorer;
+pub mod primo_the_unbounded;

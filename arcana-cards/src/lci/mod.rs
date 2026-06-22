@@ -163,3 +163,5 @@ pub mod kutzil_malamet_exemplar;
 pub mod warden_of_the_inner_sky;
 pub mod nurturing_bristleback;
 pub mod river_herald_guide;
+pub mod deathcap_marionette;
+pub mod mineshaft_spider;

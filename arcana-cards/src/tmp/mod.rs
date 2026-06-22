@@ -61,3 +61,5 @@ pub mod minion_of_the_wastes;
 pub mod quickening_licid;
 pub mod chaotic_goo;
 pub mod thalakos_dreamsower;
+pub mod darkling_stalker;
+pub mod fylamarid;

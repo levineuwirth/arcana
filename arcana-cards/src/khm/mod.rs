@@ -173,3 +173,4 @@ pub mod shepherd_of_the_cosmos;
 pub mod a_thornmantle_striker;
 pub mod jarl_of_the_forsaken;
 pub mod doomskar_oracle;
+pub mod harald_king_of_skemfar;

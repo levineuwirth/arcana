@@ -77,3 +77,5 @@ pub mod name_sticker_goblin;
 pub mod carnival_carnivore;
 pub mod dissatisfied_customer;
 pub mod spelling_bee;
+pub mod truss_chief_engineer;
+pub mod jermane_pride_of_the_circus;

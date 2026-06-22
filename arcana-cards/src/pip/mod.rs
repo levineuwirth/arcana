@@ -82,3 +82,4 @@ pub mod nick_valentine_private_eye;
 pub mod alpha_deathclaw;
 pub mod sierra_nuka_s_biggest_fan;
 pub mod behemoth_of_vault_0;
+pub mod duchess_wayward_tavernkeep;

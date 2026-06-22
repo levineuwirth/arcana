@@ -107,3 +107,4 @@ pub mod fallen_cleric;
 pub mod disruptive_pitmage;
 pub mod daru_cavalier;
 pub mod dwarven_blastminer;
+pub mod everglove_courier;

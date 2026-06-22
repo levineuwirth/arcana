@@ -89,3 +89,5 @@ pub mod earthshaker_khenra;
 pub mod wildfire_eternal;
 pub mod sinuous_striker;
 pub mod wasp_of_the_bitter_end;
+pub mod aven_of_enduring_hope;
+pub mod ruin_rat;

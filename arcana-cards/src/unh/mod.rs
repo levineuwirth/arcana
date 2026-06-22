@@ -39,3 +39,4 @@ pub mod assquatch;
 pub mod meddling_kids;
 pub mod question_elemental;
 pub mod togglodyte;
+pub mod uktabi_kong;

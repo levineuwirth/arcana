@@ -104,3 +104,5 @@ pub mod giggling_skitterspike;
 pub mod kianne_corrupted_memory;
 pub mod kardur_doomscourge;
 pub mod grim_flayer;
+pub mod worldspine_wurm;
+pub mod curator_beastie;

@@ -32,3 +32,4 @@ pub mod inquisitor_captain;
 pub mod obsessive_collector;
 pub mod angel_of_eternal_dawn;
 pub mod town_razer_tyrant;
+pub mod bloodrage_alpha;

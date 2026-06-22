@@ -104,3 +104,4 @@ pub mod cloud_of_faeries;
 pub mod death_greeter_s_champion;
 pub mod mikaeus_the_lunarch;
 pub mod pridemalkin;
+pub mod keskit_the_flesh_sculptor;

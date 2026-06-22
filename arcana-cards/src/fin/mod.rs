@@ -168,3 +168,6 @@ pub mod weapons_vendor;
 pub mod squall_seed_mercenary;
 pub mod yuna_hope_of_spira;
 pub mod cloud_midgar_mercenary;
+pub mod magic_pot;
+pub mod cloud_of_darkness;
+pub mod ambrosia_whiteheart;

@@ -88,3 +88,6 @@ pub mod bloodthirsty_adversary;
 pub mod savvy_trader;
 pub mod electrostatic_field;
 pub mod tenured_inkcaster;
+pub mod ogre_slumlord;
+pub mod world_shaper;
+pub mod eris_roar_of_the_storm;

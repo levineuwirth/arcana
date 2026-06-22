@@ -105,3 +105,4 @@ pub mod bloodcrazed_paladin;
 pub mod queen_s_agent;
 pub mod duskborne_skymarcher;
 pub mod ruthless_knave;
+pub mod jade_guardian;

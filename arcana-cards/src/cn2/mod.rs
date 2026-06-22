@@ -55,3 +55,6 @@ pub mod vaporkin;
 pub mod hundred_handed_one;
 pub mod illusionary_informant;
 pub mod havengul_vampire;
+pub mod domesticated_hydra;
+pub mod guul_draz_specter;
+pub mod nessian_asp;

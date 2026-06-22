@@ -85,3 +85,4 @@ pub mod aerial_extortionist;
 pub mod nightveil_sprite;
 pub mod tesak_judith_s_hellhound;
 pub mod morska_undersea_sleuth;
+pub mod dogged_detective;

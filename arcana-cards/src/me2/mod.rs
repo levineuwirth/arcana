@@ -105,3 +105,5 @@ pub mod kjeldoran_dead;
 pub mod thunder_wall;
 pub mod orcish_veteran;
 pub mod lim_d_l_s_high_guard;
+pub mod viscerid_drone;
+pub mod balduvian_hydra;

@@ -52,3 +52,6 @@ pub mod ezio_brash_novice;
 pub mod lydia_frye;
 pub mod alexios_deimos_of_kosmos;
 pub mod eivor_wolf_kissed;
+pub mod aya_of_alexandria;
+pub mod jacob_frye;
+pub mod leonardo_da_vinci;

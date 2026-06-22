@@ -52,3 +52,4 @@ pub mod unyaro_bees;
 pub mod tivadar_of_thorn;
 pub mod mana_skimmer;
 pub mod viashino_bladescout;
+pub mod liege_of_the_pit;

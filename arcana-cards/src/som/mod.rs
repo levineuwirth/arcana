@@ -69,3 +69,4 @@ pub mod flameborn_hellion;
 pub mod tangle_angler;
 pub mod blight_mamba;
 pub mod darkslick_drake;
+pub mod molten_tail_masticore;

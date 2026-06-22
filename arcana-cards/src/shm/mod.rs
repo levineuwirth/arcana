@@ -106,3 +106,6 @@ pub mod lockjaw_snapper;
 pub mod thistledown_duo;
 pub mod safehold_duo;
 pub mod slinking_giant;
+pub mod hollowborn_barghest;
+pub mod emberstrike_duo;
+pub mod knollspine_dragon;

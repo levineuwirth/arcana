@@ -53,3 +53,5 @@ pub mod goblin_legionnaire;
 pub mod cetavolver;
 pub mod dwarven_patrol;
 pub mod coastal_drake;
+pub mod minotaur_illusionist;
+pub mod desolation_angel;

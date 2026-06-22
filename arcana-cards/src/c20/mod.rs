@@ -53,3 +53,4 @@ pub mod thraben_doomsayer;
 pub mod pako_arcane_retriever;
 pub mod shabraz_the_skyshark;
 pub mod capricopian;
+pub mod karametra_god_of_harvests;
