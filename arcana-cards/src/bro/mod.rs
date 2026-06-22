@@ -134,3 +134,7 @@ pub mod razorlash_transmogrant;
 pub mod battery_bearer;
 pub mod obstinate_baloth;
 pub mod airlift_chaplain;
+pub mod clay_revenant;
+pub mod sarinth_greatwurm;
+pub mod clay_champion;
+pub mod urza_powerstone_prodigy;

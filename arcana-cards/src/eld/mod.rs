@@ -123,3 +123,5 @@ pub mod harmonious_archon;
 pub mod belle_of_the_brawl;
 pub mod seven_dwarves;
 pub mod tome_raider;
+pub mod maraleaf_pixie;
+pub mod syr_carah_the_bold;

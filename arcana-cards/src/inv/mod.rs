@@ -112,3 +112,4 @@ pub mod sapphire_leech;
 pub mod shivan_emissary;
 pub mod armored_guardian;
 pub mod thornscape_master;
+pub mod pincer_spider;

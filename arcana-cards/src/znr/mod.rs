@@ -114,3 +114,6 @@ pub mod master_of_winds;
 pub mod skyclave_shadowcat;
 pub mod expedition_diviner;
 pub mod tazeem_raptor;
+pub mod shatterskull_charger;
+pub mod prowling_felidar;
+pub mod yasharn_implacable_earth;

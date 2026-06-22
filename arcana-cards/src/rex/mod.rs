@@ -12,3 +12,4 @@ pub mod ian_malcolm_chaotician;
 pub mod owen_grady_raptor_trainer;
 pub mod indoraptor_the_perfect_hybrid;
 pub mod spitting_dilophosaurus;
+pub mod indominus_rex_alpha;

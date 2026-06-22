@@ -129,3 +129,6 @@ pub mod bloodbraid_marauder;
 pub mod glorious_enforcer;
 pub mod breathless_knight;
 pub mod breya_s_apprentice;
+pub mod grief;
+pub mod rakdos_headliner;
+pub mod necromancer_s_familiar;

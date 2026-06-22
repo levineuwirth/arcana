@@ -164,3 +164,4 @@ pub mod snaremaster_sprite;
 pub mod discerning_financier;
 pub mod skewer_slinger;
 pub mod sleep_cursed_faerie;
+pub mod gallant_pie_wielder;

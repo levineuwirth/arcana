@@ -14,3 +14,4 @@ pub mod fire_belly_changeling;
 pub mod mordant_dragon;
 pub mod lionheart_maverick;
 pub mod white_knight;
+pub mod voracious_dragon;

@@ -122,3 +122,8 @@ pub mod roc_charger;
 pub mod herald_of_ilharg;
 pub mod sumala_rumblers;
 pub mod utvara_scalper;
+pub mod conclave_evangelist;
+pub mod daggerclaw_imp;
+pub mod stunt_double;
+pub mod turret_ogre;
+pub mod apothecary_white;

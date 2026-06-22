@@ -70,3 +70,7 @@ pub mod a_real_handful;
 pub mod blorbian_buddy;
 pub mod prize_wall;
 pub mod pietra_crafter_of_clowns;
+pub mod monitor_monitor;
+pub mod chicken_troupe;
+pub mod robo_pi_ata;
+pub mod name_sticker_goblin;

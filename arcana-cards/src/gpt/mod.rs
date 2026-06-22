@@ -51,3 +51,4 @@ pub mod exhumer_thrull;
 pub mod borborygmos;
 pub mod sky_swallower;
 pub mod stratozeppelid;
+pub mod ghor_clan_bloodscale;

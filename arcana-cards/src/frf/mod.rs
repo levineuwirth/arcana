@@ -49,3 +49,4 @@ pub mod sibsig_muckdraggers;
 pub mod yasova_dragonclaw;
 pub mod shaman_of_the_great_hunt;
 pub mod daghatar_the_adamant;
+pub mod jeskai_barricade;

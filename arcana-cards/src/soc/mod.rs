@@ -199,3 +199,5 @@ pub mod woe_strider;
 pub mod veinwitch_coven;
 pub mod goldvein_hydra;
 pub mod mirrorwing_dragon;
+pub mod thunderclap_drake;
+pub mod quintorius_loremaster;

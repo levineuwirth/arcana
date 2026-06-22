@@ -115,3 +115,5 @@ pub mod callous_bloodmage;
 pub mod a_tenured_inkcaster;
 pub mod gnarled_professor;
 pub mod pillardrop_rescuer;
+pub mod silverquill_silencer;
+pub mod thunderous_orator;

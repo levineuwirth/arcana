@@ -40,3 +40,4 @@ pub mod mirozel;
 pub mod spike_weaver;
 pub mod spike_cannibal;
 pub mod skyshroud_war_beast;
+pub mod wall_of_nets;

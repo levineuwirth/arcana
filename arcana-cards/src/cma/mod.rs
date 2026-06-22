@@ -44,3 +44,7 @@ pub mod deceiver_exarch;
 pub mod aerie_mystics;
 pub mod drove_of_elves;
 pub mod rubinia_soulsinger;
+pub mod basandra_battle_seraph;
+pub mod phyrexian_plaguelord;
+pub mod korozda_guildmage;
+pub mod thornwind_faeries;

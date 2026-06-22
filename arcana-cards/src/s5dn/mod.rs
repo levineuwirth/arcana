@@ -49,3 +49,5 @@ pub mod mephidross_vampire;
 pub mod cosmic_larva;
 pub mod solarion;
 pub mod spinal_parasite;
+pub mod ebon_drake;
+pub mod battered_golem;

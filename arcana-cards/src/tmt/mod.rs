@@ -105,3 +105,7 @@ pub mod raphael_ninja_destroyer;
 pub mod prehistoric_pet;
 pub mod krang_shredder;
 pub mod leonardo_big_brother;
+pub mod splinter_hamato_yoshi;
+pub mod null_group_biological_assets;
+pub mod sally_pride_lioness_leader;
+pub mod don_leo_problem_solvers;

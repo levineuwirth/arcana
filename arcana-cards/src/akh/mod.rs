@@ -86,3 +86,4 @@ pub mod sacred_cat;
 pub mod winged_shepherd;
 pub mod baleful_ammit;
 pub mod nef_crop_entangler;
+pub mod plague_belcher;

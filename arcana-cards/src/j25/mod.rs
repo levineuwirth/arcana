@@ -34,3 +34,6 @@ pub mod eidolon_of_astral_winds;
 pub mod rev_tithe_extractor;
 pub mod fumulus_the_infestation;
 pub mod saurian_symbiote;
+pub mod anep_vizier_of_hazoret;
+pub mod sutina_speaker_of_the_tajuru;
+pub mod aphelia_viper_whisperer;

@@ -87,3 +87,4 @@ pub mod resolute_watchdog;
 pub mod hackrobat;
 pub mod rix_maadi_reveler;
 pub mod thirsting_shade;
+pub mod imperious_oligarch;

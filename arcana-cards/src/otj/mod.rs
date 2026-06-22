@@ -136,3 +136,4 @@ pub mod cunning_coyote;
 pub mod blacksnag_buzzard;
 pub mod irascible_wolverine;
 pub mod drover_grizzly;
+pub mod geralf_the_fleshwright;

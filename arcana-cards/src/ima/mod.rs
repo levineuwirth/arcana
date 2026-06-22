@@ -65,3 +65,4 @@ pub mod primeval_titan;
 pub mod mnemonic_wall;
 pub mod undercity_troll;
 pub mod blizzard_specter;
+pub mod splatter_thug;

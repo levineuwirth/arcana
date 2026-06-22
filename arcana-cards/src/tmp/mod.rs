@@ -56,3 +56,5 @@ pub mod pallimud;
 pub mod flailing_drake;
 pub mod ranger_en_vec;
 pub mod eladamri_lord_of_leaves;
+pub mod pit_imp;
+pub mod minion_of_the_wastes;

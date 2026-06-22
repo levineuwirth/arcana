@@ -48,3 +48,5 @@ pub mod hunting_drake;
 pub mod doomsday_specter;
 pub mod arctic_merfolk;
 pub mod razing_snidd;
+pub mod volcano_imp;
+pub mod thunderscape_familiar;

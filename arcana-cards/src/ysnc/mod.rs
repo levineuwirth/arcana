@@ -12,3 +12,4 @@ pub mod nightclub_bouncer;
 pub mod menagerie_curator;
 pub mod herald_of_vengeance;
 pub mod skyline_savior;
+pub mod spara_s_bodyguard;

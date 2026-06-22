@@ -122,3 +122,7 @@ pub mod karlach_tiefling_zealot;
 pub mod lukamina_moon_druid;
 pub mod vhal_eager_scholar;
 pub mod alora_rogue_companion;
+pub mod genasi_rabble_rouser;
+pub mod gale_conduit_of_the_arcane;
+pub mod sarevok_mighty_usurper;
+pub mod lulu_vengeful_hollyphant;

@@ -119,3 +119,4 @@ pub mod aven_initiate;
 pub mod kederekt_leviathan;
 pub mod militia_bugler;
 pub mod mistfire_adept;
+pub mod river_hoopoe;

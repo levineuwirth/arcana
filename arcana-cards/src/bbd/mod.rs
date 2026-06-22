@@ -103,3 +103,5 @@ pub mod lore_weaver;
 pub mod sylvia_brightspear;
 pub mod brightling;
 pub mod soulblade_corrupter;
+pub mod true_name_nemesis;
+pub mod pir_imaginative_rascal;

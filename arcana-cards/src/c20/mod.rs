@@ -46,3 +46,6 @@ pub mod goblin_dark_dwellers;
 pub mod surly_badgersaur;
 pub mod eon_frolicker;
 pub mod wort_the_raidmother;
+pub mod mercurial_chemister;
+pub mod cavalry_pegasus;
+pub mod nikara_lair_scavenger;

@@ -156,3 +156,5 @@ pub mod splinterfright;
 pub mod sigarda_host_of_herons;
 pub mod zealous_conscripts;
 pub mod tower_geist;
+pub mod fleshtaker;
+pub mod avacyn_angel_of_hope;

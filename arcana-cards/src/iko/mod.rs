@@ -104,3 +104,4 @@ pub mod blisterspit_gremlin;
 pub mod lurking_deadeye;
 pub mod stormwild_capridor;
 pub mod duskfang_mentor;
+pub mod luminous_broodmoth;

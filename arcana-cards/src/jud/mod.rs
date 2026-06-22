@@ -42,3 +42,4 @@ pub mod balthor_the_defiled;
 pub mod battlewise_aven;
 pub mod soulgorger_orgg;
 pub mod spellgorger_barbarian;
+pub mod aven_fogbringer;

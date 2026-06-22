@@ -106,3 +106,7 @@ pub mod tainted_specter;
 pub mod emberwilde_caliph;
 pub mod mindbender_spores;
 pub mod sawback_manticore;
+pub mod catacomb_dragon;
+pub mod harbor_guardian;
+pub mod vaporous_djinn;
+pub mod burning_shield_askari;

@@ -168,3 +168,6 @@ pub mod risona_asari_commander;
 pub mod coiling_stalker;
 pub mod a_nashi_moon_sage_s_scion;
 pub mod reinforced_ronin;
+pub mod unforgiving_one;
+pub mod biting_palm_ninja;
+pub mod replication_specialist;

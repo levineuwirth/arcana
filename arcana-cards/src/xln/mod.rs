@@ -98,3 +98,6 @@ pub mod goring_ceratops;
 pub mod tilonalli_s_skinshifter;
 pub mod storm_fleet_aerialist;
 pub mod rigging_runner;
+pub mod encampment_keeper;
+pub mod adanto_vanguard;
+pub mod deathless_ancient;

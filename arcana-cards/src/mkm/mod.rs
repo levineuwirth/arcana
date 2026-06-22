@@ -135,3 +135,6 @@ pub mod rakish_scoundrel;
 pub mod steamcore_scholar;
 pub mod snarling_gorehound;
 pub mod unyielding_gatekeeper;
+pub mod jaded_analyst;
+pub mod agency_outfitter;
+pub mod etrata_deadly_fugitive;

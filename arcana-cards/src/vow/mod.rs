@@ -139,3 +139,6 @@ pub mod falkenrath_forebear;
 pub mod a_stitched_assistant;
 pub mod repository_skaab;
 pub mod cemetery_desecrator;
+pub mod militia_rallier;
+pub mod reclusive_taxidermist;
+pub mod kessig_wolfrider;

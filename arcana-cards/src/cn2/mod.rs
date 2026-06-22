@@ -51,3 +51,5 @@ pub mod noble_banneret;
 pub mod custodi_soulcaller;
 pub mod smuggler_captain;
 pub mod ravenous_leucrocota;
+pub mod vaporkin;
+pub mod hundred_handed_one;

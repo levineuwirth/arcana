@@ -240,3 +240,7 @@ pub mod intellect_devourer;
 pub mod galepowder_mage;
 pub mod hunted_horror;
 pub mod gut_true_soul_zealot;
+pub mod earthquake_dragon;
+pub mod izzet_chemister;
+pub mod astral_dragon;
+pub mod thrakkus_the_butcher;

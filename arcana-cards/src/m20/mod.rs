@@ -140,3 +140,4 @@ pub mod overgrowth_elemental;
 pub mod voracious_hydra;
 pub mod thicket_crasher;
 pub mod metropolis_sprite;
+pub mod yarok_s_fenlurker;

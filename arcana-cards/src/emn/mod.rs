@@ -68,3 +68,4 @@ pub mod tattered_haunter;
 pub mod mercurial_geists;
 pub mod impetuous_devils;
 pub mod vexing_scuttler;
+pub mod markov_crusader;

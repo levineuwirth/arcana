@@ -63,3 +63,4 @@ pub mod chartooth_cougar;
 pub mod shoreline_ranger;
 pub mod vendilion_clique;
 pub mod ghost_ship;
+pub mod squadron_hawk;

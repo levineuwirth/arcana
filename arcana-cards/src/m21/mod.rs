@@ -130,3 +130,5 @@ pub mod valorous_steed;
 pub mod warded_battlements;
 pub mod llanowar_visionary;
 pub mod conspicuous_snoop;
+pub mod predatory_wurm;
+pub mod chandra_s_incinerator;

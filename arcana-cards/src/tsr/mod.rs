@@ -115,3 +115,5 @@ pub mod riftwing_cloudskate;
 pub mod stronghold_rats;
 pub mod knight_of_sursi;
 pub mod tombstalker;
+pub mod homing_sliver;
+pub mod phantom_wurm;

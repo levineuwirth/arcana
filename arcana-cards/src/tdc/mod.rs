@@ -124,3 +124,8 @@ pub mod weathered_sentinels;
 pub mod neriv_crackling_vanguard;
 pub mod jaddi_offshoot;
 pub mod necropolis_fiend;
+pub mod velomachus_lorehold;
+pub mod nesting_dragon;
+pub mod rampart_architect;
+pub mod shiko_and_narset_unified;
+pub mod dragonlord_atarka;

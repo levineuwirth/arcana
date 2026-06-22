@@ -88,3 +88,4 @@ pub mod runaway_carriage;
 pub mod flameblade_angel;
 pub mod nephalia_moondrakes;
 pub mod markov_dreadknight;
+pub mod niblis_of_dusk;

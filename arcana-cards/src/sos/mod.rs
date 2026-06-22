@@ -104,3 +104,5 @@ pub mod shopkeeper_s_bane;
 pub mod silverquill_the_disputant;
 pub mod snooping_page;
 pub mod pterafractyl;
+pub mod textbook_tabulator;
+pub mod cuboid_colony;

@@ -59,3 +59,5 @@ pub mod paladin_of_atonement;
 pub mod skymarcher_aspirant;
 pub mod mausoleum_harpy;
 pub mod sadistic_skymarcher;
+pub mod storm_fleet_sprinter;
+pub mod dusk_charger;

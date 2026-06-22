@@ -64,3 +64,4 @@ pub mod zerapa_minotaur;
 pub mod glittering_lynx;
 pub mod bog_elemental;
 pub mod branded_brawlers;
+pub mod veteran_brawlers;

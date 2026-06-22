@@ -66,3 +66,4 @@ pub mod auntie_ool_cursewretch;
 pub mod muldrotha_the_gravetide;
 pub mod grim_poppet;
 pub mod necroskitter;
+pub mod village_pillagers;

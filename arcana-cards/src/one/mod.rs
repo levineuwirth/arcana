@@ -138,3 +138,5 @@ pub mod argentum_masticore;
 pub mod rustvine_cultivator;
 pub mod ichorspit_basilisk;
 pub mod predation_steward;
+pub mod geth_thane_of_contracts;
+pub mod necrosquito;

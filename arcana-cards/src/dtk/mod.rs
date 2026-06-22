@@ -88,3 +88,5 @@ pub mod ojutai_exemplars;
 pub mod aerie_bowmasters;
 pub mod qarsi_sadist;
 pub mod servant_of_the_scale;
+pub mod gurmag_drowner;
+pub mod marang_river_skeleton;

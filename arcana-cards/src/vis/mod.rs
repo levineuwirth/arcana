@@ -43,3 +43,4 @@ pub mod knight_of_valor;
 pub mod iron_heart_chimera;
 pub mod rainbow_efreet;
 pub mod tin_wing_chimera;
+pub mod brass_talon_chimera;

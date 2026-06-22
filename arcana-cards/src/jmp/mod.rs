@@ -189,3 +189,5 @@ pub mod gravewaker;
 pub mod windstorm_drake;
 pub mod chained_brute;
 pub mod tinybones_trinket_thief;
+pub mod blessed_spirits;
+pub mod soul_of_the_harvest;

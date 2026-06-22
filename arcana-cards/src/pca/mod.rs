@@ -36,3 +36,4 @@ pub mod augury_owl;
 pub mod guard_gomazoa;
 pub mod whirlpool_warrior;
 pub mod krond_the_dawn_clad;
+pub mod mistblade_shinobi;

@@ -27,3 +27,4 @@ pub mod mindwarper;
 pub mod tempting_licid;
 pub mod calming_licid;
 pub mod wall_of_tears;
+pub mod spike_worker;

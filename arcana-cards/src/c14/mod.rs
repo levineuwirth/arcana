@@ -16,3 +16,4 @@ pub mod flesh_carver;
 pub mod riptide_survivor;
 pub mod raving_dead;
 pub mod bloodgift_demon;
+pub mod reaper_from_the_abyss;

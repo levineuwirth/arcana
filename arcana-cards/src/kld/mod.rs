@@ -104,3 +104,5 @@ pub mod aetherstorm_roc;
 pub mod scrapheap_scrounger;
 pub mod longtusk_cub;
 pub mod maulfist_doorbuster;
+pub mod contraband_kingpin;
+pub mod maulfist_squad;

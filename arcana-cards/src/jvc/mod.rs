@@ -9,3 +9,4 @@ pub mod wall_of_deceit;
 pub mod oxidda_golem;
 pub mod pyre_charger;
 pub mod quicksilver_dragon;
+pub mod inner_flame_acolyte;

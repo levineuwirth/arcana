@@ -72,3 +72,5 @@ pub mod bounding_krasis;
 pub mod sentinel_of_the_eternal_watch;
 pub mod nivix_barrier;
 pub mod citadel_castellan;
+pub mod hixus_prison_warden;
+pub mod gaea_s_revenge;

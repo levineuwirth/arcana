@@ -85,3 +85,5 @@ pub mod benthicore;
 pub mod wort_boggart_auntie;
 pub mod dawnfluke;
 pub mod boggart_loggers;
+pub mod dauntless_dourbark;
+pub mod bog_hoodlums;

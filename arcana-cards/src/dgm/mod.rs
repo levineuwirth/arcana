@@ -51,3 +51,5 @@ pub mod goblin_test_pilot;
 pub mod renegade_krasis;
 pub mod mirko_vosk_mind_drinker;
 pub mod riot_piker;
+pub mod rot_farm_skeleton;
+pub mod maze_rusher;

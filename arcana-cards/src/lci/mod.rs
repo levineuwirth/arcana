@@ -149,3 +149,5 @@ pub mod abuelo_ancestral_echo;
 pub mod preacher_of_the_schism;
 pub mod the_mycotyrant;
 pub mod council_of_echoes;
+pub mod malcolm_alluring_scoundrel;
+pub mod soaring_sandwing;

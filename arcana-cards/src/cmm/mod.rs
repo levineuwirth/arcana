@@ -255,3 +255,6 @@ pub mod jazal_goldmane;
 pub mod experiment_kraj;
 pub mod filigree_attendant;
 pub mod anax_hardened_in_the_forge;
+pub mod pollenbright_druid;
+pub mod jukai_naturalist;
+pub mod leori_sparktouched_hunter;

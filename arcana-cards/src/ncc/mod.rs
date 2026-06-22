@@ -59,3 +59,5 @@ pub mod inkfathom_witch;
 pub mod rekindling_phoenix;
 pub mod archon_of_coronation;
 pub mod vazi_keen_negotiator;
+pub mod boss_s_chauffeur;
+pub mod parnesse_the_subtle_brush;

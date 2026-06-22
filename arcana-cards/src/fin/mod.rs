@@ -153,3 +153,5 @@ pub mod ancient_adamantoise;
 pub mod choco_seeker_of_paradise;
 pub mod rinoa_heartilly;
 pub mod edgar_king_of_figaro;
+pub mod zodiark_umbral_god;
+pub mod gladiolus_amicitia;

@@ -62,3 +62,4 @@ pub mod kimahri_valiant_guardian;
 pub mod interceptor_shadow_s_hound;
 pub mod the_warring_triad;
 pub mod the_destined_warrior;
+pub mod heidegger_shinra_executive;

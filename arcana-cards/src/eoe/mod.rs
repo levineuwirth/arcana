@@ -110,3 +110,5 @@ pub mod skystinger;
 pub mod mm_menon_uthros_exile;
 pub mod cloudsculpt_technician;
 pub mod kavaron_skywarden;
+pub mod biotech_specialist;
+pub mod dual_sun_adepts;

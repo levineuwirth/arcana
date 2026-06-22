@@ -34,3 +34,4 @@ pub mod corsairs_of_umbar;
 pub mod cavern_hoard_dragon;
 pub mod legolas_greenleaf;
 pub mod bilbo_birthday_celebrant;
+pub mod frodo_adventurous_hobbit;

@@ -13,3 +13,4 @@ pub mod wire_surgeons;
 pub mod glint_raker;
 pub mod scavenged_brawler;
 pub mod sardian_avenger;
+pub mod sanwell_avenger_ace;

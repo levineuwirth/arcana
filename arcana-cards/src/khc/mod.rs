@@ -35,3 +35,4 @@ pub mod masked_admirers;
 pub mod brago_king_eternal;
 pub mod cultivator_of_blades;
 pub mod stoic_farmer;
+pub mod miara_thorn_of_the_glade;

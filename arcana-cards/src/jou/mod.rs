@@ -53,3 +53,4 @@ pub mod pheres_band_warchief;
 pub mod dawnbringer_charioteers;
 pub mod sage_of_hours;
 pub mod keranos_god_of_storms;
+pub mod gnarled_scarhide;

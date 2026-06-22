@@ -62,3 +62,4 @@ pub mod shrieking_mogg;
 pub mod phyrexian_prowler;
 pub mod battlefield_percher;
 pub mod woodripper;
+pub mod skyshroud_behemoth;

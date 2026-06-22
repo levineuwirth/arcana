@@ -112,3 +112,4 @@ pub mod persistent_petitioners;
 pub mod burning_tree_vandal;
 pub mod golgari_thug;
 pub mod borborygmos_enraged;
+pub mod truefire_captain;

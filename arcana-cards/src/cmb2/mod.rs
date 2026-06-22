@@ -43,3 +43,4 @@ pub mod control_win_condition;
 pub mod priority_avenger;
 pub mod swarm_of_locus;
 pub mod queue_of_beetles;
+pub mod recycla_bird;

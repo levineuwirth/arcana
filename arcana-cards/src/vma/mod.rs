@@ -74,3 +74,4 @@ pub mod krovikan_sorcerer;
 pub mod psychatog;
 pub mod volrath_s_shapeshifter;
 pub mod masticore;
+pub mod putrid_imp;

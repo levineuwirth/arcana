@@ -90,3 +90,4 @@ pub mod fen_hauler;
 pub mod winding_constrictor;
 pub mod shipwreck_moray;
 pub mod maulfist_revolutionary;
+pub mod bastion_inventor;

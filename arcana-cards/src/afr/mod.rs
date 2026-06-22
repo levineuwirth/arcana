@@ -157,3 +157,7 @@ pub mod inferno_of_the_star_mounts;
 pub mod asmodeus_the_archfiend;
 pub mod aberrant_mind_sorcerer;
 pub mod intrepid_outlander;
+pub mod a_ochre_jelly;
+pub mod herald_of_hadar;
+pub mod flameskull;
+pub mod orcus_prince_of_undeath;

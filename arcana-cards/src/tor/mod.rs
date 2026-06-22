@@ -47,3 +47,7 @@ pub mod zombie_trailblazer;
 pub mod hypnox;
 pub mod pardic_collaborator;
 pub mod pitchstone_wall;
+pub mod possessed_nomad;
+pub mod teroh_s_vanguard;
+pub mod nantuko_blightcutter;
+pub mod cephalid_illusionist;

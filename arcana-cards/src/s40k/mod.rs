@@ -94,3 +94,8 @@ pub mod pink_horror;
 pub mod aspiring_champion;
 pub mod redemptor_dreadnought;
 pub mod haruspex;
+pub mod royal_warden;
+pub mod heralds_of_tzeentch;
+pub mod ghyrson_starn_kelermorph;
+pub mod genestealer_locus;
+pub mod chronomancer;

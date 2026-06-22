@@ -103,3 +103,6 @@ pub mod doc_ock_sinister_scientist;
 pub mod spiders_man_heroic_horde;
 pub mod city_pigeon;
 pub mod vulture_scheming_scavenger;
+pub mod sp_dr_piloted_by_peni;
+pub mod chameleon_master_of_disguise;
+pub mod spider_man_brooklyn_visionary;

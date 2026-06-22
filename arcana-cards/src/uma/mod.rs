@@ -60,3 +60,5 @@ pub mod lotus_eye_mystics;
 pub mod sublime_archangel;
 pub mod mad_prophet;
 pub mod golgari_brownscale;
+pub mod ancestor_s_chosen;
+pub mod skywing_aven;

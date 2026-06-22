@@ -76,3 +76,4 @@ pub mod shield_sphere;
 pub mod order_of_the_ebon_hand;
 pub mod preacher;
 pub mod goblin_mutant;
+pub mod polar_kraken;

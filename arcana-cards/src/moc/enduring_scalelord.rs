@@ -41,8 +41,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
             id: 1,
+            // "ANOTHER creature you control" — AnotherMatching excludes the
+            // source. Mandatory: the effect adds a +1/+1 counter to this
+            // creature, so AnyMatching (incl. self) would re-fire on its own
+            // counter forever (random-game harness battle seed 1000523; cf.
+            // Wildwood Scourge / engine #60).
             trigger_condition: TriggerCondition::CounterAdded {
-                on: TriggerSelf::AnyMatching(
+                on: TriggerSelf::AnotherMatching(
                     arcana_core::targets::ObjectFilter::creature()
                         .controlled_by(ControllerConstraint::You),
                 ),

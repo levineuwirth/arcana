@@ -98,3 +98,5 @@ pub mod spore_flower;
 pub mod joven_s_ferrets;
 pub mod screeching_drake;
 pub mod musician;
+pub mod deep_spawn;
+pub mod knight_of_stromgald;

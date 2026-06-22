@@ -99,3 +99,5 @@ pub mod feather_the_redeemed;
 pub mod loxodon_sergeant;
 pub mod gideon_s_company;
 pub mod storrev_devkarin_lich;
+pub mod god_eternal_rhonas;
+pub mod guildpact_informant;

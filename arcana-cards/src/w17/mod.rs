@@ -14,3 +14,4 @@ pub mod tricks_of_the_trade;
 pub mod untamed_hunger;
 pub mod sphinx_of_magosi;
 pub mod nightmare;
+pub mod garruk_s_horde;

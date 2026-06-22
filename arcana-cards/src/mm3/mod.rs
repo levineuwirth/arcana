@@ -44,3 +44,4 @@ pub mod hanweir_lancer;
 pub mod wingcrafter;
 pub mod scourge_devil;
 pub mod attended_knight;
+pub mod grixis_slavedriver;

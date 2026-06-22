@@ -57,3 +57,5 @@ pub mod orcish_healer;
 pub mod chaos_lord;
 pub mod wall_of_lava;
 pub mod krovikan_elementalist;
+pub mod wall_of_shields;
+pub mod wall_of_pine_needles;

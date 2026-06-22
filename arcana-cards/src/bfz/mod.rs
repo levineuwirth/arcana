@@ -87,3 +87,5 @@ pub mod oracle_of_dust;
 pub mod silent_skimmer;
 pub mod angelic_captain;
 pub mod murk_strider;
+pub mod grove_rumbler;
+pub mod makindi_sliderunner;

@@ -146,3 +146,8 @@ pub mod jetmir_nexus_of_revels;
 pub mod celestial_regulator;
 pub mod mayhem_patrol;
 pub mod echo_inspector;
+pub mod obscura_initiate;
+pub mod swooping_protector;
+pub mod a_syndicate_infiltrator;
+pub mod shattered_seraph;
+pub mod maestros_diabolist;

@@ -13,6 +13,7 @@ A-Cauldron Familiar
 A-Llanowar Greenwidow
 A-Raiyuu, Storm's Edge
 Absorb Energy
+Abzan Devotee
 Access Denied
 Admiral Beckett Brass
 Agent of Treachery
@@ -44,6 +45,7 @@ Baloth Packhunter
 Bane's Contingency
 Barbed Servitor
 Basilisk Gate
+Battered Golem
 Beguiler of Wills
 Belligerent Hatchling
 Bin Chicken
@@ -88,6 +90,7 @@ City of Traitors
 Civic Gardener
 Claire D'Loon, Joy Sculptor
 Clattering Augur
+Clay Revenant
 Cleaving Reaper
 Clever Conjurer
 Clockwork Beast
@@ -99,6 +102,7 @@ Coffin Puppets
 Colossus of Sardia
 Commodore Guff
 Companion of the Trials
+Component Collector
 Concerted Defense
 Conifer Wurm
 Convolute
@@ -109,6 +113,7 @@ Counterbore
 Counterlash
 Counterpoint
 Counterspell
+Creepy Doll
 Cult Conscript
 Cybermat
 Cytoplast Manipulator
@@ -119,6 +124,7 @@ Daru Stinger
 Dauntless Aven
 Dazzling Denial
 Death Watch
+Deathless Ancient
 Deathless Behemoth
 Deathless Pilot
 Deceiver Exarch
@@ -131,6 +137,7 @@ Desertion
 Despoiler of Souls
 Devious Cover-Up
 Devoted Druid
+Diamond Faerie
 Dispersal Shield
 Dissipate
 Divert Disaster
@@ -147,6 +154,7 @@ Drownyard Temple
 Dumb Ass
 Durable Coilbug
 Dutiful Griffin
+Earthquake Dragon
 Ebon Praetor
 Elder Druid
 Eldest Dragon Highlander
@@ -164,6 +172,7 @@ Ethersworn Adjudicator
 Evaporate
 Evasive Action
 Faerie Trickery
+Fain, the Broker
 Falkenrath Forebear
 Feasting Troll King
 Fell Beast of Mordor
@@ -276,6 +285,7 @@ Lay Bare
 Leonin Battlemage
 Lifeline
 Lightning-Rig Crew
+Lily Bowen, Raging Grandma
 Lingering Phantom
 Liquify
 Lita, Mechanical Engineer
@@ -283,6 +293,7 @@ Llanowar Greenwidow
 Lobber Crew
 Lofty Denial
 Loyal Retainers
+Luminous Broodmoth
 Lunar Force
 Lurking Roper
 Maga, Traitor to Mortals
@@ -313,6 +324,7 @@ Merrow Commerce
 Metalwork Colossus
 Midnight Guard
 Mijae Djinn
+Militia Rallier
 Minamo's Meddling
 Minamo, School at Water's Edge
 Mindstatic
@@ -395,6 +407,7 @@ Revolutionary Rebuff
 Rime Tender
 Rishadan Dockhand
 Rishadan Port
+Robobrain War Mind
 Roc Hatchling
 Rogues' Gallery
 Roil Elemental
@@ -522,6 +535,7 @@ Voltaic Construct
 Voracious Hatchling
 Vulshok Battlemaster
 Walking Archive
+Warren Instigator
 Warren Pilferers
 Watchful Blisterzoa
 Wild Wurm

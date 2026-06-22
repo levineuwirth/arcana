@@ -99,3 +99,5 @@ pub mod tattermunge_duo;
 pub mod prismwake_merrow;
 pub mod leech_bonder;
 pub mod inescapable_brute;
+pub mod briarberry_cohort;
+pub mod morselhoarder;

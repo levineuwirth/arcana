@@ -156,3 +156,5 @@ pub mod persistent_marshstalker;
 pub mod steampath_charger;
 pub mod daggerfang_duo;
 pub mod rottenmouth_viper;
+pub mod dour_port_mage;
+pub mod dreamdew_entrancer;

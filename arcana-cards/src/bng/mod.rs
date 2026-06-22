@@ -67,3 +67,6 @@ pub mod archetype_of_finality;
 pub mod black_oak_of_odunos;
 pub mod archetype_of_aggression;
 pub mod sphinx_s_disciple;
+pub mod akroan_phalanx;
+pub mod chorus_of_the_tides;
+pub mod herald_of_torment;

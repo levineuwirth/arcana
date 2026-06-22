@@ -125,3 +125,7 @@ pub mod a_rulik_mons_warren_chief;
 pub mod benalish_faithbonder;
 pub mod shivan_devastator;
 pub mod defiler_of_vigor;
+pub mod a_briar_hydra;
+pub mod a_meria_s_outrider;
+pub mod hexbane_tortoise;
+pub mod sol_kanar_the_tainted;

@@ -81,3 +81,4 @@ pub mod jeskai_windscout;
 pub mod kheru_bloodsucker;
 pub mod war_name_aspirant;
 pub mod butcher_of_the_horde;
+pub mod sage_of_the_inward_eye;

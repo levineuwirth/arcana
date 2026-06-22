@@ -148,3 +148,5 @@ pub mod glorfindel_dauntless_rescuer;
 pub mod mirkwood_spider;
 pub mod sauron_the_lidless_eye;
 pub mod eagles_of_the_north;
+pub mod gandalf_white_rider;
+pub mod rohirrim_lancer;

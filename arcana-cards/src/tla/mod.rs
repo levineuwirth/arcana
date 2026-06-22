@@ -127,3 +127,7 @@ pub mod boiling_rock_rioter;
 pub mod uncle_iroh;
 pub mod saber_tooth_moose_lion;
 pub mod the_walls_of_ba_sing_se;
+pub mod callous_inspector;
+pub mod professor_zei_anthropologist;
+pub mod momo_playful_pet;
+pub mod flexible_waterbender;

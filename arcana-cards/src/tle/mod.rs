@@ -79,3 +79,5 @@ pub mod sokka_and_suki;
 pub mod the_blue_spirit;
 pub mod fire_nation_archers;
 pub mod zuko_seeking_honor;
+pub mod appa_aang_s_companion;
+pub mod fire_lord_ozai;

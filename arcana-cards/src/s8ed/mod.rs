@@ -67,3 +67,4 @@ pub mod spitting_spider;
 pub mod sunweb;
 pub mod vampiric_spirit;
 pub mod okk;
+pub mod lava_hounds;

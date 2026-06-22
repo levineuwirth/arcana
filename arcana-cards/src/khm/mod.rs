@@ -163,3 +163,5 @@ pub mod firja_judge_of_valor;
 pub mod hailstorm_valkyrie;
 pub mod skemfar_shadowsage;
 pub mod renegade_reaper;
+pub mod doomskar_titan;
+pub mod gods_hall_guardian;

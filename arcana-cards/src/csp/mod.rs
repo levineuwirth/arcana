@@ -58,3 +58,6 @@ pub mod void_maw;
 pub mod white_shield_crusader;
 pub mod stalking_yeti;
 pub mod squall_drifter;
+pub mod diamond_faerie;
+pub mod phobian_phantasm;
+pub mod rimefeather_owl;

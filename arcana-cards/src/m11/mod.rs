@@ -25,3 +25,4 @@ pub mod ajani_goldmane;
 pub mod arc_runner;
 pub mod cloud_crusader;
 pub mod magma_phoenix;
+pub mod vengeful_archon;

@@ -128,3 +128,4 @@ pub mod fear_of_being_hunted;
 pub mod fear_of_impostors;
 pub mod overlord_of_the_hauntwoods;
 pub mod shepherding_spirits;
+pub mod abhorrent_oculus;

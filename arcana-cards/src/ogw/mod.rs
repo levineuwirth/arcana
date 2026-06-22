@@ -69,3 +69,4 @@ pub mod tyrant_of_valakut;
 pub mod inverter_of_truth;
 pub mod havoc_sower;
 pub mod vile_redeemer;
+pub mod scion_summoner;
