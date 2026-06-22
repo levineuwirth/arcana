@@ -63,3 +63,5 @@ pub mod chaotic_goo;
 pub mod thalakos_dreamsower;
 pub mod darkling_stalker;
 pub mod fylamarid;
+pub mod firefly;
+pub mod canyon_drake;

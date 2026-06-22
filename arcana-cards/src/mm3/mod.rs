@@ -49,3 +49,4 @@ pub mod wall_of_frost;
 pub mod kor_skyfisher;
 pub mod hungry_spriggan;
 pub mod obzedat_ghost_council;
+pub mod vithian_stinger;

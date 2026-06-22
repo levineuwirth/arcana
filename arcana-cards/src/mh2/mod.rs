@@ -143,3 +143,6 @@ pub mod rift_sower;
 pub mod skirge_familiar;
 pub mod hell_mongrel;
 pub mod general_ferrous_rokiric;
+pub mod marble_gargoyle;
+pub mod arcbound_shikari;
+pub mod sea_drake;

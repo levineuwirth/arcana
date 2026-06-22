@@ -45,3 +45,5 @@ pub mod knight_of_glory;
 pub mod war_falcon;
 pub mod crimson_muckwader;
 pub mod liliana_s_shade;
+pub mod harbor_bandit;
+pub mod slumbering_dragon;

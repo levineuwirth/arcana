@@ -59,3 +59,4 @@ pub mod grimclaw_bats;
 pub mod mephitic_ooze;
 pub mod dross_golem;
 pub mod arcbound_reclaimer;
+pub mod infested_roothold;

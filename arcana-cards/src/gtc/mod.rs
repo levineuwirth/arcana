@@ -77,3 +77,4 @@ pub mod knight_of_obligation;
 pub mod luminate_primordial;
 pub mod skarrg_guildmage;
 pub mod spark_trooper;
+pub mod fortress_cyclops;

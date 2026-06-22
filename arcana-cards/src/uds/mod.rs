@@ -44,3 +44,5 @@ pub mod aura_thief;
 pub mod goblin_marshal;
 pub mod wall_of_glare;
 pub mod keldon_vandals;
+pub mod marker_beetles;
+pub mod heart_warden;

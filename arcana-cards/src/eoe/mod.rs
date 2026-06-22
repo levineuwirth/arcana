@@ -120,3 +120,4 @@ pub mod alpharael_stonechosen;
 pub mod gravpack_monoist;
 pub mod sunset_saboteur;
 pub mod seedship_agrarian;
+pub mod illvoi_infiltrator;

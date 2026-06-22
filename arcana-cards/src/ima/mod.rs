@@ -70,3 +70,5 @@ pub mod lord_of_the_pit;
 pub mod kokusho_the_evening_star;
 pub mod firemane_angel;
 pub mod yosei_the_morning_star;
+pub mod thundermaw_hellkite;
+pub mod shriekgeist;

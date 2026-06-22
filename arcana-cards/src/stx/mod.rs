@@ -125,3 +125,6 @@ pub mod tome_shredder;
 pub mod unwilling_ingredient;
 pub mod accomplished_alchemist;
 pub mod cogwork_archivist;
+pub mod a_dueling_coach;
+pub mod star_pupil;
+pub mod symmetry_sage;

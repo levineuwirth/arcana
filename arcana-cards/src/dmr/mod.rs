@@ -119,3 +119,4 @@ pub mod aven_fisher;
 pub mod xira_arien;
 pub mod pashalik_mons;
 pub mod phantom_flock;
+pub mod aven_fateshaper;

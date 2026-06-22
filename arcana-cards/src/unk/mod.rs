@@ -215,3 +215,7 @@ pub mod windy_city_aven;
 pub mod farseeing_flockmate;
 pub mod crow_scarer;
 pub mod the_rhystic_storyteller;
+pub mod kevin_questing_dragon;
+pub mod the_trivia_mastermind;
+pub mod gerrard_and_hanna;
+pub mod chancellor_of_the_mulligan;

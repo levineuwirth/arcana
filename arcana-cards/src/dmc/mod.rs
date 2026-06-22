@@ -57,3 +57,4 @@ pub mod torsten_founder_of_benalia;
 pub mod alesha_who_smiles_at_death;
 pub mod tor_wauki_the_younger;
 pub mod zaxara_the_exemplary;
+pub mod shanid_sleepers_scourge;

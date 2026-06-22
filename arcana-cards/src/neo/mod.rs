@@ -183,3 +183,5 @@ pub mod a_futurist_operative;
 pub mod kairi_the_swirling_sky;
 pub mod nezumi_prowler;
 pub mod moon_circuit_hacker;
+pub mod a_thousand_faced_shadow;
+pub mod ironhoof_boar;

@@ -169,3 +169,7 @@ pub mod drogskol_shieldmate;
 pub mod voldaren_duelist;
 pub mod niblis_of_the_urn;
 pub mod festerhide_boar;
+pub mod lumberknot;
+pub mod elder_deep_fiend;
+pub mod wild_field_scarecrow;
+pub mod bloodmad_vampire;

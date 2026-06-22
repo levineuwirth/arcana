@@ -18,3 +18,4 @@ pub mod themberchaud;
 pub mod bohn_beguiling_balladeer;
 pub mod jurin_leading_the_charge;
 pub mod hansk_slayer_zealot;
+pub mod hargilde_kindly_runechanter;

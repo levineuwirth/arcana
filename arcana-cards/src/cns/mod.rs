@@ -45,3 +45,5 @@ pub mod flamewright;
 pub mod marchesa_s_infiltrator;
 pub mod barbed_shocker;
 pub mod deal_broker;
+pub mod pride_guardian;
+pub mod marchesa_s_smuggler;

@@ -49,3 +49,4 @@ pub mod phyrexian_plaguelord;
 pub mod korozda_guildmage;
 pub mod thornwind_faeries;
 pub mod lightkeeper_of_emeria;
+pub mod silklash_spider;

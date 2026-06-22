@@ -151,3 +151,6 @@ pub mod heron_blessed_geist;
 pub mod toxrill_the_corrosive;
 pub mod sigardian_paladin;
 pub mod dreadlight_monstrosity;
+pub mod markov_purifier;
+pub mod rural_recruit;
+pub mod diregraf_scavenger;

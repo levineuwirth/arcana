@@ -41,3 +41,5 @@ pub mod cynette_jelly_drover;
 pub mod shroofus_sproutsire;
 pub mod ozox_the_clattering_king;
 pub mod razorgrass_invoker;
+pub mod merfolk_pupil;
+pub mod generous_pup;

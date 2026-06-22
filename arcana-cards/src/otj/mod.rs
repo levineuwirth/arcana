@@ -154,3 +154,7 @@ pub mod resilient_roadrunner;
 pub mod wanted_griffin;
 pub mod ornery_tumblewagg;
 pub mod unscrupulous_contractor;
+pub mod annie_flash_the_veteran;
+pub mod baron_bertram_graywater;
+pub mod stagecoach_security;
+pub mod slickshot_lockpicker;

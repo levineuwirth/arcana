@@ -201,3 +201,7 @@ pub mod nocturnal_feeder;
 pub mod windreader_sphinx;
 pub mod voice_of_the_provinces;
 pub mod nightshade_stinger;
+pub mod kels_fight_fixer;
+pub mod eternal_taskmaster;
+pub mod sethron_hurloon_general;
+pub mod harvester_of_souls;

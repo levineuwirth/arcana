@@ -57,3 +57,4 @@ pub mod gallowbraid;
 pub mod revered_unicorn;
 pub mod alabaster_dragon;
 pub mod volunteer_reserves;
+pub mod master_of_arms;

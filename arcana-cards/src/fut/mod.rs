@@ -31,3 +31,4 @@ pub mod steamflogger_boss;
 pub mod aven_augur;
 pub mod bogardan_lancer;
 pub mod korlash_heir_to_blackblade;
+pub mod scourge_of_kher_ridges;

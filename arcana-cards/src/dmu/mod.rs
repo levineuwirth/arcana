@@ -142,3 +142,7 @@ pub mod knight_of_dusk_s_shadow;
 pub mod raff_weatherlight_stalwart;
 pub mod tatyova_steward_of_tides;
 pub mod talas_lookout;
+pub mod a_soul_of_windgrace;
+pub mod eerie_soultender;
+pub mod coral_colony;
+pub mod viashino_branchrider;

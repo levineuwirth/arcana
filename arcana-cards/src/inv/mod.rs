@@ -116,3 +116,5 @@ pub mod pincer_spider;
 pub mod urborg_phantom;
 pub mod devouring_strossus;
 pub mod urborg_skeleton;
+pub mod dromar_the_banisher;
+pub mod metathran_transport;

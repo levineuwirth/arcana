@@ -34,3 +34,4 @@ pub mod filigree_angel;
 pub mod kraum_ludevic_s_opus;
 pub mod tana_the_bloodsower;
 pub mod horizon_chimera;
+pub mod brutal_hordechief;

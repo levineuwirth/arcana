@@ -67,3 +67,5 @@ pub mod squadron_hawk;
 pub mod ratcatcher;
 pub mod death_s_head_buzzard;
 pub mod court_hussar;
+pub mod ire_shaman;
+pub mod kor_firewalker;

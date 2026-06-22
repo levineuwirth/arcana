@@ -129,3 +129,5 @@ pub mod swarm_shambler;
 pub mod a_oran_rief_ooze;
 pub mod a_master_of_winds;
 pub mod lullmage_s_familiar;
+pub mod a_hagra_constrictor;
+pub mod shadow_stinger;

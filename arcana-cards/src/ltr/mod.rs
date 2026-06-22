@@ -163,3 +163,7 @@ pub mod shadowfax_lord_of_horses;
 pub mod nazg_l;
 pub mod galadriel_gift_giver;
 pub mod owyn_fearless_knight;
+pub mod gollum_patient_plotter;
+pub mod owyn_lady_of_rohan;
+pub mod grey_havens_navigator;
+pub mod goblin_fireleaper;

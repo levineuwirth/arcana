@@ -173,3 +173,8 @@ pub mod cloud_of_darkness;
 pub mod ambrosia_whiteheart;
 pub mod delivery_moogle;
 pub mod locke_cole;
+pub mod golbez_crystal_collector;
+pub mod zack_fair;
+pub mod raubahn_bull_of_ala_mhigo;
+pub mod vivi_ornitier;
+pub mod beatrix_loyal_general;

@@ -171,3 +171,4 @@ pub mod dragon_turtle;
 pub mod tiamat;
 pub mod old_gnawbone;
 pub mod yuan_ti_fang_blade;
+pub mod drider;

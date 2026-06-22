@@ -139,3 +139,4 @@ pub mod shadowheart_sharran_cleric;
 pub mod lae_zel_callous_warrior;
 pub mod skanos_white_dragon_vassal;
 pub mod ambergris_agent_of_balance;
+pub mod shadowheart_cleric_of_graves;

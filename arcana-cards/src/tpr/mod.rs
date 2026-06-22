@@ -124,3 +124,6 @@ pub mod soltari_monk;
 pub mod avenging_angel;
 pub mod spike_feeder;
 pub mod spike_hatcher;
+pub mod spirit_en_kor;
+pub mod flowstone_wyvern;
+pub mod wall_of_essence;

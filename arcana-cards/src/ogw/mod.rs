@@ -75,3 +75,7 @@ pub mod stone_haven_outfitter;
 pub mod birthing_hulk;
 pub mod eldrazi_displacer;
 pub mod blinding_drone;
+pub mod kalitas_traitor_of_ghet;
+pub mod cultivator_drone;
+pub mod kozilek_s_translator;
+pub mod warden_of_geometries;

@@ -164,3 +164,7 @@ pub mod rhox_pummeler;
 pub mod sanguine_spy;
 pub mod aven_heartstabber;
 pub mod a_psionic_snoop;
+pub mod rocco_cabaretti_caterer;
+pub mod voice_of_the_vermin;
+pub mod sanctuary_warden;
+pub mod illuminator_virtuoso;

@@ -271,3 +271,7 @@ pub mod rapacious_one;
 pub mod judith_the_scourge_diva;
 pub mod mire_triton;
 pub mod inferno_titan;
+pub mod mindwrack_harpy;
+pub mod cadaver_imp;
+pub mod ornithopter_of_paradise;
+pub mod ainok_bond_kin;

@@ -37,6 +37,7 @@ Altar Golem
 Ambling Stormshell
 Amulet of Vigor
 Angel of Eternal Dawn
+Anje Falkenrath
 Aphetto Alchemist
 Arbiter of Knollridge
 Archfiend of the Dross
@@ -252,7 +253,9 @@ Lingering Phantom
 Lita, Mechanical Engineer
 Lobber Crew
 Lockjaw Snapper
+Locust Swarm
 Loxodon Peacekeeper
+Loyal Inventor
 Loyal Retainers
 Luminous Broodmoth
 Lunar Force
@@ -272,6 +275,7 @@ Medicine Runner
 Medomai the Ageless
 Memnarch
 Merchant of Many Hats
+Merfolk Skyscout
 Merieke Ri Berit
 Merrow Bonegnawer
 Merrow Commerce
@@ -302,6 +306,7 @@ Nettle Sentinel
 Nicol Bolas, Planeswalker
 Nimbleclaw Adept
 Noise Marine
+Norritt
 Odunos River Trawler
 Old Man of the Sea
 Olivia Voldaren
@@ -354,6 +359,7 @@ Sage of Hours
 Sage of the Maze
 Saint Traft and Rem Karolus
 Salvager of Secrets
+Samut, Voice of Dissent
 Sanctum of Stone Fangs
 Sandstorm Salvager
 Sanitarium Skeleton
@@ -419,6 +425,7 @@ The Wandering Minstrel
 Thermo-Alchemist
 Thing in the Ice
 Thistledown Players
+Thrull Champion
 Thundering Djinn
 Ticking Mime Bomb
 Tideforce Elemental
@@ -443,6 +450,7 @@ Unified Lunge
 Unruly Catapult
 Urtet, Remnant of Memnarch
 Vedalken Plotter
+Vesperlark
 Vhal, Scholar of Elements
 Vhal, Scholar of Prophecy
 Vigean Graftmage
@@ -460,6 +468,7 @@ Willow Satyr
 Wirewood Lodge
 Woolly Razorback
 Wyll of the Blade Pact
+Xiahou Dun, the One-Eyed
 Ydwen Efreet
 Yomiji, Who Bars the Way
 Zareth San, the Trickster

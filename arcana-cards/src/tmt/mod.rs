@@ -123,3 +123,5 @@ pub mod casey_jones_jury_rig_justiciar;
 pub mod slash_reptile_rampager;
 pub mod oroku_saki_shredder_rising;
 pub mod donatello_gadget_master;
+pub mod chrome_dome;
+pub mod dream_beavers;

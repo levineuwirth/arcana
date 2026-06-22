@@ -146,3 +146,5 @@ pub mod cavalier_of_dawn;
 pub mod immortal_phoenix;
 pub mod cavalier_of_night;
 pub mod savage_gorger;
+pub mod nightpack_ambusher;
+pub mod chandra_s_spitfire;

@@ -108,3 +108,6 @@ pub mod disruptive_pitmage;
 pub mod daru_cavalier;
 pub mod dwarven_blastminer;
 pub mod everglove_courier;
+pub mod spitfire_handler;
+pub mod dive_bomber;
+pub mod goblin_pyromancer;

@@ -297,3 +297,6 @@ pub mod cat_collector;
 pub mod diamond_mare;
 pub mod beast_kin_ranger;
 pub mod dazzling_angel;
+pub mod heartfire_immolator;
+pub mod harbinger_of_the_tides;
+pub mod lathril_blade_of_the_elves;

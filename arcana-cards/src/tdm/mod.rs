@@ -162,3 +162,5 @@ pub mod sunset_strikemaster;
 pub mod boulderborn_dragon;
 pub mod stadium_headliner;
 pub mod meticulous_artisan;
+pub mod wingblade_disciple;
+pub mod sonic_shrieker;

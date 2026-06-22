@@ -172,3 +172,6 @@ pub mod safewright_cavalry;
 pub mod loch_mare;
 pub mod crossroads_watcher;
 pub mod voracious_tome_skimmer;
+pub mod bre_of_clan_stoutarm;
+pub mod dawnhand_eulogist;
+pub mod figure_of_fable;

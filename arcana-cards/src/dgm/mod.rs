@@ -56,3 +56,4 @@ pub mod maze_rusher;
 pub mod aetherling;
 pub mod korozda_gorgon;
 pub mod viashino_firstblade;
+pub mod varolz_the_scar_striped;

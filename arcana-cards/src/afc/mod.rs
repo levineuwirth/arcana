@@ -49,3 +49,4 @@ pub mod radiant_solar;
 pub mod fiend_of_the_shadows;
 pub mod dragonborn_champion;
 pub mod piper_of_the_swarm;
+pub mod sunblast_angel;

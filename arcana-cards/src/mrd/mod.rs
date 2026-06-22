@@ -96,3 +96,5 @@ pub mod quicksilver_elemental;
 pub mod wall_of_blood;
 pub mod duskworker;
 pub mod loxodon_peacekeeper;
+pub mod goblin_dirigible;
+pub mod war_elemental;

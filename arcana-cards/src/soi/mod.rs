@@ -92,3 +92,5 @@ pub mod niblis_of_dusk;
 pub mod briarbridge_patrol;
 pub mod farbog_revenant;
 pub mod relentless_dead;
+pub mod angel_of_deliverance;
+pub mod nearheath_chaplain;

@@ -117,3 +117,4 @@ pub mod purraj_of_urborg;
 pub mod shaper_guildmage;
 pub mod uktabi_faerie;
 pub mod discordant_spirit;
+pub mod locust_swarm;

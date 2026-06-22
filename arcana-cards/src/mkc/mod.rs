@@ -87,3 +87,4 @@ pub mod tesak_judith_s_hellhound;
 pub mod morska_undersea_sleuth;
 pub mod dogged_detective;
 pub mod nantuko_vigilante;
+pub mod koma_cosmos_serpent;

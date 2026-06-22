@@ -216,3 +216,4 @@ pub mod steelbane_hydra;
 pub mod excava_the_risen_past;
 pub mod tendershoot_dryad;
 pub mod leitmotif_composer;
+pub mod beledros_witherbloom;

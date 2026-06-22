@@ -56,3 +56,5 @@ pub mod gristleback;
 pub mod tibor_and_lumia;
 pub mod shrieking_grotesque;
 pub mod harrier_griffin;
+pub mod absolver_thrull;
+pub mod belfry_spirit;

@@ -122,3 +122,5 @@ pub mod pensive_professor;
 pub mod elemental_mascot;
 pub mod forum_necroscribe;
 pub mod noxious_newt;
+pub mod fractal_mascot;
+pub mod charging_strifeknight;

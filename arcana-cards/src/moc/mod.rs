@@ -106,3 +106,4 @@ pub mod mikaeus_the_lunarch;
 pub mod pridemalkin;
 pub mod keskit_the_flesh_sculptor;
 pub mod slurrk_all_ingesting;
+pub mod sharding_sphinx;

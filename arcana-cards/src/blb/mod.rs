@@ -175,3 +175,5 @@ pub mod byrke_long_ear_of_the_law;
 pub mod wax_wane_witness;
 pub mod hired_claw;
 pub mod hivespine_wolverine;
+pub mod plumecreed_escort;
+pub mod serra_redeemer;

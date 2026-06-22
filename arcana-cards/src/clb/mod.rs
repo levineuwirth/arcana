@@ -264,3 +264,6 @@ pub mod raphael_fiendish_savior;
 pub mod sweet_gum_recluse;
 pub mod rug_of_smothering;
 pub mod goblin_spymaster;
+pub mod squad_commander;
+pub mod glorious_protector;
+pub mod dark_hatchling;

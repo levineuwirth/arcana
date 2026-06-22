@@ -55,3 +55,5 @@ pub mod kazandu_blademaster;
 pub mod merfolk_seastalkers;
 pub mod tuktuk_grunts;
 pub mod makindi_shieldmate;
+pub mod hagra_crocodile;
+pub mod sphinx_of_lost_truths;

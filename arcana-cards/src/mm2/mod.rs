@@ -60,3 +60,4 @@ pub mod viashino_slaughtermaster;
 pub mod ghostly_changeling;
 pub mod argent_sphinx;
 pub mod water_servant;
+pub mod scuttling_death;

@@ -40,3 +40,4 @@ pub mod mistblade_shinobi;
 pub mod thorn_thrash_viashino;
 pub mod brutalizer_exarch;
 pub mod throat_slitter;
+pub mod walker_of_secret_ways;

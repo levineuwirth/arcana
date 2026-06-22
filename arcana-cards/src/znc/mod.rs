@@ -23,3 +23,4 @@ pub mod marsh_flitter;
 pub mod lazav_dimir_mastermind;
 pub mod invisible_stalker;
 pub mod embodiment_of_insight;
+pub mod obuun_mul_daya_ancestor;

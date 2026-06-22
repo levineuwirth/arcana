@@ -163,3 +163,4 @@ pub mod drake_hatchling;
 pub mod timid_drake;
 pub mod caustic_wasps;
 pub mod aerial_caravan;
+pub mod cateran_overlord;

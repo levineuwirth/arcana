@@ -122,3 +122,4 @@ pub mod pilgrim_of_virtue;
 pub mod balshan_griffin;
 pub mod pulsating_illusion;
 pub mod krosan_avenger;
+pub mod hallowed_healer;

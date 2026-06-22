@@ -18,3 +18,4 @@ pub mod noble_quarry;
 pub mod plaxmanta;
 pub mod ghostblade_eidolon;
 pub mod ohran_viper;
+pub mod patagia_viper;

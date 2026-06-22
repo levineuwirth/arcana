@@ -24,3 +24,4 @@ pub mod mr_foxglove;
 pub mod rapid_augmenter;
 pub mod bloodroot_apothecary;
 pub mod prosperous_bandit;
+pub mod flubs_the_fool;

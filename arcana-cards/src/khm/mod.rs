@@ -174,3 +174,4 @@ pub mod a_thornmantle_striker;
 pub mod jarl_of_the_forsaken;
 pub mod doomskar_oracle;
 pub mod harald_king_of_skemfar;
+pub mod brinebarrow_intruder;

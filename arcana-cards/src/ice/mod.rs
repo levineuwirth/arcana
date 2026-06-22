@@ -61,3 +61,4 @@ pub mod wall_of_shields;
 pub mod wall_of_pine_needles;
 pub mod goblin_sappers;
 pub mod kjeldoran_knight;
+pub mod norritt;

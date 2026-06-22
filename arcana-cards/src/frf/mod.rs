@@ -55,3 +55,4 @@ pub mod shockmaw_dragon;
 pub mod mardu_shadowspear;
 pub mod destructor_dragon;
 pub mod goblin_heelcutter;
+pub mod torrent_elemental;

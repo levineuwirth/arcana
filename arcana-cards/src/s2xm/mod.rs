@@ -109,3 +109,4 @@ pub mod stoneforge_mystic;
 pub mod faerie_mechanist;
 pub mod sharuum_the_hegemon;
 pub mod sanctum_spirit;
+pub mod rhys_the_redeemed;

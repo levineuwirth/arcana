@@ -30,3 +30,4 @@ pub mod cave_people;
 pub mod mole_worms;
 pub mod battering_ram;
 pub mod dark_maze;
+pub mod wall_of_brambles;

@@ -14,3 +14,4 @@ pub mod herald_of_vengeance;
 pub mod skyline_savior;
 pub mod spara_s_bodyguard;
 pub mod syndicate_recruiter;
+pub mod diviner_of_fates;

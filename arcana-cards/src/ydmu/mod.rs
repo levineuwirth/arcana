@@ -5,3 +5,4 @@ pub mod reezug_the_bonecobbler;
 pub mod niambi_beloved_protector;
 pub mod nantuko_slicer;
 pub mod wandering_treefolk;
+pub mod arvad_weatherlight_smuggler;

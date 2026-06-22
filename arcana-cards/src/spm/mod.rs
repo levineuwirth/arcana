@@ -119,3 +119,5 @@ pub mod superior_foes_of_spider_man;
 pub mod spider_uk;
 pub mod masked_meower;
 pub mod flash_thompson_spider_fan;
+pub mod daily_bugle_reporters;
+pub mod anti_venom_horrifying_healer;

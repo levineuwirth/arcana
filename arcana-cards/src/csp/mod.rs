@@ -70,3 +70,4 @@ pub mod rimescale_dragon;
 pub mod steam_spitter;
 pub mod boreal_griffin;
 pub mod stromgald_crusader;
+pub mod disciple_of_tevesh_szat;

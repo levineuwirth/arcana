@@ -113,3 +113,5 @@ pub mod poxwalkers;
 pub mod necron_deathmark;
 pub mod genestealer_patriarch;
 pub mod screamer_killer;
+pub mod cybernetica_datasmith;
+pub mod szarekh_the_silent_king;

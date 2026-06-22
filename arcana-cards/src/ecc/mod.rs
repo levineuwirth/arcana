@@ -76,3 +76,5 @@ pub mod shriekmaw;
 pub mod midnight_banshee;
 pub mod jubilation;
 pub mod omnath_locus_of_rage;
+pub mod fury;
+pub mod hapatra_vizier_of_poisons;

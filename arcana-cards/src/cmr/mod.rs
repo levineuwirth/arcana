@@ -158,3 +158,5 @@ pub mod kangee_s_lieutenant;
 pub mod colfenor_the_last_yew;
 pub mod coastline_marauders;
 pub mod slith_ascendant;
+pub mod trench_behemoth;
+pub mod filigree_familiar;

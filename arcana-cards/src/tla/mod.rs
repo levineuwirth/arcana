@@ -148,3 +148,5 @@ pub mod wolfbat;
 pub mod katara_water_tribe_s_hope;
 pub mod momo_friendly_flier;
 pub mod cat_gator;
+pub mod teo_spirited_glider;
+pub mod unlucky_cabbage_merchant;

@@ -92,3 +92,5 @@ pub mod grasping_thrull;
 pub mod senate_courier;
 pub mod combine_guildmage;
 pub mod senate_guildmage;
+pub mod sphinx_of_foresight;
+pub mod cult_guildmage;

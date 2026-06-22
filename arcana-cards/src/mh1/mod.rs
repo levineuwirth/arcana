@@ -87,3 +87,7 @@ pub mod igneous_elemental;
 pub mod thundering_djinn;
 pub mod farmstead_gleaner;
 pub mod sisay_weatherlight_captain;
+pub mod rotwidow_pack;
+pub mod vesperlark;
+pub mod mist_syndicate_naga;
+pub mod munitions_expert;
