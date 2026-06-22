@@ -244,3 +244,7 @@ pub mod earthquake_dragon;
 pub mod izzet_chemister;
 pub mod astral_dragon;
 pub mod thrakkus_the_butcher;
+pub mod jan_jansen_chaos_crafter;
+pub mod giant_ankheg;
+pub mod elder_brain;
+pub mod jaheira_friend_of_the_forest;

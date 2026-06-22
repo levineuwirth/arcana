@@ -105,3 +105,5 @@ pub mod lurking_deadeye;
 pub mod stormwild_capridor;
 pub mod duskfang_mentor;
 pub mod luminous_broodmoth;
+pub mod sonorous_howlbonder;
+pub mod rooting_moloch;

@@ -25,3 +25,4 @@ pub mod knuckles_the_echidna;
 pub mod kratos_stoic_father;
 pub mod iron_man_titan_of_innovation;
 pub mod amy_rose;
+pub mod the_fifteenth_doctor;

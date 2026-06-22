@@ -129,3 +129,5 @@ pub mod nesting_dragon;
 pub mod rampart_architect;
 pub mod shiko_and_narset_unified;
 pub mod dragonlord_atarka;
+pub mod protector_of_the_wastes;
+pub mod baral_and_kari_zev;

@@ -69,3 +69,6 @@ pub mod mercurial_geists;
 pub mod impetuous_devils;
 pub mod vexing_scuttler;
 pub mod markov_crusader;
+pub mod geist_of_the_archives;
+pub mod drownyard_behemoth;
+pub mod geist_of_the_lonely_vigil;

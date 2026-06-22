@@ -126,3 +126,5 @@ pub mod genasi_rabble_rouser;
 pub mod gale_conduit_of_the_arcane;
 pub mod sarevok_mighty_usurper;
 pub mod lulu_vengeful_hollyphant;
+pub mod liara_of_the_flaming_fist;
+pub mod lukamina_bear_form;

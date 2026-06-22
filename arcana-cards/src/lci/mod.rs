@@ -151,3 +151,6 @@ pub mod the_mycotyrant;
 pub mod council_of_echoes;
 pub mod malcolm_alluring_scoundrel;
 pub mod soaring_sandwing;
+pub mod hulking_raptor;
+pub mod spyglass_siren;
+pub mod dauntless_dismantler;

@@ -75,3 +75,4 @@ pub mod psychatog;
 pub mod volrath_s_shapeshifter;
 pub mod masticore;
 pub mod putrid_imp;
+pub mod blazing_specter;

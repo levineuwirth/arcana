@@ -120,3 +120,4 @@ pub mod rathi_dragon;
 pub mod mounted_archers;
 pub mod tradewind_rider;
 pub mod dauthi_slayer;
+pub mod soltari_monk;

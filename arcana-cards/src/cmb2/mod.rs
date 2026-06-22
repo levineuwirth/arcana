@@ -44,3 +44,4 @@ pub mod priority_avenger;
 pub mod swarm_of_locus;
 pub mod queue_of_beetles;
 pub mod recycla_bird;
+pub mod siege_elemental;

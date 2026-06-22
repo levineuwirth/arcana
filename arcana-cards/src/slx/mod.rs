@@ -16,3 +16,4 @@ pub mod gregor_shrewd_magistrate;
 pub mod cecily_haunted_mage;
 pub mod themberchaud;
 pub mod bohn_beguiling_balladeer;
+pub mod jurin_leading_the_charge;

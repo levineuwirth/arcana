@@ -61,3 +61,4 @@ pub mod squall_drifter;
 pub mod diamond_faerie;
 pub mod phobian_phantasm;
 pub mod rimefeather_owl;
+pub mod lightning_serpent;

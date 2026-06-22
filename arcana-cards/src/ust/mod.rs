@@ -79,3 +79,4 @@ pub mod steady_handed_mook;
 pub mod party_crasher;
 pub mod defective_detective;
 pub mod grusilda_monster_masher;
+pub mod shellephant;

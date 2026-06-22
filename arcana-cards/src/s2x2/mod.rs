@@ -120,3 +120,7 @@ pub mod kederekt_leviathan;
 pub mod militia_bugler;
 pub mod mistfire_adept;
 pub mod river_hoopoe;
+pub mod ruric_thar_the_unbowed;
+pub mod ezuri_claw_of_progress;
+pub mod winged_coatl;
+pub mod glen_elendra_liege;

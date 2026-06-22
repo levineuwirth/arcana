@@ -151,3 +151,6 @@ pub mod swooping_protector;
 pub mod a_syndicate_infiltrator;
 pub mod shattered_seraph;
 pub mod maestros_diabolist;
+pub mod professional_face_breaker;
+pub mod angelic_observer;
+pub mod angel_of_suffering;

@@ -106,3 +106,5 @@ pub mod longtusk_cub;
 pub mod maulfist_doorbuster;
 pub mod contraband_kingpin;
 pub mod maulfist_squad;
+pub mod elegant_edgecrafters;
+pub mod whirler_virtuoso;

@@ -44,3 +44,4 @@ pub mod iron_heart_chimera;
 pub mod rainbow_efreet;
 pub mod tin_wing_chimera;
 pub mod brass_talon_chimera;
+pub mod talruum_champion;

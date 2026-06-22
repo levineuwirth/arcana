@@ -98,3 +98,5 @@ pub mod marauding_raptor;
 pub mod scion_of_calamity;
 pub mod svyelun_of_sea_and_sky;
 pub mod don_andres_the_renegade;
+pub mod butcher_of_malakir;
+pub mod atzocan_seer;

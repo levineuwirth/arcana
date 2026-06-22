@@ -104,3 +104,4 @@ pub mod goblin_taskmaster;
 pub mod daru_lancer;
 pub mod charging_slateback;
 pub mod fallen_cleric;
+pub mod disruptive_pitmage;

@@ -13,3 +13,4 @@ pub mod neurok_replica;
 pub mod elvish_branchbender;
 pub mod talara_s_battalion;
 pub mod ezuri_renegade_leader;
+pub mod ezuri_s_archers;

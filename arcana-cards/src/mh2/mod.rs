@@ -132,3 +132,5 @@ pub mod breya_s_apprentice;
 pub mod grief;
 pub mod rakdos_headliner;
 pub mod necromancer_s_familiar;
+pub mod arcbound_mouser;
+pub mod blazing_rootwalla;

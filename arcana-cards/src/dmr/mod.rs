@@ -110,3 +110,4 @@ pub mod phantom_nishoba;
 pub mod spectral_lynx;
 pub mod vexing_sphinx;
 pub mod tiana_ship_s_caretaker;
+pub mod krosan_restorer;

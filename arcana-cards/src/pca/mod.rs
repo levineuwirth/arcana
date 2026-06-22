@@ -37,3 +37,5 @@ pub mod guard_gomazoa;
 pub mod whirlpool_warrior;
 pub mod krond_the_dawn_clad;
 pub mod mistblade_shinobi;
+pub mod thorn_thrash_viashino;
+pub mod brutalizer_exarch;

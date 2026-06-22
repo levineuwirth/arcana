@@ -165,3 +165,5 @@ pub mod skemfar_shadowsage;
 pub mod renegade_reaper;
 pub mod doomskar_titan;
 pub mod gods_hall_guardian;
+pub mod ascendant_spirit;
+pub mod arni_brokenbrow;

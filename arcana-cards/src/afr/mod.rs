@@ -161,3 +161,5 @@ pub mod a_ochre_jelly;
 pub mod herald_of_hadar;
 pub mod flameskull;
 pub mod orcus_prince_of_undeath;
+pub mod westgate_regent;
+pub mod gelatinous_cube;

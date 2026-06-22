@@ -14,3 +14,5 @@ pub mod chronicler_of_worship;
 pub mod artillery_enthusiast;
 pub mod imperial_blademaster;
 pub mod mothrider_cavalry;
+pub mod kami_of_transmutation;
+pub mod kami_of_bamboo_groves;

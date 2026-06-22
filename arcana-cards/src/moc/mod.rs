@@ -95,3 +95,4 @@ pub mod shalai_and_hallar;
 pub mod bone_shredder;
 pub mod constable_of_the_realm;
 pub mod master_splicer;
+pub mod knight_of_the_last_breath;

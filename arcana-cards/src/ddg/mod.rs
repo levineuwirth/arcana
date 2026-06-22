@@ -15,3 +15,4 @@ pub mod mordant_dragon;
 pub mod lionheart_maverick;
 pub mod white_knight;
 pub mod voracious_dragon;
+pub mod zhalfirin_commander;

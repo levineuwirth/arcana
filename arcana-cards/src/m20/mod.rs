@@ -141,3 +141,4 @@ pub mod voracious_hydra;
 pub mod thicket_crasher;
 pub mod metropolis_sprite;
 pub mod yarok_s_fenlurker;
+pub mod loxodon_lifechanter;

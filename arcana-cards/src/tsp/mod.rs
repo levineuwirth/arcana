@@ -46,3 +46,5 @@ pub mod skulking_knight;
 pub mod evil_eye_of_urborg;
 pub mod flickering_spirit;
 pub mod wormwood_dryad;
+pub mod spike_tiller;
+pub mod spectral_force;

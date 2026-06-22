@@ -90,3 +90,5 @@ pub mod qarsi_sadist;
 pub mod servant_of_the_scale;
 pub mod gurmag_drowner;
 pub mod marang_river_skeleton;
+pub mod kolaghan_forerunners;
+pub mod necromaster_dragon;

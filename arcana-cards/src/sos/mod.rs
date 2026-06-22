@@ -106,3 +106,5 @@ pub mod snooping_page;
 pub mod pterafractyl;
 pub mod textbook_tabulator;
 pub mod cuboid_colony;
+pub mod tenured_concocter;
+pub mod quandrix_the_proof;

@@ -123,3 +123,6 @@ pub mod witness_of_tomorrows;
 pub mod uro_titan_of_nature_s_wrath;
 pub mod flummoxed_cyclops;
 pub mod riptide_turtle;
+pub mod irreverent_revelers;
+pub mod slaughter_priest_of_mogis;
+pub mod threnody_singer;

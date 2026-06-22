@@ -129,3 +129,6 @@ pub mod a_briar_hydra;
 pub mod a_meria_s_outrider;
 pub mod hexbane_tortoise;
 pub mod sol_kanar_the_tainted;
+pub mod leaf_crowned_visionary;
+pub mod molten_monstrosity;
+pub mod cleaving_skyrider;

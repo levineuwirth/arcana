@@ -24,6 +24,7 @@ Altar Golem
 Altar of the Wretched
 Ambling Stormshell
 Amulet of Vigor
+Angel of Eternal Dawn
 Aphetto Alchemist
 Arbiter of Knollridge
 Archfiend of the Dross
@@ -34,6 +35,7 @@ Artificer's Dragon
 Arvad of the Weatherlight
 Ashcoat of the Shadow Swarm
 Attentive Skywarden
+Atzocan Seer
 Auriok Transfixer
 Avarice Totem
 Ayara, Widow of the Realm
@@ -129,6 +131,7 @@ Deathless Behemoth
 Deathless Pilot
 Deceiver Exarch
 Decimator Beetle
+Dedicated Dollmaker
 Deep-Slumber Titan
 Defiant Greatmaw
 Delay
@@ -138,6 +141,7 @@ Despoiler of Souls
 Devious Cover-Up
 Devoted Druid
 Diamond Faerie
+Disa the Restless
 Dispersal Shield
 Dissipate
 Divert Disaster
@@ -165,6 +169,7 @@ Elvish Vatkeeper
 Empress Galina
 Encumbered Reejerey
 Endbringer
+Enduring Friendship
 Eon Frolicker
 Ertai's Trickery
 Eternal Dragon
@@ -256,6 +261,7 @@ Jaded Response
 Jandor's Saddlebags
 Jaws of Defeat
 Jungle Creeper
+Jyoti, Moag Ancient
 Kaalia of the Vast
 Karlach, Tiefling Berserker
 Karlach, Tiefling Spellrager
@@ -276,6 +282,7 @@ Knight of Valor
 Koh, the Face Stealer
 Koll, the Forgemaster
 Kraul Swarm
+Kuldotha Cackler
 Kuldotha Phoenix
 Kumano Faces Kakkazan
 Kydele, Chosen of Kruphix
@@ -370,7 +377,9 @@ Pack Mastiff
 Pendelhaven Elder
 Permission Denied
 Peter Parker
+Phyrexian Colossus
 Phyrexian Infiltrator
+Pilgrim of the Ages
 Plasm Capture
 Polluted Bonds
 Powerstone Shard
@@ -446,11 +455,14 @@ Shivan Sand-Mage
 Silkenfist Fighter
 Silkenfist Order
 Simic Ragworm
+Skarrgan Firebird
 Skeleton Crew
 Skeleton Shard
 Skittering Skirge
 Skred
+Skyfire Kirin
 Sleep-Cursed Faerie
+Slumbering Cerberus
 Soliton
 Sorin, Imperious Bloodlord
 Sower of Temptation
@@ -539,6 +551,7 @@ Warren Instigator
 Warren Pilferers
 Watchful Blisterzoa
 Wild Wurm
+Willow Satyr
 Wirewood Lodge
 Woolly Razorback
 Wyll of the Blade Pact

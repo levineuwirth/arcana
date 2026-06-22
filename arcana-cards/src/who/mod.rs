@@ -82,3 +82,8 @@ pub mod the_dalek_emperor;
 pub mod leela_sevateem_warrior;
 pub mod tegan_jovanka;
 pub mod the_thirteenth_doctor;
+pub mod the_master_formed_anew;
+pub mod the_eleventh_doctor;
+pub mod martha_jones;
+pub mod ryan_sinclair;
+pub mod dalek_drone;

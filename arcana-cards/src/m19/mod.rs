@@ -91,3 +91,8 @@ pub mod bone_dragon;
 pub mod phylactery_lich;
 pub mod novice_knight;
 pub mod shield_mare;
+pub mod demon_of_catastrophes;
+pub mod draconic_disciple;
+pub mod suncleanser;
+pub mod pegasus_courser;
+pub mod skyrider_patrol;

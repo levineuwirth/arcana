@@ -39,3 +39,4 @@ pub mod giant_ambush_beetle;
 pub mod esper_sojourners;
 pub mod deadshot_minotaur;
 pub mod marrow_chomper;
+pub mod monstrous_carabid;

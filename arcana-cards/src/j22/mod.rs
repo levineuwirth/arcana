@@ -24,3 +24,5 @@ pub mod plundering_predator;
 pub mod auntie_blyte_bad_influence;
 pub mod ardoz_cobbler_of_war;
 pub mod isu_the_abominable;
+pub mod biblioplex_kraken;
+pub mod zask_skittering_swarmlord;

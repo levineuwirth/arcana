@@ -89,3 +89,5 @@ pub mod flameblade_angel;
 pub mod nephalia_moondrakes;
 pub mod markov_dreadknight;
 pub mod niblis_of_dusk;
+pub mod briarbridge_patrol;
+pub mod farbog_revenant;

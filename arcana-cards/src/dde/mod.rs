@@ -21,3 +21,4 @@ pub mod gerrard_capashen;
 pub mod phyrexian_battleflies;
 pub mod quirion_elves;
 pub mod verduran_emissary;
+pub mod phyrexian_colossus;

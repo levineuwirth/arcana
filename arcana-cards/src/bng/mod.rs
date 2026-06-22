@@ -70,3 +70,4 @@ pub mod sphinx_s_disciple;
 pub mod akroan_phalanx;
 pub mod chorus_of_the_tides;
 pub mod herald_of_torment;
+pub mod impetuous_sunchaser;

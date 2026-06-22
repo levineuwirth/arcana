@@ -70,3 +70,4 @@ pub mod inverter_of_truth;
 pub mod havoc_sower;
 pub mod vile_redeemer;
 pub mod scion_summoner;
+pub mod sifter_of_skulls;

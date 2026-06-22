@@ -55,3 +55,6 @@ pub mod cyclops_tyrant;
 pub mod merfolk_spy;
 pub mod lifebane_zombie;
 pub mod angelic_wall;
+pub mod academy_raider;
+pub mod nightwing_shade;
+pub mod trained_condor;

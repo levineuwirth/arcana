@@ -157,3 +157,6 @@ pub mod changeling_wayfinder;
 pub mod shadow_urchin;
 pub mod shinestriker;
 pub mod disruptor_of_currents;
+pub mod mudbutton_cursetosser;
+pub mod gravelgill_scoundrel;
+pub mod morcant_s_loyalist;

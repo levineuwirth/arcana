@@ -110,3 +110,4 @@ pub mod catacomb_dragon;
 pub mod harbor_guardian;
 pub mod vaporous_djinn;
 pub mod burning_shield_askari;
+pub mod teferi_s_drake;

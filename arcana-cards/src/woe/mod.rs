@@ -165,3 +165,6 @@ pub mod discerning_financier;
 pub mod skewer_slinger;
 pub mod sleep_cursed_faerie;
 pub mod gallant_pie_wielder;
+pub mod warehouse_tabby;
+pub mod blossoming_tortoise;
+pub mod sweettooth_witch;

@@ -92,3 +92,4 @@ pub mod goblin_war_wagon;
 pub mod nim_shambler;
 pub mod nim_shrieker;
 pub mod auriok_steelshaper;
+pub mod quicksilver_elemental;

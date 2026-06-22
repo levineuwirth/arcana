@@ -87,3 +87,5 @@ pub mod winged_shepherd;
 pub mod baleful_ammit;
 pub mod nef_crop_entangler;
 pub mod plague_belcher;
+pub mod glyph_keeper;
+pub mod bontu_the_glorified;

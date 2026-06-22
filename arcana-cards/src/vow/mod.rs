@@ -142,3 +142,4 @@ pub mod cemetery_desecrator;
 pub mod militia_rallier;
 pub mod reclusive_taxidermist;
 pub mod kessig_wolfrider;
+pub mod toxic_scorpion;

@@ -117,3 +117,5 @@ pub mod knight_of_sursi;
 pub mod tombstalker;
 pub mod homing_sliver;
 pub mod phantom_wurm;
+pub mod nightshade_assassin;
+pub mod duskrider_peregrine;

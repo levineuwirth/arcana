@@ -146,3 +146,7 @@ pub mod surrak_elusive_hunter;
 pub mod dragonback_lancer;
 pub mod champion_of_dusan;
 pub mod abzan_devotee;
+pub mod mardu_devotee;
+pub mod zurgo_thunder_s_decree;
+pub mod jeskai_shrinekeeper;
+pub mod sage_of_the_fang;

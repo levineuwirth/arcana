@@ -49,3 +49,5 @@ pub mod wort_the_raidmother;
 pub mod mercurial_chemister;
 pub mod cavalry_pegasus;
 pub mod nikara_lair_scavenger;
+pub mod thraben_doomsayer;
+pub mod pako_arcane_retriever;

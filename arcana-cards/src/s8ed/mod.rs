@@ -68,3 +68,4 @@ pub mod sunweb;
 pub mod vampiric_spirit;
 pub mod okk;
 pub mod lava_hounds;
+pub mod goblin_glider;

@@ -54,3 +54,8 @@ pub mod chancellor_of_the_spires;
 pub mod chained_throatseeker;
 pub mod viral_drake;
 pub mod melira_sylvok_outcast;
+pub mod maul_splicer;
+pub mod spined_thopter;
+pub mod thundering_tanadon;
+pub mod chancellor_of_the_tangle;
+pub mod chancellor_of_the_dross;

@@ -19,3 +19,4 @@ pub mod igneous_pouncer;
 pub mod jhessian_zombies;
 pub mod brackwater_elemental;
 pub mod fire_field_ogre;
+pub mod fleetfoot_panther;

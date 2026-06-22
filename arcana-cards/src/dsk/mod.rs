@@ -129,3 +129,8 @@ pub mod fear_of_impostors;
 pub mod overlord_of_the_hauntwoods;
 pub mod shepherding_spirits;
 pub mod abhorrent_oculus;
+pub mod reluctant_role_model;
+pub mod appendage_amalgam;
+pub mod overlord_of_the_boilerbilges;
+pub mod unwilling_vessel;
+pub mod spineseeker_centipede;

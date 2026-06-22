@@ -81,3 +81,5 @@ pub mod fire_nation_archers;
 pub mod zuko_seeking_honor;
 pub mod appa_aang_s_companion;
 pub mod fire_lord_ozai;
+pub mod momo_rambunctious_rascal;
+pub mod toph_earthbending_master;

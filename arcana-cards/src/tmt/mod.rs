@@ -109,3 +109,5 @@ pub mod splinter_hamato_yoshi;
 pub mod null_group_biological_assets;
 pub mod sally_pride_lioness_leader;
 pub mod don_leo_problem_solvers;
+pub mod general_traag_heart_of_stone;
+pub mod rocksteady_crash_courser;

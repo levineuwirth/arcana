@@ -120,3 +120,7 @@ pub mod samut_the_driving_force;
 pub mod zahur_glory_s_past;
 pub mod gilded_ghoda;
 pub mod chitin_gravestalker;
+pub mod aetherjacket;
+pub mod fang_guardian;
+pub mod dracosaur_auxiliary;
+pub mod guardian_sunmare;

@@ -37,3 +37,4 @@ pub mod saurian_symbiote;
 pub mod anep_vizier_of_hazoret;
 pub mod sutina_speaker_of_the_tajuru;
 pub mod aphelia_viper_whisperer;
+pub mod cynette_jelly_drover;

@@ -84,3 +84,7 @@ pub mod vigorspore_wurm;
 pub mod worldsoul_colossus;
 pub mod grappling_sundew;
 pub mod hellkite_whelp;
+pub mod pilfering_imp;
+pub mod narcomoeba;
+pub mod book_devourer;
+pub mod conclave_guildmage;

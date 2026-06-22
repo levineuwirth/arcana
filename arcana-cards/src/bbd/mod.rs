@@ -105,3 +105,5 @@ pub mod brightling;
 pub mod soulblade_corrupter;
 pub mod true_name_nemesis;
 pub mod pir_imaginative_rascal;
+pub mod vampire_charmseeker;
+pub mod blaring_recruiter;

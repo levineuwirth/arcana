@@ -201,3 +201,6 @@ pub mod goldvein_hydra;
 pub mod mirrorwing_dragon;
 pub mod thunderclap_drake;
 pub mod quintorius_loremaster;
+pub mod bloodghast;
+pub mod stonecoil_serpent;
+pub mod harmonic_prodigy;

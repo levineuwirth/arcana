@@ -10,3 +10,4 @@ pub mod accident_prone_apprentice_amphibian_accident;
 pub mod high_fae_prankster;
 pub mod drover_of_the_swine;
 pub mod heir_to_dragonfire;
+pub mod dedicated_dollmaker;

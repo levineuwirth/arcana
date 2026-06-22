@@ -115,3 +115,6 @@ pub mod chlorophant;
 pub mod bloodcurdler;
 pub mod sarcatog;
 pub mod thought_nibbler;
+pub mod gorilla_titan;
+pub mod luminous_guardian;
+pub mod mystic_crusader;

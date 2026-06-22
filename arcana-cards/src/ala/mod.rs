@@ -75,3 +75,4 @@ pub mod viscera_dragger;
 pub mod caldera_hellion;
 pub mod deft_duelist;
 pub mod tar_fiend;
+pub mod rhox_charger;

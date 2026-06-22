@@ -82,3 +82,4 @@ pub mod esix_fractal_bloom;
 pub mod merchant_of_truth;
 pub mod krosan_cloudscraper;
 pub mod aerial_extortionist;
+pub mod nightveil_sprite;

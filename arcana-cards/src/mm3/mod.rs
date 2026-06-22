@@ -45,3 +45,4 @@ pub mod wingcrafter;
 pub mod scourge_devil;
 pub mod attended_knight;
 pub mod grixis_slavedriver;
+pub mod wall_of_frost;

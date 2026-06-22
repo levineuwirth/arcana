@@ -22,3 +22,4 @@ pub mod topan_freeblade;
 pub mod consul_s_lieutenant;
 pub mod crested_herdcaller;
 pub mod earthshaker_giant;
+pub mod steppe_glider;

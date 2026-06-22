@@ -5,3 +5,4 @@ pub mod dragon_whelp;
 pub mod skyhunter_strike_force;
 pub mod kenrith_the_returned_king;
 pub mod brenard_ginger_sculptor;
+pub mod hellkite_tyrant;

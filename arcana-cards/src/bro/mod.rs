@@ -138,3 +138,6 @@ pub mod clay_revenant;
 pub mod sarinth_greatwurm;
 pub mod clay_champion;
 pub mod urza_powerstone_prodigy;
+pub mod scrapwork_mutt;
+pub mod simian_simulacrum;
+pub mod hero_of_the_dunes;

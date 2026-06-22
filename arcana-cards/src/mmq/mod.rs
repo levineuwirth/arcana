@@ -158,3 +158,4 @@ pub mod cavern_crawler;
 pub mod deepwood_legate;
 pub mod flailing_manticore;
 pub mod charmed_griffin;
+pub mod kyren_glider;

@@ -36,3 +36,5 @@ pub mod verdurous_gearhulk;
 pub mod gleaming_overseer;
 pub mod eternal_skylord;
 pub mod stalwart_pathlighter;
+pub mod ruthless_deathfang;
+pub mod undead_alchemist;

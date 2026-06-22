@@ -131,3 +131,7 @@ pub mod callous_inspector;
 pub mod professor_zei_anthropologist;
 pub mod momo_playful_pet;
 pub mod flexible_waterbender;
+pub mod iguana_parrot;
+pub mod suki_kyoshi_warrior;
+pub mod cruel_administrator;
+pub mod earth_king_s_lieutenant;

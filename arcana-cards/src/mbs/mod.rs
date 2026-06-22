@@ -53,3 +53,4 @@ pub mod septic_rats;
 pub mod phyrexian_crusader;
 pub mod serum_raker;
 pub mod hero_of_oxid_ridge;
+pub mod phyrexian_vatmother;

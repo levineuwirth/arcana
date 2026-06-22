@@ -80,3 +80,5 @@ pub mod hand_of_honor;
 pub mod iizuka_the_ruthless;
 pub mod maga_traitor_to_mortals;
 pub mod ghost_lit_redeemer;
+pub mod shinen_of_fury_s_fire;
+pub mod skyfire_kirin;

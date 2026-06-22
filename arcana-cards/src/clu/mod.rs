@@ -127,3 +127,4 @@ pub mod daggerclaw_imp;
 pub mod stunt_double;
 pub mod turret_ogre;
 pub mod apothecary_white;
+pub mod duskshell_crawler;

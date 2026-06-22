@@ -158,3 +158,5 @@ pub mod zealous_conscripts;
 pub mod tower_geist;
 pub mod fleshtaker;
 pub mod avacyn_angel_of_hope;
+pub mod intrepid_provisioner;
+pub mod demonic_taskmaster;

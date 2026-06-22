@@ -48,3 +48,4 @@ pub mod evie_frye;
 pub mod haytham_kenway;
 pub mod ezio_blade_of_vengeance;
 pub mod edward_kenway;
+pub mod ezio_brash_novice;

@@ -63,3 +63,6 @@ pub mod interceptor_shadow_s_hound;
 pub mod the_warring_triad;
 pub mod the_destined_warrior;
 pub mod heidegger_shinra_executive;
+pub mod wakka_devoted_guardian;
+pub mod the_destined_thief;
+pub mod aerith_last_ancient;

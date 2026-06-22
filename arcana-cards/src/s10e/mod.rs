@@ -84,3 +84,5 @@ pub mod spark_elemental;
 pub mod aven_cloudchaser;
 pub mod viashino_sandscout;
 pub mod aven_windreader;
+pub mod sleeper_agent;
+pub mod fog_elemental;

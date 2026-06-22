@@ -48,3 +48,4 @@ pub mod basandra_battle_seraph;
 pub mod phyrexian_plaguelord;
 pub mod korozda_guildmage;
 pub mod thornwind_faeries;
+pub mod lightkeeper_of_emeria;

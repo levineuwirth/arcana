@@ -11,3 +11,4 @@ pub mod scalespeaker_shepherd;
 pub mod valiant_batrider;
 pub mod landlore_navigator;
 pub mod chitinous_crawler;
+pub mod stalwart_speartail;

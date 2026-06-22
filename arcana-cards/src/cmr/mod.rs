@@ -152,3 +152,5 @@ pub mod opposition_agent;
 pub mod elvish_dreadlord;
 pub mod meloku_the_clouded_mirror;
 pub mod imoti_celebrant_of_bounty;
+pub mod revenant;
+pub mod kinsbaile_courier;

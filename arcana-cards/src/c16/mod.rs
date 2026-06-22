@@ -30,3 +30,4 @@ pub mod bruse_tarl_boorish_herder;
 pub mod tymna_the_weaver;
 pub mod ludevic_necro_alchemist;
 pub mod ankle_shanker;
+pub mod filigree_angel;

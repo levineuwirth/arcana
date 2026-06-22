@@ -76,3 +76,4 @@ pub mod hateflayer;
 pub mod needle_specter;
 pub mod dream_thief;
 pub mod aerie_ouphes;
+pub mod impelled_giant;

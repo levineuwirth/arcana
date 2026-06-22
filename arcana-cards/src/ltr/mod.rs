@@ -150,3 +150,5 @@ pub mod sauron_the_lidless_eye;
 pub mod eagles_of_the_north;
 pub mod gandalf_white_rider;
 pub mod rohirrim_lancer;
+pub mod eagle_of_deliverance;
+pub mod legolas_master_archer;

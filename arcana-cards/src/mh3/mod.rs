@@ -130,3 +130,6 @@ pub mod horrid_shadowspinner;
 pub mod voidpouncer;
 pub mod solstice_zealot;
 pub mod phelia_exuberant_shepherd;
+pub mod psychic_frog;
+pub mod fanatic_of_rhonas;
+pub mod tempest_harvester;

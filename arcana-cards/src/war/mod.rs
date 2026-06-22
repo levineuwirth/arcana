@@ -101,3 +101,5 @@ pub mod gideon_s_company;
 pub mod storrev_devkarin_lich;
 pub mod god_eternal_rhonas;
 pub mod guildpact_informant;
+pub mod shriekdiver;
+pub mod rubblebelt_rioters;

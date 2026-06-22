@@ -61,3 +61,6 @@ pub mod archon_of_coronation;
 pub mod vazi_keen_negotiator;
 pub mod boss_s_chauffeur;
 pub mod parnesse_the_subtle_brush;
+pub mod henzie_toolbox_torre;
+pub mod kros_defense_contractor;
+pub mod tivit_seller_of_secrets;

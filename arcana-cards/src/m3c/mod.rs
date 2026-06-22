@@ -24,3 +24,5 @@ pub mod sage_of_the_maze;
 pub mod cayth_famed_mechanist;
 pub mod wonderscape_sage;
 pub mod aurora_shifter;
+pub mod disa_the_restless;
+pub mod jyoti_moag_ancient;

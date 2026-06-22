@@ -89,3 +89,5 @@ pub mod angelic_captain;
 pub mod murk_strider;
 pub mod grove_rumbler;
 pub mod makindi_sliderunner;
+pub mod guardian_of_tazeem;
+pub mod blisterpod;

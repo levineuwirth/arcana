@@ -112,3 +112,4 @@ pub mod cloudsculpt_technician;
 pub mod kavaron_skywarden;
 pub mod biotech_specialist;
 pub mod dual_sun_adepts;
+pub mod monoist_circuit_feeder;

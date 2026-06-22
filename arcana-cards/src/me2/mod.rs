@@ -100,3 +100,5 @@ pub mod screeching_drake;
 pub mod musician;
 pub mod deep_spawn;
 pub mod knight_of_stromgald;
+pub mod ivory_gargoyle;
+pub mod kjeldoran_dead;

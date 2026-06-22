@@ -93,3 +93,5 @@ pub mod combustible_gearhulk;
 pub mod syr_konrad_the_grim;
 pub mod phenomenon_investigators;
 pub mod arvinox_the_mind_flail;
+pub mod obsessive_skinner;
+pub mod aminatou_veil_piercer;

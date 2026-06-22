@@ -51,3 +51,4 @@ pub mod possessed_nomad;
 pub mod teroh_s_vanguard;
 pub mod nantuko_blightcutter;
 pub mod cephalid_illusionist;
+pub mod reborn_hero;

@@ -101,3 +101,4 @@ pub mod rigging_runner;
 pub mod encampment_keeper;
 pub mod adanto_vanguard;
 pub mod deathless_ancient;
+pub mod bloodcrazed_paladin;

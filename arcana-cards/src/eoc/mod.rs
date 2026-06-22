@@ -60,3 +60,4 @@ pub mod emry_lurker_of_the_loch;
 pub mod baloth_prime;
 pub mod scouring_swarm;
 pub mod threefold_thunderhulk;
+pub mod alibou_ancient_witness;

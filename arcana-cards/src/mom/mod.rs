@@ -184,3 +184,4 @@ pub mod onakke_javelineer;
 pub mod omnath_locus_of_all;
 pub mod streetwise_negotiator;
 pub mod thalia_and_the_gitrog_monster;
+pub mod archpriest_of_shadows;

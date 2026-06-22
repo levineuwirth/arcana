@@ -117,3 +117,6 @@ pub mod gnarled_professor;
 pub mod pillardrop_rescuer;
 pub mod silverquill_silencer;
 pub mod thunderous_orator;
+pub mod pilgrim_of_the_ages;
+pub mod radiant_scrollwielder;
+pub mod codie_vociferous_codex;

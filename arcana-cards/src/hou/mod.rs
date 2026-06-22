@@ -83,3 +83,6 @@ pub mod granitic_titan;
 pub mod angel_of_condemnation;
 pub mod thorned_moloch;
 pub mod ammit_eternal;
+pub mod unesh_criosphinx_sovereign;
+pub mod banewhip_punisher;
+pub mod earthshaker_khenra;

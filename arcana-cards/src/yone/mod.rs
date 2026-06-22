@@ -10,3 +10,4 @@ pub mod mephidross_slime;
 pub mod darksteel_hydra;
 pub mod magmatic_scorchwing;
 pub mod kemba_s_outfitter;
+pub mod gyox_brutal_carnivora;

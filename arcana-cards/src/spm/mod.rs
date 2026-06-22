@@ -106,3 +106,5 @@ pub mod vulture_scheming_scavenger;
 pub mod sp_dr_piloted_by_peni;
 pub mod chameleon_master_of_disguise;
 pub mod spider_man_brooklyn_visionary;
+pub mod spider_slayer_hatred_honed;
+pub mod spider_man_noir;

@@ -171,3 +171,5 @@ pub mod reinforced_ronin;
 pub mod unforgiving_one;
 pub mod biting_palm_ninja;
 pub mod replication_specialist;
+pub mod circuit_mender;
+pub mod guardians_of_oboro;

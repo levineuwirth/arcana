@@ -117,3 +117,5 @@ pub mod tazeem_raptor;
 pub mod shatterskull_charger;
 pub mod prowling_felidar;
 pub mod yasharn_implacable_earth;
+pub mod tuktuk_rubblefort;
+pub mod oran_rief_ooze;

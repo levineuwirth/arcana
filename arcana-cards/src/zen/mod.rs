@@ -49,3 +49,6 @@ pub mod living_tsunami;
 pub mod devout_lightcaster;
 pub mod roil_elemental;
 pub mod crypt_ripper;
+pub mod goblin_ruinblaster;
+pub mod bala_ged_thief;
+pub mod kazandu_blademaster;

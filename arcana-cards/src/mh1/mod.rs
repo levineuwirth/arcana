@@ -80,3 +80,5 @@ pub mod nimble_mongoose;
 pub mod ore_scale_guardian;
 pub mod blizzard_strix;
 pub mod deep_forest_hermit;
+pub mod faerie_seer;
+pub mod knight_of_old_benalia;

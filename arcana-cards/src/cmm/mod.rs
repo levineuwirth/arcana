@@ -258,3 +258,6 @@ pub mod anax_hardened_in_the_forge;
 pub mod pollenbright_druid;
 pub mod jukai_naturalist;
 pub mod leori_sparktouched_hunter;
+pub mod gargadon;
+pub mod priest_of_the_blood_rite;
+pub mod mirri_weatherlight_duelist;

@@ -74,3 +74,6 @@ pub mod monitor_monitor;
 pub mod chicken_troupe;
 pub mod robo_pi_ata;
 pub mod name_sticker_goblin;
+pub mod carnival_carnivore;
+pub mod dissatisfied_customer;
+pub mod spelling_bee;

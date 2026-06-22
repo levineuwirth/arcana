@@ -10,3 +10,4 @@ pub mod ethrimik_imagined_fiend;
 pub mod chittering_illuminator;
 pub mod mangled_soulrager;
 pub mod wingbright_thief;
+pub mod enduring_friendship;
