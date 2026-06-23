@@ -123,3 +123,4 @@ pub mod balshan_griffin;
 pub mod pulsating_illusion;
 pub mod krosan_avenger;
 pub mod hallowed_healer;
+pub mod steam_vines;

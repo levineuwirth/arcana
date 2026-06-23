@@ -87,3 +87,4 @@ pub mod kird_chieftain;
 pub mod wall_of_mulch;
 pub mod paragon_of_new_dawns;
 pub mod siege_dragon;
+pub mod encrust;

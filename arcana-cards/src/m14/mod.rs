@@ -58,3 +58,4 @@ pub mod angelic_wall;
 pub mod academy_raider;
 pub mod nightwing_shade;
 pub mod trained_condor;
+pub mod artificer_s_hex;

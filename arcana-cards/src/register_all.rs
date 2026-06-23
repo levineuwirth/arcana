@@ -712,6 +712,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::m15::wall_of_mulch::register(reg); n += 1;
     crate::m15::paragon_of_new_dawns::register(reg); n += 1;
     crate::m15::siege_dragon::register(reg); n += 1;
+    crate::m15::encrust::register(reg); n += 1;
     // --- zen ---
     crate::zen::burst_lightning::register(reg); n += 1;
     crate::zen::shatterskull_giant::register(reg); n += 1;
@@ -1568,6 +1569,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::m14::academy_raider::register(reg); n += 1;
     crate::m14::nightwing_shade::register(reg); n += 1;
     crate::m14::trained_condor::register(reg); n += 1;
+    crate::m14::artificer_s_hex::register(reg); n += 1;
     // --- mrd ---
     crate::mrd::bonesplitter::register(reg); n += 1;
     crate::mrd::alpha_myr::register(reg); n += 1;
@@ -5161,6 +5163,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::ths::sentry_of_the_underworld::register(reg); n += 1;
     crate::ths::tymaret_the_murder_king::register(reg); n += 1;
     crate::ths::triad_of_fates::register(reg); n += 1;
+    crate::ths::ordeal_of_thassa::register(reg); n += 1;
     // --- leg ---
     crate::leg::raging_bull::register(reg); n += 1;
     crate::leg::headless_horseman::register(reg); n += 1;
@@ -5746,6 +5749,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::shm::knollspine_dragon::register(reg); n += 1;
     crate::shm::barrenton_medic::register(reg); n += 1;
     crate::shm::witherscale_wurm::register(reg); n += 1;
+    crate::shm::biting_tether::register(reg); n += 1;
     // --- ala ---
     crate::ala::dreg_reaver::register(reg); n += 1;
     crate::ala::jhessian_lookout::register(reg); n += 1;
@@ -8654,6 +8658,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::ody::pulsating_illusion::register(reg); n += 1;
     crate::ody::krosan_avenger::register(reg); n += 1;
     crate::ody::hallowed_healer::register(reg); n += 1;
+    crate::ody::steam_vines::register(reg); n += 1;
     // --- fut ---
     crate::fut::blind_phantasm::register(reg); n += 1;
     crate::fut::force_of_savagery::register(reg); n += 1;
@@ -18352,6 +18357,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::tla::north_pole_patrol::register(reg); n += 1;
     crate::tla::jeong_jeong_the_deserter::register(reg); n += 1;
     crate::tla::guru_pathik::register(reg); n += 1;
+    crate::tla::watery_grasp::register(reg); n += 1;
     // --- moc ---
     crate::moc::vampires_vengeance::register(reg); n += 1;
     crate::moc::ambition_s_cost::register(reg); n += 1;

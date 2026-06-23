@@ -111,3 +111,4 @@ pub mod emberstrike_duo;
 pub mod knollspine_dragon;
 pub mod barrenton_medic;
 pub mod witherscale_wurm;
+pub mod biting_tether;
