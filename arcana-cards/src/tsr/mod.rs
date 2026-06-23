@@ -126,3 +126,7 @@ pub mod clockwork_hydra;
 pub mod thallid_germinator;
 pub mod stormcloud_djinn;
 pub mod mirri_the_cursed;
+pub mod outrider_en_kor;
+pub mod gorgon_recluse;
+pub mod yavimaya_dryad;
+pub mod ivory_giant;

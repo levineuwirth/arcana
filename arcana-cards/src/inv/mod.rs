@@ -118,3 +118,4 @@ pub mod devouring_strossus;
 pub mod urborg_skeleton;
 pub mod dromar_the_banisher;
 pub mod metathran_transport;
+pub mod glimmering_angel;

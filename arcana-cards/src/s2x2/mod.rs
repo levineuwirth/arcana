@@ -135,3 +135,5 @@ pub mod roon_of_the_hidden_realm;
 pub mod allosaurus_shepherd;
 pub mod firesong_and_sunspeaker;
 pub mod aethersnipe;
+pub mod psychic_symbiont;
+pub mod varina_lich_queen;

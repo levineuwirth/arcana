@@ -219,3 +219,6 @@ pub mod kevin_questing_dragon;
 pub mod the_trivia_mastermind;
 pub mod gerrard_and_hanna;
 pub mod chancellor_of_the_mulligan;
+pub mod the_massive_zatcatl;
+pub mod efteekay_flame_of_the_kav;
+pub mod shen_wish_granter;

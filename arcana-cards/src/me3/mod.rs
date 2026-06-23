@@ -116,3 +116,4 @@ pub mod fire_drake;
 pub mod hazezon_tamar;
 pub mod faerie_noble;
 pub mod xiahou_dun_the_one_eyed;
+pub mod wormwood_treefolk;

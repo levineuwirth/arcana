@@ -146,3 +146,4 @@ pub mod general_ferrous_rokiric;
 pub mod marble_gargoyle;
 pub mod arcbound_shikari;
 pub mod sea_drake;
+pub mod raving_visionary;

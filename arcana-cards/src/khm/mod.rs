@@ -175,3 +175,7 @@ pub mod jarl_of_the_forsaken;
 pub mod doomskar_oracle;
 pub mod harald_king_of_skemfar;
 pub mod brinebarrow_intruder;
+pub mod a_narfi_betrayer_king;
+pub mod pilfering_hawk;
+pub mod elvish_warmaster;
+pub mod koma_s_faithful;

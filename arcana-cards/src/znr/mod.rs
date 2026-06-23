@@ -131,3 +131,5 @@ pub mod a_master_of_winds;
 pub mod lullmage_s_familiar;
 pub mod a_hagra_constrictor;
 pub mod shadow_stinger;
+pub mod charix_the_raging_isle;
+pub mod tajuru_paragon;

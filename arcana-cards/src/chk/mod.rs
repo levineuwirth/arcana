@@ -138,3 +138,5 @@ pub mod rootrunner;
 pub mod burr_grafter;
 pub mod bloodthirsty_ogre;
 pub mod he_who_hungers;
+pub mod gutwrencher_oni;
+pub mod harsh_deceiver;

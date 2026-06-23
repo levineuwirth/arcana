@@ -107,3 +107,6 @@ pub mod pridemalkin;
 pub mod keskit_the_flesh_sculptor;
 pub mod slurrk_all_ingesting;
 pub mod sharding_sphinx;
+pub mod conclave_sledge_captain;
+pub mod angel_of_salvation;
+pub mod thopter_assembly;

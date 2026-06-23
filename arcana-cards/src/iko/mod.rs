@@ -112,3 +112,5 @@ pub mod almighty_brushwagg;
 pub mod general_kudro_of_drannith;
 pub mod excavation_mole;
 pub mod blitz_leech;
+pub mod lutri_the_spellchaser;
+pub mod drannith_healer;

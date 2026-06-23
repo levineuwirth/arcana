@@ -168,3 +168,5 @@ pub mod rocco_cabaretti_caterer;
 pub mod voice_of_the_vermin;
 pub mod sanctuary_warden;
 pub mod illuminator_virtuoso;
+pub mod sky_crier;
+pub mod devilish_valet;

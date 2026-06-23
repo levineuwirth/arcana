@@ -84,3 +84,4 @@ pub mod lobber_crew;
 pub mod rix_maadi_guildmage;
 pub mod hellhole_flailer;
 pub mod zanikev_locust;
+pub mod grim_roustabout;

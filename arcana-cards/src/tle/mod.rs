@@ -91,3 +91,5 @@ pub mod air_nomad_student;
 pub mod bumi_eclectic_earthbender;
 pub mod fang_roku_s_companion;
 pub mod giant_fly;
+pub mod lo_and_li_royal_advisors;
+pub mod eel_hounds;

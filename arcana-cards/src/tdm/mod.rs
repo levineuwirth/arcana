@@ -164,3 +164,5 @@ pub mod stadium_headliner;
 pub mod meticulous_artisan;
 pub mod wingblade_disciple;
 pub mod sonic_shrieker;
+pub mod sultai_devotee;
+pub mod magmatic_hellkite;

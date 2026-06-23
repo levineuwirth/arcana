@@ -121,3 +121,5 @@ pub mod gravpack_monoist;
 pub mod sunset_saboteur;
 pub mod seedship_agrarian;
 pub mod illvoi_infiltrator;
+pub mod haliya_ascendant_cadet;
+pub mod zookeeper_mechan;

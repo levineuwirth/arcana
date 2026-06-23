@@ -185,3 +185,5 @@ pub mod nezumi_prowler;
 pub mod moon_circuit_hacker;
 pub mod a_thousand_faced_shadow;
 pub mod ironhoof_boar;
+pub mod moonfolk_puzzlemaker;
+pub mod dokuchi_silencer;

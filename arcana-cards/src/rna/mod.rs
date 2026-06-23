@@ -94,3 +94,4 @@ pub mod combine_guildmage;
 pub mod senate_guildmage;
 pub mod sphinx_of_foresight;
 pub mod cult_guildmage;
+pub mod aeromunculus;

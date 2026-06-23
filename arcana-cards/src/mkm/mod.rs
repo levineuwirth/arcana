@@ -149,3 +149,4 @@ pub mod trostani_three_whispers;
 pub mod shady_informant;
 pub mod sharp_eyed_rookie;
 pub mod gadget_technician;
+pub mod krenko_baron_of_tin_street;

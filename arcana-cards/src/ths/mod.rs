@@ -95,3 +95,4 @@ pub mod breaching_hippocamp;
 pub mod nimbus_naiad;
 pub mod sentry_of_the_underworld;
 pub mod tymaret_the_murder_king;
+pub mod triad_of_fates;

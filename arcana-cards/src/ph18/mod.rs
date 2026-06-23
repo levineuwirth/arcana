@@ -2,3 +2,4 @@
 pub mod the_legend_of_arena;
 pub mod sol_advocate_eternal;
 pub mod kharis_the_beholder;
+pub mod optimus_prime_inspiring_leader;

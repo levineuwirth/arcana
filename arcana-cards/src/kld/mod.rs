@@ -113,3 +113,4 @@ pub mod experimental_aviator;
 pub mod master_trinketeer;
 pub mod aethertorch_renegade;
 pub mod hightide_hermit;
+pub mod multiform_wonder;

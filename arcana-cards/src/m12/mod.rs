@@ -55,3 +55,4 @@ pub mod chasm_drake;
 pub mod furyborn_hellkite;
 pub mod drifting_shade;
 pub mod devouring_swarm;
+pub mod crumbling_colossus;

@@ -115,3 +115,7 @@ pub mod genestealer_patriarch;
 pub mod screamer_killer;
 pub mod cybernetica_datasmith;
 pub mod szarekh_the_silent_king;
+pub mod marneus_calgar;
+pub mod sicarian_infiltrator;
+pub mod tyranid_harridan;
+pub mod belisarius_cawl;

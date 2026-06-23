@@ -80,3 +80,4 @@ pub mod impelled_giant;
 pub mod hotheaded_giant;
 pub mod merrow_levitator;
 pub mod grazing_kelpie;
+pub mod bloodied_ghost;

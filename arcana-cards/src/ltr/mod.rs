@@ -167,3 +167,5 @@ pub mod gollum_patient_plotter;
 pub mod owyn_lady_of_rohan;
 pub mod grey_havens_navigator;
 pub mod goblin_fireleaper;
+pub mod rangers_of_ithilien;
+pub mod gimli_counter_of_kills;

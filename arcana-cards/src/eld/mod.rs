@@ -129,3 +129,5 @@ pub mod beloved_princess;
 pub mod ayara_first_of_locthwain;
 pub mod yorvo_lord_of_garenbrig;
 pub mod vantress_gargoyle;
+pub mod clackbridge_troll;
+pub mod oakhame_adversary;

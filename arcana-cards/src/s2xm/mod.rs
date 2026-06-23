@@ -110,3 +110,4 @@ pub mod faerie_mechanist;
 pub mod sharuum_the_hegemon;
 pub mod sanctum_spirit;
 pub mod rhys_the_redeemed;
+pub mod vampire_hexmage;

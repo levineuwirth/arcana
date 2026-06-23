@@ -175,3 +175,4 @@ pub mod stingblade_assassin;
 pub mod voracious_vermin;
 pub mod icewrought_sentry;
 pub mod obyra_dreaming_duelist;
+pub mod ogre_chitterlord;

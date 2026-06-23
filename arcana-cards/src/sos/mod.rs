@@ -124,3 +124,4 @@ pub mod forum_necroscribe;
 pub mod noxious_newt;
 pub mod fractal_mascot;
 pub mod charging_strifeknight;
+pub mod deluge_virtuoso;

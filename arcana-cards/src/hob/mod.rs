@@ -2,3 +2,4 @@
 pub mod wood_elves;
 pub mod bilbo_luckwearer_burglar_s_plot;
 pub mod tom_bert_and_william;
+pub mod smaug_the_magnificent;

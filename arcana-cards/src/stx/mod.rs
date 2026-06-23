@@ -128,3 +128,4 @@ pub mod cogwork_archivist;
 pub mod a_dueling_coach;
 pub mod star_pupil;
 pub mod symmetry_sage;
+pub mod frost_trickster;

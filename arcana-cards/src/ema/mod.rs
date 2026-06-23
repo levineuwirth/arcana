@@ -49,3 +49,6 @@ pub mod flinthoof_boar;
 pub mod ghitu_slinger;
 pub mod wake_of_vultures;
 pub mod sprite_noble;
+pub mod fervent_cathar;
+pub mod ticking_gnomes;
+pub mod keldon_champion;

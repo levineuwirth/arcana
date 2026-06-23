@@ -205,3 +205,5 @@ pub mod kels_fight_fixer;
 pub mod eternal_taskmaster;
 pub mod sethron_hurloon_general;
 pub mod harvester_of_souls;
+pub mod hellrider;
+pub mod cauldron_familiar;

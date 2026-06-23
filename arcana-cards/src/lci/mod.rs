@@ -167,3 +167,4 @@ pub mod deathcap_marionette;
 pub mod mineshaft_spider;
 pub mod sanguine_evangelist;
 pub mod ghalta_stampede_tyrant;
+pub mod oaken_siren;

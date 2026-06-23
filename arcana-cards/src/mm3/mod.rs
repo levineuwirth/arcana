@@ -50,3 +50,4 @@ pub mod kor_skyfisher;
 pub mod hungry_spriggan;
 pub mod obzedat_ghost_council;
 pub mod vithian_stinger;
+pub mod vital_splicer;

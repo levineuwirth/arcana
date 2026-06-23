@@ -85,3 +85,4 @@ pub mod soratami_mindsweeper;
 pub mod kami_of_the_honored_dead;
 pub mod kaijin_of_the_vanishing_touch;
 pub mod patron_of_the_kitsune;
+pub mod hokori_dust_drinker;

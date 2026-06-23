@@ -81,3 +81,4 @@ pub mod defective_detective;
 pub mod grusilda_monster_masher;
 pub mod shellephant;
 pub mod masterful_ninja;
+pub mod blurry_beeble;

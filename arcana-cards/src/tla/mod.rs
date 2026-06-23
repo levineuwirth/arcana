@@ -150,3 +150,5 @@ pub mod momo_friendly_flier;
 pub mod cat_gator;
 pub mod teo_spirited_glider;
 pub mod unlucky_cabbage_merchant;
+pub mod north_pole_patrol;
+pub mod jeong_jeong_the_deserter;

@@ -112,3 +112,4 @@ pub mod soaring_show_off;
 pub mod chakram_slinger;
 pub mod ley_weaver;
 pub mod proud_mentor;
+pub mod najeela_the_blade_blossom;

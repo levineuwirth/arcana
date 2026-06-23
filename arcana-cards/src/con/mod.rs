@@ -47,3 +47,5 @@ pub mod bloodhall_ooze;
 pub mod mirror_sigil_sergeant;
 pub mod thornling;
 pub mod giltspire_avenger;
+pub mod rhox_bodyguard;
+pub mod darklit_gargoyle;

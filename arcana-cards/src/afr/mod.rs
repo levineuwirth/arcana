@@ -172,3 +172,8 @@ pub mod tiamat;
 pub mod old_gnawbone;
 pub mod yuan_ti_fang_blade;
 pub mod drider;
+pub mod green_dragon;
+pub mod krydle_of_baldur_s_gate;
+pub mod barrowin_of_clan_undurr;
+pub mod displacer_beast;
+pub mod air_cult_elemental;

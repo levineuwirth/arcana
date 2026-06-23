@@ -61,3 +61,5 @@ pub mod ghostly_changeling;
 pub mod argent_sphinx;
 pub mod water_servant;
 pub mod scuttling_death;
+pub mod root_kin_ally;
+pub mod aquastrand_spider;

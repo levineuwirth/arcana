@@ -114,3 +114,4 @@ pub mod francisco_fowl_marauder;
 pub mod emperor_mihail_ii;
 pub mod curious_altisaur;
 pub mod merfolk_sovereign;
+pub mod broadside_bombardiers;

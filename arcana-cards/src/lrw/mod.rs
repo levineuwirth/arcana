@@ -94,3 +94,4 @@ pub mod guardian_of_cloverdell;
 pub mod kinsbaile_balloonist;
 pub mod glen_elendra_pranksters;
 pub mod wispmare;
+pub mod skeletal_changeling;

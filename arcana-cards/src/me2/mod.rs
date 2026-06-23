@@ -110,3 +110,4 @@ pub mod balduvian_hydra;
 pub mod storm_spirit;
 pub mod ashen_ghoul;
 pub mod fire_dragon;
+pub mod thallid_devourer;

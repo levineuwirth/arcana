@@ -178,3 +178,5 @@ pub mod zack_fair;
 pub mod raubahn_bull_of_ala_mhigo;
 pub mod vivi_ornitier;
 pub mod beatrix_loyal_general;
+pub mod balthier_and_fran;
+pub mod malboro;

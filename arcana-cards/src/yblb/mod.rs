@@ -10,3 +10,4 @@ pub mod leaf_leap_guide;
 pub mod chittering_skullspeaker;
 pub mod indris_the_hydrostatic_surge;
 pub mod marshland_hordemaster;
+pub mod buxton_decorated_host;

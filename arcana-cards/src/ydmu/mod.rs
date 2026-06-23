@@ -6,3 +6,4 @@ pub mod niambi_beloved_protector;
 pub mod nantuko_slicer;
 pub mod wandering_treefolk;
 pub mod arvad_weatherlight_smuggler;
+pub mod diminished_returner;

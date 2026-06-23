@@ -140,3 +140,6 @@ pub mod lae_zel_callous_warrior;
 pub mod skanos_white_dragon_vassal;
 pub mod ambergris_agent_of_balance;
 pub mod shadowheart_cleric_of_graves;
+pub mod a_guildsworn_prowler;
+pub mod viconia_disciple_of_rebirth;
+pub mod lizardfolk_librarians;

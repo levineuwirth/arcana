@@ -152,3 +152,4 @@ pub mod karumonix_the_rat_king;
 pub mod serum_sovereign;
 pub mod solphim_mayhem_dominus;
 pub mod stinging_hivemaster;
+pub mod unctus_grand_metatect;

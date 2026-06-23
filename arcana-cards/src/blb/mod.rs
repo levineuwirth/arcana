@@ -177,3 +177,5 @@ pub mod hired_claw;
 pub mod hivespine_wolverine;
 pub mod plumecreed_escort;
 pub mod serra_redeemer;
+pub mod scrapshooter;
+pub mod valley_floodcaller;

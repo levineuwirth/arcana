@@ -267,3 +267,6 @@ pub mod goblin_spymaster;
 pub mod squad_commander;
 pub mod glorious_protector;
 pub mod dark_hatchling;
+pub mod forgotten_creation;
+pub mod ganax_astral_hunter;
+pub mod taunting_kobold;

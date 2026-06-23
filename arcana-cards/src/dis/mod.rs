@@ -51,3 +51,4 @@ pub mod jagged_poppet;
 pub mod enigma_eidolon;
 pub mod soulsworn_jury;
 pub mod unliving_psychopath;
+pub mod beacon_hawk;

@@ -92,3 +92,4 @@ pub mod bontu_the_glorified;
 pub mod neheb_the_worthy;
 pub mod manglehorn;
 pub mod samut_voice_of_dissent;
+pub mod temmet_vizier_of_naktamun;

@@ -153,3 +153,6 @@ pub mod imskir_iron_eater;
 pub mod eladamri_korvecdal;
 pub mod spawn_gang_commander;
 pub mod marionette_apprentice;
+pub mod glaring_fleshraker;
+pub mod drownyard_lurker;
+pub mod shrieking_drake;

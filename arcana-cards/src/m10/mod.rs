@@ -30,3 +30,4 @@ pub mod illusionary_servant;
 pub mod great_sable_stag;
 pub mod rhox_pikemaster;
 pub mod wall_of_faith;
+pub mod hypnotic_specter;

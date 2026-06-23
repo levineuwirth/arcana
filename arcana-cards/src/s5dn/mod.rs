@@ -56,3 +56,4 @@ pub mod ferropede;
 pub mod bringer_of_the_green_dawn;
 pub mod advanced_hoverguard;
 pub mod loxodon_stalwart;
+pub mod bringer_of_the_blue_dawn;

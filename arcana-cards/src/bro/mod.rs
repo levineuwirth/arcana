@@ -155,3 +155,6 @@ pub mod gwenna_eyes_of_gaea;
 pub mod a_haywire_mite;
 pub mod a_urza_powerstone_prodigy;
 pub mod ashnod_s_harvester;
+pub mod fallaji_vanguard;
+pub mod spectrum_sentinel;
+pub mod gixian_puppeteer;

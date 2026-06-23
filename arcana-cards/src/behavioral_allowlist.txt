@@ -57,8 +57,10 @@ Baldur's Gate
 Ballynock Trapper
 Baloth Packhunter
 Barbed Servitor
+Barrenton Medic
 Basilisk Gate
 Battered Golem
+Beacon Hawk
 Beguiler of Wills
 Biogenic Ooze
 Black Carriage
@@ -155,6 +157,7 @@ Evaporate
 Evolved Spinoderm
 Fain, the Broker
 Famished Paladin
+Fear of Missing Out
 Fickle Efreet
 Firmament Sage
 Flash Thompson, Spider-Fan
@@ -251,6 +254,7 @@ Lifeline
 Lightning-Rig Crew
 Lingering Phantom
 Lita, Mechanical Engineer
+Lo and Li, Royal Advisors
 Lobber Crew
 Lockjaw Snapper
 Locust Swarm
@@ -294,6 +298,7 @@ Moonstone Harbinger
 Morphling
 Mu Yanling
 Murkfiend Liege
+Myr Galvanizer
 Nahiri, Heir of the Ancients
 Nanoform Sentinel
 Nashi, Moon's Legacy
@@ -307,11 +312,14 @@ Nicol Bolas, Planeswalker
 Nimbleclaw Adept
 Noise Marine
 Norritt
+North Pole Patrol
+Nucklavee
 Odunos River Trawler
 Old Man of the Sea
 Olivia Voldaren
 Onakke Oathkeeper
 Open the Vaults
+Optimus Prime, Inspiring Leader
 Ovalchase Daredevil
 Pack Mastiff
 Pendelhaven Elder
@@ -335,6 +343,7 @@ Raggadragga, Goreguts Boss
 Ragost, Deft Gastronaut
 Raiyuu, Storm's Edge
 Ral Zarek
+Rangers of Ithilien
 Raph & Leo, Sibling Rivals
 Red XIII, Proud Warrior
 Relic Barrier
@@ -354,6 +363,7 @@ Rubblebelt Braggart
 Rubinia Soulsinger
 Rug of Smothering
 Rune-Brand Juggler
+Rust Tick
 Sacred Ground
 Sage of Hours
 Sage of the Maze
@@ -388,7 +398,9 @@ Skyfire Kirin
 Sleep-Cursed Faerie
 Sliver Overlord
 Slumbering Cerberus
+Smaug the Magnificent
 Soliton
+Sophia, Dogged Detective
 Sorin, Imperious Bloodlord
 Sower of Temptation
 Sparring Mummy
@@ -449,6 +461,7 @@ Unholy Indenture
 Unified Lunge
 Unruly Catapult
 Urtet, Remnant of Memnarch
+Vampire Hexmage
 Vedalken Plotter
 Vesperlark
 Vhal, Scholar of Elements
@@ -471,6 +484,7 @@ Wyll of the Blade Pact
 Xiahou Dun, the One-Eyed
 Ydwen Efreet
 Yomiji, Who Bars the Way
+Yuffie, Materia Hunter
 Zareth San, the Trickster
 Zephyr Scribe
 Zephyr Winder

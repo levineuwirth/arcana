@@ -195,3 +195,6 @@ pub mod joyful_stormsculptor;
 pub mod placid_rottentail;
 pub mod hidetsugu_and_kairi;
 pub mod phyrexian_pegasus;
+pub mod war_trained_slasher;
+pub mod flitting_guerrilla;
+pub mod hangar_scrounger;

@@ -300,3 +300,7 @@ pub mod dazzling_angel;
 pub mod heartfire_immolator;
 pub mod harbinger_of_the_tides;
 pub mod lathril_blade_of_the_elves;
+pub mod burrog_befuddler;
+pub mod dropkick_bomber;
+pub mod prime_speaker_zegana;
+pub mod cephalid_inkmage;

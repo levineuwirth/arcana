@@ -275,3 +275,5 @@ pub mod mindwrack_harpy;
 pub mod cadaver_imp;
 pub mod ornithopter_of_paradise;
 pub mod ainok_bond_kin;
+pub mod keleth_sunmane_familiar;
+pub mod the_scarab_god;

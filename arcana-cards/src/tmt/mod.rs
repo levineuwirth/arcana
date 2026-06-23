@@ -125,3 +125,5 @@ pub mod oroku_saki_shredder_rising;
 pub mod donatello_gadget_master;
 pub mod chrome_dome;
 pub mod dream_beavers;
+pub mod mona_lisa_science_geek;
+pub mod genghis_frog;

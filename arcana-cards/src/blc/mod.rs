@@ -25,3 +25,5 @@ pub mod rapid_augmenter;
 pub mod bloodroot_apothecary;
 pub mod prosperous_bandit;
 pub mod flubs_the_fool;
+pub mod pollywog_prodigy;
+pub mod insatiable_frugivore;

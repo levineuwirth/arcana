@@ -94,3 +94,4 @@ pub mod bastion_inventor;
 pub mod aethertide_whale;
 pub mod scrapper_champion;
 pub mod herald_of_anguish;
+pub mod foundry_hornet;

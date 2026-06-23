@@ -158,3 +158,5 @@ pub mod annie_flash_the_veteran;
 pub mod baron_bertram_graywater;
 pub mod stagecoach_security;
 pub mod slickshot_lockpicker;
+pub mod shepherd_of_the_clouds;
+pub mod terror_of_the_peaks;

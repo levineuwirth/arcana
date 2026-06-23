@@ -151,3 +151,5 @@ pub mod arboreal_grazer;
 pub mod lathliss_dragon_queen;
 pub mod broodcaller_scourge;
 pub mod ureni_of_the_unwritten;
+pub mod skull_prophet;
+pub mod floral_evoker;

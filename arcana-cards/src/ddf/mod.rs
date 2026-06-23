@@ -10,3 +10,4 @@ pub mod razormane_masticore;
 pub mod mosquito_guard;
 pub mod burrenton_bombardier;
 pub mod clockwork_condor;
+pub mod kor_aeronaut;

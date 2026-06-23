@@ -63,3 +63,4 @@ pub mod storm_fleet_sprinter;
 pub mod dusk_charger;
 pub mod famished_paladin;
 pub mod voracious_vampire;
+pub mod swift_warden;

@@ -98,3 +98,4 @@ pub mod duskworker;
 pub mod loxodon_peacekeeper;
 pub mod goblin_dirigible;
 pub mod war_elemental;
+pub mod slith_bloodletter;

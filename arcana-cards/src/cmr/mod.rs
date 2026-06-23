@@ -160,3 +160,7 @@ pub mod coastline_marauders;
 pub mod slith_ascendant;
 pub mod trench_behemoth;
 pub mod filigree_familiar;
+pub mod yurlok_of_scorch_thrash;
+pub mod dragon_egg;
+pub mod kodama_of_the_east_tree;
+pub mod stingerfling_spider;

@@ -89,3 +89,5 @@ pub mod kami_of_the_tended_garden;
 pub mod eiganjo_free_riders;
 pub mod jiwari_the_earth_aflame;
 pub mod kemuri_onna;
+pub mod kitsune_dawnblade;
+pub mod haru_onna;

@@ -24,3 +24,4 @@ pub mod chorus_of_the_conclave;
 pub mod dominus_of_fealty;
 pub mod numot_the_devastator;
 pub mod gomazoa;
+pub mod faultgrinder;

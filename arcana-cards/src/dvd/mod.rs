@@ -15,3 +15,4 @@ pub mod kuro_pitlord;
 pub mod soot_imp;
 pub mod luminous_angel;
 pub mod cackling_imp;
+pub mod serra_advocate;

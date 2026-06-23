@@ -7,3 +7,4 @@ pub mod attuma_atlantean_warlord;
 pub mod super_skrull;
 pub mod captain_america_super_soldier;
 pub mod quicksilver_brash_blur;
+pub mod moon_girl_and_devil_dinosaur;

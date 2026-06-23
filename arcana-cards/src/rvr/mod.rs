@@ -125,3 +125,6 @@ pub mod cerulean_sphinx;
 pub mod orzhov_euthanist;
 pub mod judge_s_familiar;
 pub mod karlov_of_the_ghost_council;
+pub mod dimir_house_guard;
+pub mod woebringer_demon;
+pub mod blind_hunter;

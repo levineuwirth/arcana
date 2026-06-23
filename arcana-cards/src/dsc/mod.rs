@@ -107,3 +107,4 @@ pub mod grim_flayer;
 pub mod worldspine_wurm;
 pub mod curator_beastie;
 pub mod rendmaw_creaking_nest;
+pub mod gleeful_arsonist;

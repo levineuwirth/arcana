@@ -111,3 +111,4 @@ pub mod everglove_courier;
 pub mod spitfire_handler;
 pub mod dive_bomber;
 pub mod goblin_pyromancer;
+pub mod crowd_favorites;

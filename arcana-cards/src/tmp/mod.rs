@@ -65,3 +65,4 @@ pub mod darkling_stalker;
 pub mod fylamarid;
 pub mod firefly;
 pub mod canyon_drake;
+pub mod thalakos_mistfolk;

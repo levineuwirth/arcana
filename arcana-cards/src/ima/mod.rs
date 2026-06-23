@@ -72,3 +72,4 @@ pub mod firemane_angel;
 pub mod yosei_the_morning_star;
 pub mod thundermaw_hellkite;
 pub mod shriekgeist;
+pub mod kiki_jiki_mirror_breaker;
