@@ -115,3 +115,4 @@ pub mod demonic_hordes;
 pub mod clockwork_avian;
 pub mod soldevi_golem;
 pub mod sedge_troll;
+pub mod cyclone;

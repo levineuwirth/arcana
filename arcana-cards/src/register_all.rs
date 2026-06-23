@@ -3059,6 +3059,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::m12::devouring_swarm::register(reg); n += 1;
     crate::m12::crumbling_colossus::register(reg); n += 1;
     crate::m12::mind_control::register(reg); n += 1;
+    crate::m12::mind_unbound::register(reg); n += 1;
     // --- s7ed ---
     crate::s7ed::trained_orgg::register(reg); n += 1;
     crate::s7ed::redwood_treefolk::register(reg); n += 1;
@@ -3661,6 +3662,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::me4::clockwork_avian::register(reg); n += 1;
     crate::me4::soldevi_golem::register(reg); n += 1;
     crate::me4::sedge_troll::register(reg); n += 1;
+    crate::me4::cyclone::register(reg); n += 1;
     // --- thb ---
     crate::thb::nyxborn_courser::register(reg); n += 1;
     crate::thb::nyxborn_brute::register(reg); n += 1;
@@ -10452,6 +10454,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::clb::nine_fingers_keene::register(reg); n += 1;
     crate::clb::vrock::register(reg); n += 1;
     crate::clb::gray_harbor_merfolk::register(reg); n += 1;
+    crate::clb::descent_into_avernus::register(reg); n += 1;
     // --- wth ---
     crate::wth::benalish_infantry::register(reg); n += 1;
     crate::wth::shadow_rider::register(reg); n += 1;
@@ -12589,6 +12592,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::rvr::dimir_house_guard::register(reg); n += 1;
     crate::rvr::woebringer_demon::register(reg); n += 1;
     crate::rvr::blind_hunter::register(reg); n += 1;
+    crate::rvr::assemble_the_legion::register(reg); n += 1;
     // --- dmr ---
     crate::dmr::ornithopter::register(reg); n += 1;
     crate::dmr::ridgetop_raptor::register(reg); n += 1;

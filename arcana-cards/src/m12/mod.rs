@@ -57,3 +57,4 @@ pub mod drifting_shade;
 pub mod devouring_swarm;
 pub mod crumbling_colossus;
 pub mod mind_control;
+pub mod mind_unbound;

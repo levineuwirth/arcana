@@ -297,6 +297,28 @@ pub fn cards_drawn_this_turn(
         .count() as u32
 }
 
+/// Number of `kind` counters on `source` (the ability's own source
+/// object) — the resolution-time amount for "for each [counter] on
+/// this" / "X is the number of [counter] counters on ~" payoffs
+/// (counter-accumulation enchantments: Assemble the Legion's muster →
+/// Soldiers, Descent into Avernus' descent → Treasures + damage, Mind
+/// Unbound's lore → draw). `0` for an invalid/absent source.
+///
+/// IMPORTANT (same-resolution adds): when the SAME ability both ADDS a
+/// counter and reads "for each counter on this" (the count includes the
+/// just-added one per the card's wording), this accessor reads the count
+/// BEFORE the ability's own `Effect::AddCounters` applies — so add the
+/// printed increment: `source_counter_count(state, src, kind) + <added>`.
+pub fn source_counter_count(
+    state: &GameState,
+    source: ObjectId,
+    kind: crate::types::CounterKind,
+) -> u32 {
+    state.objects.get(source)
+        .map(|o| o.count_counters(kind))
+        .unwrap_or(0)
+}
+
 /// Number of cards `player` has discarded this turn — for
 /// "discarded this turn" / Madness-adjacent / "for each card you've
 /// discarded this turn" scaling.
@@ -671,6 +693,20 @@ mod tests {
         assert_eq!(cards_drawn_this_turn(&s, 0), 2,
             "pre-turn draw is excluded; both this-turn draws by p0 count");
         assert_eq!(cards_drawn_this_turn(&s, 1), 1);
+    }
+
+    #[test]
+    fn source_counter_count_reads_the_source_object() {
+        use crate::types::CounterKind;
+        let mut s = GameState::new(2, 0);
+        let src = put(&mut s, Zone::Battlefield, 0, Characteristics::default());
+        let lore = CounterKind::Lore;
+        assert_eq!(source_counter_count(&s, src, lore), 0);
+        s.objects.get_mut(src).unwrap().add_counters(lore, 3);
+        assert_eq!(source_counter_count(&s, src, lore), 3);
+        // Other kinds are independent; absent source → 0.
+        assert_eq!(source_counter_count(&s, src, CounterKind::PlusOnePlusOne), 0);
+        assert_eq!(source_counter_count(&s, 99_999, lore), 0);
     }
 
     #[test]

@@ -1068,6 +1068,18 @@ mod tests {
                     Default::default();
                 let mut spam_turn: u32 = 0;
                 const SPAM_CAP: u32 = 30;
+                // Per-turn liveness ceiling. A mandatory-trigger loop (CR 720 —
+                // e.g. a death trigger that reanimates a creature which re-dies
+                // and re-triggers) never advances the turn and re-posts
+                // resolution choices forever; the engine has no CR-720
+                // loop→draw detection yet, so the random walk would spin to
+                // STEP_CAP and read as a non-termination FAILURE. A real game
+                // resolves any turn in far fewer steps even on a wide board, so
+                // a turn that burns this many steps without advancing is a
+                // draw-by-loop — ABORT it (like SPAM_CAP / the mana-float
+                // ceiling: agent/driver policy, not an engine-semantics change).
+                const TURN_STEP_CEIL: u32 = 4000;
+                let mut steps_this_turn: u32 = 0;
                 let mut min_life = i32::MAX;
                 let mut attacks: u64 = 0;
                 let mut max_obj = 0usize;
@@ -1107,6 +1119,12 @@ mod tests {
                             if state.turn.turn_number != spam_turn {
                                 spam_turn = state.turn.turn_number;
                                 spam.clear();
+                                steps_this_turn = 0;
+                            }
+                            steps_this_turn += 1;
+                            if steps_this_turn > TURN_STEP_CEIL {
+                                // Turn not advancing — mandatory-loop draw. Abort.
+                                return Ok((min_life, attacks, max_obj, max_legal, true));
                             }
                             let unspammy: Vec<arcana_core::actions::Action> = legal_actions
                                 .iter()

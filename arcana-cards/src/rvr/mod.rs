@@ -128,3 +128,4 @@ pub mod karlov_of_the_ghost_council;
 pub mod dimir_house_guard;
 pub mod woebringer_demon;
 pub mod blind_hunter;
+pub mod assemble_the_legion;
