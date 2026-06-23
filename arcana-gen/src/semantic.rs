@@ -191,16 +191,20 @@ pub fn dynamic_literal_reason(
     if clean.contains("script::") || clean.contains("x_value") {
         return None;
     }
-    // Ghostly Prison / Propaganda class: the oracle's "pays {N} for each
-    // creature that's attacking you" is a DYNAMIC_CUE ("for each"), but the
-    // ContinuousEffect::attack_tax(src, N, dur) builder takes a FLAT per-attacker
-    // generic and the engine charges it once PER attacking creature
-    // (GameState::attack_tax_total → "Paid per attacking creature";
-    // combat.rs charges `tax` inside the per-declaration loop). So a literal
-    // generic is the SANCTIONED representation here, not a hardcoded placeholder
-    // — the "for each [attacker]" scaling lives engine-side. attack_tax can only
-    // model an attacker-count tax, so its presence pins the cue to that meaning.
-    if clean.contains("attack_tax(") {
+    // Builders whose "for each" scaling is INTRINSIC and engine-side, so a
+    // literal amount is the SANCTIONED representation (not a hardcoded
+    // placeholder), exactly like `script::`/`x_value`:
+    //  - attack_tax(src, N, dur): the engine charges {N} once PER attacking
+    //    creature (GameState::attack_tax_total → "Paid per attacking creature";
+    //    combat.rs charges `tax` in the per-declaration loop) — Ghostly Prison.
+    //  - *_per_match(src, .., count_filter, per_p, per_t, dur): the engine
+    //    multiplies the literal per-match P/T by count_matching(count_filter) at
+    //    apply time (attached_pt_per_match / filtered_pump_per_match) — the
+    //    "for each [count_filter]" lives in the builder, not a script amount
+    //    (Blanchwood Armor, Hold the Gates).
+    if clean.contains("attack_tax(")
+        || clean.contains("_per_match(")
+    {
         return None;
     }
     Some(format!(
@@ -314,6 +318,21 @@ mod tests {
         assert!(dynamic_literal_reason(
             Some("StaticEnchantment"),
             "Creatures can't attack you unless their controller pays {2} for each creature they control that's attacking you.",
+            src).is_none());
+    }
+
+    #[test]
+    fn per_match_builder_clears_dynamic_for_each() {
+        // Hold the Gates: "+0/+1 for each Gate you control" — the "for each"
+        // is the count_filter, multiplied engine-side, so a literal per-match
+        // P/T is correct (no script:: amount needed).
+        let src = r#"fn etb(_s:&GameState,trig:&PendingTrigger,_r:&CardRegistry)->Vec<Effect>{
+            vec![Effect::InstallContinuousEffect{ effect:
+                ContinuousEffect::filtered_pump_per_match(trig.source, you, gates, 0, 1,
+                    Duration::WhileSourceOnBattlefield) }]}"#;
+        assert!(dynamic_literal_reason(
+            Some("StaticEnchantment"),
+            "Creatures you control get +0/+1 for each Gate you control.",
             src).is_none());
     }
 

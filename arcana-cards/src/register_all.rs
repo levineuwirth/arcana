@@ -5536,6 +5536,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::grn::house_guildmage::register(reg); n += 1;
     crate::grn::swathcutter_giant::register(reg); n += 1;
     crate::grn::torch_courier::register(reg); n += 1;
+    crate::grn::street_riot::register(reg); n += 1;
     // --- mir ---
     crate::mir::femeref_scouts::register(reg); n += 1;
     crate::mir::pacifism::register(reg); n += 1;
@@ -6791,6 +6792,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::gtc::skarrg_guildmage::register(reg); n += 1;
     crate::gtc::spark_trooper::register(reg); n += 1;
     crate::gtc::fortress_cyclops::register(reg); n += 1;
+    crate::gtc::hold_the_gates::register(reg); n += 1;
     // --- cmm ---
     crate::cmm::yargle_glutton_of_urborg::register(reg); n += 1;
     crate::cmm::goliath_sphinx::register(reg); n += 1;
@@ -11724,6 +11726,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::sok::kemuri_onna::register(reg); n += 1;
     crate::sok::kitsune_dawnblade::register(reg); n += 1;
     crate::sok::haru_onna::register(reg); n += 1;
+    crate::sok::meishin_the_mind_cage::register(reg); n += 1;
     // --- clu ---
     crate::clu::syndicate_enforcer::register(reg); n += 1;
     crate::clu::syndic_of_tithes::register(reg); n += 1;
@@ -16126,6 +16129,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::tmc::krang_the_all_powerful::register(reg); n += 1;
     crate::tmc::splinter_aging_champion::register(reg); n += 1;
     crate::tmc::raphael_tag_team_tough::register(reg); n += 1;
+    crate::tmc::raph_s_bravado::register(reg); n += 1;
     // --- ecl ---
     crate::ecl::personify::register(reg); n += 1;
     crate::ecl::tweeze::register(reg); n += 1;
@@ -17492,6 +17496,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::mkc::koma_cosmos_serpent::register(reg); n += 1;
     crate::mkc::sophia_dogged_detective::register(reg); n += 1;
     crate::mkc::thelonite_hermit::register(reg); n += 1;
+    crate::mkc::knowledge_is_power::register(reg); n += 1;
     // --- otc ---
     crate::otc::hex::register(reg); n += 1;
     crate::otc::decimate::register(reg); n += 1;

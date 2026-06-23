@@ -91,3 +91,4 @@ pub mod jiwari_the_earth_aflame;
 pub mod kemuri_onna;
 pub mod kitsune_dawnblade;
 pub mod haru_onna;
+pub mod meishin_the_mind_cage;

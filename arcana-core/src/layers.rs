@@ -119,6 +119,14 @@ pub enum Duration {
     /// leaves the battlefield.
     WhileSourceShowsFace(u8),
     WhileSourceOnBattlefield,
+    /// "During your turn" — a static that is LIVE only while the
+    /// source is on the battlefield AND its controller is the active
+    /// player (street_riot: "During your turn, creatures you control
+    /// get +1/+0"; raph's bravado). A LIVE check like
+    /// [`Self::WhileSourceShowsFace`]: dims off-turn and relights
+    /// on-turn; removed for real when the source leaves the
+    /// battlefield (via [`GameState::expire_effects_from_source`]).
+    WhileControllerTurn,
     WhileCondition(crate::types::ConditionId),
     WhileExiled(ObjectId),
     Permanent,
@@ -537,6 +545,58 @@ impl ContinuousEffect {
             duration,
             dependency: None,
             kind: ContinuousEffectKind::FilteredPump { filter, power, toughness },
+        }
+    }
+
+    /// Build a GLOBAL DYNAMIC filtered pump ("[filter] creatures get
+    /// +X/+X, where X is …"), layer 7c — the global sibling of
+    /// [`Self::attached_pt_dynamic`] and the dynamic sibling of
+    /// [`Self::filtered_pump`]. `filter` selects WHICH creatures get the
+    /// buff (matched against BASE characteristics from the source
+    /// controller's perspective); `compute` receives the game state and
+    /// the SOURCE and returns the (power, toughness) delta applied to
+    /// each, re-evaluated every layer application. RECURSION RULE:
+    /// `compute` must read game-state SCALARS (cards drawn this turn,
+    /// hand size, a cast count) or count via BASE characteristics — never
+    /// a layer-computed P/T of a creature this effect buffs.
+    /// (knowledge_is_power: +X/+X where X = cards drawn; meishin: -X/-0
+    /// where X = your hand size; commander's insignia: +1/+1 per cast.)
+    pub fn filtered_pump_dynamic(source: ObjectId,
+                                 filter: crate::targets::ObjectFilter,
+                                 compute: fn(&GameState, ObjectId) -> (i32, i32),
+                                 duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L7cPTModifying,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::FilteredPumpDynamic { filter, compute },
+        }
+    }
+
+    /// Build a GLOBAL PER-MATCH filtered pump ("[filter] creatures get
+    /// +`per_power`/+`per_toughness` for each [count_filter] permanent"),
+    /// layer 7c — the global sibling of [`Self::attached_pt_per_match`].
+    /// `filter` selects which creatures get buffed; `count_filter` is the
+    /// thing counted (e.g. Gates you control). BOTH are matched against
+    /// BASE characteristics from the source controller's perspective —
+    /// the count is recursion-proof by construction (it never re-enters
+    /// the layer system, unlike `script::count_matching`). (hold_the_gates:
+    /// +0/+1 for each Gate you control.)
+    pub fn filtered_pump_per_match(source: ObjectId,
+                                   filter: crate::targets::ObjectFilter,
+                                   count_filter: crate::targets::ObjectFilter,
+                                   per_power: i32, per_toughness: i32,
+                                   duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L7cPTModifying,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::FilteredPumpPerMatch {
+                filter, count_filter, per_power, per_toughness },
         }
     }
 
@@ -987,6 +1047,29 @@ pub enum ContinuousEffectKind {
         power: i32,
         toughness: i32,
     },
+    /// Layer 7c — GLOBAL DYNAMIC filtered pump: "[filter] creatures get
+    /// +X/+X, where X is …" (knowledge_is_power, meishin). `filter`
+    /// selects the buffed creatures (BASE-characteristics match);
+    /// `compute(state, source)` yields the per-creature delta. The
+    /// dynamic sibling of [`Self::FilteredPump`] / global sibling of
+    /// [`Self::AttachedCreatureGetsPtDynamic`]. `compute` must read
+    /// state scalars / base counts — a layer-computed read recurses.
+    FilteredPumpDynamic {
+        filter: crate::targets::ObjectFilter,
+        compute: fn(&GameState, ObjectId) -> (i32, i32),
+    },
+    /// Layer 7c — GLOBAL PER-MATCH filtered pump: "[filter] creatures
+    /// get +`per_power`/+`per_toughness` for each [count_filter]
+    /// permanent" (hold_the_gates). Both filters match against BASE
+    /// characteristics from the source controller's perspective; the
+    /// count is taken with `matches_base`, so it NEVER re-enters the
+    /// layer system (recursion-proof by construction).
+    FilteredPumpPerMatch {
+        filter: crate::targets::ObjectFilter,
+        count_filter: crate::targets::ObjectFilter,
+        per_power: i32,
+        per_toughness: i32,
+    },
     /// Layer 6 — global filtered keyword grant ("all Zombies have
     /// menace", "creatures with power 2 or less have shroud"). Same
     /// base-characteristics filter posture as
@@ -1090,6 +1173,11 @@ impl ContinuousEffect {
                 state.objects.get(self.source).is_some_and(|o|
                     o.zone.is_battlefield() && o.visible_face == face)
             }
+            Duration::WhileControllerTurn => {
+                state.objects.get(self.source).is_some_and(|o|
+                    o.zone.is_battlefield()
+                        && o.controller == state.active_player())
+            }
             _ => true,
         }
     }
@@ -1143,6 +1231,8 @@ impl ContinuousEffectKind {
                     == Some(object_id)
             }
             Self::FilteredPump { filter, .. }
+            | Self::FilteredPumpDynamic { filter, .. }
+            | Self::FilteredPumpPerMatch { filter, .. }
             | Self::FilteredRemoveKeyword { filter, .. }
             | Self::FilteredGrantKeyword { filter, .. } => {
                 // Battlefield-only, base-characteristics filter from
@@ -1221,6 +1311,24 @@ impl ContinuousEffectKind {
             }
             Self::FilteredPump { power, toughness, .. } => {
                 add_to_pt(chars, *power, *toughness);
+            }
+            Self::FilteredPumpDynamic { compute, .. } => {
+                let (power, toughness) = compute(state, source);
+                add_to_pt(chars, power, toughness);
+            }
+            Self::FilteredPumpPerMatch {
+                count_filter, per_power, per_toughness, ..
+            } => {
+                let who = state.objects.get(source)
+                    .map(|s| s.controller).unwrap_or(0);
+                // Count via BASE characteristics — recursion-proof: never
+                // re-enters the layer system (cf. `script::count_matching`,
+                // which uses layer-aware `matches` and could recurse).
+                let n = state.objects
+                    .objects_in_zone(crate::zones::Zone::Battlefield)
+                    .filter(|o| count_filter.matches_base(o, state, who))
+                    .count() as i32;
+                add_to_pt(chars, per_power * n, per_toughness * n);
             }
             Self::FilteredGrantKeyword { keyword, .. } => {
                 if !chars.keywords.contains(keyword) {
@@ -1384,7 +1492,8 @@ impl GameState {
             e.source == source_id
             && matches!(e.duration,
                 Duration::WhileSourceOnBattlefield
-                | Duration::WhileSourceShowsFace(_)));
+                | Duration::WhileSourceShowsFace(_)
+                | Duration::WhileControllerTurn));
     }
 
     /// Run the CR 613 layer pipeline for `object_id` and return its
@@ -2364,6 +2473,75 @@ mod tests {
         assert_eq!(s.attack_tax_total(0), 2);
         assert_eq!(s.attack_tax_total(1), 0);
     }
+
+    #[test]
+    fn filtered_pump_dynamic_scales_only_matching_creatures() {
+        // "Creatures you control get +X/+X, where X is the number of
+        // creatures you control" (knowledge_is_power class).
+        fn per_you_creature(s: &GameState, source: ObjectId) -> (i32, i32) {
+            let Some(src) = s.objects.get(source) else { return (0, 0); };
+            let n = s.objects.iter()
+                .filter(|o| o.zone.is_battlefield() && o.is_creature()
+                    && o.controller == src.controller)
+                .count() as i32;
+            (n, n)
+        }
+        let mut s = GameState::new(2, 0);
+        let src = put_creature(&mut s, 0, 0, 0);
+        let mine = put_creature(&mut s, 0, 2, 2);
+        let theirs = put_creature(&mut s, 1, 2, 2);
+        let filter = crate::targets::ObjectFilter::creature()
+            .controlled_by(crate::targets::ControllerConstraint::You);
+        s.add_continuous_effect(ContinuousEffect::filtered_pump_dynamic(
+            src, filter, per_you_creature, Duration::WhileSourceOnBattlefield));
+        // P0 controls 2 creatures (src + mine) → +2/+2 to mine.
+        assert_eq!(s.computed_power(mine), Some(4));
+        assert_eq!(s.computed_toughness(mine), Some(4));
+        // Opponent's creature is unaffected (filter is controlled_by You).
+        assert_eq!(s.computed_power(theirs), Some(2));
+        // Board grows → recomputes.
+        let _extra = put_creature(&mut s, 0, 1, 1);
+        assert_eq!(s.computed_power(mine), Some(5));
+    }
+
+    #[test]
+    fn filtered_pump_per_match_is_recursion_proof() {
+        // STRESS: the buffed creatures THEMSELVES match count_filter, so a
+        // layer-aware count would re-enter and overflow; matches_base does not.
+        // "Creatures you control get +0/+1 for each creature you control."
+        let mut s = GameState::new(2, 0);
+        let src = put_creature(&mut s, 0, 0, 0);
+        let a = put_creature(&mut s, 0, 2, 2);
+        let _b = put_creature(&mut s, 0, 1, 1);
+        let you = crate::targets::ObjectFilter::creature()
+            .controlled_by(crate::targets::ControllerConstraint::You);
+        s.add_continuous_effect(ContinuousEffect::filtered_pump_per_match(
+            src, you.clone(), you, 0, 1, Duration::WhileSourceOnBattlefield));
+        // P0 controls 3 creatures → +0/+3 on each of its creatures.
+        assert_eq!(s.computed_power(a), Some(2));
+        assert_eq!(s.computed_toughness(a), Some(5));
+    }
+
+    #[test]
+    fn while_controller_turn_dims_off_turn() {
+        let mut s = GameState::new(2, 0);
+        let src = put_creature(&mut s, 0, 0, 0);
+        let mine = put_creature(&mut s, 0, 2, 2);
+        // "During your turn, creatures you control get +1/+0" (street_riot).
+        let you = crate::targets::ObjectFilter::creature()
+            .controlled_by(crate::targets::ControllerConstraint::You);
+        s.add_continuous_effect(ContinuousEffect::filtered_pump(
+            src, you, 1, 0, Duration::WhileControllerTurn));
+        // P0's turn (active_player = 0): live.
+        assert_eq!(s.computed_power(mine), Some(3));
+        // Opponent's turn: dims (not removed).
+        s.turn.active_player = 1;
+        assert_eq!(s.computed_power(mine), Some(2));
+        // Back to P0's turn: relights.
+        s.turn.active_player = 0;
+        assert_eq!(s.computed_power(mine), Some(3));
+    }
+
 
     #[test]
     fn while_source_shows_face_dims_with_the_face() {
