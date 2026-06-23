@@ -119,3 +119,4 @@ pub mod marneus_calgar;
 pub mod sicarian_infiltrator;
 pub mod tyranid_harridan;
 pub mod belisarius_cawl;
+pub mod ultramarines_honour_guard;

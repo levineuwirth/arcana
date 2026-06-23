@@ -275,3 +275,4 @@ pub mod firkraag_cunning_instigator;
 pub mod miirym_sentinel_wyrm;
 pub mod nine_fingers_keene;
 pub mod vrock;
+pub mod gray_harbor_merfolk;

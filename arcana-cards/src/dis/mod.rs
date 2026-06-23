@@ -54,3 +54,4 @@ pub mod unliving_psychopath;
 pub mod beacon_hawk;
 pub mod silkwing_scout;
 pub mod hellhole_rats;
+pub mod vigean_hydropon;

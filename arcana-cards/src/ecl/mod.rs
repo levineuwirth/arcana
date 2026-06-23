@@ -177,3 +177,4 @@ pub mod dawnhand_eulogist;
 pub mod figure_of_fable;
 pub mod merrow_skyswimmer;
 pub mod deepway_navigator;
+pub mod lavaleaper;

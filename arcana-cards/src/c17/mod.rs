@@ -37,3 +37,4 @@ pub mod nivix_guildmage;
 pub mod hungry_lynx;
 pub mod seht_s_tiger;
 pub mod ojutai_soul_of_winter;
+pub mod vela_the_night_clad;

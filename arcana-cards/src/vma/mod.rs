@@ -79,3 +79,4 @@ pub mod blazing_specter;
 pub mod dauthi_mercenary;
 pub mod mistmoon_griffin;
 pub mod deranged_hermit;
+pub mod fallen_askari;

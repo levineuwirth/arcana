@@ -51,3 +51,4 @@ pub mod hungry_spriggan;
 pub mod obzedat_ghost_council;
 pub mod vithian_stinger;
 pub mod vital_splicer;
+pub mod stoic_angel;

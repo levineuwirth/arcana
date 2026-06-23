@@ -49,3 +49,4 @@ pub mod nevermaker;
 pub mod rage_forger;
 pub mod floodchaser;
 pub mod boldwyr_heavyweights;
+pub mod bramblewood_paragon;

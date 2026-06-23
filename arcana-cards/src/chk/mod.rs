@@ -140,3 +140,4 @@ pub mod bloodthirsty_ogre;
 pub mod he_who_hungers;
 pub mod gutwrencher_oni;
 pub mod harsh_deceiver;
+pub mod sachi_daughter_of_seshiro;

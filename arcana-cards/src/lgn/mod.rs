@@ -52,3 +52,4 @@ pub mod vexing_beetle;
 pub mod sunstrike_legionnaire;
 pub mod wall_of_hope;
 pub mod crookclaw_elder;
+pub mod drinker_of_sorrow;

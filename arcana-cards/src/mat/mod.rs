@@ -24,3 +24,5 @@ pub mod kolaghan_warmonger;
 pub mod nashi_moon_s_legacy;
 pub mod tyvar_the_bellicose;
 pub mod jirina_dauntless_general;
+pub mod pia_nalaar_consul_of_revival;
+pub mod narset_enlightened_exile;

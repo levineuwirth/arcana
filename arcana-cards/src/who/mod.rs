@@ -94,3 +94,5 @@ pub mod jenny_generated_anomaly;
 pub mod romana_ii;
 pub mod sally_sparrow;
 pub mod the_rani;
+pub mod dinosaurs_on_a_spaceship;
+pub mod the_cyber_controller;

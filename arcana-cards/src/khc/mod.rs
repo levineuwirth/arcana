@@ -39,3 +39,4 @@ pub mod miara_thorn_of_the_glade;
 pub mod sylvan_messenger;
 pub mod wolverine_riders;
 pub mod marwyn_the_nurturer;
+pub mod thunderclap_wyvern;

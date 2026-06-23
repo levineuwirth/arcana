@@ -30,3 +30,4 @@ pub mod arcbound_crusher;
 pub mod rockslide_elemental;
 pub mod living_hive;
 pub mod cadaverous_knight;
+pub mod undead_warchief;
