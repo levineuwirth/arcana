@@ -135,3 +135,4 @@ pub mod resolute_rider;
 pub mod steelgaze_griffin;
 pub mod fireborn_knight;
 pub mod questing_beast;
+pub mod ferocity_of_the_wilds;

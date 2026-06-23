@@ -309,3 +309,4 @@ pub mod ayli_eternal_pilgrim;
 pub mod firespitter_whelp;
 pub mod lyra_dawnbringer;
 pub mod confiscate;
+pub mod goblin_oriflamme;

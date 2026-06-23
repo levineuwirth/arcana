@@ -52,3 +52,4 @@ pub mod obzedat_ghost_council;
 pub mod vithian_stinger;
 pub mod vital_splicer;
 pub mod stoic_angel;
+pub mod gruul_war_chant;

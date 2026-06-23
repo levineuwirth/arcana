@@ -52,3 +52,4 @@ pub mod sprite_noble;
 pub mod fervent_cathar;
 pub mod ticking_gnomes;
 pub mod keldon_champion;
+pub mod orcish_oriflamme;

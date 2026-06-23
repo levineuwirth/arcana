@@ -178,3 +178,4 @@ pub mod obyra_dreaming_duelist;
 pub mod ogre_chitterlord;
 pub mod merfolk_coralsmith;
 pub mod bitter_chill;
+pub mod a_tale_for_the_ages;
