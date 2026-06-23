@@ -89,3 +89,4 @@ pub mod paragon_of_new_dawns;
 pub mod siege_dragon;
 pub mod encrust;
 pub mod ensoul_artifact;
+pub mod circle_of_flame;

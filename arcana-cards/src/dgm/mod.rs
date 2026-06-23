@@ -57,3 +57,4 @@ pub mod aetherling;
 pub mod korozda_gorgon;
 pub mod viashino_firstblade;
 pub mod varolz_the_scar_striped;
+pub mod gleam_of_battle;

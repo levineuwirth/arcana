@@ -112,3 +112,4 @@ pub mod knollspine_dragon;
 pub mod barrenton_medic;
 pub mod witherscale_wurm;
 pub mod biting_tether;
+pub mod raking_canopy;
