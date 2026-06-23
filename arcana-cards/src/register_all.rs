@@ -7487,6 +7487,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::roe::bramblesnap::register(reg); n += 1;
     crate::roe::deathless_angel::register(reg); n += 1;
     crate::roe::stalwart_shield_bearers::register(reg); n += 1;
+    crate::roe::dormant_gomazoa::register(reg); n += 1;
     // --- gpt ---
     crate::gpt::streetbreaker_wurm::register(reg); n += 1;
     crate::gpt::bloodscale_prowler::register(reg); n += 1;
