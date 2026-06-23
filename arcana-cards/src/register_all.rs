@@ -16920,6 +16920,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::soc::eriette_of_the_charmed_apple::register(reg); n += 1;
     crate::soc::hofri_ghostforge::register(reg); n += 1;
     crate::soc::sage_s_reverie::register(reg); n += 1;
+    crate::soc::ghostly_prison::register(reg); n += 1;
     // --- woe ---
     crate::woe::taken_by_nightmares::register(reg); n += 1;
     crate::woe::plunge_into_winter::register(reg); n += 1;
@@ -17586,6 +17587,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::otc::eris_roar_of_the_storm::register(reg); n += 1;
     crate::otc::aetherborn_marauder::register(reg); n += 1;
     crate::otc::baleful_strix::register(reg); n += 1;
+    crate::otc::propaganda::register(reg); n += 1;
     // --- und ---
     crate::und::awol::register(reg); n += 1;
     crate::und::duh::register(reg); n += 1;

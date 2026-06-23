@@ -191,6 +191,18 @@ pub fn dynamic_literal_reason(
     if clean.contains("script::") || clean.contains("x_value") {
         return None;
     }
+    // Ghostly Prison / Propaganda class: the oracle's "pays {N} for each
+    // creature that's attacking you" is a DYNAMIC_CUE ("for each"), but the
+    // ContinuousEffect::attack_tax(src, N, dur) builder takes a FLAT per-attacker
+    // generic and the engine charges it once PER attacking creature
+    // (GameState::attack_tax_total → "Paid per attacking creature";
+    // combat.rs charges `tax` inside the per-declaration loop). So a literal
+    // generic is the SANCTIONED representation here, not a hardcoded placeholder
+    // — the "for each [attacker]" scaling lives engine-side. attack_tax can only
+    // model an attacker-count tax, so its presence pins the cue to that meaning.
+    if clean.contains("attack_tax(") {
+        return None;
+    }
     Some(format!(
         "layer-3 dynamic-literal: oracle says \"{cue}\" (a computed \
          amount) but the resolver uses no `script::` / `x_value` — it \
@@ -289,6 +301,20 @@ mod tests {
             Some("FrenchVanillaCreature"),
             "Draw a card for each Forest you control.",
             DYN_LITERAL).is_none());
+    }
+
+    #[test]
+    fn attack_tax_clears_dynamic_for_each_attacker() {
+        // Ghostly Prison / Propaganda: "pays {2} for each creature that's
+        // attacking you" — the "for each" is the attacker count, charged
+        // engine-side per attacker, so a literal generic is correct.
+        let src = r#"fn etb_install(_s:&GameState,trig:&PendingTrigger,_r:&CardRegistry)->Vec<Effect>{
+            vec![Effect::InstallContinuousEffect{ effect:
+                ContinuousEffect::attack_tax(trig.source, 2, Duration::WhileSourceOnBattlefield) }]}"#;
+        assert!(dynamic_literal_reason(
+            Some("StaticEnchantment"),
+            "Creatures can't attack you unless their controller pays {2} for each creature they control that's attacking you.",
+            src).is_none());
     }
 
     #[test]

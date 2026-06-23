@@ -220,3 +220,4 @@ pub mod beledros_witherbloom;
 pub mod eriette_of_the_charmed_apple;
 pub mod hofri_ghostforge;
 pub mod sage_s_reverie;
+pub mod ghostly_prison;
