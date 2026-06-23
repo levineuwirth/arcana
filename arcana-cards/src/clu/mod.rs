@@ -138,3 +138,4 @@ pub mod spawn_of_mayhem;
 pub mod pyrewild_shaman;
 pub mod firemane_avenger;
 pub mod headliner_scarlett;
+pub mod amzu_swarm_s_hunger;

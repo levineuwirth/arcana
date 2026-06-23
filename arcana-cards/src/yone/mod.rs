@@ -11,3 +11,4 @@ pub mod darksteel_hydra;
 pub mod magmatic_scorchwing;
 pub mod kemba_s_outfitter;
 pub mod gyox_brutal_carnivora;
+pub mod vexyr_ich_tekik_s_heir;

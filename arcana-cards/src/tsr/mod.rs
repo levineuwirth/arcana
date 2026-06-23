@@ -130,3 +130,4 @@ pub mod outrider_en_kor;
 pub mod gorgon_recluse;
 pub mod yavimaya_dryad;
 pub mod ivory_giant;
+pub mod dormant_sliver;

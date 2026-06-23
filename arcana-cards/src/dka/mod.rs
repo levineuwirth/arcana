@@ -47,3 +47,5 @@ pub mod elgaud_inquisitor;
 pub mod moonveil_dragon;
 pub mod geralf_s_messenger;
 pub mod markov_blademaster;
+pub mod immerwolf;
+pub mod sightless_ghoul;

@@ -58,3 +58,4 @@ pub mod leonardo_da_vinci;
 pub mod loyal_inventor;
 pub mod spartan_veteran;
 pub mod templar_knight;
+pub mod arno_dorian;

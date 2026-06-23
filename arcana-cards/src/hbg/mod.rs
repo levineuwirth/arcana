@@ -146,3 +146,4 @@ pub mod lizardfolk_librarians;
 pub mod klement_tempest_acolyte;
 pub mod gut_fanatical_priestess;
 pub mod lae_zel_primal_warrior;
+pub mod the_hourglass_coven;

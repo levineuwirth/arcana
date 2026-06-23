@@ -139,3 +139,5 @@ pub mod oildeep_gearhulk;
 pub mod pyrewood_gearhulk;
 pub mod burnout_bashtronaut;
 pub mod hazard_of_the_dunes;
+pub mod fearless_swashbuckler;
+pub mod cloudspire_captain;

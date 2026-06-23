@@ -187,3 +187,4 @@ pub mod a_thousand_faced_shadow;
 pub mod ironhoof_boar;
 pub mod moonfolk_puzzlemaker;
 pub mod dokuchi_silencer;
+pub mod silver_fur_master;

@@ -89,3 +89,4 @@ pub mod dogged_detective;
 pub mod nantuko_vigilante;
 pub mod koma_cosmos_serpent;
 pub mod sophia_dogged_detective;
+pub mod thelonite_hermit;
