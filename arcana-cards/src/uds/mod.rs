@@ -46,3 +46,4 @@ pub mod wall_of_glare;
 pub mod keldon_vandals;
 pub mod marker_beetles;
 pub mod heart_warden;
+pub mod treachery;

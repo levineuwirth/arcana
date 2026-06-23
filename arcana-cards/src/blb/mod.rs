@@ -180,3 +180,4 @@ pub mod serra_redeemer;
 pub mod scrapshooter;
 pub mod valley_floodcaller;
 pub mod dragonhawk_fate_s_tempest;
+pub mod kitnap;

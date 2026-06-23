@@ -82,3 +82,4 @@ pub mod warden_of_geometries;
 pub mod deepfathom_skulker;
 pub mod mindmelter;
 pub mod bearer_of_silence;
+pub mod containment_membrane;

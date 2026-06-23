@@ -145,3 +145,4 @@ pub mod thieves_guild_enforcer;
 pub mod waker_of_waves;
 pub mod canopy_stalker;
 pub mod mistral_singer;
+pub mod enthralling_hold;

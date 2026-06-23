@@ -139,3 +139,4 @@ pub mod psychic_symbiont;
 pub mod varina_lich_queen;
 pub mod oona_s_prowler;
 pub mod thistledown_liege;
+pub mod domestication;

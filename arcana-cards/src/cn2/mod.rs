@@ -61,3 +61,4 @@ pub mod nessian_asp;
 pub mod guardian_of_the_gateless;
 pub mod custodi_peacekeeper;
 pub mod merfolk_skyscout;
+pub mod bonds_of_quicksilver;

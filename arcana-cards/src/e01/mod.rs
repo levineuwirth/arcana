@@ -24,3 +24,4 @@ pub mod archfiend_of_depravity;
 pub mod icefall_regent;
 pub mod aegis_angel;
 pub mod avatar_of_fury;
+pub mod soul_ransom;

@@ -36,3 +36,4 @@ pub mod tana_the_bloodsower;
 pub mod horizon_chimera;
 pub mod brutal_hordechief;
 pub mod realm_seekers;
+pub mod frenzied_fugue;

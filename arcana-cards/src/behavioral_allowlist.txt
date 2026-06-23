@@ -166,6 +166,7 @@ Floodwater Dam
 Flowerfoot Swordmaster
 Forensic Researcher
 Formidable Speaker
+Fractured Loyalty
 Freyalise, Skyshroud Partisan
 Frillscare Mentor
 Furgul, Quag Nurturer
@@ -371,6 +372,7 @@ Rust Tick
 Sacred Ground
 Sage of Hours
 Sage of the Maze
+Sage's Reverie
 Saint Traft and Rem Karolus
 Salvager of Secrets
 Samut, Voice of Dissent

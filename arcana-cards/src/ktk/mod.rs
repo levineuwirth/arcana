@@ -88,3 +88,4 @@ pub mod efreet_weaponmaster;
 pub mod abomination_of_gudul;
 pub mod mistfire_weaver;
 pub mod scaldkin;
+pub mod singing_bell_strike;

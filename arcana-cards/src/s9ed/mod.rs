@@ -72,3 +72,4 @@ pub mod sage_aven;
 pub mod viashino_sandstalker;
 pub mod pegasus_charger;
 pub mod thundermare;
+pub mod annex;

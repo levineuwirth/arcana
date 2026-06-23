@@ -70,3 +70,4 @@ pub mod court_hussar;
 pub mod ire_shaman;
 pub mod kor_firewalker;
 pub mod nicol_bolas;
+pub mod genju_of_the_spires;

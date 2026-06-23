@@ -70,3 +70,4 @@ pub mod okk;
 pub mod lava_hounds;
 pub mod goblin_glider;
 pub mod carrion_wall;
+pub mod steal_artifact;

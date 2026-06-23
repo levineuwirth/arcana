@@ -72,3 +72,4 @@ pub mod darkslick_drake;
 pub mod molten_tail_masticore;
 pub mod myr_galvanizer;
 pub mod rust_tick;
+pub mod volition_reins;

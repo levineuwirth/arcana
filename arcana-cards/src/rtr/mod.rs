@@ -85,3 +85,4 @@ pub mod rix_maadi_guildmage;
 pub mod hellhole_flailer;
 pub mod zanikev_locust;
 pub mod grim_roustabout;
+pub mod paralyzing_grasp;

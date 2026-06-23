@@ -88,3 +88,4 @@ pub mod sleeper_agent;
 pub mod fog_elemental;
 pub mod lord_of_the_undead;
 pub mod spiketail_hatchling;
+pub mod persuasion;

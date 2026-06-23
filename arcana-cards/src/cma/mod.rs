@@ -50,3 +50,4 @@ pub mod korozda_guildmage;
 pub mod thornwind_faeries;
 pub mod lightkeeper_of_emeria;
 pub mod silklash_spider;
+pub mod control_magic;

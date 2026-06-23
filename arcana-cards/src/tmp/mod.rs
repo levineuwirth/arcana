@@ -66,3 +66,4 @@ pub mod fylamarid;
 pub mod firefly;
 pub mod canyon_drake;
 pub mod thalakos_mistfolk;
+pub mod steal_enchantment;

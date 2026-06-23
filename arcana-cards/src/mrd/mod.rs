@@ -99,3 +99,5 @@ pub mod loxodon_peacekeeper;
 pub mod goblin_dirigible;
 pub mod war_elemental;
 pub mod slith_bloodletter;
+pub mod domineer;
+pub mod fractured_loyalty;

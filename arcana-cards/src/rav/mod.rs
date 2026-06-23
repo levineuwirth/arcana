@@ -80,3 +80,4 @@ pub mod ethereal_usher;
 pub mod vindictive_mob;
 pub mod sisters_of_stone_death;
 pub mod grave_shell_scarab;
+pub mod dream_leash;
