@@ -81,3 +81,4 @@ pub mod godsire;
 pub mod archdemon_of_unx;
 pub mod skeletal_kathari;
 pub mod grixis_battlemage;
+pub mod puppet_conjurer;

@@ -46,3 +46,4 @@ pub mod denethor_stone_seer;
 pub mod monstrosity_of_the_lake;
 pub mod rapacious_guest;
 pub mod haldir_l_rien_lieutenant;
+pub mod moria_scavenger;

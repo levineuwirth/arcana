@@ -59,3 +59,4 @@ pub mod triceraton_regenta;
 pub mod leatherhead_iron_gator;
 pub mod krang_the_all_powerful;
 pub mod splinter_aging_champion;
+pub mod raphael_tag_team_tough;

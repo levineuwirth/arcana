@@ -304,3 +304,6 @@ pub mod burrog_befuddler;
 pub mod dropkick_bomber;
 pub mod prime_speaker_zegana;
 pub mod cephalid_inkmage;
+pub mod mossborn_hydra;
+pub mod ayli_eternal_pilgrim;
+pub mod firespitter_whelp;

@@ -131,3 +131,7 @@ pub mod yorvo_lord_of_garenbrig;
 pub mod vantress_gargoyle;
 pub mod clackbridge_troll;
 pub mod oakhame_adversary;
+pub mod resolute_rider;
+pub mod steelgaze_griffin;
+pub mod fireborn_knight;
+pub mod questing_beast;

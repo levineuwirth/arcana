@@ -13,3 +13,4 @@ pub mod skarrgan_pit_skulk;
 pub mod the_unspeakable;
 pub mod nivix_cyclops;
 pub mod nucklavee;
+pub mod sage_eye_avengers;

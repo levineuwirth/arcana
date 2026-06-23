@@ -76,3 +76,4 @@ pub mod helitrooper;
 pub mod maester_seymour;
 pub mod yuffie_materia_hunter;
 pub mod krile_baldesion;
+pub mod lulu_stern_guardian;

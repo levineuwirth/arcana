@@ -57,3 +57,4 @@ pub mod jacob_frye;
 pub mod leonardo_da_vinci;
 pub mod loyal_inventor;
 pub mod spartan_veteran;
+pub mod templar_knight;

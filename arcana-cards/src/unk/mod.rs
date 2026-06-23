@@ -222,3 +222,6 @@ pub mod chancellor_of_the_mulligan;
 pub mod the_massive_zatcatl;
 pub mod efteekay_flame_of_the_kav;
 pub mod shen_wish_granter;
+pub mod the_river_warlock;
+pub mod the_companion_of_the_wilds;
+pub mod battle_myrsphere;

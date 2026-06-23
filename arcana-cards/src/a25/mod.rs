@@ -69,3 +69,4 @@ pub mod death_s_head_buzzard;
 pub mod court_hussar;
 pub mod ire_shaman;
 pub mod kor_firewalker;
+pub mod nicol_bolas;

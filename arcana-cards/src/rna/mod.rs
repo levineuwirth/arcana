@@ -95,3 +95,4 @@ pub mod senate_guildmage;
 pub mod sphinx_of_foresight;
 pub mod cult_guildmage;
 pub mod aeromunculus;
+pub mod skatewing_spy;

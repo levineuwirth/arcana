@@ -173,3 +173,4 @@ pub mod lumberknot;
 pub mod elder_deep_fiend;
 pub mod wild_field_scarecrow;
 pub mod bloodmad_vampire;
+pub mod cobbled_lancer;

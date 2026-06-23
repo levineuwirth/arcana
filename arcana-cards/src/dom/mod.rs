@@ -95,3 +95,4 @@ pub mod goblin_chainwhirler;
 pub mod serra_disciple;
 pub mod adeliz_the_cinder_wind;
 pub mod merfolk_trickster;
+pub mod elfhame_druid;

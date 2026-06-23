@@ -119,3 +119,5 @@ pub mod urborg_skeleton;
 pub mod dromar_the_banisher;
 pub mod metathran_transport;
 pub mod glimmering_angel;
+pub mod phyrexian_slayer;
+pub mod thunderscape_master;

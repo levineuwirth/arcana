@@ -12,3 +12,4 @@ pub mod yoke_of_the_damned;
 pub mod shambling_shell;
 pub mod doomgape;
 pub mod gelectrode;
+pub mod brain_weevil;

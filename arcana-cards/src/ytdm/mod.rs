@@ -9,3 +9,4 @@ pub mod pampered_loamfrill;
 pub mod dalkovan_outrider;
 pub mod dragonblood_twins;
 pub mod audacious_knuckleblade;
+pub mod xho_cai_flickering_talon;

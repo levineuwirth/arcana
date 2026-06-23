@@ -158,3 +158,5 @@ pub mod ashnod_s_harvester;
 pub mod fallaji_vanguard;
 pub mod spectrum_sentinel;
 pub mod gixian_puppeteer;
+pub mod swiftgear_drake;
+pub mod heavyweight_demolisher;

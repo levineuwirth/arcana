@@ -115,3 +115,4 @@ pub mod emperor_mihail_ii;
 pub mod curious_altisaur;
 pub mod merfolk_sovereign;
 pub mod broadside_bombardiers;
+pub mod thassa_god_of_the_sea;

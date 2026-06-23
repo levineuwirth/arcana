@@ -17,3 +17,4 @@ pub mod white_knight;
 pub mod voracious_dragon;
 pub mod zhalfirin_commander;
 pub mod bogardan_rager;
+pub mod steward_of_valeron;

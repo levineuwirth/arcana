@@ -27,3 +27,4 @@ pub mod gorilla_berserkers;
 pub mod carrier_pigeons;
 pub mod lim_d_l_s_paladin;
 pub mod whip_vine;
+pub mod urza_s_engine;

@@ -94,3 +94,4 @@ pub mod farbog_revenant;
 pub mod relentless_dead;
 pub mod angel_of_deliverance;
 pub mod nearheath_chaplain;
+pub mod emissary_of_the_sleepless;

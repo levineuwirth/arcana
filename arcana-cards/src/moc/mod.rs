@@ -110,3 +110,4 @@ pub mod sharding_sphinx;
 pub mod conclave_sledge_captain;
 pub mod angel_of_salvation;
 pub mod thopter_assembly;
+pub mod haakon_stromgald_scourge;

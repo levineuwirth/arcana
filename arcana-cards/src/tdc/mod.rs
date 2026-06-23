@@ -153,3 +153,7 @@ pub mod broodcaller_scourge;
 pub mod ureni_of_the_unwritten;
 pub mod skull_prophet;
 pub mod floral_evoker;
+pub mod loyal_apprentice;
+pub mod keiga_the_tide_star;
+pub mod wall_of_roots;
+pub mod skarrgan_hellkite;

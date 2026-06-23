@@ -69,3 +69,4 @@ pub mod denry_klin_editor_in_chief;
 pub mod zurzoth_chaos_rider;
 pub mod phabine_boss_s_confidant;
 pub mod deathbringer_regent;
+pub mod woodfall_primus;

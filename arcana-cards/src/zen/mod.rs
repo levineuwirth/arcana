@@ -57,3 +57,4 @@ pub mod tuktuk_grunts;
 pub mod makindi_shieldmate;
 pub mod hagra_crocodile;
 pub mod sphinx_of_lost_truths;
+pub mod halo_hunter;

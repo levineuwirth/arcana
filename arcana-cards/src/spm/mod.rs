@@ -121,3 +121,5 @@ pub mod masked_meower;
 pub mod flash_thompson_spider_fan;
 pub mod daily_bugle_reporters;
 pub mod anti_venom_horrifying_healer;
+pub mod ara_a_heart_of_the_spider;
+pub mod the_spot_living_portal;

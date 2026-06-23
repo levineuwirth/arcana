@@ -127,3 +127,4 @@ pub mod chrome_dome;
 pub mod dream_beavers;
 pub mod mona_lisa_science_geek;
 pub mod genghis_frog;
+pub mod baxter_stockman;

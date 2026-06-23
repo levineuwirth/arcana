@@ -129,6 +129,7 @@ Decimator Beetle
 Dedicated Dollmaker
 Deep-Slumber Titan
 Deepchannel Duelist
+Deepway Navigator
 Defiant Greatmaw
 Descendant of Masumaro
 Devoted Druid
@@ -232,6 +233,7 @@ Karlach, Tiefling Berserker
 Karlach, Tiefling Spellrager
 Karlach, Tiefling Zealot
 Karona, False God
+Keiga, the Tide Star
 Kellogg, Dangerous Mind
 Kelpie Guide
 Keruga, the Macrosage
@@ -337,6 +339,7 @@ Prince of Thralls
 Pristine Angel
 Pristine Skywise
 Progenitor Exarch
+Puppet Conjurer
 Puppet Strings
 Radagast the Brown
 Raggadragga, Goreguts Boss
@@ -345,6 +348,7 @@ Raiyuu, Storm's Edge
 Ral Zarek
 Rangers of Ithilien
 Raph & Leo, Sibling Rivals
+Raphael, Tag Team Tough
 Red XIII, Proud Warrior
 Relic Barrier
 Repeat Offender

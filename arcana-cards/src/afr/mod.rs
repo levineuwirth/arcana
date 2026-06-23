@@ -177,3 +177,6 @@ pub mod krydle_of_baldur_s_gate;
 pub mod barrowin_of_clan_undurr;
 pub mod displacer_beast;
 pub mod air_cult_elemental;
+pub mod flumph;
+pub mod nadaar_selfless_paladin;
+pub mod owlbear;

@@ -170,3 +170,4 @@ pub mod sanctuary_warden;
 pub mod illuminator_virtuoso;
 pub mod sky_crier;
 pub mod devilish_valet;
+pub mod falco_spara_pactweaver;

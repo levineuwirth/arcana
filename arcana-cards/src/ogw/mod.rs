@@ -79,3 +79,5 @@ pub mod kalitas_traitor_of_ghet;
 pub mod cultivator_drone;
 pub mod kozilek_s_translator;
 pub mod warden_of_geometries;
+pub mod deepfathom_skulker;
+pub mod mindmelter;

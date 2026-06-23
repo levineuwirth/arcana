@@ -143,3 +143,6 @@ pub mod shadowheart_cleric_of_graves;
 pub mod a_guildsworn_prowler;
 pub mod viconia_disciple_of_rebirth;
 pub mod lizardfolk_librarians;
+pub mod klement_tempest_acolyte;
+pub mod gut_fanatical_priestess;
+pub mod lae_zel_primal_warrior;

@@ -92,3 +92,4 @@ pub mod ogre_slumlord;
 pub mod world_shaper;
 pub mod eris_roar_of_the_storm;
 pub mod aetherborn_marauder;
+pub mod baleful_strix;

@@ -72,3 +72,4 @@ pub mod walker_of_the_grove;
 pub mod reya_dawnbringer;
 pub mod glen_elendra_archmage;
 pub mod verdant_eidolon;
+pub mod kitchen_finks;

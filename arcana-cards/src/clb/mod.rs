@@ -270,3 +270,8 @@ pub mod dark_hatchling;
 pub mod forgotten_creation;
 pub mod ganax_astral_hunter;
 pub mod taunting_kobold;
+pub mod grim_haruspex;
+pub mod firkraag_cunning_instigator;
+pub mod miirym_sentinel_wyrm;
+pub mod nine_fingers_keene;
+pub mod vrock;

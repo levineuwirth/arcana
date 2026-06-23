@@ -160,3 +160,5 @@ pub mod stagecoach_security;
 pub mod slickshot_lockpicker;
 pub mod shepherd_of_the_clouds;
 pub mod terror_of_the_peaks;
+pub mod bounding_felidar;
+pub mod holy_cow;

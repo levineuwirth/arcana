@@ -150,3 +150,4 @@ pub mod shady_informant;
 pub mod sharp_eyed_rookie;
 pub mod gadget_technician;
 pub mod krenko_baron_of_tin_street;
+pub mod tolsimir_midnight_s_light;

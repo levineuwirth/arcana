@@ -138,3 +138,4 @@ pub mod diversion_unit;
 pub mod oildeep_gearhulk;
 pub mod pyrewood_gearhulk;
 pub mod burnout_bashtronaut;
+pub mod hazard_of_the_dunes;

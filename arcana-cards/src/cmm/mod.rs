@@ -277,3 +277,4 @@ pub mod ornithopter_of_paradise;
 pub mod ainok_bond_kin;
 pub mod keleth_sunmane_familiar;
 pub mod the_scarab_god;
+pub mod pathrazer_of_ulamog;

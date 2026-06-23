@@ -84,3 +84,5 @@ pub mod sierra_nuka_s_biggest_fan;
 pub mod behemoth_of_vault_0;
 pub mod duchess_wayward_tavernkeep;
 pub mod rose_cutthroat_raider;
+pub mod jason_bright_glowing_prophet;
+pub mod wasteland_raider;

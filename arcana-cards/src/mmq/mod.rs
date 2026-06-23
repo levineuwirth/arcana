@@ -164,3 +164,4 @@ pub mod timid_drake;
 pub mod caustic_wasps;
 pub mod aerial_caravan;
 pub mod cateran_overlord;
+pub mod rushwood_elemental;

@@ -198,3 +198,4 @@ pub mod phyrexian_pegasus;
 pub mod war_trained_slasher;
 pub mod flitting_guerrilla;
 pub mod hangar_scrounger;
+pub mod tenured_oilcaster;

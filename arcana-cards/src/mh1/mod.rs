@@ -91,3 +91,6 @@ pub mod rotwidow_pack;
 pub mod vesperlark;
 pub mod mist_syndicate_naga;
 pub mod munitions_expert;
+pub mod headless_specter;
+pub mod rhox_veteran;
+pub mod enduring_sliver;

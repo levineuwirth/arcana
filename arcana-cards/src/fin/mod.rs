@@ -180,3 +180,5 @@ pub mod vivi_ornitier;
 pub mod beatrix_loyal_general;
 pub mod balthier_and_fran;
 pub mod malboro;
+pub mod sandworm;
+pub mod tidus_blitzball_star;

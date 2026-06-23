@@ -152,3 +152,5 @@ pub mod tori_d_avenant_fury_rider;
 pub mod archangel_of_wrath;
 pub mod keldon_flamesage;
 pub mod zur_eternal_schemer;
+pub mod nemata_primeval_warden;
+pub mod the_raven_man;

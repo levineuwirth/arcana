@@ -14,3 +14,4 @@ pub mod despoiler_of_souls;
 pub mod foul_imp;
 pub mod pestilence_demon;
 pub mod blistergrub;
+pub mod briarhorn;

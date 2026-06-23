@@ -149,3 +149,5 @@ pub mod savage_gorger;
 pub mod nightpack_ambusher;
 pub mod chandra_s_spitfire;
 pub mod angelic_guardian;
+pub mod kaalia_zenith_seeker;
+pub mod gargos_vicious_watcher;

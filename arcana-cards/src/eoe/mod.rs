@@ -123,3 +123,4 @@ pub mod seedship_agrarian;
 pub mod illvoi_infiltrator;
 pub mod haliya_ascendant_cadet;
 pub mod zookeeper_mechan;
+pub mod syr_vondam_the_lucent;
