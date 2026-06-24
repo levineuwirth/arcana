@@ -22,3 +22,8 @@ pub mod goblin_rock_sled;
 pub mod mishra_s_war_machine;
 pub mod wall_of_dust;
 pub mod tempest_efreet;
+pub mod blue_ward;
+pub mod black_ward;
+pub mod red_ward;
+pub mod white_ward;
+pub mod green_ward;

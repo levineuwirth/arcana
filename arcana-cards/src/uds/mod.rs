@@ -47,3 +47,4 @@ pub mod keldon_vandals;
 pub mod marker_beetles;
 pub mod heart_warden;
 pub mod treachery;
+pub mod mask_of_law_and_grace;

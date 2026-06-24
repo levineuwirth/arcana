@@ -58,3 +58,4 @@ pub mod desolation_angel;
 pub mod cromat;
 pub mod kavu_glider;
 pub mod powerstone_minefield;
+pub mod shield_of_duty_and_reason;

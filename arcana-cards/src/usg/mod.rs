@@ -90,3 +90,5 @@ pub mod somnophore;
 pub mod mana_leech;
 pub mod witch_engine;
 pub mod spined_fluke;
+pub mod absolute_grace;
+pub mod absolute_law;

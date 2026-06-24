@@ -889,6 +889,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::ons::dive_bomber::register(reg); n += 1;
     crate::ons::goblin_pyromancer::register(reg); n += 1;
     crate::ons::crowd_favorites::register(reg); n += 1;
+    crate::ons::crown_of_awe::register(reg); n += 1;
     // --- tor ---
     crate::tor::fiery_temper::register(reg); n += 1;
     crate::tor::churning_eddy::register(reg); n += 1;
@@ -1266,6 +1267,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::apc::cromat::register(reg); n += 1;
     crate::apc::kavu_glider::register(reg); n += 1;
     crate::apc::powerstone_minefield::register(reg); n += 1;
+    crate::apc::shield_of_duty_and_reason::register(reg); n += 1;
     // --- ktk ---
     crate::ktk::monastery_swiftspear::register(reg); n += 1;
     crate::ktk::rotting_mastodon::register(reg); n += 1;
@@ -8714,6 +8716,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::ody::krosan_avenger::register(reg); n += 1;
     crate::ody::hallowed_healer::register(reg); n += 1;
     crate::ody::steam_vines::register(reg); n += 1;
+    crate::ody::earnest_fellowship::register(reg); n += 1;
     // --- fut ---
     crate::fut::blind_phantasm::register(reg); n += 1;
     crate::fut::force_of_savagery::register(reg); n += 1;
@@ -9780,6 +9783,8 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::usg::mana_leech::register(reg); n += 1;
     crate::usg::witch_engine::register(reg); n += 1;
     crate::usg::spined_fluke::register(reg); n += 1;
+    crate::usg::absolute_grace::register(reg); n += 1;
+    crate::usg::absolute_law::register(reg); n += 1;
     // --- evg ---
     crate::evg::elvish_warrior::register(reg); n += 1;
     crate::evg::wirewood_herald::register(reg); n += 1;
@@ -9823,6 +9828,11 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::s4ed::mishra_s_war_machine::register(reg); n += 1;
     crate::s4ed::wall_of_dust::register(reg); n += 1;
     crate::s4ed::tempest_efreet::register(reg); n += 1;
+    crate::s4ed::blue_ward::register(reg); n += 1;
+    crate::s4ed::black_ward::register(reg); n += 1;
+    crate::s4ed::red_ward::register(reg); n += 1;
+    crate::s4ed::white_ward::register(reg); n += 1;
+    crate::s4ed::green_ward::register(reg); n += 1;
     // --- s2xm ---
     crate::s2xm::glint_sleeve_artisan::register(reg); n += 1;
     crate::s2xm::accomplished_automaton::register(reg); n += 1;
@@ -10062,6 +10072,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::uds::marker_beetles::register(reg); n += 1;
     crate::uds::heart_warden::register(reg); n += 1;
     crate::uds::treachery::register(reg); n += 1;
+    crate::uds::mask_of_law_and_grace::register(reg); n += 1;
     // --- tmt ---
     crate::tmt::squirrelanoids::register(reg); n += 1;
     crate::tmt::punk_frogs::register(reg); n += 1;
