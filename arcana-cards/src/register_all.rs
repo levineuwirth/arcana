@@ -15572,6 +15572,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::cmb2::siege_elemental::register(reg); n += 1;
     crate::cmb2::blood_poet::register(reg); n += 1;
     crate::cmb2::lazier_goblin::register(reg); n += 1;
+    crate::cmb2::chimney_goyf::register(reg); n += 1;
     // --- s2x2 ---
     crate::s2x2::tower_gargoyle::register(reg); n += 1;
     crate::s2x2::titan_s_strength::register(reg); n += 1;
@@ -16584,6 +16585,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::unf::jermane_pride_of_the_circus::register(reg); n += 1;
     crate::unf::baaallerina::register(reg); n += 1;
     crate::unf::lila_hospitality_hostess::register(reg); n += 1;
+    crate::unf::assembled_ensemble::register(reg); n += 1;
     // --- vow ---
     crate::vow::sanctify::register(reg); n += 1;
     crate::vow::lacerate_flesh::register(reg); n += 1;
@@ -19813,6 +19815,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::yecl::pep_raucous_raider::register(reg); n += 1;
     crate::yecl::topsoil_turner::register(reg); n += 1;
     crate::yecl::infestation::register(reg); n += 1;
+    crate::yecl::opulent_clomper::register(reg); n += 1;
     // --- ncc ---
     crate::ncc::urban_evolution::register(reg); n += 1;
     crate::ncc::aether_snap::register(reg); n += 1;

@@ -47,3 +47,4 @@ pub mod recycla_bird;
 pub mod siege_elemental;
 pub mod blood_poet;
 pub mod lazier_goblin;
+pub mod chimney_goyf;

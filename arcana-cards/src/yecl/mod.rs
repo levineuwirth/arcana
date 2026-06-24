@@ -13,3 +13,4 @@ pub mod the_grand_goatnapper;
 pub mod pep_raucous_raider;
 pub mod topsoil_turner;
 pub mod infestation;
+pub mod opulent_clomper;
