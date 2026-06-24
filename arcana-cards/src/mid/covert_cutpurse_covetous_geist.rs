@@ -7,19 +7,21 @@
 //!
 //! Back face (Covetous Geist): Flying, deathtouch 2/1 Spirit Rogue.
 //! - If Covetous Geist would be put into a graveyard from anywhere, exile it
-//!   instead (replacement effect — GAP: graveyard-replacement not modeled).
+//!   instead (ExileInsteadOfDying replacement, installed on transform-to-back and
+//!   on entering as the back face via Disturb).
 //!
 //! GAP: "dealt damage this turn" constraint on the destroy target is not
 //! expressible with the available ObjectFilter API — the filter captures any
 //! opponent creature (closest available approximation).
 //! GAP: Disturb keyword not in the usable keyword surface; omitted.
-//! GAP: Back-face graveyard-to-exile replacement effect not modeled.
-//! GAP: back-face-only triggered ability not modeled.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::replacement::{
+    ReplacementCondition, ReplacementDuration, ReplacementEffect, ReplacementKind,
+};
 use arcana_core::state::GameState;
 use arcana_core::targets::{
     ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
@@ -88,6 +90,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
+            // Front (Covert Cutpurse) ETB: destroy a damaged opponent creature.
+            // Gated to face 0 so a Disturb-cast (entering as the back face) skips it.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
@@ -96,8 +100,54 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![target_req],
-            }),
+            })
+            // Back (Covetous Geist): "if it would be put into a graveyard, exile it
+            // instead." Installed on transform-to-back and on entering as the back
+            // face (Disturb). Both gated to face 1.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: install_exile_replacement,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_exile_replacement,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1)
+            .with_trigger_face_gate(3, 1),
     )
+}
+
+/// Back-face static: "If Covetous Geist would be put into a graveyard from
+/// anywhere, exile it instead." (battlefield→graveyard case observed.)
+fn install_exile_replacement(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::InstallReplacementEffect {
+        effect: Box::new(ReplacementEffect {
+            source: trig.source,
+            id: 0,
+            condition: ReplacementCondition::WouldDieSpecific {
+                object_id: trig.source,
+            },
+            kind: ReplacementKind::ExileInsteadOfDying,
+            is_self_replacement: true,
+            duration: ReplacementDuration::WhileSourceOnBattlefield,
+            state_gate: None,
+        }),
+    }]
 }
 
 fn etb_destroy(

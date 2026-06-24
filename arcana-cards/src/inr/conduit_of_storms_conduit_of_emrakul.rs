@@ -7,9 +7,10 @@
 //! GAP: "at the beginning of your next main phase this turn" is a delayed
 //! triggered mana ability; the engine does not model delayed mana triggers.
 //! Mana is added immediately on the attack trigger as the closest expressible
-//! approximation.
-//! GAP: back-face-only triggered ability (add {C}{C} on attack) is not
-//! auto-installed on transform — back-face-only triggered ability not modeled.
+//! approximation (applies to both faces).
+//!
+//! Both attack triggers are face-gated: the front {R} trigger to face 0, the
+//! back {C}{C} trigger to face 1, via `with_trigger_face_gate`.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::{ManaCost, ManaUnit};
@@ -81,6 +82,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
+            // Back face: whenever this creature attacks, add {C}{C} (approximation
+            // of "at the beginning of your next main phase this turn").
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfAttacks,
+                intervening_if: None,
+                effect: on_attacks_add_colorless,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
             // {3}{R}{R}: Transform this creature.
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{3}{R}{R}: Transform this creature.".into(),
@@ -95,8 +107,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_instant_speed: false,
                 face_gate: None,
                 effect: transform_self,
-            }),
+            })
+            // Front {R} trigger fires only on the front face; back {C}{C} only on the back.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1),
     )
+}
+
+fn on_attacks_add_colorless(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "at the beginning of your next main phase this turn" not modeled;
+    // adding mana immediately as the closest approximation.
+    vec![Effect::AddMana {
+        player: trig.controller,
+        mana: vec![
+            ManaUnit::plain(ManaColor::Colorless, trig.source),
+            ManaUnit::plain(ManaColor::Colorless, trig.source),
+        ],
+    }]
 }
 
 fn on_attacks_add_red(

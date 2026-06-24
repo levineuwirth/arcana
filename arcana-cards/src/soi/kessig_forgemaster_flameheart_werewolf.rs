@@ -11,20 +11,16 @@
 //!   At the beginning of each upkeep, if a player cast two or more spells last turn, transform
 //!   this creature.
 //!
-//! # GAPs
-//! - "if no spells were cast last turn" and "if a player cast two or more spells last turn"
-//!   are werewolf day/night transform conditions that cannot be modeled as an intervening-if
-//!   — the upkeep triggers fire unconditionally.
-//!   GAP: day/night / spells-cast-last-turn werewolf transform condition not modeled.
-//! - The back face BlocksOrBlocked triggered ability (2 damage) is not auto-installed on transform
-//!   (abilities live on the CardDefinition, not the face).
-//!   GAP: back-face-only triggered ability not modeled (back BlocksOrBlocked deals 2 damage).
-//! - The back face upkeep-transform trigger is likewise a front-face approximation only.
+//! Both faces are fully wired: the werewolf upkeep transforms use the
+//! `conditions::no_spells_cast_last_turn` / `a_player_cast_two_or_more_last_turn`
+//! intervening-ifs and are face-gated (front 0, back 1), and the front/back
+//! blocks-or-blocked damage triggers (1 / 2 damage) are likewise face-gated.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::ControllerConstraint;
@@ -32,7 +28,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -79,7 +75,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
-            // Front-face: blocks or becomes blocked — deal 1 damage
+            // Front-face: blocks or becomes blocked — deal 1 damage (face 0 only)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfBlocksOrBecomesBlocked,
@@ -89,20 +85,47 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            // Upkeep: transform (werewolf day/night condition GAP)
+            // Front upkeep transform: if no spells were cast last turn (face 0 only)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::Any,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_no_spells),
                 effect: transform_self,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
-            }),
-            // GAP: back-face-only triggered ability not modeled (blocks/blocked → 2 damage on back face)
+            })
+            // Back-face: blocks or becomes blocked — deal 2 damage (face 1 only)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SelfBlocksOrBecomesBlocked,
+                intervening_if: None,
+                effect: blocks_or_blocked_2,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Back upkeep transform: if a player cast two or more spells last turn (face 1 only)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 4,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(iif_two_or_more_spells),
+                effect: transform_self,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Block damage + upkeep transform face gates: front (0) vs back (1).
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 0)
+            .with_trigger_face_gate(3, 1)
+            .with_trigger_face_gate(4, 1),
     )
 }
 
@@ -117,6 +140,27 @@ fn blocks_or_blocked_1(
         amount: 1,
         source: trig.source,
     }]
+}
+
+fn blocks_or_blocked_2(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(other) = trig.other_combatant() else { return Vec::new(); };
+    vec![Effect::DealDamage {
+        target: DamageTarget::Object(other),
+        amount: 2,
+        source: trig.source,
+    }]
+}
+
+fn iif_no_spells(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::no_spells_cast_last_turn(state)
+}
+
+fn iif_two_or_more_spells(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::a_player_cast_two_or_more_last_turn(state)
 }
 
 fn transform_self(

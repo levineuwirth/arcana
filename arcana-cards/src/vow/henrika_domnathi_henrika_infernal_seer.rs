@@ -6,16 +6,23 @@
 //! {1}{B}{B}: Each creature you control with flying, deathtouch, and/or lifelink
 //! gets +1/+0 until end of turn.
 //!
+//! The back-face activated pump ({1}{B}{B}: each creature you control with
+//! flying, deathtouch, and/or lifelink gets +1/+0 until end of turn) is wired
+//! on the shared CardDefinition, gated to the back face (face_gate: Some(1)),
+//! via a filtered-pump continuous effect.
+//!
 //! GAP: "choose one that hasn't been chosen" modal tracking not modeled; wired as
 //! three separate triggered abilities on the front face (id 2/3/4) with no
 //! exhaustion tracking. The engine will allow re-choosing the same mode.
-//! GAP: back-face-only activated ability ({1}{B}{B}: pump) not modeled — activated
-//! abilities live on CardDefinition not the face.
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
-use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::registry::{
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardFace, CardRegistry,
+};
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
@@ -109,8 +116,45 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
+            })
+            // Back face: "{1}{B}{B}: Each creature you control with flying,
+            // deathtouch, and/or lifelink gets +1/+0 until end of turn."
+            // Filtered temporary pump-all, gated to the back face.
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "{1}{B}{B}: Each creature you control with flying, deathtouch, and/or lifelink gets +1/+0 until end of turn.".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{1}{B}{B}").expect("valid cost"),
+                    ..ActivationCost::default()
+                },
+                target_requirements: Vec::new(),
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: true,
+                face_gate: Some(1), // back face only
+                effect: back_pump_keyworded_creatures,
             }),
     )
+}
+
+fn back_pump_keyworded_creatures(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // "Each creature you control with flying, deathtouch, and/or lifelink
+    // gets +1/+0 until end of turn." — filtered pump over your matching
+    // creatures, source-bound so cleanup is correct if Henrika leaves.
+    let filter = ObjectFilter::creature()
+        .controlled_by(ControllerConstraint::You)
+        .with_keywords_any(vec![
+            KeywordAbility::Flying,
+            KeywordAbility::Deathtouch,
+            KeywordAbility::Lifelink,
+        ]);
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::filtered_pump(ctx.source, filter, 1, 0, Duration::EndOfTurn),
+    }]
 }
 
 fn trig_sacrifice_creature(

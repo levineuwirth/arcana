@@ -5,18 +5,27 @@
 //! may transform it. At the beginning of each upkeep, if a player cast two or
 //! more spells last turn, transform this creature.
 //!
-//! GAP: "No spells cast last turn" / "two or more spells last turn" werewolf
-//! transform conditions are not modeled — day/night cycle not implemented.
-//! The upkeep triggers are omitted; transform is not auto-wired.
-//! GAP: Back-face "Whenever a Werewolf you control enters, you may transform it"
-//! triggered ability not modeled (back-face-only triggered ability).
-//! GAP: Back-face upkeep transform trigger not modeled.
+//! The werewolf transform conditions ("no spells cast last turn" / "two or more
+//! spells last turn") are modeled as intervening-if predicates
+//! (conditions::no_spells_cast_last_turn / conditions::a_player_cast_two_or_more_last_turn).
+//! The front upkeep trigger is gated to face 0; the back upkeep transform and the
+//! back "Werewolf you control enters" trigger are gated to face 1
+//! (with_trigger_face_gate). The "you may transform it" is modeled as an
+//! unconditional transform of the entering creature (beneficial may).
 
-use arcana_core::effects::KeywordAbility;
+use arcana_core::conditions;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::state::GameState;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
+use arcana_core::turn::Step;
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Geier Reach Bandit");
@@ -37,7 +46,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(2)),
         keywords: vec![KeywordAbility::Haste],
-        // GAP: front-face upkeep transform trigger (no-spells-last-turn) not modeled
         ..Default::default()
     };
 
@@ -59,13 +67,89 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             ..Default::default()
         },
         spell_ability: None,
-        // GAP: back-face-only triggered ability not modeled
-        // (Whenever a Werewolf you control enters, you may transform it)
-        // GAP: back-face upkeep transform trigger (two-spells-last-turn) not modeled
     };
+
+    // "Whenever a Werewolf you control enters" — built before reg.register so the
+    // immutable interner lookup doesn't overlap reg's mutable borrow.
+    let werewolf_enters_filter = ObjectFilter::creature()
+        .controlled_by(ControllerConstraint::You)
+        .with_subtype_sym(werewolf_back_sub);
 
     reg.register(
         CardDefinition::new(name, chars)
-            .with_transform_back(back),
+            .with_transform_back(back)
+            // Front face: at beginning of each upkeep, if no spells were cast last
+            // turn, transform. Intervening-if via conditions::no_spells_cast_last_turn.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(iif_no_spells),
+                effect: transform_self,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Back face: at beginning of each upkeep, if a player cast two or more
+            // spells last turn, transform. Intervening-if via
+            // conditions::a_player_cast_two_or_more_last_turn.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(iif_two_or_more),
+                effect: transform_self,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Back face (Vildin-Pack Alpha): whenever a Werewolf you control enters,
+            // you may transform it (modeled as an unconditional transform of the
+            // entering creature).
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::ZoneChange {
+                    filter: werewolf_enters_filter,
+                    from: None,
+                    to: Zone::Battlefield,
+                },
+                intervening_if: None,
+                effect: transform_entering_werewolf,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Trigger 1 fires only on the front face; triggers 2 & 3 only on the back face.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1)
+            .with_trigger_face_gate(3, 1),
     )
+}
+
+fn iif_no_spells(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::no_spells_cast_last_turn(state)
+}
+
+fn iif_two_or_more(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::a_player_cast_two_or_more_last_turn(state)
+}
+
+fn transform_self(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::Transform { target: trig.source }]
+}
+
+/// Transform the Werewolf that just entered (the "it" in "you may transform it").
+fn transform_entering_werewolf(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    match trig.entering_object() {
+        Some(id) => vec![Effect::Transform { target: id }],
+        None => Vec::new(),
+    }
 }

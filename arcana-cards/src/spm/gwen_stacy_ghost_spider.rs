@@ -13,12 +13,14 @@
 //!
 //! GAP: ETB "exile the top card, may play while controlling this creature" — per-source
 //!      exile-with-play-permission tracking deferred.
-//! GAP: Transform activation {2}{U}{R}{W} — this is a multicolor sorcery-speed activation;
-//!      ActivatedAbilityDef with is_instant_speed: false models it but color combination
-//!      {2}{U}{R}{W} spans 3 colors; card colors stay R per spec.
-//! GAP: back-face triggered ability (play/cast from exile → +1/+1 counter) deferred.
-//! GAP: back-face activated ability (remove 2 counters → exile top card, may play) deferred.
-//! Keywords: Transform listed but Daybound/Nightbound not applicable (MDFC-style transform).
+//! Transform activation {2}{U}{R}{W} (sorcery speed) is wired as a front-face activated
+//!      ability; card colors stay R per spec.
+//! GAP: back-face triggered ability ("Whenever you play a land from exile or cast a spell
+//!      from exile, put a +1/+1 counter") not expressible — neither TriggerCondition::SpellCast
+//!      nor GameEvent::SpellCast carries a from-zone, and ZoneChange can't distinguish a
+//!      play/cast-from-exile from any other exile→stack move. No cast-from-exile trigger primitive.
+//! Back-face activated ability (remove two +1/+1 counters → exile top card, may play this turn)
+//!      is wired via remove_self_counter + Effect::ImpulseExile, gated to face 1.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
@@ -31,7 +33,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -115,9 +117,33 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 face_gate: Some(0),
                 effect: transform_gwen,
             })
-            // GAP: back-face triggered ability (cast/play from exile → +1/+1 counter) not modeled.
-            // GAP: back-face activated ability (remove 2 counters → exile top, may play) not modeled.
+            // Back-face: Remove two +1/+1 counters from Ghost-Spider: Exile the top
+            // card of your library. You may play that card this turn (face 1).
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "Remove two counters from Ghost-Spider: Exile the top card of your library. You may play that card this turn.".into(),
+                cost: ActivationCost {
+                    remove_self_counter: Some((CounterKind::PlusOnePlusOne, 2)),
+                    ..ActivationCost::default()
+                },
+                target_requirements: vec![],
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: true,
+                face_gate: Some(1),
+                effect: ghost_spider_impulse,
+            }),
+            // GAP: back-face triggered ability (play land / cast spell from exile →
+            // +1/+1 counter) not expressible — no cast-from-exile trigger primitive.
     )
+}
+
+fn ghost_spider_impulse(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::ImpulseExile { player: ctx.controller, count: 1 }]
 }
 
 fn etb_exile_top(

@@ -14,19 +14,26 @@
 //!   in the Effect catalog (no conditional-on-discarded-card-type variant). Modeled as:
 //!   draw + discard, then unconditionally untap + transform. (The transform fires always,
 //!   not only when a creature card is discarded — verify will flag this.)
-//! GAP: Back-face triggered ability "if this creature didn't attack this turn" — the
-//!   "didn't attack" intervening condition is not expressible as TriggerCondition or
-//!   intervening_if. Back-face-only triggered ability not auto-installed on transform.
-
+//!
+//! Back-face trigger ("At the beginning of your end step, if this creature didn't attack
+//! this turn, tap this creature, then transform it") IS now wired, face-gated to the back
+//! face: StepBegins(End, You) + intervening-if !source_attacked_this_turn + Tap + Transform.
+use arcana_core::conditions;
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardFace, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::targets::ControllerConstraint;
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
+use arcana_core::turn::Step;
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Civilized Scholar");
@@ -86,11 +93,45 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_instant_speed: true,
                 face_gate: Some(0),
                 effect: scholar_tap,
-            }),
-            // GAP: back-face "At the beginning of your end step, if this creature didn't
-            // attack this turn, tap then transform" — back-face-only triggered ability
-            // not modeled.
+            })
+            // Back face (Homicidal Brute): "At the beginning of your end step, if this
+            // creature didn't attack this turn, tap this creature, then transform it."
+            // Face-gated to the back face (1); the intervening-if negates
+            // `source_attacked_this_turn`.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::End,
+                    whose: ControllerConstraint::You,
+                },
+                intervening_if: Some(if_did_not_attack),
+                effect: brute_tap_transform,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(1, 1),
     )
+}
+
+fn if_did_not_attack(
+    s: &GameState,
+    src: ObjectId,
+    _you: PlayerId,
+    _reg: &CardRegistry,
+) -> bool {
+    !conditions::source_attacked_this_turn(s, src)
+}
+
+fn brute_tap_transform(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![
+        Effect::Tap { target: trig.source },
+        Effect::Transform { target: trig.source },
+    ]
 }
 
 fn scholar_tap(

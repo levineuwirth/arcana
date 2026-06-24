@@ -11,15 +11,21 @@
 //!   Nightbound
 //!   Same combat damage trigger.
 //!
+//! The combat-damage trigger prints on BOTH faces (Wanted Cutthroat and Feral
+//! Outlaw), so it lives on the shared CardDefinition and is intentionally
+//! ungated — it fires on either face. Only the trigger's EFFECT is unwired (see
+//! GAPs below).
+//!
 //! GAPs:
-//! - "Exile a nonland card from their library at random" — no Effect
-//!   models random-exile-from-library; omitted from trigger effect.
-//! - "You may cast that card … spend mana as any color" — cast-exiled-
-//!   card-with-free-color-mana is not in the engine's Effect catalog.
+//! - "Exile a nonland card from their library at random" — no Effect models
+//!   random-exile from ANOTHER player's library with a nonland filter
+//!   (`ImpulseExile` exiles the top N of the controller's OWN library); omitted
+//!   from the trigger effect.
+//! - "You may cast that card … spend mana as any color" — cast-an-exiled-card
+//!   (owned by the damaged player) by the trigger controller, spending mana as
+//!   any color, is not in the engine's Effect catalog.
 //! - Daybound / Nightbound — day/night cycle is not modeled. Keywords
 //!   omitted (not in the implemented keyword list).
-//! - Back face triggered ability (combat damage trigger on Feral Outlaw)
-//!   — GAP: back-face-only triggered ability not modeled.
 //! - Transform between day/night faces not wired (no day/night cycle
 //!   engine support).
 
@@ -82,8 +88,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
-            // Front-face combat damage trigger (Daybound face — face_gate: Some(0) not on TriggeredAbilityDef)
-            // GAP: front-face-only scoping not available on TriggeredAbilityDef.
+            // Combat-damage trigger — prints on BOTH faces, so it is shared on
+            // the CardDefinition and intentionally ungated (fires on either face).
+            // GAP is the effect (random opponent-library exile + impulse-cast),
+            // not the trigger wiring.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::DamageDealt {
@@ -98,7 +106,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![],
             }),
-            // GAP: back-face-only triggered ability not modeled.
     )
 }
 

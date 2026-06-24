@@ -19,7 +19,12 @@
 //! GAP: "If this is the fourth time this ability has resolved this turn" — per-ability-resolution
 //! count tracking not available; transform fires on every resolution (overfires).
 //! GAP: "Whenever Sephiroth attacks, you may sacrifice any number of other creatures. If you do,
-//! draw that many cards." — back-face-only triggered ability not modeled.
+//! draw that many cards." — the back-face attack ability genuinely cannot be wired: there is no
+//! Effect that draws a number of cards EQUAL TO the number of permanents sacrificed in the same
+//! choice (ChooseAnyNumberFromZone/PickAction::Sacrifice posts the variable sacrifice, but no
+//! ChoiceFollowUp draws cards-per-pick). Wiring only the sacrifice half would be a strictly-worse
+//! no-benefit effect, so it is left unwired. The front SelfAttacks trigger is now face-gated to
+//! face 0 so it no longer over-fires on the back face.
 //! GAP: "Whenever Sephiroth enters" — SelfEntersBattlefield used as separate trigger (correct);
 //! combined "enters or attacks" modeled as two separate triggers.
 //! Keywords: Super Nova not in engine keyword list; not emitted.
@@ -123,8 +128,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
-            }),
-        // GAP: back-face-only triggered ability not modeled (Sephiroth attacks, sac N, draw N).
+            })
+            // The front "enters or attacks → may sacrifice, draw" attack half and
+            // the front "another creature dies → drain, maybe transform" are
+            // front-face abilities; the back face replaces the latter with the
+            // (unmodeled) Super Nova emblem. Gate both attack/dies triggers to the
+            // front face so they don't fire after transform. (The ETB trigger,
+            // id 1, only fires when the card enters and needs no gate.)
+            .with_trigger_face_gate(2, 0)
+            .with_trigger_face_gate(3, 0),
+        // GAP: back-face attack ability (sacrifice any number, draw that many) not
+        // wireable — no draw-equal-to-sacrificed-count primitive (see module doc).
     )
 }
 

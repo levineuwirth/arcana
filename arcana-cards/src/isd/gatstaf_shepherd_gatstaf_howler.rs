@@ -9,12 +9,7 @@
 //! At the beginning of each upkeep, if a player cast two or more spells last turn, transform
 //! this creature.
 //!
-//! GAP: Keywords "Transform" is a layout keyword, not modeled as KeywordAbility.
 //! GAP: "Intimidate" is not in the implemented keyword list — omitted from back face characteristics.
-//! GAP: Werewolf day/night transform conditions ("if no spells were cast last turn" /
-//! "if a player cast two or more spells last turn") — exact spells-cast-last-turn check is
-//! not available; using spells_cast_this_turn == 0 as a closest approximation for the upkeep
-//! trigger intervening-if. Back-face-only triggered ability not modeled.
 
 use arcana_core::conditions;
 use arcana_core::effects::Effect;
@@ -89,15 +84,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
-            }),
-            // GAP: back-face-only triggered ability not modeled:
-            // "At the beginning of each upkeep, if a player cast two or more spells last turn,
-            // transform this creature."
+            })
+            // Back face: at the beginning of each upkeep, if a player cast two
+            // or more spells last turn, transform this creature.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(iif_two_or_more),
+                effect: front_upkeep_transform,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Front upkeep transform only on front face; back upkeep transform
+            // only on back face.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1),
     )
 }
 
 fn iif_no_spells(state: &GameState, _s: ObjectId, _y: PlayerId, _reg: &CardRegistry) -> bool {
     conditions::no_spells_cast_last_turn(state)
+}
+
+fn iif_two_or_more(state: &GameState, _s: ObjectId, _y: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::a_player_cast_two_or_more_last_turn(state)
 }
 
 fn front_upkeep_transform(

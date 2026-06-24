@@ -4,10 +4,12 @@
 //!        At the beginning of each upkeep, if no spells were cast last turn, transform.
 //! Back: Whenever an opponent casts a spell during your turn, draw two cards.
 //!       At the beginning of each upkeep, if a player cast two or more spells last turn, transform back.
-//! GAP: "during your turn" restriction on SpellCast trigger is not modeled.
-//! Front-face werewolf transform condition ("if no spells were cast last turn") is
-//! modeled via `conditions::no_spells_cast_last_turn` on the upkeep trigger's `intervening_if`.
-//! GAP: back-face-only triggered ability not modeled (draw two cards on opponent spell; back-to-front transform).
+//! GAP: "during your turn" restriction on both SpellCast triggers is not modeled (they fire on
+//! any opponent spell cast).
+//! Front-face werewolf transform condition ("if no spells were cast last turn") is modeled via
+//! `conditions::no_spells_cast_last_turn`; back-face ("if a player cast two or more spells last
+//! turn") via `conditions::a_player_cast_two_or_more_last_turn`. The back-face draw-two and
+//! back-to-front transform are wired and face-gated (front face 0 / back face 1).
 
 use arcana_core::conditions;
 use arcana_core::effects::Effect;
@@ -94,7 +96,37 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            // GAP: back-face-only triggered ability not modeled (draw two cards; back-to-front transform)
+            // Back-face: Whenever an opponent casts a spell [during your turn], draw two cards.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SpellCast {
+                    filter: None,
+                    caster: ControllerConstraint::Opponent,
+                },
+                intervening_if: None,
+                effect: draw_two,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Back-face: at the beginning of each upkeep, if a player cast two or more
+            // spells last turn, transform back.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 4,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(iif_two_or_more_spells_last_turn),
+                effect: upkeep_transform,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(1, 0) // front opponent-spell draw — front face only
+            .with_trigger_face_gate(2, 0) // front upkeep transform — front face only
+            .with_trigger_face_gate(3, 1) // back opponent-spell draw — back face only
+            .with_trigger_face_gate(4, 1), // back upkeep transform — back face only
     )
 }
 
@@ -105,8 +137,19 @@ fn draw_one(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> V
     }]
 }
 
+fn draw_two(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::DrawCards {
+        player: trig.controller,
+        count: 2,
+    }]
+}
+
 fn iif_no_spells_last_turn(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
     conditions::no_spells_cast_last_turn(state)
+}
+
+fn iif_two_or_more_spells_last_turn(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::a_player_cast_two_or_more_last_turn(state)
 }
 
 fn upkeep_transform(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {

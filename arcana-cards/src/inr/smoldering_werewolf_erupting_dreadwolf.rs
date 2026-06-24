@@ -7,7 +7,7 @@
 //!
 //! Back face (Erupting Dreadwolf):
 //!   Whenever this creature attacks, it deals 2 damage to any target.
-//!   GAP: back-face-only triggered ability (attack deals 2 damage) not auto-installed on transform.
+//!   (Wired as a face-gated SelfAttacks trigger with an AnyTarget requirement.)
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -100,9 +100,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_instant_speed: true,
                 face_gate: Some(0), // front face only
                 effect: activated_transform,
-            }),
-        // GAP: back-face-only triggered ability (whenever this creature attacks, deals 2 damage
-        //      to any target) not auto-installed on transform.
+            })
+            // Back face: whenever this creature attacks, it deals 2 damage to any target.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfAttacks,
+                intervening_if: None,
+                effect: attack_damage,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::AnyTarget,
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+            })
+            // The ETB damage trigger fires only on the front face; the attack
+            // trigger only on the back face.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1),
     )
 }
 
@@ -127,6 +143,27 @@ fn etb_damage(
             })
         })
         .collect()
+}
+
+/// Erupting Dreadwolf attacks: deal 2 damage to any target.
+fn attack_damage(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    match trig.targets.targets.first() {
+        Some(TargetChoice::Object(id)) => vec![Effect::DealDamage {
+            target: DamageTarget::Object(*id),
+            amount: 2,
+            source: trig.source,
+        }],
+        Some(TargetChoice::Player(p)) => vec![Effect::DealDamage {
+            target: DamageTarget::Player(*p),
+            amount: 2,
+            source: trig.source,
+        }],
+        _ => Vec::new(),
+    }
 }
 
 /// {4}{R}{R}: Transform (front face → back face).

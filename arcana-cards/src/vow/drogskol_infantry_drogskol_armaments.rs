@@ -19,7 +19,13 @@
 //! - "If Drogskol Armaments would be put into a graveyard from anywhere,
 //!   exile it instead": replacement effect; not expressible. GAP: exile-
 //!   instead-of-graveyard replacement not modeled.
-//! - GAP: back-face-only triggered ability not modeled.
+//!
+//! NOTE: the back face (Drogskol Armaments) is an Aura with only STATIC
+//! abilities (+2/+2 to the enchanted creature) and a replacement effect — it
+//! has no triggered or activated abilities, so the back-face trigger/activated
+//! hooks do not apply here. The two GAPs above (static aura pump as a
+//! transform-into-aura back; exile-instead-of-graveyard replacement) are the
+//! only unwired riders.
 
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

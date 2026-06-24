@@ -4,18 +4,20 @@
 //! Back face (Silverpelt Werewolf): Whenever this creature deals combat damage
 //! to a player, draw a card. At the beginning of each upkeep, if a player cast
 //! two or more spells last turn, transform this creature.
-//!
-//! GAP: "No spells cast last turn" / "two or more spells last turn" werewolf
-//! transform conditions not modeled — day/night cycle not implemented.
-//! The upkeep transform triggers are omitted.
-//! GAP: Back-face "Whenever this creature deals combat damage to a player, draw
-//! a card" triggered ability not modeled (back-face-only triggered ability).
-//! GAP: Back-face upkeep transform trigger not modeled.
 
+use arcana_core::conditions;
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::state::GameState;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetFilter};
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
+use arcana_core::turn::Step;
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Lambholt Elder");
@@ -33,7 +35,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(2)),
-        // GAP: front-face upkeep transform trigger (no-spells-last-turn) not modeled
         ..Default::default()
     };
 
@@ -51,9 +52,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             subtypes: back_subtypes,
             power: Some(PtValue::Fixed(4)),
             toughness: Some(PtValue::Fixed(5)),
-            // GAP: back-face-only triggered ability not modeled
-            // (Whenever this creature deals combat damage to a player, draw a card)
-            // GAP: back-face upkeep transform trigger not modeled
             ..Default::default()
         },
         spell_ability: None,
@@ -61,6 +59,70 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
     reg.register(
         CardDefinition::new(name, chars)
-            .with_transform_back(back),
+            .with_transform_back(back)
+            // Front upkeep transform: if no spells were cast last turn.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(if_no_spells_last_turn),
+                effect: transform_self,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Back upkeep transform: if a player cast two or more spells last turn.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(if_player_cast_two_last_turn),
+                effect: transform_self,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Back face only: whenever this creature deals combat damage to a player, draw a card.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::DamageDealt {
+                    source_filter: ObjectFilter::creature()
+                        .controlled_by(ControllerConstraint::You),
+                    target_filter: TargetFilter::Player,
+                    combat_only: true,
+                },
+                intervening_if: None,
+                effect: draw_a_card,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Trigger 1 fires only on the front face; triggers 2 and 3 only on the back face.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1)
+            .with_trigger_face_gate(3, 1),
     )
+}
+
+fn if_no_spells_last_turn(s: &GameState, _src: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::no_spells_cast_last_turn(s)
+}
+
+fn if_player_cast_two_last_turn(s: &GameState, _src: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::a_player_cast_two_or_more_last_turn(s)
+}
+
+fn transform_self(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::Transform { target: trig.source }]
+}
+
+fn draw_a_card(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::DrawCards {
+        player: trig.controller,
+        count: 1,
+    }]
 }

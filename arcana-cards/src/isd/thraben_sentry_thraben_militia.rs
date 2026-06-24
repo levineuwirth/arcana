@@ -6,9 +6,9 @@
 //!   Whenever another creature you control dies, you may transform this creature.
 //!
 //! Back face (Thraben Militia):
-//!   Trample
+//!   Trample (static keyword on the back face — present in back characteristics).
+//!   The back face has no triggered or activated abilities.
 //!
-//! GAP: back-face-only triggered abilities not auto-installed on transform.
 //! GAP: "you may transform" — optional transform not modeled; fires unconditionally when triggered.
 
 use arcana_core::effects::{Effect, KeywordAbility};
@@ -87,7 +87,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-        // GAP: back-face-only triggered ability not modeled.
+            // This is a front-face ability (it transforms front -> back); gate to
+            // the front face. The back face (Thraben Militia) has only Trample.
+            .with_trigger_face_gate(1, 0),
     )
 }
 

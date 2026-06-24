@@ -4,20 +4,10 @@
 //!   At the beginning of each upkeep, if no spells were cast last turn, transform this creature.
 //!
 //! Back face (Ulvenwald Primordials — Creature — Werewolf):
-//!   {G}: Regenerate this creature.
+//!   {1}{G}{G}: Regenerate this creature.
 //!   At the beginning of each upkeep, if a player cast two or more spells last turn,
 //!   transform this creature.
 //!
-//! GAP: "if no spells were cast last turn" — last-turn spell count is not accessible
-//!      via the script API (spells_cast_this_turn tracks the CURRENT turn, not last turn).
-//!      Front-face transform trigger is GAP'd (trigger registered but fires unconditionally
-//!      every upkeep — the verify pipeline will quarantine this as incorrect behavior).
-//! GAP: "if a player cast two or more spells last turn" — same constraint as above.
-//!      Back-face transform trigger is similarly not accurately modelable.
-//! GAP: Back-face-only triggered ability ({G}: Regenerate and back-face upkeep trigger)
-//!      not auto-installed on transform. Regenerate modeled as an ActivatedAbilityDef
-//!      (shared across faces since abilities live on CardDefinition, not faces).
-
 use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -95,7 +85,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: Vec::new(),
             })
             // Back-face upkeep trigger — transform if a player cast 2+ spells last turn.
-            // GAP: This should only fire on the back face; face-gate not available for triggered abilities.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::StepBegins {
@@ -108,12 +97,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            // {G}: Regenerate — modeled as activated ability (technically back-face only,
-            // but abilities live on CardDefinition; GAP: fires on front face too).
+            // {1}{G}{G}: Regenerate — back-face-only activated ability.
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{G}: Regenerate Ulvenwald Primordials.".into(),
+                text: "{1}{G}{G}: Regenerate Ulvenwald Primordials.".into(),
                 cost: ActivationCost {
-                    mana_cost: ManaCost::parse("{G}").unwrap(),
+                    mana_cost: ManaCost::parse("{1}{G}{G}").unwrap(),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),
@@ -124,6 +112,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 face_gate: Some(1), // back face only
                 effect: do_regenerate,
             })
+            // Front upkeep transform only on front face; back upkeep transform
+            // only on back face.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1),
     )
 }
 

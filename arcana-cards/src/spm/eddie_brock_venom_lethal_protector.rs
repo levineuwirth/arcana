@@ -10,17 +10,23 @@
 //! then you may put a permanent card with mana value X or less from your hand onto the
 //! battlefield, where X is the sacrificed creature's mana value.
 //!
-//! GAP: {3}{B}{R}{G}: Transform — activated transform ability not modeled
-//!      (ActivatedAbilityDef with Transform effect is not in the MDFC engine API).
+//! {3}{B}{R}{G}: Transform Eddie Brock (sorcery speed) is wired as a front-face
+//!      activated ability (face 0). This is a transforming DFC: the back face has no
+//!      mana cost and is reachable only via the transform ability.
 //! GAP: Back-face triggered ability (Venom attacks, may sacrifice, draw X, put permanent) —
-//!      back-face-only triggered ability not modeled; also the dynamic X from sacrificed
-//!      creature's mana value is not computable (no script helper for that).
-//! GAP: "Activate only as a sorcery" restriction — not expressible.
+//!      the dynamic X (= sacrificed creature's mana value) is not computable: no
+//!      PendingTrigger accessor exposes the sacrificed creature's mana value to drive
+//!      DrawCards count and the "put a permanent with MV ≤ X from hand" follow-on. The
+//!      whole payload is X-dependent, so the trigger is left unwired rather than no-op'd.
+//! GAP: "Activate only as a sorcery" modeled via is_instant_speed: false.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
-use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::registry::{
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardFace, CardRegistry,
+};
 use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
@@ -69,7 +75,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes: back_subtypes,
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
         keywords: vec![KeywordAbility::Menace, KeywordAbility::Trample, KeywordAbility::Haste],
-        // GAP: back-face-only triggered ability (Venom attacks trigger) not modeled
         ..Default::default()
     };
 
@@ -91,7 +96,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
     reg.register(
         CardDefinition::new(name, chars)
-            .with_mdfc_back(back_face)
+            .with_transform_back(back_face)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
@@ -100,8 +105,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![etb_target],
+            })
+            // {3}{B}{R}{G}: Transform Eddie Brock. Activate only as a sorcery (face 0).
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "{3}{B}{R}{G}: Transform Eddie Brock. Activate only as a sorcery.".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{3}{B}{R}{G}").expect("valid cost"),
+                    ..ActivationCost::default()
+                },
+                target_requirements: vec![],
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: false,
+                face_gate: Some(0),
+                effect: transform_eddie,
             }),
+            // GAP: back-face "Whenever Venom attacks" trigger left unwired — the
+            // dynamic X (sacrificed creature's mana value) driving draw-X and the
+            // put-a-permanent-MV-≤-X-from-hand follow-on is not computable.
     )
+}
+
+fn transform_eddie(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::Transform { target: ctx.source }]
 }
 
 fn eddie_etb(

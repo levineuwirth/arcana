@@ -8,15 +8,19 @@
 //!      (no ActivatedAbilityDef with variable X cost in engine API).
 //! GAP: {2}{R}{R}{G}{G}: Transform — activated transform ability not modeled
 //!      (ActivatedAbilityDef is not shown in MDFC prompt; Transform effect from a cost is a GAP).
-//! GAP: Enrage trigger on back face — back-face-only triggered ability not modeled.
-//! GAP: "Additional combat phase after this phase" — not expressible with current Effect catalog.
-//! GAP: "Activate only as a sorcery" restriction — not expressible.
 
-use arcana_core::effects::KeywordAbility;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::state::GameState;
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
+use arcana_core::types::{
+    CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine,
+};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Bruce Banner");
@@ -60,8 +64,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes: back_subtypes,
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
         keywords: vec![KeywordAbility::Reach, KeywordAbility::Trample],
-        // GAP: Enrage — back-face-only triggered ability not modeled
-        // GAP: additional combat phase — not expressible
         ..Default::default()
     };
 
@@ -71,5 +73,40 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         spell_ability: None,
     };
 
-    reg.register(CardDefinition::new(name, chars).with_mdfc_back(back_face))
+    reg.register(
+        CardDefinition::new(name, chars)
+            .with_mdfc_back(back_face)
+            // Back face (The Incredible Hulk) — Enrage: "Whenever The Incredible
+            // Hulk is dealt damage, put a +1/+1 counter on him. If he's attacking,
+            // untap him and there is an additional combat phase after this phase."
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfIsDealtDamage { combat_only: false },
+                intervening_if: None,
+                effect: enrage,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(1, 1),
+    )
+}
+
+/// Enrage: put a +1/+1 counter on this creature; if it's attacking, untap it
+/// and add an additional combat phase after this phase.
+fn enrage(
+    state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut effects = vec![Effect::AddCounters {
+        target: trig.source,
+        kind: CounterKind::PlusOnePlusOne,
+        count: 1,
+    }];
+    if state.combat.as_ref().is_some_and(|c| c.is_attacker(trig.source)) {
+        effects.push(Effect::Untap { target: trig.source });
+        effects.push(Effect::AdditionalCombatPhase);
+    }
+    effects
 }

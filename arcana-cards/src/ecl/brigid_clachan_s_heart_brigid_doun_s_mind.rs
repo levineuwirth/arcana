@@ -6,9 +6,10 @@
 //! Back: {T}: Add X {G} or X {W}, where X is the number of other creatures you control.
 //! Back: At the beginning of your first main phase, you may pay {W}. If you do, transform.
 //!
-//! GAP: Back-face {T} mana ability (dynamic X, color choice) is a back-face-only activated
-//! mana ability — not modeled here.
-//! GAP: Back-face transform trigger is a back-face-only triggered ability not modeled.
+//! GAP: Back-face {T} mana ability ("Add X {G} or X {W}, where X is the number of other
+//! creatures you control") — the dynamic X count is expressible, but a mana ability resolves
+//! without using the stack (CR 605.3a), so it cannot post a "choose {G} or {W}" color choice;
+//! there is no ChoiceFollowUp that emits mana of a chosen color. Left GAP'd.
 
 use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::{Effect, TokenDefinition};
@@ -104,6 +105,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
+            // Trigger 4: Back-face — at beginning of first main phase, may pay {W} to transform.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 4,
+                trigger_condition: TriggerCondition::PhaseBegins {
+                    phase: Phase::PreCombatMain,
+                    whose: ControllerConstraint::You,
+                },
+                intervening_if: None,
+                effect: back_transform_trigger,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // GAP: Back-face "{T}: Add X {G} or X {W}" mana ability not wired — the
+            // color choice is not expressible in a (stackless) mana ability.
+            // Trigger 2 (pay {G}) fires only on the front face; trigger 4 (pay {W})
+            // only on the back face. Triggers 1/3 are the ETB / transform-into-front
+            // token triggers and stay face-agnostic (3 is already face-specific via
+            // its `to_face`).
+            .with_trigger_face_gate(2, 0)
+            .with_trigger_face_gate(4, 1)
     )
 }
 
@@ -139,6 +161,20 @@ fn front_transform_trigger(
     vec![Effect::OptionalPayment {
         chooser: trig.controller,
         cost: OptionalPaymentKind::Mana(ManaCost::parse("{G}").expect("valid cost")),
+        then: Box::new(Effect::Transform { target: trig.source }),
+        else_effect: None,
+    }]
+}
+
+fn back_transform_trigger(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // "At the beginning of your first main phase, you may pay {W}. If you do, transform Brigid."
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Mana(ManaCost::parse("{W}").expect("valid cost")),
         then: Box::new(Effect::Transform { target: trig.source }),
         else_effect: None,
     }]

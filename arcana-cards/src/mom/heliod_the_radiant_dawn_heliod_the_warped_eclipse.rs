@@ -5,12 +5,22 @@
 //! {3}{U/P}: Transform Heliod. Activate only as a sorcery.
 //!
 //! Back: Legendary Enchantment Creature — Phyrexian God
-//! You may cast spells as though they had flash. (GAP: static flash-grant not modeled)
-//! Spells you cast cost {1} less for each card opponents drew this turn. (GAP: cost reduction not modeled)
+//! You may cast spells as though they had flash.
+//! Spells you cast cost {1} less for each card opponents drew this turn.
 //!
 //! GAP: {U/P} hybrid/Phyrexian mana in activated ability cost — using {U} as approximation.
-//! GAP: Back face static abilities (flash grant, cost reduction) not modeled.
-//! GAP: Back-face-only triggered/static abilities not modeled.
+//! GAP: back-face static "you may cast spells as though they had flash" — there is no
+//!      continuous-effect / cast-permission primitive granting instant-speed casting for a
+//!      class of spells (cf. Prophet of Kruphix, Leyline of Anticipation); the engine's Flash
+//!      support is per-spell keyword / flashback only. Missing primitive: a
+//!      ContinuousEffectKind cast-as-though-flash permission. Not wired.
+//! GAP: back-face static "spells you cast cost {1} less for each card opponents drew this
+//!      turn" — ContinuousEffectKind::SpellCostModifier exists but its generic_delta is a
+//!      FIXED i32, not a per-game-state count; the "for each card opponents drew this turn"
+//!      scaling is not expressible (no dynamic cost-reduction primitive). Not wired (a fixed
+//!      delta would fabricate the amount).
+//! NOTE: both back-face abilities are STATICS with no expressible payload, so neither is
+//!      wired. The front ETB return and the transform activated ability ARE wired below.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -106,8 +116,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 face_gate: Some(0), // front face only
                 effect: do_transform,
             })
-        // GAP: back face static abilities (flash grant, cost reduction) not modeled
-        // GAP: back-face-only triggered ability not modeled
+        // GAP: back-face statics (cast-as-though-flash; per-card-drawn cost reduction)
+        // have no expressible payload — see the module doc for the exact missing primitives.
     )
 }
 

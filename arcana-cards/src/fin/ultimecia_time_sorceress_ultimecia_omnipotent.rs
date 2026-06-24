@@ -5,12 +5,15 @@
 //!
 //! Back face: Legendary Creature — Nightmare Warlock with Menace.
 //!
+//! Back face also has Time Compression — "When this creature transforms into
+//! Ultimecia, Omnipotent, take an extra turn after this one." Wired as a
+//! back-face SelfTransforms trigger (gated to face 1) emitting
+//! `Effect::ExtraTurn { player: controller }`.
+//!
 //! # GAP notes
 //! - "Exile eight cards from your graveyard" as an additional cost alongside
 //!   the mana payment is not expressible with OptionalPaymentKind (only Mana/Life).
 //!   The exile-eight requirement is omitted; only the mana payment is modeled.
-//! - "Take an extra turn after this one" (back face Time Compression trigger) has
-//!   no Effect::ExtraTurn variant. GAP: back-face-only triggered ability not modeled.
 
 use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::{Effect, KeywordAbility};
@@ -104,8 +107,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![],
-            }),
+            })
+            // Back face — Time Compression: "When this creature transforms into
+            // Ultimecia, Omnipotent, take an extra turn after this one."
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 4,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: time_compression_extra_turn,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![],
+            })
+            .with_trigger_face_gate(4, 1),
     )
+}
+
+fn time_compression_extra_turn(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::ExtraTurn {
+        player: trig.controller,
+    }]
 }
 
 fn surveil_2_trigger(

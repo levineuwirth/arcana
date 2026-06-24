@@ -10,24 +10,29 @@
 //!   Whenever this creature or another creature you control dies, you gain 1 life.
 //!   {1}{B}: This creature gains deathtouch until end of turn.
 //!
-//! GAP: "if you gained 3 or more life this turn" intervening-if condition is not
-//! expressible; the end-step trigger fires unconditionally.
-//! GAP: back-face-only activated ability ({1}{B}: deathtouch until end of turn)
-//! not modeled — no ActivatedAbilityDef API shown for non-creature backs.
-//! GAP: back-face-only triggered ability (creature dies → gain life) not
-//! auto-installed on transform.
+//! The "creature you control dies → gain 1 life" trigger is on the shared
+//! CardDefinition and fires on BOTH faces (both Panicked Bystander and Cackling
+//! Culprit print it), so it is left ungated. The end-step transform trigger is
+//! front-face-only (gated to face 0) and now carries its intervening-if ("if you
+//! gained 3 or more life this turn") via `script::life_gained_this_turn`. The
+//! back-face activated ability ({1}{B}: this creature gains deathtouch until end
+//! of turn) is wired and gated to the back face (face_gate: Some(1)).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
-use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::objects::{Characteristics, ObjectId};
+use arcana_core::registry::{
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardFace, CardRegistry,
+};
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -89,21 +94,60 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![],
             })
-            // Trigger 2: at the beginning of your end step, transform.
-            // GAP: intervening-if "if you gained 3+ life this turn" not modeled.
+            // Trigger 2: at the beginning of your end step, if you gained 3 or
+            // more life this turn, transform. Front-face only.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::End,
                     whose: ControllerConstraint::You,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_gained_three_life),
                 effect: on_end_step_transform,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![],
             })
+            // Back face: "{1}{B}: This creature gains deathtouch until end of turn."
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "{1}{B}: This creature gains deathtouch until end of turn.".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{1}{B}").expect("valid cost"),
+                    ..ActivationCost::default()
+                },
+                target_requirements: vec![],
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: true,
+                face_gate: Some(1), // back face only
+                effect: gain_deathtouch,
+            })
+            // The end-step transform fires only on the front face. (Trigger 1,
+            // the dies→gain-life, is intentionally ungated: it prints on both faces.)
+            .with_trigger_face_gate(2, 0),
     )
+}
+
+fn iif_gained_three_life(
+    state: &GameState,
+    _src: ObjectId,
+    you: PlayerId,
+    _reg: &CardRegistry,
+) -> bool {
+    arcana_core::script::life_gained_this_turn(state, you) >= 3
+}
+
+fn gain_deathtouch(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::GrantKeyword {
+        target: ctx.source,
+        keyword: KeywordAbility::Deathtouch,
+        duration: Duration::EndOfTurn,
+    }]
 }
 
 fn on_creature_dies(
@@ -122,6 +166,6 @@ fn on_end_step_transform(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: should only fire if you gained 3+ life this turn; always fires here.
+    // Gated by the intervening-if "if you gained 3+ life this turn".
     vec![Effect::Transform { target: trig.source }]
 }

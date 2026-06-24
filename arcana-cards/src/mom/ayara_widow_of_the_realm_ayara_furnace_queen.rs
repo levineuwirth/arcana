@@ -15,11 +15,15 @@
 //! Back face: Legendary Creature — Phyrexian Elf Noble
 //!   At the beginning of combat on your turn, return up to one target artifact or creature
 //!   card from your graveyard to the battlefield. It gains haste. Exile it at the beginning
-//!   of the next end step.
-//!   GAP: back-face-only triggered ability not auto-installed on transform.
+//!   of the next end step. — WIRED (face-gated to the back face).
+//!   NOTE: ReturnFromGraveyardToBattlefield re-ids the returned object (CR 400.7), so the
+//!   haste grant and the delayed exile (which reference the pre-move graveyard id) may not
+//!   land on the reanimated permanent — a known engine limitation shared with Gruesome Encore.
+//!   The bones (return + haste + delayed-exile triple) match the established catalog idiom.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DelayedAction, DelayedWhen, Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -30,7 +34,12 @@ use arcana_core::state::GameState;
 use arcana_core::targets::{
     ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
 };
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
+use arcana_core::turn::Step;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Ayara, Widow of the Realm");
@@ -124,10 +133,54 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 face_gate: Some(0), // front face only
                 effect: transform_to_queen,
             })
-            // GAP: back-face-only triggered ability (beginning of combat on your turn,
-            //   return target artifact or creature card from graveyard to battlefield,
-            //   gains haste, exile at next end step) not auto-installed on transform.
+            // Back face (Ayara, Furnace Queen): at the beginning of combat on your turn,
+            // return up to one target artifact or creature card from your graveyard to the
+            // battlefield, it gains haste, exile it at the next end step.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::BeginCombat,
+                    whose: ControllerConstraint::You,
+                },
+                intervening_if: None,
+                effect: back_reanimate,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::new()
+                            .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::ARTIFACT))
+                            .controlled_by(ControllerConstraint::You),
+                    },
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                }],
+            })
+            .with_trigger_face_gate(1, 1), // back face only
     )
+}
+
+fn back_reanimate(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // NOTE: the returned object is re-id'd on the graveyard->battlefield move, so the haste
+    // grant and delayed-exile (keyed on the pre-move id) may not bind to the reanimated
+    // permanent — a known engine limitation (cf. Gruesome Encore). Bones match the idiom.
+    vec![
+        Effect::ReturnFromGraveyardToBattlefield { target: *id },
+        Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::Haste,
+            duration: Duration::EndOfTurn,
+        },
+        Effect::DelayedAction {
+            source: *id,
+            controller: trig.controller,
+            when: DelayedWhen::NextEndStep,
+            action: DelayedAction::Exile,
+        },
+    ]
 }
 
 fn sacrifice_deal_damage(

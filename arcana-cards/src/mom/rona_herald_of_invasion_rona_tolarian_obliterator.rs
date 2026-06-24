@@ -9,12 +9,13 @@
 //!
 //! GAP: {B/P} hybrid-Phyrexian mana cost in transform activation; parsed as best-effort.
 //! GAP: back-face triggered ability "whenever a source deals damage to Rona, that source's
-//! controller exiles a card from their hand at random; if it's a land, put it onto the
-//! battlefield; otherwise cast it for free" — no TriggerCondition for "source deals damage
-//! to this permanent" (SelfIsDealtDamage fires on our permanent, but we need the source's
-//! controller; also the conditional land-vs-spell branching on a randomly exiled card is not
-//! expressible). Back-face triggered ability omitted.
-//! GAP: back-face-only triggered ability not auto-installed on transform.
+//! controller exiles a card from their hand at random; if it's a land, you may put it onto the
+//! battlefield; otherwise you may cast it without paying its mana cost" — the trigger condition
+//! (SelfIsDealtDamage) and the damaging source's controller (via the DamageDealt event) ARE
+//! reachable, but the EFFECT has no expressible primitive: there is no "exile a random card
+//! from a target player's hand" effect, no "cast that specific exiled card without paying its
+//! mana cost," and no land-vs-nonland conditional branch on a randomly chosen card. Back-face
+//! triggered ability left omitted — wiring only the trigger with no effect would be a no-op.
 
 use arcana_core::effects::{DiscardChoice, Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;

@@ -2,11 +2,6 @@
 //! At the beginning of your upkeep, you may transform this creature.
 //! Back face: Unholy Fiend — Horror creature.
 //!   At the beginning of your end step, you lose 1 life.
-//!
-//! # GAP
-//! Back face "At the beginning of your end step, you lose 1 life" is a back-face-only
-//! triggered ability. It is not modeled here since the engine does not gate triggered
-//! abilities by face. // GAP: back-face-only triggered ability not modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -72,10 +67,36 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
-            }),
-            // GAP: back-face-only triggered ability not modeled.
-            // (End step: lose 1 life — would be active on back face only.)
+            })
+            // Back face: At the beginning of your end step, you lose 1 life.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::End,
+                    whose: ControllerConstraint::You,
+                },
+                intervening_if: None,
+                effect: end_step_lose_life,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Front upkeep-transform fires only on the front face; the end-step
+            // life-loss only on the back face.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1),
     )
+}
+
+fn end_step_lose_life(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::LoseLife {
+        player: trig.controller,
+        amount: 1,
+    }]
 }
 
 fn upkeep_may_transform(

@@ -12,17 +12,16 @@
 //! (floating mana persistence) is not expressible.
 //! GAP: "Creatures you control can boast twice" (boast frequency modifier) is
 //! not expressible.
-//! GAP: Back-face activated ability "Discard a card: Exile top two cards. You
-//! may play those cards this turn" — the discard-as-cost activation is GAP
-//! (OptionalPaymentKind has no Discard variant); back-face-only triggered
-//! abilities not modeled.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
-use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::registry::{
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardFace, CardRegistry,
+};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -78,9 +77,40 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
-            }),
-        // GAP: back-face-only activated ability (Discard a card: ...) not modeled
+            })
+            // Back face (Harnfel, Horn of Bounty): "Discard a card: Exile the top two
+            // cards of your library. You may play those cards this turn." The discard
+            // is an additional cost (discard_other = any card); the effect is an
+            // impulse-exile of two cards. Face-gated to the back face (1).
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "Discard a card: Exile the top two cards of your library. You may play those cards this turn.".into(),
+                cost: ActivationCost {
+                    discard_other: Some(ObjectFilter::default()),
+                    discard_other_count: 1,
+                    ..ActivationCost::default()
+                },
+                target_requirements: Vec::new(),
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: true,
+                face_gate: Some(1),
+                effect: harnfel_impulse,
+            })
+            // Birgi's spell-cast trigger fires only on the front (creature) face.
+            .with_trigger_face_gate(1, 0),
     )
+}
+
+fn harnfel_impulse(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::ImpulseExile {
+        player: ctx.controller,
+        count: 2,
+    }]
 }
 
 fn spell_cast_trigger(

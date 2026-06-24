@@ -16,8 +16,6 @@
 //! tracking in script API; trigger effect returns Vec::new().
 //! GAP: Back trigger "choose flying or indestructible at random" — random keyword grant not
 //! expressible; using FlipCoin to approximate (Heads → Flying, Tails → Indestructible).
-//! GAP: "Whenever Blitzwing deals combat damage to a player, convert it" — combat damage
-//! trigger not available; back-face-only triggered ability not modeled.
 //! GAP: Back face is Artifact — Vehicle (not creature), no P/T — modeled with P/T from front.
 
 use arcana_core::effects::{Effect, KeywordAbility};
@@ -26,7 +24,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -98,8 +96,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     controller: None,
                 }],
             })
-            // Back face trigger (id 2): at beginning of combat on your turn, flip coin for ability
-            // GAP: back-face-only triggered ability — fires for both faces in engine
+            // Back face trigger (id 2): at beginning of combat on your turn, flip coin for ability.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::StepBegins {
@@ -111,9 +108,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
-            }),
-            // GAP: "Whenever Blitzwing deals combat damage to a player, convert it" —
-            // back-face-only triggered ability not modeled (no CombatDamageDealt trigger condition).
+            })
+            // Back face trigger (id 3): whenever Blitzwing deals combat damage to a player,
+            // convert it.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::DamageDealt {
+                    source_filter: ObjectFilter::new()
+                        .controlled_by(ControllerConstraint::You),
+                    target_filter: TargetFilter::Player,
+                    combat_only: true,
+                },
+                intervening_if: None,
+                effect: convert_to_front,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Trigger 1 (front end step) fires only on the front face; the begin-combat
+            // random-keyword trigger (2) and the combat-damage convert trigger (3) only on back.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1)
+            .with_trigger_face_gate(3, 1),
     )
 }
 
@@ -129,6 +145,14 @@ fn end_step_trigger(
     // GAP: "If no life is lost this way, convert Blitzwing" — conditional on effect result
     // not expressible.
     Vec::new()
+}
+
+fn convert_to_front(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::Transform { target: trig.source }]
 }
 
 fn combat_begin_trigger(

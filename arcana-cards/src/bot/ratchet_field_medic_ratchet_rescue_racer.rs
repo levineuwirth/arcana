@@ -15,18 +15,17 @@
 //! GAP: "More Than Meets the Eye" — alternate casting cost mechanic, not in keyword list.
 //! GAP: "Living metal" — Vehicle-becomes-creature during your turn, not modeled.
 //! GAP: "Convert" — same as Transform in Transformers context; modeled via Effect::Transform.
-//! GAP: Front-face trigger "Whenever you gain life" — TriggerCondition::YouGainLife not available.
-//!      Wired as a ZoneChange placeholder (wrong semantics); the real trigger cannot be expressed.
-//! GAP: The full effect of the lifegain trigger (return artifact card with mv <= life gained this
-//!      turn from graveyard) requires dynamic life-gained-this-turn tracking not in script API.
-//! GAP: Back-face-only triggered ability (nontoken artifacts to graveyard → convert)
-//!      not auto-installed on transform back face.
+//! Front-face trigger "Whenever you gain life" wired via TriggerCondition::LifeGained; the
+//!   convert (transform) half is emitted.
+//! GAP: the chained "when you do, return target artifact card with mv <= life gained this turn
+//!   from your graveyard to the battlefield tapped" rider needs dynamic life-gained-this-turn
+//!   tracking + a reflexive "when you do" trigger; not expressible, so it is omitted.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -77,33 +76,54 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         spell_ability: None,
     };
 
-    // GAP: Front trigger "Whenever you gain life" — no TriggerCondition for lifegain available.
-    // Using ZoneChange creature->graveyard as a structural placeholder that compiles but has
-    // wrong semantics. The real lifegain trigger and its full effect are not expressible.
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
+            // Front face only: whenever you gain life, you may convert Ratchet.
+            // GAP: the "when you do, return target artifact card with mv <= life gained this turn"
+            // rider needs dynamic life-gained tracking + a reflexive trigger; convert only.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::creature(),
-                    from: Some(Zone::Battlefield),
-                    to: Zone::Graveyard(0),
+                trigger_condition: TriggerCondition::LifeGained {
+                    player: ControllerConstraint::You,
                 },
                 intervening_if: None,
                 effect: on_gain_life_convert,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
-            }),
+            })
+            // Back face only: whenever one or more nontoken artifacts you control are put into a
+            // graveyard from the battlefield, convert Ratchet. Triggers only once each turn.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::ZoneChange {
+                    filter: ObjectFilter::new()
+                        .with_types(TypeLine::ARTIFACT.into())
+                        .nontoken()
+                        .controlled_by(ControllerConstraint::You),
+                    from: Some(Zone::Battlefield),
+                    to: Zone::Graveyard(0),
+                },
+                intervening_if: None,
+                effect: on_artifact_dies_convert,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::OncePerTurn,
+                target_requirements: Vec::new(),
+            })
+            // Trigger 1 fires only on the front face; trigger 2 only on the back face.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1),
     )
 }
 
 fn on_gain_life_convert(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: Full effect is "you may convert Ratchet; if you do, return target artifact card with
-    // mana value <= life gained this turn from your graveyard to battlefield tapped."
-    // Dynamic life-gained-this-turn is not accessible via script API.
-    // OptionalPayment wrapping transform is not expressible for the "when you do" chained trigger.
-    // Emitting just the transform (convert) as best approximation.
+    // GAP: "when you do, return target artifact card with mv <= life gained this turn from your
+    // graveyard to the battlefield tapped" — dynamic life-gained-this-turn + reflexive "when you
+    // do" trigger not expressible; emitting just the convert (transform).
+    vec![Effect::Transform { target: trig.source }]
+}
+
+fn on_artifact_dies_convert(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     vec![Effect::Transform { target: trig.source }]
 }

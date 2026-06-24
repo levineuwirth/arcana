@@ -8,10 +8,11 @@
 //!   Trample
 //!   At the beginning of each upkeep, if a player cast two or more spells last turn, transform.
 //!
-//! GAP: werewolf transform conditions ("no spells cast last turn" / "two or more spells last turn")
-//!      not expressible as TriggerCondition predicates; front-face trigger fires unconditionally
-//!      at upkeep.
-//! GAP: back-face-only triggered ability (upkeep back-transform) not auto-installed on transform.
+//! Werewolf transform conditions ("no spells cast last turn" / "two or more spells
+//! last turn") are modeled as intervening-if predicates
+//! (conditions::no_spells_cast_last_turn / conditions::a_player_cast_two_or_more_last_turn).
+//! The front upkeep trigger is gated to face 0 and the back upkeep trigger to
+//! face 1 (with_trigger_face_gate).
 
 use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility};
@@ -84,13 +85,33 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            // GAP: back-face-only triggered ability (upkeep back-transform "if a player cast
-            //      two or more spells last turn") not auto-installed on transform.
+            // Back face: at beginning of each upkeep, if a player cast two or more
+            // spells last turn, transform. Intervening-if modeled via
+            // conditions::a_player_cast_two_or_more_last_turn.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(iif_two_or_more),
+                effect: front_upkeep_transform,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Trigger 1 fires only on the front face; trigger 2 only on the back face.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1)
     )
 }
 
 fn iif_no_spells(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
     conditions::no_spells_cast_last_turn(state)
+}
+
+fn iif_two_or_more(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::a_player_cast_two_or_more_last_turn(state)
 }
 
 fn front_upkeep_transform(

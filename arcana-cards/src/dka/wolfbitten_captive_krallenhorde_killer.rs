@@ -5,12 +5,6 @@
 //! Back: Werewolf 3/3.
 //!   {3}{G}: This creature gets +4/+4 until end of turn. Activate only once each turn.
 //!   At the beginning of each upkeep, if a player cast two or more spells last turn, transform.
-//!
-//! # GAPs
-//! - Front transform trigger "if no spells were cast last turn" — intervening_if not modeled;
-//!   trigger fires every upkeep (GAP: day/night / "no spells last turn" condition).
-//! - Back transform trigger "if a player cast two or more spells last turn" — same GAP.
-//! - GAP: back-face-only triggered ability (back transform trigger) not modeled as separate.
 
 use arcana_core::conditions;
 use arcana_core::effects::Effect;
@@ -117,8 +111,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            // GAP: back-face transform trigger "if a player cast two or more spells last turn"
-            // — back-face-only triggered ability not modeled.
+            // Back transform trigger: at the beginning of each upkeep, if a player cast two or
+            // more spells last turn, transform.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(iif_two_or_more_spells),
+                effect: transform_to_back,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Trigger 1 fires only on the front face; trigger 2 only on the back face.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1)
     )
 }
 
@@ -152,6 +161,10 @@ fn back_pump(
 
 fn iif_no_spells(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
     conditions::no_spells_cast_last_turn(state)
+}
+
+fn iif_two_or_more_spells(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::a_player_cast_two_or_more_last_turn(state)
 }
 
 fn transform_to_back(

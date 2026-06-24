@@ -5,11 +5,18 @@
 //! Back: Eldrazi Fish (no mana cost), colorless.
 //!   {6}: Creatures your opponents control attack this turn if able.
 //!
-//! GAP: "if there is a colorless creature card in your graveyard" — the transform
-//!      trigger fires unconditionally (conditional transform not expressible here).
-//! GAP: "{6}: Creatures your opponents control attack this turn if able" — forced-attack
-//!      static on back face; back-face-only activated ability not modeled.
-//! GAP: back-face-only activated ability not modeled.
+//! GAP: "if there is a colorless creature card in your graveyard" — the front {T}
+//!      ability transforms unconditionally. The condition would have to be checked
+//!      AFTER the Mill executes, but `Effect::Conditional`'s `Condition` enum has
+//!      no filtered-graveyard variant and `Condition::Custom(fn(&GameState)->bool)`
+//!      receives no controller, so "a colorless creature card in *your* graveyard"
+//!      cannot be expressed post-mill.
+//! GAP: the back-face activated ability "{6}: Creatures your opponents control
+//!      attack this turn if able" is unwired — there is no Effect variant for a
+//!      board-wide "must attack this turn if able" requirement (Effect::Goad is
+//!      targeted and adds a can't-attack-the-goader clause, which is the wrong
+//!      semantics). The activated ability is left off entirely rather than wired
+//!      to a no-op resolver.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -80,9 +87,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 face_gate: Some(0),
                 effect: tap_mill_transform,
             }),
-        // GAP: back-face activated ability "{6}: Creatures your opponents
-        //      control attack this turn if able" not modeled (back-face-only
-        //      activated ability; forced-attack effect not in catalog).
+        // GAP (see module doc): the back-face "{6}: Creatures your opponents
+        //      control attack this turn if able" is left unwired — no board-wide
+        //      must-attack Effect variant exists.
     )
 }
 

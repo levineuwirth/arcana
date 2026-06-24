@@ -2,8 +2,10 @@
 //! Front face: Lifelink. When another creature you control dies, transform this creature.
 //! Back face: Depraved Harvester — Human Knight, also with Lifelink.
 //!
-//! Transform trigger is front-face only (fires when a creature you control dies).
-//! GAP: back-face-only triggered ability not modeled (back has no additional abilities beyond lifelink).
+//! Transform trigger is front-face only (fires when a creature you control dies);
+//! gated to face 0 so it cannot fire after the card transforms.
+//! The back face (Depraved Harvester) has NO triggered or activated abilities of
+//! its own beyond the static Lifelink keyword — nothing to wire on the back.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
@@ -78,7 +80,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
-            }),
+            })
+            // Front-face only: once transformed there is no "transform back".
+            .with_trigger_face_gate(1, 0),
     )
 }
 

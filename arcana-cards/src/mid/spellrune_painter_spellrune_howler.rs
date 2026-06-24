@@ -9,14 +9,14 @@
 //!   Whenever you cast an instant or sorcery spell, this creature gets +2/+2 until end of turn.
 //!   Nightbound (not modeled — see GAP).
 //!
-//! GAP: Daybound/Nightbound keywords not in the supported keyword set — day/night cycle is
-//!      engine debt; not emitted.
-//! GAP: back-face-only triggered ability (+2/+2 pump) not auto-installed on transform.
-//! GAP: werewolf day/night transform triggers not modeled.
+//! GAP: Daybound/Nightbound keywords not in the supported keyword set — the day/night
+//!      designator side is engine debt; not emitted. The werewolf transform itself is
+//!      modeled via the symmetric upkeep triggers (face-gated 0/1).
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
@@ -24,7 +24,8 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::layers::Duration;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::turn::Step;
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -92,8 +93,55 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            // GAP: back-face-only triggered ability (+2/+2 on instant/sorcery cast) not modeled.
-            // GAP: day/night transform triggers not modeled.
+            // Back face (Spellrune Howler): whenever you cast an instant or sorcery,
+            // +2/+2 until end of turn.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SpellCast {
+                    filter: Some(
+                        ObjectFilter::new().with_types_any(
+                            TypeLine(TypeLine::INSTANT | TypeLine::SORCERY),
+                        ),
+                    ),
+                    caster: ControllerConstraint::You,
+                },
+                intervening_if: None,
+                effect: back_pump,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Daybound: front->back transform if no spells were cast last turn.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(if_no_spells_last_turn),
+                effect: transform_self,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Nightbound: back->front transform if a player cast two or more spells last turn.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 4,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(if_player_cast_two_last_turn),
+                effect: transform_self,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Front pump (1) + day-flip (3) are front only; back pump (2) + night-flip (4) back only.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1)
+            .with_trigger_face_gate(3, 0)
+            .with_trigger_face_gate(4, 1),
     )
 }
 
@@ -109,4 +157,30 @@ fn front_pump(
         duration: Duration::EndOfTurn,
         keywords: vec![],
     }]
+}
+
+fn back_pump(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::Pump {
+        target: trig.source,
+        power: 2,
+        toughness: 2,
+        duration: Duration::EndOfTurn,
+        keywords: vec![],
+    }]
+}
+
+fn transform_self(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::Transform { target: trig.source }]
+}
+
+fn if_no_spells_last_turn(s: &GameState, _src: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::no_spells_cast_last_turn(s)
+}
+
+fn if_player_cast_two_last_turn(s: &GameState, _src: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::a_player_cast_two_or_more_last_turn(s)
 }

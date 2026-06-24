@@ -13,21 +13,23 @@
 //!  remain exiled, you may cast them, and your friends may cast them with your permission."
 //!
 //! # GAPs
-//! - "As long as it's nighttime" — day/night cycle not modeled; the static +2/+2 and menace
-//!   rider are omitted (no conditional static layer API).
-//! - "{6}: Transform Nightmare Moon" is an activated ability. The engine doesn't expose
-//!   ActivatedAbilityDef in the generation API here; the transform is not wired as an
-//!   activated ability (GAP: activated-ability-driven transform not modeled).
+//! - "As long as it's nighttime" — day/night cycle's conditional static +2/+2 and menace
+//!   rider are omitted (no conditional static layer API for the night-only buff).
 //! - "Anypony may activate this ability or help pay the cost" — multi-player cost-sharing
-//!   not supported.
+//!   not supported; the {6} transform is wired as a normal controller-only activated ability.
 //! - "When they do, they become your friend" — friendship tracking not modeled.
 //! - Back-face transform-into trigger: "choose up to six cards from outside the game" —
-//!   outside-game zone not modeled. GAP: back-face-only triggered ability not modeled.
+//!   the outside-the-game zone is not modeled, so this back-face triggered ability is GAP'd
+//!   (no Effect can exile/cast cards from outside the game).
 
-use arcana_core::effects::KeywordAbility;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
-use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::registry::{
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardFace, CardRegistry,
+};
+use arcana_core::state::GameState;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -71,12 +73,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         spell_ability: None,
     };
 
-    // GAP: "{6}: Transform Nightmare Moon" is an activated ability; ActivatedAbilityDef
-    // is not authored here (no cost path available in this generation shape). The transform
-    // trigger is left unwired.
-    // GAP: back-face-only triggered ability (transform-into Princess Luna) not modeled.
+    // Front face: "{6}: Transform Nightmare Moon." The controller-only core is wired;
+    // the "anypony may help pay / become your friend" multiplayer riders are GAP'd.
+    // GAP: back-face-only triggered ability (transform-into Princess Luna → exile up to
+    // six cards from outside the game) is not modeled (no outside-the-game zone).
     reg.register(
         CardDefinition::new(name, chars)
-            .with_transform_back(back),
+            .with_transform_back(back)
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "{6}: Transform Nightmare Moon.".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{6}").expect("valid cost"),
+                    ..ActivationCost::default()
+                },
+                target_requirements: vec![],
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: true,
+                face_gate: Some(0),
+                effect: transform_self,
+            }),
     )
+}
+
+fn transform_self(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::Transform { target: ctx.source }]
 }

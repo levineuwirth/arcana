@@ -15,7 +15,10 @@
 //!   for custom type filters deferred.
 //! GAP: "Convert a Transformers toy you own to its other mode" — the physical-object cost
 //!   is not expressible as an ActivationCost; modeled as a {2} mana cost activation only.
-//! GAP: back-face-only triggered/activated ability not auto-installed on transform.
+//!
+//! The back face's {2} transform-back activated ability IS wired (face-gated to face 1
+//! below). The back face has no other (triggered) abilities; Trample is a static keyword
+//! carried on the back face's characteristics.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;

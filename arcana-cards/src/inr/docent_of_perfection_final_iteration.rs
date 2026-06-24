@@ -6,9 +6,13 @@
 //!   Then if you control three or more Wizards, transform this creature.
 //!
 //! Back face (Final Iteration): Eldrazi Insect, Flying, 5/4.
-//! - Wizards you control get +2/+1 and have flying. GAP: static pump continuous effect not modeled.
-//! - Whenever you cast an instant or sorcery spell, create a 1/1 blue Human Wizard creature token.
-//!   GAP: back-face-only triggered ability not modeled.
+//! - GAP: "Wizards you control get +2/+1 and have flying" is a static continuous
+//!   anthem (filtered pump + filtered keyword grant). It could be installed via
+//!   ContinuousEffect on transform, but is left GAP'd here pending the static-on-
+//!   transform idiom; the token-making trigger below is the wired part.
+//! - Whenever you cast an instant or sorcery spell, create a 1/1 blue Human Wizard
+//!   creature token. Wired as a back-face SpellCast trigger (gated to face 1) that
+//!   creates the token WITHOUT the front face's "transform if 3+ Wizards" rider.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -78,10 +82,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
+            // Front face: create a Wizard token, then transform if 3+ Wizards.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SpellCast {
-                    filter: Some(instant_sorcery_filter),
+                    filter: Some(instant_sorcery_filter.clone()),
                     caster: ControllerConstraint::You,
                 },
                 intervening_if: None,
@@ -89,19 +94,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
-            }),
+            })
+            // Back face: just create a Wizard token (no transform rider).
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SpellCast {
+                    filter: Some(instant_sorcery_filter),
+                    caster: ControllerConstraint::You,
+                },
+                intervening_if: None,
+                effect: back_cast_instant_or_sorcery,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1),
     )
 }
 
-fn cast_instant_or_sorcery(
-    state: &GameState,
-    trig: &PendingTrigger,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
+/// Build the 1/1 blue Human Wizard creature token shared by both faces.
+fn wizard_token(reg: &CardRegistry) -> TokenDefinition {
     let wizard_id = reg.interner().lookup("Wizard");
     let human_id = reg.interner().lookup("Human");
-
-    // Build wizard token subtypes
     let mut wizard_subtypes = SubtypeSet::default();
     if let Some(h) = human_id {
         wizard_subtypes.0.insert(h);
@@ -109,10 +124,8 @@ fn cast_instant_or_sorcery(
     if let Some(w) = wizard_id {
         wizard_subtypes.0.insert(w);
     }
-    let tok_name = wizard_id.unwrap_or(0);
-
-    let token = TokenDefinition {
-        name: tok_name,
+    TokenDefinition {
+        name: wizard_id.unwrap_or(0),
         colors: ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes: wizard_subtypes,
@@ -120,11 +133,28 @@ fn cast_instant_or_sorcery(
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
         abilities: vec![],
-    };
+    }
+}
 
+fn back_cast_instant_or_sorcery(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::CreateToken {
+        controller: trig.controller,
+        token: wizard_token(reg),
+    }]
+}
+
+fn cast_instant_or_sorcery(
+    state: &GameState,
+    trig: &PendingTrigger,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
     let create_token = Effect::CreateToken {
         controller: trig.controller,
-        token,
+        token: wizard_token(reg),
     };
 
     // Count wizards (including this creature itself if it's a Wizard — it's not, but we count

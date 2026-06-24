@@ -10,28 +10,36 @@
 //! target creature you control. Until your next turn, it gains indestructible.
 //! If that creature is legendary, draw a card.
 //!
-//! GAP: Indestructible keyword on back face is in characteristics. "Blessing of Light" is a
-//! back-face-only triggered ability and is not wired (not auto-installed on transform); when it
-//! is, Duration::UntilYourNextTurn covers the indestructible grant. "If that creature is
-//! legendary, draw a card" — conditional draw based on a property of the targeted creature is
-//! not expressible via the Conditional variant without state access beyond script; GAP'd.
-//! "Activate only as a sorcery" — speed restriction not separately enforced (engine debt).
-//! "This ability triggers only once each turn" — TriggerFrequency::OncePerTurn used.
-//! Back-face-only triggered ability (Blessing of Light) not auto-installed on transform.
+//! Indestructible keyword on the back face is in characteristics. "Blessing of
+//! Light" is a back-face triggered ability, now wired (gated to face 1): at the
+//! beginning of combat on your turn, put a +1/+1 counter on another target
+//! creature you control; until your next turn it gains indestructible
+//! (Effect::GrantKeyword, Duration::UntilYourNextTurn); and if that creature is
+//! legendary, draw a card — the resolver reads the chosen target's supertypes
+//! from `state` and conditionally appends the draw.
+//! GAP: "another target creature you control" — self-exclusion is not expressible
+//! on the target filter (documented fidelity gap shared by every "another target"
+//! card); the filter restricts to creatures you control.
+//! GAP: "Activate only as a sorcery" — speed restriction not separately enforced.
+//! "This ability triggers only once each turn" — TriggerFrequency::OncePerTurn used
+//! for the front legendary-cast draw.
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationCost, ActivationZone, CardDefinition, CardFace, CardRegistry,
 };
+use arcana_core::state::GameState;
 use arcana_core::targets::{
     ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
 };
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::turn::Phase;
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -117,8 +125,69 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_instant_speed: false,
                 face_gate: Some(0),
                 effect: heros_sundering,
-            }),
+            })
+            // Back face — Blessing of Light: at the beginning of combat on your
+            // turn, put a +1/+1 counter on another target creature you control;
+            // until your next turn it gains indestructible; if that creature is
+            // legendary, draw a card.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::PhaseBegins {
+                    phase: Phase::Combat,
+                    whose: ControllerConstraint::You,
+                },
+                intervening_if: None,
+                effect: blessing_of_light,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+            })
+            // Front legendary-cast draw fires only on the front face; Blessing of
+            // Light only on the back face.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1),
     )
+}
+
+fn blessing_of_light(
+    state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let mut effects = vec![
+        Effect::AddCounters {
+            target: *id,
+            kind: CounterKind::PlusOnePlusOne,
+            count: 1,
+        },
+        Effect::GrantKeyword {
+            target: *id,
+            keyword: KeywordAbility::Indestructible,
+            duration: Duration::UntilYourNextTurn(trig.controller),
+        },
+    ];
+    // "If that creature is legendary, draw a card."
+    let is_legendary = state
+        .objects
+        .get(*id)
+        .map(|o| o.characteristics.supertypes.is_legendary())
+        .unwrap_or(false);
+    if is_legendary {
+        effects.push(Effect::DrawCards {
+            player: trig.controller,
+            count: 1,
+        });
+    }
+    effects
 }
 
 fn on_legendary_cast(

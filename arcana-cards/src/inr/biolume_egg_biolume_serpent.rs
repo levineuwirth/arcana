@@ -9,15 +9,15 @@
 //! The Sacrificed trigger condition fires when the player sacrifices a permanent, but
 //! the subsequent "exile + return transformed at end step" chain is not expressible with
 //! a single DelayedAction. Approximated: fire Transform immediately on sacrifice trigger.
-//! GAP: "Sacrifice two Islands" as activation cost — sacrifice_other filter supports
-//! sacrificing permanents but sacrificing two Islands specifically is not modeled with count.
-//! The back-face activated ability is omitted.
-//! GAP: back-face-only triggered ability not modeled.
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
-use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::registry::{
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardFace, CardRegistry,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -48,6 +48,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
+    let _island = reg.interner_mut().intern("Island");
     let back_name = reg.interner_mut().intern("Biolume Serpent");
     let mut back_subtypes = SubtypeSet::default();
     let back_serpent_sub = reg.interner_mut().intern("Serpent");
@@ -65,6 +66,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         },
         spell_ability: None,
     };
+
+    // Back-face cost: "Sacrifice two Islands".
+    let island_filter = arcana_core::script::subtype_filter(reg, "Island");
 
     reg.register(
         CardDefinition::new(name, chars)
@@ -95,6 +99,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
+            // Back face (Biolume Serpent): "Sacrifice two Islands: This creature can't be
+            // blocked this turn." Face-gated to the back face.
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "Sacrifice two Islands: This creature can't be blocked this turn.".into(),
+                cost: ActivationCost {
+                    sacrifice_other: Some(island_filter),
+                    sacrifice_other_count: 2,
+                    ..ActivationCost::default()
+                },
+                target_requirements: Vec::new(),
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: true,
+                face_gate: Some(1),
+                effect: serpent_unblockable,
+            }),
     )
 }
 
@@ -114,4 +135,15 @@ fn on_sacrifice_transform(
     // GAP: Oracle says "return it to the battlefield transformed at next end step".
     // DelayedAction + exile + transform chain not expressible; emitting Transform only.
     vec![Effect::Transform { target: trig.source }]
+}
+
+fn serpent_unblockable(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::CantBeBlocked {
+        target: ctx.source,
+        duration: Duration::EndOfTurn,
+    }]
 }

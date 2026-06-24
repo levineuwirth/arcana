@@ -8,14 +8,6 @@
 //! {R}, {T}: This creature fights target creature.
 //! At the beginning of each upkeep, if a player cast two or more spells last turn, transform.
 //!
-//! GAP: "if no spells were cast last turn" condition not expressible; front upkeep transform
-//!      fires unconditionally.
-//! GAP: back-face activated ability ({R},{T}: fight target creature) not modeled
-//!      (back-face-only activated ability engine debt).
-//! GAP: back-face upkeep transform ("if a player cast two or more spells last turn") not modeled
-//!      (back-face-only triggered ability engine debt).
-//! GAP: day/night cycle not modeled.
-
 use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
@@ -117,9 +109,67 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            // GAP: back-face {R},{T}: fight target creature — back-face-only activated ability.
-            // GAP: back-face upkeep transform (≥2 spells last turn) — back-face-only triggered ability.
+            // Back face: {R}, {T}: This creature fights target creature.
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "{R}, {T}: This creature fights target creature.".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{R}").expect("valid cost"),
+                    tap: true,
+                    ..ActivationCost::default()
+                },
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(ObjectFilter::creature()),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: true,
+                face_gate: Some(1),
+                effect: fight_target_creature,
+            })
+            // Back face: at beginning of each upkeep, if a player cast two or
+            // more spells last turn, transform.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(iif_two_or_more),
+                effect: back_upkeep_transform,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Front upkeep transform only on the front face; back upkeep
+            // transform only on the back face.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1),
     )
+}
+
+fn fight_target_creature(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = ctx.targets.targets.first() else { return Vec::new(); };
+    let TargetChoice::Object(id) = target else { return Vec::new(); };
+    vec![Effect::Fight { a: ctx.source, b: *id }]
+}
+
+fn iif_two_or_more(state: &GameState, _s: ObjectId, _y: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::a_player_cast_two_or_more_last_turn(state)
+}
+
+fn back_upkeep_transform(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::Transform { target: trig.source }]
 }
 
 fn tap_deal_damage_flyer(

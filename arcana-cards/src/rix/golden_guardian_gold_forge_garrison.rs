@@ -15,12 +15,11 @@
 //!   `ReturnFromExileToBattlefield` but not "return transformed". Emitting only `Fight`;
 //!   the delayed transform-return is GAP'd.
 //! - Back face "{T}: Add two mana of any one color" — player color choice on mana add not
-//!   supported (engine's AddMana requires a fixed color per pip). GAP: mana ability not wired.
-//! - Back face "{4}, {T}: Create a 4/4 colorless Golem artifact creature token" — back-face-
-//!   only activated ability not modeled (abilities live on the CardDefinition, not the face).
-//!   GAP: back-face-only activated ability not modeled.
+//!   supported (engine's AddMana requires a fixed color per pip — the same documented
+//!   fidelity gap as Treasure's "any color"). GAP: mana ability not wired (would fabricate
+//!   the color choice).
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -61,8 +60,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             colors: ColorSet::colorless(),
             types: TypeLine::LAND.into(),
             // GAP: "{T}: Add two mana of any one color" — color-choice mana not expressible.
-            // GAP: "{4}, {T}: Create a 4/4 colorless Golem artifact creature token" —
-            // back-face-only activated ability not modeled.
             ..Default::default()
         },
         spell_ability: None,
@@ -91,8 +88,49 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_instant_speed: false,
                 face_gate: Some(0), // front face only
                 effect: fight_ability,
+            })
+            // Back face (Gold-Forge Garrison): "{4}, {T}: Create a 4/4 colorless Golem
+            // artifact creature token." Gated to the back face (visible_face == 1).
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "{4}, {T}: Create a 4/4 colorless Golem artifact creature token.".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{4}").expect("valid cost"),
+                    tap: true,
+                    ..ActivationCost::default()
+                },
+                target_requirements: vec![],
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: false,
+                face_gate: Some(1), // back face only
+                effect: make_golem_token,
             }),
     )
+}
+
+/// Create a 4/4 colorless Golem artifact creature token.
+fn make_golem_token(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let golem = reg.interner().lookup("Golem").expect("Golem interned during register()");
+    let mut token_subtypes = SubtypeSet::default();
+    token_subtypes.0.insert(golem);
+    vec![Effect::CreateToken {
+        controller: ctx.controller,
+        token: TokenDefinition {
+            name: reg.interner().lookup("Golden Guardian").expect("name interned during register()"),
+            colors: ColorSet::colorless(),
+            types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
+            subtypes: token_subtypes,
+            power: Some(PtValue::Fixed(4)),
+            toughness: Some(PtValue::Fixed(4)),
+            keywords: vec![],
+            abilities: vec![],
+        },
+    }]
 }
 
 fn fight_ability(

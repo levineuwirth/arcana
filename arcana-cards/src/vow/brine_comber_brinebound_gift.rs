@@ -11,10 +11,17 @@
 //! create a 1/1 white Spirit creature token with flying.
 //! If this Aura would be put into a graveyard from anywhere, exile it instead.
 //!
-//! GAP: Disturb (graveyard-cast transformed) not modeled — no cast-from-graveyard-transformed mechanic.
-//! GAP: "Becomes the target of an Aura spell" trigger condition not available.
-//! GAP: "If this Aura would be put into graveyard, exile it instead" replacement not modeled.
-//! GAP: Back-face-only triggered ability not modeled (Aura ETB token trigger).
+//! The "enters → create a 1/1 white Spirit with flying" token trigger fires on BOTH
+//! faces (the front creature's ETB and the back Aura's ETB produce the identical token),
+//! so the single ungated SelfEntersBattlefield trigger already covers the back-face Aura
+//! ETB token — no separate face-gated trigger is needed.
+//! GAP: "[creature] becomes the target of an Aura spell" — TriggerCondition::SelfBecomesTarget
+//! only filters by the targeting player (caster), not by the targeting spell being an Aura;
+//! firing on any targeting spell would over-fire, so this half is left unwired.
+//! GAP: "If this Aura would be put into a graveyard from anywhere, exile it instead" — no
+//! card-installable self-exile-instead-of-graveyard replacement (replacement::exile_instead
+//! is a death-shield outcome, not a static an Aura can install on itself).
+//! GAP: Disturb (cast from graveyard transformed) — no cast-from-graveyard-transformed mechanic.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -64,7 +71,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
-            // Front: ETB trigger — create a 1/1 white Spirit with flying
+            // Enters trigger (fires on both faces) — create a 1/1 white Spirit with
+            // flying. Covers the front creature's ETB and the back Aura's ETB.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
@@ -74,8 +82,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-        // GAP: "becomes the target of an Aura spell" trigger not modeled
-        // GAP: back-face-only triggered ability not modeled
+        // GAP: "becomes the target of an Aura spell" — no Aura-spell-filtered
+        // becomes-target trigger; left unwired to avoid over-firing.
     )
 }
 

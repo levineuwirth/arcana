@@ -5,14 +5,14 @@
 //! Back face (Moonscarred Werewolf): 2/2 Vigilance Werewolf. {T}: Add {G}{G}.
 //! At the beginning of each upkeep, if a player cast two or more spells last turn, transform.
 //!
-//! # GAPs
-//! - "If no spells were cast last turn" / "if a player cast two or more spells last turn":
-//!   these are precise werewolf day/night trigger conditions not modeled by the engine;
-//!   the upkeep trigger is wired but the condition check returns Vec::new() (GAP).
-//! - Back face activated ability {T}: Add {G}{G}: face-gated activated ability on back face;
-//!   the front-face mana ability uses face_gate: Some(0), back-face uses face_gate: Some(1).
-//! - Back face triggered ability (transform back) is modeled as a front-face TriggeredAbilityDef
-//!   (engine limitation: back-face-only triggered ability not auto-installed on transform).
+//! Werewolf transform conditions ("if no spells were cast last turn" /
+//! "if a player cast two or more spells last turn") are modeled as intervening-if
+//! predicates (conditions::no_spells_cast_last_turn /
+//! conditions::a_player_cast_two_or_more_last_turn). The front upkeep trigger is
+//! gated to face 0 and the back upkeep trigger to face 1
+//! (with_trigger_face_gate), so each fires only on its own face.
+//! The back-face mana ability ({T}: Add {G}{G}) is wired via face_gate: Some(1);
+//! the front-face mana ability uses face_gate: Some(0).
 
 use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility};
@@ -115,7 +115,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             // Back face transform trigger: at beginning of each upkeep, if a player cast 2+ spells
             // last turn, transform back. Intervening-if modeled via
             // conditions::a_player_cast_two_or_more_last_turn.
-            // GAP: back-face-only triggered ability not modeled; authored here as always-present.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::StepBegins {
@@ -127,7 +126,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
-            }),
+            })
+            // Trigger 1 fires only on the front face; trigger 2 only on the back face.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1),
     )
 }
 
@@ -165,23 +167,21 @@ fn iif_two_or_more(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &
 }
 
 /// Front face upkeep trigger: if no spells were cast last turn, transform.
-/// GAP: "if no spells were cast last turn" condition not checkable; returns Vec::new().
+/// (Condition enforced as the trigger's intervening_if.)
 fn front_upkeep_transform(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "if no spells were cast last turn" — day/night condition not modeled.
-    Vec::new()
+    vec![Effect::Transform { target: trig.source }]
 }
 
 /// Back face upkeep trigger: if a player cast two or more spells last turn, transform back.
-/// GAP: "if a player cast two or more spells last turn" condition not checkable; returns Vec::new().
+/// (Condition enforced as the trigger's intervening_if.)
 fn back_upkeep_transform(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "if a player cast two or more spells last turn" — day/night condition not modeled.
-    Vec::new()
+    vec![Effect::Transform { target: trig.source }]
 }

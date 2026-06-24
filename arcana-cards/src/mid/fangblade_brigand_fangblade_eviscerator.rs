@@ -9,9 +9,8 @@
 //!   {4}{R}: Creatures you control get +2/+0 until end of turn.
 //!   Nightbound (GAP: day/night cycle not modeled.)
 //!
-//! GAP: Daybound/Nightbound keywords not in KeywordAbility enum.
-//! GAP: Back-face-only activated ability ({4}{R}: pump all creatures) not auto-installed.
-//! GAP: Back-face-only triggered ability not modeled.
+//! GAP: Daybound/Nightbound keywords not in KeywordAbility enum (the day/night transform
+//!      cycle is not modeled). The {4}{R} team-pump back-face activated ability IS wired.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -84,9 +83,36 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 face_gate: None, // shared on both faces
                 effect: pump_first_strike,
             })
-            // GAP: back-face-only {4}{R}: creatures you control get +2/+0 until end of turn
-            // not modeled (back-face-only activated ability not auto-installed on transform)
+            // Back face (Fangblade Eviscerator) only: {4}{R}: creatures you control get
+            // +2/+0 until end of turn.
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "{4}{R}: Creatures you control get +2/+0 until end of turn.".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{4}{R}").unwrap(),
+                    ..ActivationCost::default()
+                },
+                target_requirements: Vec::new(),
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: true,
+                face_gate: Some(1),
+                effect: team_pump,
+            }),
     )
+}
+
+fn team_pump(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::Anthem {
+        controller: ctx.controller,
+        power: 2,
+        toughness: 0,
+        duration: Duration::EndOfTurn,
+    }]
 }
 
 fn pump_first_strike(

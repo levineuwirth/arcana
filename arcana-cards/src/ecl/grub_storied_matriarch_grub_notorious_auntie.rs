@@ -14,10 +14,15 @@
 //! # GAP notes
 //! - Keywords "Blight" and "Transform" (Scryfall marker) are not in the
 //!   KeywordAbility enum; omitted.
-//! - Back-face attack trigger (Blight 1 + copy-token) not modeled.
-//!   // GAP: back-face-only triggered ability not modeled.
-//! - The two PhaseBegins triggers (ids 2 and 3) both fire from either face;
-//!   engine has no face-gate on TriggeredAbilityDef.
+//! - GAP: the back-face attack trigger "Whenever Grub attacks, you may blight 1"
+//!   is genuinely unwireable — "blight N" is a new ECL keyword action with no
+//!   Effect variant or script helper in the engine. The attack trigger is left
+//!   unwired (no faithful approximation exists).
+//! - The two PhaseBegins triggers are now face-gated: the front pay-{R} trigger
+//!   (id 2) to face 0, the back pay-{B} trigger (id 3) to face 1, via
+//!   `with_trigger_face_gate`. The two "enters or transforms into front" triggers
+//!   (ids 1, 4) are front-face semantics and need no gate (id 4's SelfTransforms
+//!   { to_face: Some(0) } is already face-directional; id 1 is an ETB).
 
 use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::{Effect, KeywordAbility};
@@ -142,8 +147,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             })
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 3,
-                // Back-face: beginning of first main phase, may pay {B}, transform.
-                // GAP: back-face-only triggered ability not modeled; fires from both faces.
+                // Back-face: beginning of first main phase, may pay {B}, transform back.
                 trigger_condition: TriggerCondition::PhaseBegins {
                     phase: Phase::PreCombatMain,
                     whose: ControllerConstraint::You,
@@ -153,7 +157,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
-            }),
+            })
+            // Front pay-{R}-to-transform fires only on the front face;
+            // back pay-{B}-to-transform-back only on the back face.
+            .with_trigger_face_gate(2, 0)
+            .with_trigger_face_gate(3, 1),
     )
 }
 
@@ -190,7 +198,6 @@ fn back_phase_trigger(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // Back-face: you may pay {B}. If you do, transform back.
-    // GAP: back-face-only triggered ability not modeled.
     vec![Effect::OptionalPayment {
         chooser: trig.controller,
         cost: OptionalPaymentKind::Mana(ManaCost::parse("{B}").expect("valid cost")),

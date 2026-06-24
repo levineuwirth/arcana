@@ -1,19 +1,29 @@
 //! Tavern Ruffian // Tavern Smasher
 //!
 //! Front face: Creature — Human Warrior Werewolf {3}{R}, 2/5, red.
-//! Daybound (GAP: day/night cycle not modeled).
+//! Daybound.
 //!
-//! Back face: Creature — Werewolf, red.
-//! Nightbound (GAP: day/night cycle not modeled).
+//! Back face: Creature — Werewolf, red, 6/5.
+//! Nightbound.
 //!
-//! Transform triggered abilities for day/night transition are GAP'd
-//! since the precise werewolf trigger conditions are not available.
-//! GAP: back-face-only triggered ability not modeled.
+//! GAP: Daybound/Nightbound keywords / day-night designator are not in the engine
+//! keyword surface. The werewolf transform itself is modeled via the symmetric
+//! upkeep triggers (front->back when no spells were cast last turn; back->front
+//! when a player cast two or more spells last turn), face-gated 0/1.
 
+use arcana_core::conditions;
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::state::GameState;
+use arcana_core::targets::ControllerConstraint;
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
+use arcana_core::turn::Step;
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Tavern Ruffian");
@@ -58,6 +68,45 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
-        // GAP: Daybound/Nightbound day-night cycle transform triggers not modeled
+            // Daybound: front->back transform if no spells were cast last turn.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(if_no_spells_last_turn),
+                effect: transform_self,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Nightbound: back->front transform if a player cast two or more spells last turn.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(if_player_cast_two_last_turn),
+                effect: transform_self,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1),
     )
+}
+
+fn transform_self(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::Transform { target: trig.source }]
+}
+
+fn if_no_spells_last_turn(s: &GameState, _src: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::no_spells_cast_last_turn(s)
+}
+
+fn if_player_cast_two_last_turn(s: &GameState, _src: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::a_player_cast_two_or_more_last_turn(s)
 }

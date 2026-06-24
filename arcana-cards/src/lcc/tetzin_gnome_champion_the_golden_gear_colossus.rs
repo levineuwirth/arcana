@@ -14,11 +14,11 @@
 //!   has no engine support).
 //! - Front trigger "double-faced artifact" filter not expressible (no double-faced flag in
 //!   ObjectFilter); modeled as any artifact ETB trigger (broadened fidelity gap).
-//! - Back-face "transform up to one other target double-faced artifact" GAP'd for same reason;
-//!   the Gnome token creation IS modeled.
-//! - Back-face triggered abilities not auto-installed on transform (engine limitation).
+//! - Back-face "transform up to one other target double-faced artifact" GAP'd for the same
+//!   reason (no double-faced flag in ObjectFilter); the Gnome token-creation half IS now
+//!   wired as a back-face-only (enters-or-attacks) trigger, face-gated to face 1.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -93,11 +93,67 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
-            }),
-        // GAP: back-face triggered ability (enters or attacks → transform + token creation)
-        // not auto-installed on transform — back-face-only triggered ability not modeled.
+            })
+            // Back face (The Golden-Gear Colossus): "Whenever this enters or attacks,
+            // ... Create two 1/1 colorless Gnome artifact creature tokens." Wired as two
+            // back-face-only triggers (enters + attacks); the "transform up to one other
+            // target double-faced artifact" half is GAP'd (no double-faced flag in
+            // ObjectFilter), the token-creation half is modeled.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: colossus_make_gnomes,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SelfAttacks,
+                intervening_if: None,
+                effect: colossus_make_gnomes,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Front mill trigger fires only on the front face; the Colossus token
+            // triggers fire only on the back face.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1)
+            .with_trigger_face_gate(3, 1),
         // GAP: Craft activated ability not modeled.
+        // GAP: back-face "transform up to one other target double-faced artifact" not
+        // expressible (no double-faced flag in ObjectFilter).
     )
+}
+
+fn colossus_make_gnomes(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let gnome = reg
+        .interner()
+        .lookup("Gnome")
+        .expect("Gnome interned during register()");
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(gnome);
+    let token = TokenDefinition {
+        name: gnome,
+        colors: ColorSet::colorless(),
+        types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
+        subtypes,
+        power: Some(PtValue::Fixed(1)),
+        toughness: Some(PtValue::Fixed(1)),
+        keywords: vec![],
+        abilities: vec![],
+    };
+    // "Create two 1/1 ... Gnome artifact creature tokens."
+    vec![
+        Effect::CreateToken { controller: trig.controller, token: token.clone() },
+        Effect::CreateToken { controller: trig.controller, token },
+    ]
 }
 
 fn tetzin_enters_mill(

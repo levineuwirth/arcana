@@ -10,7 +10,12 @@
 //!
 //! Transform triggered abilities are GAP'd since the precise day/night
 //! werewolf trigger conditions are not available in the engine.
-//! GAP: back-face-only triggered ability not modeled.
+//!
+//! NOTE: the back face (Moonlit Ambusher) is a vanilla Werewolf with only the
+//! Nightbound day/night keyword — it has no triggered or activated abilities,
+//! so the back-face trigger/activated hooks do not apply. The only unwired
+//! riders are the day/night transform cycle and the flash-if-pay-{2}-more
+//! alternate cast cost (both GAP'd above).
 
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

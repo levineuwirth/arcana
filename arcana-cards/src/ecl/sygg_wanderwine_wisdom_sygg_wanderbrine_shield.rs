@@ -19,15 +19,19 @@
 //!
 //! GAP: Static "can't be blocked" characteristic is not modeled as a keyword;
 //!   CantBeBlocked is an Effect, not a static characteristic.
-//! GAP: "grant a triggered ability until end of turn" (draw on combat damage)
-//!   is not an expressible Effect variant — front ETB/transform trigger omitted.
-//! GAP: "protection from each color until your next turn" is not a modeled
-//!   keyword in the supported set — back-face transform trigger omitted.
+//! The front "enters or transforms into" trigger grants the targeted creature
+//!   "whenever this deals combat damage to a player, draw a card" until end of
+//!   turn via `Effect::GrantTriggeredAbility` (Warrior's Lesson idiom). NOTE:
+//!   the player half is faithful; the "or planeswalker" half is dropped because
+//!   no player-or-planeswalker-but-not-creature TargetFilter exists.
+//! The back transform trigger grants the targeted creature you control
+//!   protection from each color (`ProtectionQuality::AnyColor`) until your next
+//!   turn via `Effect::GrantKeyword`.
 //! GAP: "beginning of your first main phase" is the PreCombatMain step; wired
-//!   as StepBegins { step: Step::PreCombatMain, whose: You } (closest approximation).
-//! GAP: back-face-only triggered ability not auto-installed on transform.
+//!   as a sorcery-speed activated ability (timing not separately enforced).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility, ProtectionQuality};
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -35,9 +39,13 @@ use arcana_core::registry::{
     CardDefinition, CardFace, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::TargetRequirement;
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+    GRANTED_TRIGGER_ID_BASE,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
@@ -91,18 +99,46 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
-            // Front-face ETB trigger: "when this enters, target creature gets
-            // draw-on-damage triggered ability until EOT".
-            // GAP: "grant a triggered ability until end of turn" not expressible;
-            // trigger registered but effect is empty.
+            // Front-face: "whenever this enters OR transforms into Sygg,
+            // Wanderwine Wisdom, target creature gains 'whenever this creature
+            // deals combat damage to a player, draw a card' until end of turn."
+            // ETB half:
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: sygg_etb_trigger,
+                effect: sygg_grant_draw_trigger,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::target_creature()],
+            })
+            // "Transforms into front face" half (front-face directional).
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(0) },
+                intervening_if: None,
+                effect: sygg_grant_draw_trigger,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![TargetRequirement::target_creature()],
+            })
+            // Back-face: "whenever this transforms into Sygg, Wanderbrine Shield,
+            // target creature you control gains protection from each color until
+            // your next turn."
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 4,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: sygg_grant_protection,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
             })
             // Front-face activated ability: at beginning of first main phase,
             // pay {W} to transform. Modeled as an activated ability with mana cost {W}.
@@ -137,19 +173,67 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_instant_speed: false,
                 face_gate: Some(1), // back face only
                 effect: transform_to_front,
-            })
-            // GAP: back-face-only triggered ability (transform trigger granting
-            // protection from each color) not modeled.
+            }),
     )
 }
 
-fn sygg_etb_trigger(
+/// Front trigger: grant the targeted creature "whenever this creature deals
+/// combat damage to a player, draw a card" until end of turn.
+fn sygg_grant_draw_trigger(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "grant triggered ability until end of turn" not expressible.
-    Vec::new()
+    let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let granted = TriggeredAbilityDef {
+        id: GRANTED_TRIGGER_ID_BASE + 1,
+        trigger_condition: TriggerCondition::DamageDealt {
+            source_filter: ObjectFilter::creature(),
+            target_filter: TargetFilter::Player,
+            combat_only: true,
+        },
+        intervening_if: None,
+        effect: granted_draw_a_card,
+        trigger_zones: vec![Zone::Battlefield],
+        frequency: TriggerFrequency::EachTime,
+        target_requirements: Vec::new(),
+    };
+    vec![Effect::GrantTriggeredAbility {
+        target: *id,
+        ability: Box::new(granted),
+        duration: Duration::EndOfTurn,
+    }]
+}
+
+/// Granted "whenever this creature deals combat damage to a player, draw a card."
+fn granted_draw_a_card(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::DrawCards {
+        player: trig.controller,
+        count: 1,
+    }]
+}
+
+/// Back trigger: grant the targeted creature you control protection from each
+/// color until your next turn.
+fn sygg_grant_protection(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::GrantKeyword {
+        target: *id,
+        keyword: KeywordAbility::Protection(ProtectionQuality::AnyColor),
+        duration: Duration::UntilYourNextTurn(trig.controller),
+    }]
 }
 
 fn transform_to_back(

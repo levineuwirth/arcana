@@ -11,7 +11,14 @@
 //!
 //! Back face (Etali, Primal Sickness): Legendary Phyrexian Elder Dinosaur, Trample + Indestructible.
 //! - Whenever Etali deals combat damage to a player, they get that many poison counters.
-//!   GAP: back-face-only triggered ability not modeled.
+//!   GAP: the combat-damage-to-player trigger (TriggerCondition::DamageDealt) and the dealt
+//!   amount (PendingTrigger::damage_amount / damaged_player) are both available, but there is
+//!   NO Effect variant that gives poison counters to a PLAYER. CounterKind::Poison +
+//!   CounterTarget::Player + GameState::place_counters exist internally, but Effect::AddCounters
+//!   only targets an ObjectId (a permanent), not a player. Missing primitive: an
+//!   Effect::GivePlayerCounters { player, kind, count } routing to place_counters with
+//!   CounterTarget::Player. The trigger is left unwired because its only payload is the
+//!   unexpressible poison-counter effect (wiring it would be a pure no-op).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;

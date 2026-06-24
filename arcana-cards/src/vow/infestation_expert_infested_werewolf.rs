@@ -5,9 +5,8 @@
 //! manual triggered ability).
 //!
 //! Back (Infested Werewolf): Whenever this creature enters or attacks, create two 1/1 green
-//! Insect creature tokens.
-//! Nightbound (GAP: back-face-only triggered ability not modeled).
-//! GAP: back-face-only "enters or attacks → two tokens" trigger not modeled.
+//! Insect creature tokens. Wired as two back-face triggers (ETB + attacks,
+//! gated to face 1); the front-face single-token triggers are gated to face 0.
 //! GAP: precise Daybound/Nightbound day-night cycle conditions not modeled.
 
 use arcana_core::effects::{Effect, TokenDefinition};
@@ -84,7 +83,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
-            }),
+            })
+            // Back: whenever this creature enters, create two 1/1 green Insect tokens.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: create_two_insects,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Back: whenever this creature attacks, create two 1/1 green Insect tokens.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 4,
+                trigger_condition: TriggerCondition::SelfAttacks,
+                intervening_if: None,
+                effect: create_two_insects,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Front triggers fire only on the front face; back triggers on the back.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 0)
+            .with_trigger_face_gate(3, 1)
+            .with_trigger_face_gate(4, 1),
     )
 }
 
@@ -115,4 +139,21 @@ fn create_one_insect(
         controller: trig.controller,
         token: insect_token(reg),
     }]
+}
+
+fn create_two_insects(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![
+        Effect::CreateToken {
+            controller: trig.controller,
+            token: insect_token(reg),
+        },
+        Effect::CreateToken {
+            controller: trig.controller,
+            token: insect_token(reg),
+        },
+    ]
 }

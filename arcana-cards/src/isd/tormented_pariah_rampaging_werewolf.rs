@@ -2,11 +2,6 @@
 //! Front face: At the beginning of each upkeep, if no spells were cast last turn, transform.
 //! Back face (Werewolf 5/4): At the beginning of each upkeep, if a player cast two or more
 //!   spells last turn, transform back.
-//!
-//! GAP: "if no spells were cast last turn" / "if a player cast two or more spells last turn"
-//!   — exact werewolf day/night trigger conditions (tracking prior-turn spell counts) are not
-//!   modeled. Both triggers are wired to StepBegins::Upkeep but fire unconditionally.
-//! GAP: Back-face-only triggered ability not modeled (triggers live on CardDefinition).
 
 use arcana_core::conditions;
 use arcana_core::effects::Effect;
@@ -80,13 +75,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            // Back -> Front: upkeep trigger (GAP: should only fire if 2+ spells cast last turn)
-            // GAP: back-face-only triggered ability not modeled
+            // Back -> Front: upkeep trigger — transform back if a player cast two
+            // or more spells last turn.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(iif_two_or_more),
+                effect: front_upkeep_transform,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Front upkeep transform only on front face; back only on back face.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1),
     )
 }
 
 fn iif_no_spells(state: &GameState, _s: ObjectId, _y: PlayerId, _reg: &CardRegistry) -> bool {
     conditions::no_spells_cast_last_turn(state)
+}
+
+fn iif_two_or_more(state: &GameState, _s: ObjectId, _y: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::a_player_cast_two_or_more_last_turn(state)
 }
 
 fn front_upkeep_transform(

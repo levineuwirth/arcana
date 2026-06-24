@@ -8,9 +8,14 @@
 //! trample until end of turn. Nightbound (GAP: Nightbound not modeled).
 //! "if you control three or more Wolves and/or Werewolves" intervening-if wired on the upkeep
 //! transform trigger via a manual with_subtypes_any(["Wolf","Werewolf"]) filter + you_control_at_least.
+//! The "Whenever a Wolf or Werewolf you control deals combat damage to a player, draw a card"
+//! trigger (present on BOTH faces) is WIRED via TriggerCondition::DamageDealt with a
+//! subtype-filtered, controller=You source_filter; left ungated so it fires on both faces.
 //! GAP: "transform any number of Human Werewolves you control" — mass transform of others not expressible.
-//! GAP: Back-face activated ability ({X}{R}{G}: pump target Wolf/Werewolf) not modeled (face-gated activation with X cost not in engine).
-//! GAP: back-face-only triggered ability not modeled for the combat-damage draw trigger on back face.
+//! GAP: Back-face activated ability ({X}{R}{G}: pump target Wolf/Werewolf) not modeled — there is
+//!      no generic-{X} mana cost on activated abilities (only loyalty-X fans out; a normal
+//!      activated ability's {X} silently resolves to 0). Missing primitive: an ActivationCost
+//!      generic-X fan-out feeding the chosen X into ActivationContext.x_value.
 
 use arcana_core::conditions;
 use arcana_core::effects::Effect;
@@ -26,16 +31,22 @@ use arcana_core::types::{
     CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine,
 };
 use arcana_core::zones::Zone;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetFilter};
 use arcana_core::state::GameState;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Tovolar, Dire Overlord");
     let human_sub = reg.interner_mut().intern("Human");
     let werewolf_sub = reg.interner_mut().intern("Werewolf");
+    let wolf_sub = reg.interner_mut().intern("Wolf");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human_sub);
     subtypes.0.insert(werewolf_sub);
+
+    // Source filter for "a Wolf or Werewolf you control deals combat damage".
+    let wolf_or_werewolf_you_control = ObjectFilter::creature()
+        .with_subtypes_any(vec![wolf_sub, werewolf_sub])
+        .controlled_by(ControllerConstraint::You);
 
     let chars = Characteristics {
         name,
@@ -72,14 +83,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
-            // Trigger 1: combat-damage draw (front face — Wolf or Werewolf deals combat damage)
-            // GAP: TriggerCondition::CombatDamageDealt with subtype filter not available; using ZoneChange
-            // as placeholder. The actual trigger fires when a Wolf/Werewolf deals combat damage to a player.
-            // GAP: "whenever a Wolf or Werewolf you control deals combat damage to a player" — no
-            // CombatDamageDealt trigger condition; omitting this triggered ability.
-            // Trigger 2: upkeep transform trigger (front face — transform when three+ Wolves/Werewolves)
+            // Trigger 1: "Whenever a Wolf or Werewolf you control deals combat damage to a
+            // player, draw a card." Present on BOTH faces — left ungated so it fires on each.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
+                trigger_condition: TriggerCondition::DamageDealt {
+                    source_filter: wolf_or_werewolf_you_control,
+                    target_filter: TargetFilter::Player,
+                    combat_only: true,
+                },
+                intervening_if: None,
+                effect: draw_a_card,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Trigger 2: upkeep transform (front face only — "it becomes night, then
+            // transform" when you control three+ Wolves/Werewolves).
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::You,
@@ -90,7 +112,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
+            // Combat-damage draw (1) is on both faces (ungated); the upkeep transform (2)
+            // is front-face only.
+            .with_trigger_face_gate(2, 0),
     )
+}
+
+fn draw_a_card(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::DrawCards {
+        player: trig.controller,
+        count: 1,
+    }]
 }
 
 /// "if you control three or more Wolves and/or Werewolves" — OR of two subtypes

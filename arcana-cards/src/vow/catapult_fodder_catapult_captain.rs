@@ -5,15 +5,17 @@
 //! Back face (Catapult Captain): {2}{B}, {T}, Sacrifice another creature:
 //!   Target opponent loses life equal to the sacrificed creature's toughness.
 //!
+//! The back-face activated ability is wired on the shared CardDefinition and
+//! gated to the back face via `face_gate: Some(1)`.
+//!
 //! GAP: Front-face transform condition "three or more creatures where
-//!      toughness > power" cannot be expressed in TriggerCondition; the
-//!      trigger fires unconditionally at the beginning of combat.
-//! GAP: Back-face activated ability "loses life equal to the sacrificed
-//!      creature's toughness" — the sacrificed creature is gone by resolution
-//!      time and its toughness cannot be queried; 1 life loss is emitted as
-//!      a placeholder (materially wrong — the whole effect should be GAP'd
-//!      but a fixed small amount is less disruptive).
-//! GAP: back-face-only activated ability not auto-installed on transform.
+//!      toughness > power" cannot be expressed (no power-vs-toughness compare
+//!      on ObjectFilter); the trigger fires unconditionally at the beginning
+//!      of combat.
+//! GAP: Back-face life-loss amount "equal to the sacrificed creature's
+//!      toughness" — the sacrificed creature is gone by resolution time and
+//!      ActivationContext exposes no sacrificed-object accessor; 1 life loss
+//!      is emitted as a placeholder (amount materially wrong).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -86,8 +88,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: Vec::new(),
             })
             // Back face: {2}{B}, {T}, Sacrifice another creature: Target opponent loses life.
-            // GAP: back-face-only ability not auto-installed on transform.
-            // GAP: life loss amount should equal sacrificed creature's toughness (not expressible).
+            // Wired on the shared CardDefinition, gated to the back face (face_gate: Some(1)).
+            // GAP: life loss amount should equal sacrificed creature's toughness (not expressible
+            //      — sacrificed object gone by resolution, no ActivationContext accessor).
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{2}{B}, {T}, Sacrifice another creature: Target opponent loses life equal to the sacrificed creature's toughness.".into(),
                 cost: ActivationCost {

@@ -10,13 +10,20 @@
 //! Back: Legendary Artifact — Vehicle.
 //! GAP: Living metal not modeled.
 //! Flying.
-//! GAP: {U}{U}{U}: Convert Jetfire, then adapt 3. — Adapt not in Effect catalog; Convert not modeled.
-//! GAP: back-face-only activated ability not modeled.
+//! Back-face activated ability {U}{U}{U}: Convert Jetfire, then adapt 3.
+//!   The convert (transform) half is wired (face-gated to the back face).
+//!   GAP: "adapt 3" rider not expressible — there is no Effect::Adapt and no resolution-time
+//!   "only if it has no +1/+1 counters" precondition; an unconditional AddCounters would be a
+//!   materially wrong card, so the adapt half is omitted (matches the repo Adapt consensus).
 
-use arcana_core::effects::KeywordAbility;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
-use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::registry::{
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone, CardDefinition,
+    CardFace, CardRegistry,
+};
+use arcana_core::state::GameState;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -60,6 +67,35 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     // GAP: More Than Meets the Eye alternate cast cost not modeled.
     // GAP: Front-face activated ability (remove +1/+1 counters → add {C} + Convert) not modeled:
     //   variable counter removal from artifacts, restricted mana, and Convert are engine gaps.
-    // GAP: back-face-only activated ability ({U}{U}{U}: Convert + adapt 3) not modeled.
-    reg.register(CardDefinition::new(name, chars).with_transform_back(back))
+    reg.register(
+        CardDefinition::new(name, chars)
+            .with_transform_back(back)
+            // Back face only: {U}{U}{U}: Convert Jetfire, then adapt 3.
+            // GAP: the "adapt 3" rider is omitted (no Effect::Adapt / no "no +1/+1 counters"
+            // precondition); only the convert (transform) half is wired.
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "{U}{U}{U}: Convert Jetfire, then adapt 3.".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{U}{U}{U}").expect("valid cost"),
+                    ..ActivationCost::default()
+                },
+                target_requirements: Vec::new(),
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: true,
+                face_gate: Some(1), // back face only
+                effect: convert_then_adapt,
+            }),
+    )
+}
+
+fn convert_then_adapt(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "then adapt 3" rider omitted (no Effect::Adapt / no "no +1/+1 counters" gate);
+    // only the convert (transform) half is wired.
+    vec![Effect::Transform { target: ctx.source }]
 }

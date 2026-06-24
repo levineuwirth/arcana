@@ -7,10 +7,10 @@
 //! GAP: front-face upkeep trigger "exile two cards from your graveyard; if you can't,
 //! sacrifice Egon and draw" — the conditional graveyard-size check with self-sacrifice
 //! is not expressible with the current engine API surface.
-//! GAP: back-face-only triggered ability (upkeep mill) not modeled — MDFC back-only
-//! triggers not auto-installed.
-//! GAP: back-face-only activated ability ({2}{B},{T}, exile creature from GY: draw)
-//! not modeled — ExileFromGraveyard as an activation cost is not in the engine surface.
+//! GAP: back-face activated ability ({2}{B},{T}, exile a creature card from your
+//! graveyard: draw) — the "exile a CHOSEN creature card from your graveyard" cost is
+//! not in the ActivationCost surface (exile_self exiles the source only; there is no
+//! exile-other-from-graveyard additional cost). Left GAP'd.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
@@ -76,8 +76,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![],
-            }),
+            })
+            // Back face (Throne of Death): "At the beginning of your upkeep, mill a
+            // card." Fires only while the back artifact face is showing.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::You,
+                },
+                intervening_if: None,
+                effect: throne_upkeep_mill,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![],
+            })
+            // Trigger 1 is the front (creature) upkeep; trigger 2 the back
+            // (artifact) upkeep mill.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1),
     )
+}
+
+fn throne_upkeep_mill(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::Mill { player: trig.controller, count: 1 }]
 }
 
 fn egon_upkeep_trigger(

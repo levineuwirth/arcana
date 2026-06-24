@@ -427,6 +427,7 @@ Teferi, Temporal Archmage
 Teferi, Timebender
 Temp of the Damned
 Tenth District Veteran
+Tergrid, God of Fright
 Tezzeret, Cruel Captain
 Thalakos Deceiver
 The Akroan War
@@ -462,6 +463,7 @@ Trickster Mage
 Tunnel Rats
 Two-Headed Giant
 Tyvar, Jubilant Brawler
+Ultimecia, Time Sorceress
 Unbender Tine
 Unholy Indenture
 Unified Lunge

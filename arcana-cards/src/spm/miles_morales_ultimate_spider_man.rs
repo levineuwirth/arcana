@@ -6,19 +6,24 @@
 //! Back: Ultimate Spider-Man — `{3}{R}{G}{W}` Legendary Creature — Spider Human Hero 6/6 (multicolor R/G/W).
 //!   First strike, haste
 //!   Camouflage — {2}: Put a +1/+1 counter on Ultimate Spider-Man. He gains hexproof and becomes colorless until end of turn.
-//!     (GAP: "becomes colorless" is not expressible with the current Effect catalog.)
 //!   Whenever you attack, double the number of each kind of counter on each Spider and legendary creature you control.
 //!     (GAP: "double counters" is not expressible with the current Effect catalog.)
 //!
-//! GAP: back-face-only triggered ability (attack trigger) not auto-installed on transform.
-//! GAP: {3}{R}{G}{W} sorcery-speed activated transform not expressible as ActivationCost.
-//! GAP: back-face "becomes colorless" and "double the number of each kind of counter" not expressible.
-//! GAP: back-face activated Camouflage "becomes colorless" — not in Effect catalog.
+//! This is a transforming DFC: {3}{R}{G}{W} sorcery-speed Transform is wired as a
+//!   front-face activated ability (face 0). The back-face Camouflage activated ability
+//!   ({2}: +1/+1 counter + gains hexproof + becomes colorless until EOT) is fully wired,
+//!   gated to face 1.
+//! GAP: back-face "Whenever you attack, double the number of each kind of counter …" — no
+//!   double-counters Effect variant in the catalog; the attack trigger is left unwired.
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
-use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::registry::{
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardFace, CardRegistry,
+};
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
@@ -79,7 +84,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
     reg.register(
         CardDefinition::new(name, chars)
-            .with_mdfc_back(back)
+            .with_transform_back(back)
             // ETB: put a +1/+1 counter on each of up to two target creatures.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
@@ -94,10 +99,72 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     controller: None,
                 }],
             })
-            // GAP: {3}{R}{G}{W} sorcery-speed activated transform not modeled.
-            // GAP: back-face Camouflage activated ability not modeled (face_gate=Some(1), but "becomes colorless" is a GAP).
-            // GAP: back-face attack trigger (double counters) not auto-installed.
+            // {3}{R}{G}{W}: Transform Miles Morales. Activate only as a sorcery (face 0).
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "{3}{R}{G}{W}: Transform Miles Morales. Activate only as a sorcery.".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{3}{R}{G}{W}").expect("valid cost"),
+                    ..ActivationCost::default()
+                },
+                target_requirements: vec![],
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: false,
+                face_gate: Some(0),
+                effect: transform_miles,
+            })
+            // Back-face Camouflage — {2}: Put a +1/+1 counter on Ultimate Spider-Man.
+            // He gains hexproof and becomes colorless until end of turn (face 1).
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "Camouflage — {2}: Put a +1/+1 counter on Ultimate Spider-Man. He gains hexproof and becomes colorless until end of turn.".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{2}").expect("valid cost"),
+                    ..ActivationCost::default()
+                },
+                target_requirements: vec![],
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: true,
+                face_gate: Some(1),
+                effect: camouflage,
+            }),
+            // GAP: back-face "Whenever you attack, double the number of each kind of
+            // counter …" — no double-counters Effect variant; left unwired.
     )
+}
+
+fn transform_miles(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::Transform { target: ctx.source }]
+}
+
+fn camouflage(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![
+        Effect::AddCounters {
+            target: ctx.source,
+            kind: CounterKind::PlusOnePlusOne,
+            count: 1,
+        },
+        Effect::GrantKeyword {
+            target: ctx.source,
+            keyword: KeywordAbility::Hexproof,
+            duration: Duration::EndOfTurn,
+        },
+        Effect::SetColor {
+            target: ctx.source,
+            colors: ColorSet::colorless(),
+            duration: Duration::EndOfTurn,
+        },
+    ]
 }
 
 fn etb_counters(

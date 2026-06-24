@@ -17,15 +17,20 @@
 //! GAP: Triggered "whenever you put one or more +1/+1 counters on Blaster, convert it" —
 //!   TriggerCondition::CounterAdded fires per add-event but does not gate on "one or more" batch;
 //!   modeled as front-face triggered ability that calls Transform.
-//! GAP: Back-face activated ability ({X},{T}: move counters, haste, conditional convert) —
-//!   activated-ability X-cost and counter-move are not modeled; back-face-only ability not installed.
-//! GAP: back-face-only triggered ability not modeled.
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
-use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::registry::{
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone, CardDefinition,
+    CardFace, CardRegistry,
+};
+use arcana_core::script;
 use arcana_core::state::GameState;
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef, TriggerSelf,
 };
@@ -85,6 +90,41 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
+            })
+            // Front-face counter-convert trigger fires only on the front face.
+            .with_trigger_face_gate(1, 0)
+            // Back-face activated ability — "{X}, {T}: Move X +1/+1 counters from
+            // Blaster onto another target artifact. That artifact gains haste until
+            // end of turn. If Blaster has no +1/+1 counters, convert it. Activate
+            // only as a sorcery."
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "{X}, {T}: Move X +1/+1 counters from Blaster onto another \
+                       target artifact. That artifact gains haste until end of turn. \
+                       If Blaster has no +1/+1 counters, convert it. Activate only as \
+                       a sorcery."
+                    .into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{X}").expect("valid cost"),
+                    tap: true,
+                    ..ActivationCost::default()
+                },
+                target_requirements: vec![TargetRequirement {
+                    // "another target artifact" — the MoveCounter resolver no-ops if
+                    // the target is Blaster itself (from == to), faithfully covering
+                    // the "another" restriction.
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::new().with_types(TypeLine::ARTIFACT.into()),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                // "Activate only as a sorcery."
+                is_instant_speed: false,
+                face_gate: Some(1),
+                effect: move_counters_haste_convert,
             }),
     )
 }
@@ -95,4 +135,38 @@ fn on_counter_added_transform(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Transform { target: trig.source }]
+}
+
+fn move_counters_haste_convert(
+    state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let x = ctx.x_value.unwrap_or(0);
+    let mut effects = Vec::new();
+    if let Some(TargetChoice::Object(target)) = ctx.targets.targets.first() {
+        if x > 0 {
+            // Move X +1/+1 counters from Blaster onto the target artifact.
+            effects.push(Effect::MoveCounter {
+                from: ctx.source,
+                to: *target,
+                kind: CounterKind::PlusOnePlusOne,
+                count: x,
+            });
+        }
+        // That artifact gains haste until end of turn.
+        effects.push(Effect::GrantKeyword {
+            target: *target,
+            keyword: KeywordAbility::Haste,
+            duration: Duration::EndOfTurn,
+        });
+    }
+    // "If Blaster has no +1/+1 counters, convert it." Evaluated after the move
+    // above (effects resolve in order), so subtract the X we just moved.
+    let remaining = script::source_counter_count(state, ctx.source, CounterKind::PlusOnePlusOne)
+        .saturating_sub(x);
+    if remaining == 0 {
+        effects.push(Effect::Transform { target: ctx.source });
+    }
+    effects
 }

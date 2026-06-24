@@ -14,10 +14,15 @@
 //!   "reveals until found, put on battlefield" but lacks the "may" (player choice
 //!   whether to put the found card on battlefield). Used as closest approximation.
 //! - ZoneChange trigger: "leaves battlefield" requires specifying destination zone;
-//!   approximated as going to graveyard (Zone::Graveyard(0) placeholder).
-//! - Back face "land creatures you control have vigilance" — back-face-only static not modeled.
-//! - Back face "earthbend 2" — Earthbend mechanic not in engine.
-//! - Back face triggered abilities not modeled (GAP: back-face-only triggered ability not modeled).
+//!   approximated as going to graveyard (Zone::Graveyard(0) placeholder). It is the
+//!   front face's flip trigger, so it is gated to face 0.
+//! - Back face "land creatures you control have vigilance" — a back-face-only STATIC
+//!   ability. The face-gate hooks are for triggered/activated abilities only; the engine
+//!   has no face-gated continuous-effect (static) hook, so this is not expressible.
+//! - Back face "At the beginning of combat on your turn, earthbend 2" — the trigger
+//!   timing (StepBegins{BeginCombat, You}) is expressible, but the Earthbend mechanic
+//!   (put N +1/+1 counters on a land + animate it) has no Effect variant, so the trigger
+//!   is left unwired rather than fired as a no-op.
 
 use arcana_core::effects::{DelayedWhen, Effect, KeywordAbility, RevealDest, DigRest};
 use arcana_core::mana::ManaCost;
@@ -109,7 +114,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![],
-            }),
+            })
+            // The leaves-battlefield flip trigger is a front-face ability (front→back).
+            .with_trigger_face_gate(2, 0),
+            // GAP: back-face "land creatures you control have vigilance" (static) and
+            // "earthbend 2 at beginning of combat" (Earthbend mechanic) left unwired —
+            // no face-gated static hook and no Earthbend Effect variant.
     )
 }
 

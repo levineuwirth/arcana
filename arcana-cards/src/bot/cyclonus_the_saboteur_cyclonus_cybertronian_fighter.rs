@@ -13,14 +13,14 @@
 //! Living metal (GAP: not modeled.)
 //! Flying.
 //! Whenever Cyclonus deals combat damage to a player, convert (transform) it. If you do, there is
-//! an additional beginning phase after this phase. (GAP: additional phase not modeled.)
-//! GAP: back-face-only triggered ability not modeled.
+//! an additional beginning phase after this phase. (GAP: additional-phase rider not modeled —
+//! no extra-phase primitive in the Effect catalog; only the convert half is wired.)
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
-use arcana_core::targets::{ObjectFilter, TargetFilter};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -88,8 +88,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            // GAP: back-face-only triggered ability (combat damage -> transform + additional phase)
-            // not modeled.
+            // Back face only: whenever Cyclonus deals combat damage to a player, convert it.
+            // GAP: the "additional beginning phase" rider is not expressible (no extra-phase
+            // primitive); only the convert (transform) half is wired.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::DamageDealt {
+                    source_filter: ObjectFilter::new()
+                        .controlled_by(ControllerConstraint::You),
+                    target_filter: TargetFilter::Player,
+                    combat_only: true,
+                },
+                intervening_if: None,
+                effect: back_damage_trigger,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Trigger 1 fires only on the front face; trigger 2 only on the back face.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1)
     )
 }
 
@@ -100,5 +118,14 @@ fn front_damage_trigger(
 ) -> Vec<Effect> {
     // GAP: Connive not modeled.
     // GAP: Conditional "if power >= 5" check not modeled; emitting transform unconditionally.
+    vec![Effect::Transform { target: trig.source }]
+}
+
+fn back_damage_trigger(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: "additional beginning phase after this phase" rider not expressible; convert only.
     vec![Effect::Transform { target: trig.source }]
 }

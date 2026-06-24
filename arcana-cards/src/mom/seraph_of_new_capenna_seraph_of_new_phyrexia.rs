@@ -2,25 +2,27 @@
 //!
 //! Front face: {2}{W} Creature — Angel Soldier 2/2, Flying. Activated ability:
 //! {4}{B/P}: Transform this creature. Sorcery speed.
-//! ({B/P} can be paid with either {B} or 2 life — GAP: hybrid Phyrexian mana not
-//! expressible as a single ManaCost::parse string; the activated ability is omitted
-//! and noted below.)
+//! ({B/P} can be paid with either {B} or 2 life.)
 //!
 //! Back face: Creature — Phyrexian Angel, Flying. Whenever this creature attacks,
 //! you may sacrifice another creature or artifact. If you do, this creature gets
 //! +2/+1 until end of turn.
 //!
-//! GAP: {B/P} hybrid-Phyrexian activation cost not expressible; the transform
-//! activated ability (front → back) is omitted.
-//! GAP: "you may sacrifice another creature or artifact" — OptionalPaymentKind has
-//! no Sacrifice variant; the conditional pump on the back face is also omitted.
-//! GAP: back-face-only triggered ability not modeled (attack trigger granting +2/+1
-//! conditional on sacrifice).
+//! GAP: the back-face attack trigger ("you may sacrifice another creature or artifact;
+//! if you do, this creature gets +2/+1") is left omitted: there is no in-resolution
+//! optional-sacrifice primitive (OptionalPaymentKind has only Mana/Life; no Sacrifice
+//! variant) and so no way to gate the conditional pump on whether a sacrifice happened.
+//! Wiring an unconditional pump would fabricate the effect; wiring the trigger with no
+//! effect would be a no-op. Both are forbidden, so the whole back-face trigger is omitted.
 
-use arcana_core::effects::KeywordAbility;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
-use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::registry::{
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardFace, CardRegistry,
+};
+use arcana_core::state::GameState;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -66,10 +68,33 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         spell_ability: None,
     };
 
-    // GAP: {4}{B/P} transform activation not modeled (hybrid-Phyrexian cost unsupported).
-    // GAP: back-face attack trigger (sacrifice another creature or artifact for +2/+1) not modeled.
     reg.register(
         CardDefinition::new(name, chars)
-            .with_transform_back(back),
+            .with_transform_back(back)
+            // Front face: {4}{B/P}: Transform this creature. Activate only as a sorcery.
+            // ({B/P} parses as a Phyrexian colored pip — pay {B} or 2 life.)
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "{4}{B/P}: Transform this creature. Activate only as a sorcery.".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{4}{B/P}").expect("valid cost"),
+                    ..ActivationCost::default()
+                },
+                target_requirements: vec![],
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: false,
+                face_gate: Some(0), // front face only
+                effect: front_transform,
+            }),
+        // GAP: back-face attack trigger (optional sacrifice → +2/+1) omitted; see header.
     )
+}
+
+fn front_transform(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::Transform { target: ctx.source }]
 }

@@ -4,25 +4,23 @@
 //! Front face: {2}{R}, {T}: This creature deals 1 damage to any target.
 //! Daybound (If a player casts no spells during their own turn, it becomes
 //! night next turn.)
-//! GAP: Daybound/Nightbound day/night cycle not modeled; transform wired via
-//!   upkeep trigger unconditionally.
+//! The day/night transform is approximated with the werewolf intervening-ifs
+//!   (conditions::no_spells_cast_last_turn front, a_player_cast_two_or_more_last_turn
+//!   back) — the standard engine model for day/night — and face-gated (front 0, back 1).
 //!
 //! Back face — Ballista Wielder (Werewolf):
 //! {2}{R}: This creature deals 1 damage to any target. A creature dealt damage
 //! this way can't block this turn.
-//! Nightbound (If a player casts at least two spells during their own turn, it
-//! becomes day next turn.)
-//! GAP: back-face activated ability ({2}{R}: deal 1 damage + can't block)
-//!   not auto-installed on transform.
-//! GAP: "can't block this turn" on a creature dealt damage not expressible
-//!   as a follow-on effect (no Effect::CantBlock targeting a specific creature
-//!   dealt damage by this effect; CantBeBlocked is for evasion, not prevention).
-//! GAP: back-face-only triggered abilities not auto-installed on transform.
+//! The back-face {2}{R} damage activated ability is wired (face_gate Some(1)).
+//! GAP: "A creature dealt damage this way can't block this turn" rider not
+//!   expressible — no Effect that makes a creature dealt damage by this ability
+//!   unable to block (CantBeBlocked is evasion, not a block-prevention on the target).
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardFace, CardRegistry,
@@ -33,7 +31,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -95,23 +93,53 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 face_gate: Some(0),
                 effect: front_shoot,
             })
-            // GAP: Daybound transform condition not modeled; wired as unconditional
-            // upkeep trigger as closest approximation.
+            // Front Daybound transform: at the beginning of each upkeep, if no
+            // spells were cast last turn, transform (face 0).
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::Any,
                 },
-                intervening_if: None,
-                effect: daybound_transform,
+                intervening_if: Some(iif_no_spells),
+                effect: transform_self,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            // GAP: back-face activated ability ({2}{R}: deal 1 + can't block)
-            //   not auto-installed on transform.
-            // GAP: back-face Nightbound transform not modeled.
+            // Back Nightbound transform: at the beginning of each upkeep, if a
+            // player cast two or more spells last turn, transform (face 1).
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(iif_two_or_more_spells),
+                effect: transform_self,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Back face: {2}{R}: This creature deals 1 damage to any target (face 1).
+            // GAP: the "can't block this turn" rider on the damaged creature is omitted.
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "{2}{R}: This creature deals 1 damage to any target. A creature dealt damage this way can't block this turn.".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{2}{R}").expect("valid cost"),
+                    ..ActivationCost::default()
+                },
+                target_requirements: vec![TargetRequirement::any_target()],
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: true,
+                face_gate: Some(1),
+                effect: back_shoot,
+            })
+            // Front upkeep transform fires only on front face; back only on back face.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1),
     )
 }
 
@@ -136,12 +164,41 @@ fn front_shoot(
     }]
 }
 
-fn daybound_transform(
+fn back_shoot(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = ctx.targets.targets.first() else { return Vec::new(); };
+    let dt = match target {
+        TargetChoice::Object(id) => DamageTarget::Object(*id),
+        TargetChoice::Player(p) => DamageTarget::Player(*p),
+        TargetChoice::ObjectOrPlayer(o) => match o {
+            ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
+            ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
+        },
+    };
+    // GAP: "A creature dealt damage this way can't block this turn" is omitted —
+    // no Effect makes the damaged creature unable to block.
+    vec![Effect::DealDamage {
+        target: dt,
+        amount: 1,
+        source: ctx.source,
+    }]
+}
+
+fn iif_no_spells(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::no_spells_cast_last_turn(state)
+}
+
+fn iif_two_or_more_spells(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::a_player_cast_two_or_more_last_turn(state)
+}
+
+fn transform_self(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: should only fire when Daybound condition is met (no spells cast
-    // during a player's own turn). Fires unconditionally here.
     vec![Effect::Transform { target: trig.source }]
 }

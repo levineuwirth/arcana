@@ -12,10 +12,12 @@
 //!   an effect-level branch AFTER the (unconditional) mill — not a whole-trigger
 //!   intervening-if — so it is gated inside the resolver via
 //!   `conditions::graveyard_matching_at_least` (the mill happens every upkeep regardless).
-//! GAP: Back-face upkeep trigger ("exile a card from a graveyard, if creature put +1/+1")
-//!   — "exile from any graveyard" with creature-check and conditional counter not
-//!   expressible (no graveyard-exile targeting in TriggerCondition). Emitted as GAP.
-//! GAP: Back-face-only triggered ability not auto-installed on transform.
+//! GAP: Back-face upkeep trigger ("you may exile a card from a graveyard. If a creature
+//!   card was exiled this way, put a +1/+1 counter on this creature.") — the conditional
+//!   counter is linked to WHICH card was exiled ("a creature card was exiled this way");
+//!   there is no declarative primitive to exile a chosen card and then branch on the
+//!   exiled card's type. Left GAP'd. (The front upkeep mill/transform is gated to face 0
+//!   below so it does not fire on the back face.)
 
 use arcana_core::conditions;
 use arcana_core::effects::Effect;
@@ -89,7 +91,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            // GAP: back-face-only upkeep trigger not modeled (exile from graveyard + conditional counter).
+            // Front upkeep (mill + conditional transform) fires only on the front face.
+            .with_trigger_face_gate(1, 0)
+            // GAP: back-face upkeep trigger ("you may exile a card from a graveyard; if a
+            //      creature card was exiled this way, +1/+1 counter") left unwired — the
+            //      conditional counter is linked to the exiled card's type, and no
+            //      declarative primitive exiles a chosen card then branches on its type.
     )
 }
 

@@ -1,21 +1,29 @@
 //! Shady Traveler // Stalking Predator — `{2}{B}` Human Werewolf 2/3 (front).
 //!
-//! Front face: Menace. Daybound (not modeled).
-//! Back face: Stalking Predator — Werewolf 2/3. Menace. Nightbound (not modeled).
+//! Front face: Menace. Daybound.
+//! Back face: Stalking Predator — Werewolf 2/3. Menace. Nightbound.
 //!
 //! GAP: Daybound/Nightbound keywords are not in the usable keyword surface;
-//! omitted from both faces.
-//! GAP: Day/night cycle and the precise transform conditions ("no spells cast
-//! last turn" / "two spells cast this turn") are not modeled. No transform
-//! trigger is wired because neither condition can be expressed with the
-//! available TriggerCondition API.
-//! GAP: back-face-only triggered ability not modeled.
+//! omitted from both faces. The day/night designator side is not tracked, but
+//! the werewolf transform itself is modeled via the symmetric upkeep triggers
+//! (front->back when no spells were cast last turn; back->front when a player
+//! cast two or more spells last turn), gated to face 0 / face 1.
 
-use arcana_core::effects::KeywordAbility;
+use arcana_core::conditions;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::state::GameState;
+use arcana_core::targets::ControllerConstraint;
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
+use arcana_core::turn::Step;
+use arcana_core::types::{
+    CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine,
+};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Shady Traveler");
@@ -60,11 +68,48 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         spell_ability: None,
     };
 
-    // GAP: No transform trigger wired — Daybound/Nightbound day/night
-    // cycle conditions are not expressible with available TriggerCondition
-    // variants.
     reg.register(
         CardDefinition::new(name, chars)
-            .with_transform_back(back),
+            .with_transform_back(back)
+            // Daybound: front->back transform if no spells were cast last turn.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(if_no_spells_last_turn),
+                effect: transform_self,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Nightbound: back->front transform if a player cast two or more spells last turn.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(if_player_cast_two_last_turn),
+                effect: transform_self,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1),
     )
+}
+
+fn transform_self(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::Transform { target: trig.source }]
+}
+
+fn if_no_spells_last_turn(s: &GameState, _src: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::no_spells_cast_last_turn(s)
+}
+
+fn if_player_cast_two_last_turn(s: &GameState, _src: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::a_player_cast_two_or_more_last_turn(s)
 }

@@ -10,14 +10,17 @@
 //!   At the beginning of your end step, create a 2/2 green Wolf creature token.
 //!   At the beginning of each upkeep, if a player cast two or more spells last turn, transform.
 //!
-//! GAP: static +1/+1 anthem effects (both faces) not modeled via triggered ability.
-//! GAP: werewolf transform conditions ("no spells cast last turn" / "two or more spells last turn")
-//!      not expressible as TriggerCondition predicates; transforms unconditionally at upkeep.
-//! GAP: back-face-only triggered abilities (end-step token creation, upkeep back-transform)
-//!      not auto-installed on transform.
+//! Werewolf transform conditions ("no spells cast last turn" / "two or more spells
+//! last turn") are modeled as intervening-if predicates
+//! (conditions::no_spells_cast_last_turn / conditions::a_player_cast_two_or_more_last_turn).
+//! The front upkeep trigger is gated to face 0; the back upkeep transform and the
+//! back end-step Wolf-token trigger are gated to face 1 (with_trigger_face_gate).
+//! GAP: the static +1/+1 anthem effects (front "other Human creatures you control",
+//!      back "each other Werewolf or Wolf you control") are continuous P/T-boosting
+//!      static abilities and remain unmodeled.
 
 use arcana_core::conditions;
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
@@ -91,14 +94,48 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            // Back face: at beginning of your end step, create a 2/2 green Wolf token.
-            // GAP: back-face-only triggered ability not auto-installed on transform.
-            // GAP: back-face upkeep transform (2+ spells last turn) not modeled.
+            // Back face: at beginning of each upkeep, if a player cast two or more
+            // spells last turn, transform. Intervening-if via
+            // conditions::a_player_cast_two_or_more_last_turn.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(iif_two_or_more),
+                effect: front_upkeep_transform,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Back face: at the beginning of your end step, create a 2/2 green
+            // Wolf creature token.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::End,
+                    whose: ControllerConstraint::You,
+                },
+                intervening_if: None,
+                effect: end_step_wolf_token,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Trigger 1 fires only on the front face; triggers 2 & 3 only on the back face.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1)
+            .with_trigger_face_gate(3, 1)
     )
 }
 
 fn iif_no_spells(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
     conditions::no_spells_cast_last_turn(state)
+}
+
+fn iif_two_or_more(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::a_player_cast_two_or_more_last_turn(state)
 }
 
 fn front_upkeep_transform(
@@ -107,4 +144,30 @@ fn front_upkeep_transform(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Transform { target: trig.source }]
+}
+
+/// Back face (Howlpack Alpha): at the beginning of your end step, create a
+/// 2/2 green Wolf creature token.
+fn end_step_wolf_token(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let wolf = reg.interner().lookup("Wolf").expect("Wolf interned during register()");
+    let mut wolf_subtypes = SubtypeSet::default();
+    wolf_subtypes.0.insert(wolf);
+    let token = TokenDefinition {
+        name: wolf,
+        colors: ColorSet::green(),
+        types: TypeLine::CREATURE.into(),
+        subtypes: wolf_subtypes,
+        power: Some(PtValue::Fixed(2)),
+        toughness: Some(PtValue::Fixed(2)),
+        keywords: vec![],
+        abilities: vec![],
+    };
+    vec![Effect::CreateToken {
+        controller: trig.controller,
+        token,
+    }]
 }

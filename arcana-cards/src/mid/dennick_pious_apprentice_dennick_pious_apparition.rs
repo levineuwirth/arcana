@@ -10,16 +10,25 @@
 //! BACK: Dennick, Pious Apparition — Legendary Creature — Spirit Soldier (3/4)
 //! Flying.
 //! Whenever one or more creature cards are put into graveyards from anywhere, investigate.
-//! This ability triggers only once each turn.
-//! (GAP: back-face-only triggered ability not auto-installed on transform.)
+//! This ability triggers only once each turn. (Wired: ZoneChange creature→graveyard,
+//! OncePerTurn, creates a Clue.)
 //! If Dennick would be put into a graveyard from anywhere, exile it instead.
-//! (GAP: "exile instead of graveyard" replacement not modeled.)
+//! (Wired: ExileInsteadOfDying replacement.)
 
-use arcana_core::effects::KeywordAbility;
+use arcana_core::effects::{CommodityToken, Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::replacement::{
+    ReplacementCondition, ReplacementDuration, ReplacementEffect, ReplacementKind,
+};
+use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Dennick, Pious Apprentice");
@@ -67,10 +76,83 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         spell_ability: None,
     };
 
-    // GAP: Back-face triggers (investigate on creature death, exile replacement) not modeled —
-    // back-face-only triggered abilities are not auto-installed on transform.
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
+            // Back face: "Whenever one or more creature cards are put into graveyards
+            // from anywhere, investigate. This ability triggers only once each turn."
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::ZoneChange {
+                    filter: ObjectFilter::new().with_types(TypeLine::CREATURE.into()),
+                    from: None,
+                    to: Zone::Graveyard(0),
+                },
+                intervening_if: None,
+                effect: investigate,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::OncePerTurn,
+                target_requirements: Vec::new(),
+            })
+            // Back face: "If Dennick would be put into a graveyard from anywhere,
+            // exile it instead." Installed on transform-to-back and on entering as
+            // the back face (Disturb).
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: install_exile_replacement,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_exile_replacement,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // All three are back-face abilities — gate to face 1.
+            .with_trigger_face_gate(1, 1)
+            .with_trigger_face_gate(2, 1)
+            .with_trigger_face_gate(3, 1),
     )
+}
+
+/// "…investigate." — create one Clue token for the controller.
+fn investigate(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::CreateCommodityToken {
+        controller: trig.controller,
+        kind: CommodityToken::Clue,
+        count: 1,
+    }]
+}
+
+/// "If Dennick would be put into a graveyard from anywhere, exile it instead."
+/// (battlefield→graveyard case observed.)
+fn install_exile_replacement(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::InstallReplacementEffect {
+        effect: Box::new(ReplacementEffect {
+            source: trig.source,
+            id: 0,
+            condition: ReplacementCondition::WouldDieSpecific {
+                object_id: trig.source,
+            },
+            kind: ReplacementKind::ExileInsteadOfDying,
+            is_self_replacement: true,
+            duration: ReplacementDuration::WhileSourceOnBattlefield,
+            state_gate: None,
+        }),
+    }]
 }

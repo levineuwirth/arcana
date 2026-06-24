@@ -9,8 +9,8 @@
 //! "if you control four or more creatures" intervening-if modeled via
 //!   `conditions::you_control_at_least` on the front-face upkeep transform trigger.
 //! GAP: Back face dynamic P/T (equal to number of creatures you control) not expressible as a
-//!   characteristic; back face is registered as a fixed-size creature with placeholder stats.
-//! GAP: Back-face end step token creation not auto-installed on transform.
+//!   characteristic (PtValue has only Fixed/Star/StarPlus, no board-count CDA); back face is
+//!   registered as a fixed-size creature with placeholder 0/0 stats.
 
 use arcana_core::conditions;
 use arcana_core::effects::{Effect, TokenDefinition};
@@ -94,7 +94,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: Vec::new(),
             })
             // Back face: at beginning of your end step, create a 1/1 white and black Human Cleric token.
-            // GAP: back-face-only triggered ability not auto-installed on transform.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::StepBegins {
@@ -107,6 +106,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
+            .with_trigger_face_gate(1, 0) // front upkeep transform — front face only
+            .with_trigger_face_gate(2, 1), // back end-step token — back face only
     )
 }
 
@@ -119,7 +120,8 @@ fn front_upkeep_transform(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: should only fire if you control 4+ creatures.
+    // The "4+ creatures" gate is enforced by the trigger's intervening_if; re-checked
+    // here so the resolution is a no-op if the board shrank between trigger and resolution.
     let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
     let count = script::count_matching(state, &filter, trig.controller);
     if count >= 4 {
@@ -134,7 +136,6 @@ fn back_end_step_token(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: back-face-only; fires on both faces due to engine limitation.
     let human_name = reg.interner().lookup("Human")
         .expect("Human interned during register()");
     let cleric_id = reg.interner().lookup("Cleric")

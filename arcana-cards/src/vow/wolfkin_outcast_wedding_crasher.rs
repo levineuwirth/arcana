@@ -9,10 +9,11 @@
 //! cost-reduction as a cast-time check is not expressible (no cost-reduction engine).
 //! Daybound: the front (day) face transforms to the night face when it becomes
 //! night, modeled by gating the upkeep transform trigger's `intervening_if` on
-//! `conditions::it_is_night` (the front→back transform no longer fires during day).
-//! GAP: Nightbound back-transform (back→front when it becomes day) not modeled.
-//! GAP: back-face-only triggered ability (Wolf/Werewolf dies → draw a card) not
-//! auto-installed on transform.
+//! `conditions::it_is_night` (front face only). Nightbound: the back (night) face
+//! transforms back to the front face when it becomes day, gated on
+//! `conditions::it_is_day` (back face only). The back-face triggered ability
+//! ("Whenever this creature or another Wolf or Werewolf you control dies, draw a
+//! card") is wired via a subtype-filtered death trigger gated to the back face.
 
 use arcana_core::conditions;
 use arcana_core::effects::Effect;
@@ -21,7 +22,7 @@ use arcana_core::objects::Characteristics;
 use arcana_core::objects::ObjectId;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -33,6 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Wolfkin Outcast");
     let human_sub = reg.interner_mut().intern("Human");
     let werewolf_sub = reg.interner_mut().intern("Werewolf");
+    let wolf_sub = reg.interner_mut().intern("Wolf");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(human_sub);
     subtypes.0.insert(werewolf_sub);
@@ -82,11 +84,54 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
-            }),
-        // GAP: Nightbound back-transform and back-face triggered ability not modeled.
-        // GAP: back-face-only triggered ability (Wolf/Werewolf dies → draw a card)
-        //      not auto-installed on transform.
+            })
+            // Nightbound: back (night) face transforms back to front when it is day.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(iif_it_is_day),
+                effect: daybound_transform,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Back face: "Whenever this creature or another Wolf or Werewolf you
+            // control dies, draw a card." Subtype-filtered death trigger.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::ZoneChange {
+                    filter: ObjectFilter::creature()
+                        .controlled_by(ControllerConstraint::You)
+                        .with_subtypes_any(vec![wolf_sub, werewolf_sub]),
+                    from: Some(Zone::Battlefield),
+                    to: Zone::Graveyard(0),
+                },
+                intervening_if: None,
+                effect: draw_a_card,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Front upkeep transform fires only on the front face; the night
+            // back-transform and the dies→draw trigger only on the back face.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1)
+            .with_trigger_face_gate(3, 1),
     )
+}
+
+fn iif_it_is_day(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::it_is_day(state)
+}
+
+fn draw_a_card(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::DrawCards {
+        player: trig.controller,
+        count: 1,
+    }]
 }
 
 fn iif_it_is_night(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {

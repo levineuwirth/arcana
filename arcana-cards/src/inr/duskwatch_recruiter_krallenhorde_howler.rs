@@ -9,10 +9,12 @@
 //!   Creature spells you cast cost {1} less to cast. (GAP: cost-reduction static not modeled.)
 //!   At the beginning of each upkeep, if a player cast two or more spells last turn, transform.
 //!
-//! GAP: "if no spells were cast last turn" / "if a player cast two or more spells last turn" —
-//!   day/night transform conditions not modeled; triggers fire unconditionally.
-//! GAP: Krallenhorde Howler cost-reduction static ability not modeled (continuous effect layer).
-//! GAP: Back-face-only triggered ability (transform back) not auto-installed on transform.
+//! The transform conditions ("if no spells were cast last turn" /
+//! "if a player cast two or more spells last turn") are modeled as intervening-if
+//! predicates; the front upkeep trigger is gated to face 0 and the back upkeep
+//! trigger to face 1 (with_trigger_face_gate).
+//! GAP: Krallenhorde Howler cost-reduction static ability not modeled (no
+//!   spell-cost-reduction continuous effect primitive in the engine).
 
 use arcana_core::conditions;
 use arcana_core::effects::{DigRest, Effect};
@@ -107,7 +109,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             })
             // Back-face upkeep trigger: transform back if a player cast 2+ spells last turn.
             // Intervening-if modeled via conditions::a_player_cast_two_or_more_last_turn.
-            // GAP: back-face-only triggered ability not modeled correctly; emitted for structure.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::StepBegins {
@@ -120,6 +121,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
+            // Trigger 1 fires only on the front face; trigger 2 only on the back face.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1)
     )
 }
 
@@ -160,7 +164,7 @@ fn back_upkeep_transform(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: should only fire if a player cast two or more spells last turn (day/night condition)
-    // GAP: back-face-only triggered ability not auto-installed on transform
+    // Condition ("a player cast two or more spells last turn") enforced as the
+    // trigger's intervening_if; this trigger is face-gated to the back face.
     vec![Effect::Transform { target: trig.source }]
 }

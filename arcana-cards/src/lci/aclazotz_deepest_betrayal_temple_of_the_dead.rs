@@ -21,15 +21,10 @@
 //!      trigger not modeled.
 //! GAP: On-death "return tapped and transformed" — ReturnFromGraveyardToBattlefield doesn't
 //!      support tapped+transformed; modeled as untapped transform (closest approximation).
-//! GAP: Back-face land mana ability ({T}: Add {B}) — land mana abilities are not authored
-//!      via ActivatedAbilityDef in this engine; GAP'd (back-face land mana not auto-wired).
-//! GAP: Back-face activated transform condition "if a player has one or fewer cards in hand"
-//!      not expressible as activation cost; models without the precondition gate.
-//! GAP: Back-face-only activated abilities not auto-installed on transform.
-
+use arcana_core::conditions;
 use arcana_core::effects::{DiscardChoice, Effect, KeywordAbility};
-use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::mana::{ManaCost, ManaUnit};
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardFace, CardRegistry,
@@ -40,7 +35,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{
-    CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine,
+    CardId, ColorSet, ManaColor, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine,
 };
 use arcana_core::zones::Zone;
 
@@ -105,14 +100,33 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            // Back face: {2}{B}, {T} — transform this land (sorcery speed, conditional).
-            // GAP: back-face-only activated ability not auto-installed on transform.
-            // GAP: "only if a player has one or fewer cards in hand" condition not gated.
+            // Back face (Temple of the Dead — Land): {T}: Add {B}.
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{2}{B}, {T}: Transform this land. Activate only as a sorcery.".into(),
+                text: "{T}: Add {B}.".into(),
+                cost: ActivationCost {
+                    tap: true,
+                    ..ActivationCost::default()
+                },
+                target_requirements: vec![],
+                is_mana_ability: true,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: true,
+                face_gate: Some(1),
+                effect: add_black,
+            })
+            // Back face: {2}{B}, {T} — transform this land. "Activate only if a player
+            // has one or fewer cards in hand and only as a sorcery." The sorcery-speed
+            // restriction is is_instant_speed:false; the hand-size precondition is the
+            // activation_condition gate (checks every player).
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "{2}{B}, {T}: Transform this land. Activate only if a player has \
+                       one or fewer cards in hand and only as a sorcery."
+                    .into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{2}{B}").expect("valid cost"),
                     tap: true,
+                    activation_condition: Some(if_a_player_has_one_or_fewer_in_hand),
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![],
@@ -159,6 +173,27 @@ fn on_death_return_transformed(
         Effect::ReturnFromGraveyardToBattlefield { target: trig.source },
         Effect::Transform { target: trig.source },
     ]
+}
+
+/// "Activate only if a player has one or fewer cards in hand" — ANY player
+/// (one or fewer == hand size <= 1 == NOT (>= 2)).
+fn if_a_player_has_one_or_fewer_in_hand(
+    s: &GameState,
+    _src: ObjectId,
+    _you: PlayerId,
+    _reg: &CardRegistry,
+) -> bool {
+    script::all_players(s)
+        .into_iter()
+        .any(|p| !conditions::hand_at_least(s, p, 2))
+}
+
+/// Back-face land mana ability: {T}: Add {B}.
+fn add_black(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Black, ctx.source)],
+    }]
 }
 
 fn back_transform(

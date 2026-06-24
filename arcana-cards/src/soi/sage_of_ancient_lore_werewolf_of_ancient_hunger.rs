@@ -18,11 +18,10 @@
 //!      replacement effect, not expressible in Characteristics; using PtValue::Fixed(0)
 //!      as placeholder (the actual * value is engine debt).
 //! GAP: Back-face P/T equal to total cards in all players' hands — same gap.
-//! Front-face werewolf transform condition ("if no spells were cast last turn") is
-//!      modeled via `conditions::no_spells_cast_last_turn` on the upkeep trigger's
-//!      `intervening_if`.
-//! GAP: Back-face-only triggered ability (upkeep back-transform) not auto-installed
-//!      on transform.
+//! Both werewolf upkeep transforms are wired: the front
+//!      ("if no spells were cast last turn") and back ("if a player cast two or
+//!      more spells last turn") transforms use the `conditions::` intervening-ifs
+//!      and are face-gated (front 0, back 1).
 
 use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility};
@@ -98,7 +97,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![],
             })
-            // Front: at beginning of each upkeep, if no spells were cast last turn, transform.
+            // Front: at beginning of each upkeep, if no spells were cast last turn, transform (face 0).
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::StepBegins {
@@ -106,14 +105,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     whose: ControllerConstraint::Any,
                 },
                 intervening_if: Some(iif_no_spells_last_turn),
-                effect: front_upkeep_transform,
+                effect: upkeep_transform,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![],
-            }),
-        // GAP: back-face-only triggered ability not modeled:
-        //   "At the beginning of each upkeep, if a player cast two or more spells
-        //    last turn, transform this creature." (back to front)
+            })
+            // Back: at beginning of each upkeep, if a player cast two or more spells
+            // last turn, transform (face 1).
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(iif_two_or_more_spells_last_turn),
+                effect: upkeep_transform,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![],
+            })
+            // Front upkeep transform fires only on front face; back only on back face.
+            .with_trigger_face_gate(2, 0)
+            .with_trigger_face_gate(3, 1),
     )
 }
 
@@ -132,11 +145,15 @@ fn iif_no_spells_last_turn(state: &GameState, _source: ObjectId, _you: PlayerId,
     conditions::no_spells_cast_last_turn(state)
 }
 
-fn front_upkeep_transform(
+fn iif_two_or_more_spells_last_turn(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
+    conditions::a_player_cast_two_or_more_last_turn(state)
+}
+
+fn upkeep_transform(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // Front-to-back transform; gated by intervening_if (no spells cast last turn).
+    // Werewolf upkeep transform; gated by intervening_if + face gate.
     vec![Effect::Transform { target: trig.source }]
 }

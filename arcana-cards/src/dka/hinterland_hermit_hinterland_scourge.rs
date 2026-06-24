@@ -9,18 +9,14 @@
 //!   this creature.
 //!
 //! # GAPs
-//! - "If no spells were cast last turn" and "if a player cast two or more spells last turn"
-//!   are werewolf day/night transform conditions not expressible as an intervening-if.
-//!   The upkeep trigger fires unconditionally.
-//!   GAP: day/night / spells-cast-last-turn werewolf transform condition not modeled.
-//! - "Must be blocked if able" on the back face is a static constraint not modeled.
+//! - "Must be blocked if able" on the back face is a static combat restriction (lure-style),
+//!   not a triggered/activated ability and with no Effect/layer to express it.
 //!   GAP: back-face-only "must be blocked if able" static constraint not modeled.
-//! - The back face upkeep trigger (transform back to front) fires unconditionally on front face
-//!   only. GAP: back-face-only triggered ability not modeled.
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::ControllerConstraint;
@@ -28,7 +24,7 @@ use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -73,22 +69,55 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
-            // Front-face upkeep: transform (day/night condition GAP)
+            // Front-face upkeep transform: if no spells were cast last turn, transform.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::Any,
                 },
-                intervening_if: None,
+                intervening_if: Some(if_no_spells_last_turn),
                 effect: transform_self,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
-            }),
+            })
+            // Back-face upkeep transform: if a player cast two or more spells last turn, transform.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: Some(if_player_cast_two_last_turn),
+                effect: transform_self,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
             // GAP: back-face-only "must be blocked if able" static constraint not modeled.
-            // GAP: back-face-only upkeep trigger (transform back) not modeled.
+            // Trigger 1 fires only on the front face; trigger 2 only on the back face.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1),
     )
+}
+
+fn if_no_spells_last_turn(
+    s: &GameState,
+    _src: ObjectId,
+    _you: PlayerId,
+    _reg: &CardRegistry,
+) -> bool {
+    conditions::no_spells_cast_last_turn(s)
+}
+
+fn if_player_cast_two_last_turn(
+    s: &GameState,
+    _src: ObjectId,
+    _you: PlayerId,
+    _reg: &CardRegistry,
+) -> bool {
+    conditions::a_player_cast_two_or_more_last_turn(s)
 }
 
 fn transform_self(

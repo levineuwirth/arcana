@@ -14,17 +14,21 @@
 //! # GAPs
 //! - "Decayed" keyword on Zombie token: Decayed is not in the engine keyword
 //!   list. The token is created without the Decayed keyword.
-//! - Upkeep transform condition "if you control three or more creature tokens"
-//!   — intervening-if conditions are not structured in the API as a script
-//!   expression; emitting without the count-gate.
-//! - Back face "creature tokens lose all abilities and have base 3/3" — this
-//!   is a back-face-only continuous static ability; not modelable (GAP:
-//!   back-face-only triggered/static ability not modeled).
-//! - Back face upkeep transform — back-face-only triggered ability not modeled.
+//! - Back face "creature tokens you control lose all abilities and have base
+//!   power and toughness 3/3" — a FILTERED continuous static (over all creature
+//!   tokens you control). The engine has only single-target `Effect::LoseAllAbilities`
+//!   / `Effect::SetBasePT`; there is no `filtered_lose_abilities` / `filtered_set_pt`
+//!   ContinuousEffect constructor to apply lose-abilities + set-base-P/T to a filter.
+//!   Left GAP'd.
+//!
+//! The front upkeep transform is now count-gated ("if you control three or more
+//! creature tokens") via an intervening-if, and the back-face "you may transform
+//! this artifact" upkeep trigger is wired (face-gated).
 
+use arcana_core::conditions;
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
@@ -33,7 +37,7 @@ use arcana_core::triggers::{
 };
 use arcana_core::turn::Step;
 use arcana_core::types::{
-    CardId, ColorSet, PtValue, SubtypeSet, TypeLine,
+    CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine,
 };
 use arcana_core::zones::Zone;
 
@@ -80,7 +84,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         .controlled_by(ControllerConstraint::You);
 
     // Trigger 2: At the beginning of your upkeep, if you control 3+ creature
-    // tokens, you may transform. GAP: count-gate not expressible as
+    // tokens, you may transform — count-gated via the if_three_creature_tokens
     // intervening_if.
     reg.register(
         CardDefinition::new(name, chars)
@@ -103,17 +107,46 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     step: Step::Upkeep,
                     whose: ControllerConstraint::You,
                 },
+                // "if you control three or more creature tokens" — count-gate.
+                intervening_if: Some(if_three_creature_tokens),
+                effect: maybe_transform,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Back face (Poppet Factory): "At the beginning of your upkeep, you may
+            // transform this artifact." (Transforms back to the Poppet Stitcher front.)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::You,
+                },
                 intervening_if: None,
                 effect: maybe_transform,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
-            }),
-        // GAP: back-face-only triggered ability (upkeep transform back) not
-        //      modeled
-        // GAP: back-face-only static ability (tokens base 3/3, lose abilities)
-        //      not modeled
+            })
+            // Token-maker + front upkeep transform are front-only; the back upkeep
+            // transform is back-only.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 0)
+            .with_trigger_face_gate(3, 1),
+        // GAP: back-face static "creature tokens you control lose all abilities and
+        //      have base 3/3" — no filtered lose-abilities / set-base-P/T constructor.
     )
+}
+
+/// "if you control three or more creature tokens".
+fn if_three_creature_tokens(
+    state: &GameState,
+    _src: ObjectId,
+    you: PlayerId,
+    _reg: &CardRegistry,
+) -> bool {
+    let filter = ObjectFilter::creature().tokens_only();
+    conditions::you_control_at_least(state, you, &filter, 3)
 }
 
 fn create_zombie_token(
@@ -147,7 +180,8 @@ fn maybe_transform(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "if you control three or more creature tokens" condition not
-    // enforced — transform fires unconditionally at upkeep.
+    // The front-face count-gate ("3+ creature tokens") is enforced as an
+    // intervening_if on trigger 2; the back-face upkeep transform (trigger 3) is
+    // unconditional. Both resolve to a self-transform.
     vec![Effect::Transform { target: trig.source }]
 }

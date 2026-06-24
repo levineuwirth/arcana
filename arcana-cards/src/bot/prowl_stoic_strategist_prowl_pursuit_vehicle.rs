@@ -13,7 +13,11 @@
 //! - Living Metal: GAP — not modeled.
 //! - Whenever another creature or Vehicle you control enters, put a +1/+1 counter on Prowl.
 //!   If this is the second time this ability has resolved this turn, convert Prowl.
-//!   GAP: back-face-only triggered ability not modeled; per-turn resolution count not modeled.
+//!   The +1/+1-counter half is wired (back-face only), as two disjoint ETB triggers (creatures
+//!   you control, and non-creature Vehicles you control — disjoint so a creature-Vehicle counts
+//!   once). GAP: the "if this is the second time this ability has resolved this turn, convert"
+//!   rider is not expressible — no per-turn ability-resolution counter is accessible to a script
+//!   effect; that rider is omitted.
 //!
 //! # GAP notes
 //! - More Than Meets the Eye alternate cast mechanic: not modeled.
@@ -21,19 +25,20 @@
 //! - Living Metal (Vehicle-as-creature-during-your-turn): not modeled.
 //! - Exile-with-play-permission on attack: ExilePermanent used without the rider.
 //! - "Exiled with Prowl" tracking and draw-on-play trigger: not modeled.
-//! - Back-face-only triggered ability not modeled (engine gap).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, ObjectFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::state::GameState;
 use arcana_core::types::{
-    CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine,
+    CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine,
 };
 use arcana_core::zones::Zone;
 
@@ -95,7 +100,62 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     controller: None,
                 }],
             })
+            // Back face only: whenever another creature you control enters, put a +1/+1 counter
+            // on Prowl. ("Creature or Vehicle" is a type-OR-subtype that one ObjectFilter can't
+            // express; split into two disjoint ETB triggers — creatures, and non-creature
+            // Vehicles — so a creature-Vehicle counts exactly once.)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::ZoneChange {
+                    filter: ObjectFilter::creature()
+                        .controlled_by(ControllerConstraint::You),
+                    from: None,
+                    to: Zone::Battlefield,
+                },
+                intervening_if: None,
+                effect: add_counter_to_prowl,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // Back face only: whenever another (non-creature) Vehicle you control enters, put a
+            // +1/+1 counter on Prowl.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::ZoneChange {
+                    filter: ObjectFilter::new()
+                        .with_types(TypeLine::ARTIFACT.into())
+                        .with_subtype_sym(vehicle_sub)
+                        .without_types(TypeLine::CREATURE.into())
+                        .controlled_by(ControllerConstraint::You),
+                    from: None,
+                    to: Zone::Battlefield,
+                },
+                intervening_if: None,
+                effect: add_counter_to_prowl,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // GAP: "if this is the second time this ability has resolved this turn, convert Prowl"
+            // — no per-turn ability-resolution counter accessible to a script effect; omitted.
+            // Trigger 1 fires only on the front face; triggers 2 and 3 only on the back face.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1)
+            .with_trigger_face_gate(3, 1)
     )
+}
+
+fn add_counter_to_prowl(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::AddCounters {
+        target: trig.source,
+        kind: CounterKind::PlusOnePlusOne,
+        count: 1,
+    }]
 }
 
 fn prowl_attack_trigger(

@@ -10,9 +10,8 @@
 //! GAP: Phyrexian mana cost {U/P} is not parseable by ManaCost::parse; the
 //!      activated transform ability uses {5}{U} as a best-effort approximation.
 //! GAP: "Activate only as a sorcery" speed restriction not modeled.
-//! GAP: The "when attacks" trigger is a back-face-only ability; it is authored
-//!      on the CardDefinition and will fire on the front face too (engine debt:
-//!      back-face-only triggered ability not modeled).
+//! The back-face-only "when attacks → set base P/T 5/5" trigger is WIRED and
+//! face-gated to face 1; the transform activated ability is face-gated to face 0.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -87,12 +86,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
-                face_gate: None,
+                face_gate: Some(0), // front face only
                 effect: transform_self,
             })
-            // Whenever this creature attacks (back face), up to one other target
-            // creature has base power and toughness 5/5 until end of turn.
-            // GAP: back-face-only triggered ability; fires on both faces.
+            // Whenever this creature attacks (back face, Chrome Host Hulk), up to one
+            // other target creature has base power and toughness 5/5 until end of turn.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfAttacks,
@@ -107,7 +105,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     count: TargetCount::UpTo(1),
                     controller: None,
                 }],
-            }),
+            })
+            .with_trigger_face_gate(1, 1), // back face only
     )
 }
 

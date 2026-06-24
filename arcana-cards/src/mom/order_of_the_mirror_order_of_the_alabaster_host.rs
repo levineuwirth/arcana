@@ -8,7 +8,6 @@
 //!
 //! GAP: {W/P} hybrid phyrexian mana cost — ManaCost::parse handles the symbol but the
 //!      "or 2 life" alternative payment is not a separate engine gate; modeled as mana only.
-//! GAP: back-face-only triggered ability (blocker -1/-1) not auto-installed on transform.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -90,9 +89,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: front_transform,
             })
             // Back face: "whenever this creature becomes blocked by a creature, that creature
-            // gets -1/-1 until end of turn."
-            // GAP: back-face-only triggered ability not auto-installed on transform.
-            // Modeled on the definition anyway so it fires from the battlefield.
+            // gets -1/-1 until end of turn." Gated to the back face (visible_face == 1).
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfBecomesBlocked,
@@ -101,7 +98,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
-            }),
+            })
+            .with_trigger_face_gate(1, 1), // back face only
     )
 }
 

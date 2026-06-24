@@ -14,8 +14,10 @@
 //!   Menace, deathtouch
 //!   Whenever Flamewar deals combat damage to a player, exile that many cards from the top
 //!     of your library face down. Put an intel counter on each of them. Convert Flamewar.
-//!   (GAP: "that many cards" dynamic exile with intel counters not modeled.)
-//!   (GAP: Back-face-only triggered ability not auto-installed on transform.)
+//!   The convert (transform) half is wired (back-face only).
+//!   (GAP: "exile that many cards face down + put an intel counter on each + play them while
+//!     they have intel counters" — no exile-with-named-counter + counter-keyed play-permission
+//!     primitive; ImpulseExile is fixed-count, this-turn-only and counter-less. Rider omitted.)
 //!
 //! GAP: More Than Meets the Eye alternate cast mechanic not modeled.
 //! GAP: "Sacrifice another artifact" activation cost not modeled (sacrifice-other is GAP).
@@ -24,11 +26,17 @@
 //! GAP: Convert keyword (same as Transform) recognized but day/night specifics deferred.
 //! GAP: Living metal keyword not in KeywordAbility enum.
 
-use arcana_core::effects::KeywordAbility;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::state::GameState;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetFilter};
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Flamewar, Brash Veteran");
@@ -76,10 +84,35 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
     // GAP: All activated abilities on front face involve unsupported costs
     //   (sacrifice-other, discard-hand) — omitted entirely.
-    // GAP: Back-face-only triggered ability (combat damage → exile + intel counters + convert)
-    //   not modeled.
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
+            // Back face only: whenever Flamewar deals combat damage to a player, convert it.
+            // GAP: the "exile that many cards face down + intel counters + play them" rider is
+            // not expressible; only the convert (transform) half is wired.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::DamageDealt {
+                    source_filter: ObjectFilter::new()
+                        .controlled_by(ControllerConstraint::You),
+                    target_filter: TargetFilter::Player,
+                    combat_only: true,
+                },
+                intervening_if: None,
+                effect: back_damage_convert,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(1, 1), // back face only
     )
+}
+
+fn back_damage_convert(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // GAP: exile-that-many face down + intel counters + play-while-countered rider omitted.
+    vec![Effect::Transform { target: trig.source }]
 }

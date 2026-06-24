@@ -7,8 +7,8 @@
 //! GAP: {U/P} hybrid-Phyrexian mana cost. The engine's ManaCost::parse supports
 //! {U/P} notation; parsed as best-effort. The "Activate only as a sorcery" restriction
 //! is enforced via is_instant_speed: false.
-//! GAP: back-face-only triggered ability (combat damage to player/battle → draw a card)
-//! not auto-installed on transform.
+//! GAP: the oracle's "or battle" half of the back-face combat-damage trigger isn't
+//! expressible (no battle-damage target filter); the "to a player" half is wired.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
@@ -18,7 +18,12 @@ use arcana_core::registry::{
     CardDefinition, CardFace, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::{ObjectFilter, TargetFilter};
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Aetherblade Agent");
@@ -62,6 +67,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         spell_ability: None,
     };
 
+    // Restrict the back-face combat-damage trigger's source to Gitaxian
+    // Mindstinger itself by name (the unique back face that printed it).
+    let back_self_name = reg.interner().lookup("Gitaxian Mindstinger");
+    let back_self_filter = ObjectFilter { name: back_self_name, ..ObjectFilter::default() };
+
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
@@ -79,8 +89,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_instant_speed: false,
                 face_gate: Some(0),
                 effect: transform_self,
-            }),
-        // GAP: back-face-only triggered ability not auto-installed on transform.
+            })
+            // Back face (Gitaxian Mindstinger): "Whenever this creature deals combat
+            // damage to a player or battle, draw a card." The "to a player" half is
+            // wired; the "or battle" half is a GAP (no battle-damage target filter).
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::DamageDealt {
+                    source_filter: back_self_filter,
+                    target_filter: TargetFilter::Player,
+                    combat_only: true,
+                },
+                intervening_if: None,
+                effect: back_draw_card,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(1, 1),
     )
 }
 
@@ -90,4 +116,12 @@ fn transform_self(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Transform { target: ctx.source }]
+}
+
+fn back_draw_card(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::DrawCards { player: trig.controller, count: 1 }]
 }

@@ -13,15 +13,18 @@
 //! on each of them. Then you may put a card you own in exile with a study counter
 //! on it into your hand.
 //!
-//! GAP: Kianne's {T} ability (exile top / land-to-hand / else study counter) is not
-//! expressible as a single Effect variant — the "if land put to hand, else counter"
-//! branch requires conditional zone routing not in the catalog.
-//! GAP: Kianne's {4}{G} ability — counting distinct mana values among exile-with-study
-//! is not computable with script::* helpers.
-//! GAP: Imbraham's {X}{U}{U},{T} ability — back-face activated ability with X cost
-//! and exile-with-study logic; back-face activated abilities require face_gate and
-//! the exile-with-study routing is not in the catalog.
-//! GAP: back-face-only triggered ability not modeled.
+//! This is a true MDFC (the back is cast separately with its own {X}{U}{U} cost),
+//! NOT a transforming DFC — there is no transform path and thus no back-face face-gate
+//! hook to wire. All four abilities hinge on the "study counter in exile" subsystem,
+//! none of which exists in the engine:
+//! GAP: Kianne's {T} ability (exile top; if a land put to hand, else put a study counter
+//! on it IN EXILE) — no exile-and-place-counter Effect with the land/nonland zone branch.
+//! GAP: Kianne's {4}{G} ability — no script::* helper counts distinct mana values among
+//! nonland cards you own in exile with study counters.
+//! GAP: Imbraham's {X}{U}{U},{T} ability (exile top X, study counter on each, then may
+//! return one exile-with-study card to hand) — no exile-with-study-counter routing and
+//! no exile-with-study-to-hand Effect. CounterKind::Study exists but no effect places it
+//! on a card in exile.
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

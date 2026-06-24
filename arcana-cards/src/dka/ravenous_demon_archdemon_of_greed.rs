@@ -7,21 +7,27 @@
 //! a filter but the front-face activated ability requires sorcery speed AND a sacrifice cost.
 //! The sacrifice_other field is modeled on ActivationCost but "Sacrifice a Human" specifically
 //! requires a Human filter. Authored below with sacrifice_other.
-//! GAP: Back-face upkeep trigger "sacrifice a Human. If you can't, tap this creature and
-//! it deals 9 damage to you" — the conditional "if you can't sacrifice" check is not
-//! expressible. GAP: back-face-only triggered ability not modeled.
+//! Back-face upkeep trigger "sacrifice a Human. If you can't, tap this creature and it deals 9
+//! damage to you" is wired via Effect::Conditional (ControlPermanentMatching a Human → sacrifice,
+//! otherwise tap + 9 damage to controller).
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::{Condition, Effect, KeywordAbility};
+use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationCost, ActivationContext, CardDefinition, CardFace, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
+use arcana_core::turn::Step;
 use arcana_core::types::{
     CardId, ColorSet, PtValue, SubtypeSet, TypeLine,
 };
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Ravenous Demon");
@@ -83,8 +89,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 face_gate: Some(0), // front face only
                 effect: transform_self,
             })
-            // GAP: back-face-only triggered ability not modeled
-            // (upkeep: sacrifice a Human; if you can't, tap + 9 damage to you)
+            // Back face only: at the beginning of your upkeep, sacrifice a Human. If you can't,
+            // tap this creature and it deals 9 damage to you.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::You,
+                },
+                intervening_if: None,
+                effect: back_upkeep_sacrifice,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(1, 1), // back face only
     )
 }
 
@@ -94,4 +113,32 @@ fn transform_self(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Transform { target: ctx.source }]
+}
+
+fn back_upkeep_sacrifice(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let human = reg.interner().lookup("Human").unwrap_or_default();
+    let human_filter = ObjectFilter::creature()
+        .with_subtypes_any(vec![human])
+        .controlled_by(ControllerConstraint::You);
+    vec![Effect::Conditional {
+        condition: Condition::ControlPermanentMatching(human_filter.clone()),
+        then: Box::new(Effect::Sacrifice {
+            player: trig.controller,
+            filter: human_filter,
+            count: 1,
+        }),
+        // "If you can't": tap this creature and it deals 9 damage to you.
+        otherwise: Some(Box::new(Effect::Sequence(vec![
+            Effect::Tap { target: trig.source },
+            Effect::DealDamage {
+                source: trig.source,
+                target: DamageTarget::Player(trig.controller),
+                amount: 9,
+            },
+        ]))),
+    }]
 }

@@ -5,14 +5,6 @@
 //! Back (Moonrise Intruder): Werewolf. Menace.
 //!   At the beginning of each upkeep, if a player cast two or more spells last turn,
 //!   transform this creature.
-//!
-//! GAP: "if no spells were cast last turn" — werewolf day-to-night condition not
-//!      modeled (no per-turn spell count from LAST turn in engine). Trigger fires
-//!      unconditionally at upkeep begin as approximation.
-//! GAP: "if a player cast two or more spells last turn" — night-to-day condition
-//!      similarly not modeled. Back-face transform trigger also fires unconditionally.
-//! GAP: back-face-only triggered ability not auto-installed on transform; both
-//!      upkeep triggers are authored on the CardDefinition and fire on both faces.
 
 use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility};
@@ -88,7 +80,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             // Back-face trigger: at the beginning of each upkeep, if a player cast two
             // or more spells last turn, transform back. Intervening-if modeled via
             // conditions::a_player_cast_two_or_more_last_turn.
-            // GAP: back-face-only trigger fires on both faces.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::StepBegins {
@@ -100,7 +91,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
-            }),
+            })
+            // Front upkeep transform fires only on the front face; back upkeep
+            // transform only on the back face.
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1),
     )
 }
 
@@ -125,6 +120,5 @@ fn upkeep_transform_night_to_day(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "if a player cast two or more spells last turn" condition not modeled.
     vec![Effect::Transform { target: trig.source }]
 }
