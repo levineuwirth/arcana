@@ -8,29 +8,31 @@
 //! The back-face activated ability is wired on the shared CardDefinition and
 //! gated to the back face via `face_gate: Some(1)`.
 //!
-//! GAP: Front-face transform condition "three or more creatures where
-//!      toughness > power" cannot be expressed (no power-vs-toughness compare
-//!      on ObjectFilter); the trigger fires unconditionally at the beginning
-//!      of combat.
+//! Front-face transform condition "three or more creatures where toughness >
+//! power" is expressed as an `intervening_if` over
+//! `ObjectFilter::creature().with_pt_compare(PtCompare::ToughnessGreater)`.
 //! GAP: Back-face life-loss amount "equal to the sacrificed creature's
 //!      toughness" — the sacrificed creature is gone by resolution time and
 //!      ActivationContext exposes no sacrificed-object accessor; 1 life loss
 //!      is emitted as a placeholder (amount materially wrong).
 
+use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardFace, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, PtCompare, TargetChoice, TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::turn::Step;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -73,15 +75,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_transform_back(back)
             // Front face: at beginning of combat on your turn, (conditionally) transform.
-            // GAP: "if you control 3+ creatures where toughness > power" not expressible;
-            //      fires unconditionally.
+            // Intervening-if "if you control 3+ creatures where toughness > power"
+            // expressed via with_pt_compare(ToughnessGreater).
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::BeginCombat,
                     whose: ControllerConstraint::You,
                 },
-                intervening_if: None,
+                intervening_if: Some(iif_three_toughness_over_power),
                 effect: front_combat_transform,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -111,12 +113,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
+/// "if you control three or more creatures that each have toughness greater
+/// than their power" — power-vs-toughness compare on each creature you control.
+fn iif_three_toughness_over_power(
+    state: &GameState,
+    _source: ObjectId,
+    you: PlayerId,
+    _reg: &CardRegistry,
+) -> bool {
+    conditions::you_control_at_least(
+        state,
+        you,
+        &ObjectFilter::creature().with_pt_compare(PtCompare::ToughnessGreater),
+        3,
+    )
+}
+
 fn front_combat_transform(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: should only fire if you control 3+ creatures where toughness > power.
     vec![Effect::Transform { target: trig.source }]
 }
 

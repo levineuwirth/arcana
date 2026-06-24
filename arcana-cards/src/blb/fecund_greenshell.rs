@@ -12,7 +12,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, PtCompare};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -45,11 +45,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
             id: 1,
-            // GAP (filter): "with toughness greater than its power" is not an
-            // expressible ObjectFilter predicate — over-fires on any creature
-            // you control entering.
+            // "this or another creature you control with toughness greater than
+            // its power" — power-vs-toughness compare via with_pt_compare.
             trigger_condition: TriggerCondition::ZoneChange {
-                filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                filter: ObjectFilter::creature()
+                    .controlled_by(ControllerConstraint::You)
+                    .with_pt_compare(PtCompare::ToughnessGreater),
                 from: None,
                 to: Zone::Battlefield,
             },

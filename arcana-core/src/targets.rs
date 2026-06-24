@@ -601,6 +601,9 @@ pub struct ObjectFilter {
     pub cmc_condition: Option<CmcCondition>,
     pub power_condition: Option<PtCondition>,
     pub toughness_condition: Option<PtCondition>,
+    /// Compare the object's own power vs its own toughness (CR 208) —
+    /// e.g. "creatures with toughness greater than power".
+    pub pt_compare: Option<PtCompare>,
     pub name: Option<SmallString>,
     pub is_token: Option<bool>,
     pub has_counter: Option<CounterKind>,
@@ -681,6 +684,13 @@ impl ObjectFilter {
     /// Builder: power ≤ `n`.
     pub fn with_max_power(mut self, n: i32) -> Self {
         self.power_condition = Some(PtCondition::Le(n));
+        self
+    }
+    /// Builder: compare the object's own power vs toughness (CR 208) —
+    /// e.g. `with_pt_compare(PtCompare::ToughnessGreater)` for "toughness
+    /// greater than power".
+    pub fn with_pt_compare(mut self, cmp: PtCompare) -> Self {
+        self.pt_compare = Some(cmp);
         self
     }
     /// Builder: toughness ≤ `n`.
@@ -1030,6 +1040,14 @@ impl ObjectFilter {
                 _ => return false,
             }
         }
+        // --- power vs toughness (same-object compare; CR 208) ---
+        if let Some(cmp) = &self.pt_compare {
+            match (obj.raw_power_with_counters(None),
+                   obj.raw_toughness_with_counters(None)) {
+                (Some(p), Some(t)) if cmp.matches(p, t) => {}
+                _ => return false,
+            }
+        }
 
         // --- name ---
         if let Some(name) = self.name {
@@ -1134,6 +1152,31 @@ impl CmcCondition {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PtCondition {
     Eq(i32), Le(i32), Ge(i32), Lt(i32), Gt(i32),
+}
+
+/// Compare a creature's OWN power against its OWN toughness (CR 208/107) —
+/// "creatures with toughness greater than power", "power greater than
+/// toughness", etc. Uses the same raw-power/raw-toughness-with-counters
+/// read as [`PtCondition`] (the layer-aware upgrade will replace both at
+/// once). Non-creatures (no power/toughness) never match.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PtCompare {
+    /// power > toughness
+    PowerGreater,
+    /// toughness > power
+    ToughnessGreater,
+    /// power == toughness
+    Equal,
+}
+
+impl PtCompare {
+    pub fn matches(&self, power: i32, toughness: i32) -> bool {
+        match self {
+            Self::PowerGreater => power > toughness,
+            Self::ToughnessGreater => toughness > power,
+            Self::Equal => power == toughness,
+        }
+    }
 }
 
 impl PtCondition {
@@ -1498,6 +1541,27 @@ mod tests {
         };
         assert!( p_ge3.matches(s.objects.get(c).unwrap(), &s, 0));
         assert!(!t_lt3.matches(s.objects.get(c).unwrap(), &s, 0));
+    }
+
+    #[test]
+    fn object_filter_pt_compare_power_vs_toughness() {
+        let mut s = GameState::new(2, 0);
+        let wide = put_creature(&mut s, 0, 0, Zone::Battlefield, 4, 2); // power > toughness
+        let tall = put_creature(&mut s, 0, 0, Zone::Battlefield, 2, 5); // toughness > power
+        let sq = put_creature(&mut s, 0, 0, Zone::Battlefield, 3, 3);   // equal
+        let sorc = put_sorcery(&mut s, 0, Zone::Hand(0));               // no P/T
+
+        let tough = ObjectFilter::default().with_pt_compare(PtCompare::ToughnessGreater);
+        let pow = ObjectFilter::default().with_pt_compare(PtCompare::PowerGreater);
+        let eq = ObjectFilter::default().with_pt_compare(PtCompare::Equal);
+
+        assert!( tough.matches(s.objects.get(tall).unwrap(), &s, 0));
+        assert!(!tough.matches(s.objects.get(wide).unwrap(), &s, 0));
+        assert!(!tough.matches(s.objects.get(sq).unwrap(), &s, 0));
+        assert!( pow.matches(s.objects.get(wide).unwrap(), &s, 0));
+        assert!( eq.matches(s.objects.get(sq).unwrap(), &s, 0));
+        // Non-creatures (no power/toughness) never match a pt compare.
+        assert!(!tough.matches(s.objects.get(sorc).unwrap(), &s, 0));
     }
 
     #[test]
