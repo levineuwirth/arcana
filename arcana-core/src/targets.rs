@@ -184,24 +184,24 @@ impl TargetRequirement {
                 {
                     return false;
                 }
-                // CR 702.16e — Protection: rejects being the target of
-                // matching sources. The "source" for targeting purposes
-                // is the spell's characteristics (or the activated
-                // ability's source). For Phase 1 we reject if any
-                // object in the arena belonging to source_controller
-                // with the outer-filter matching qualities would match;
-                // practically, the spell resolves from controller's
-                // library/hand/stack so we use their color identity
-                // later. Conservative Phase 1 check: reject only when
-                // Protection::Everything or Protection::AnyColor is
-                // present (broad shields); fine-grained source-color
-                // matching is TODO until the targeting API carries the
-                // originating object.
+                // CR 702.16e — Protection: can't be the target of a
+                // spell/ability whose SOURCE matches the quality. NOT
+                // controller-gated (unlike Hexproof) — protection from red
+                // stops a red source whoever controls it. The `source`
+                // ObjectId is the targeting spell/ability's source, so we
+                // can do fine-grained color/subtype matching against its
+                // characteristics (the prior Phase-1 stub only handled the
+                // source-agnostic Protection::Everything shield).
                 use crate::effects::{KeywordAbility, ProtectionQuality};
-                if obj.controller != source_controller
-                    && state.effective_keywords(id).iter().any(|kw| matches!(kw,
-                        KeywordAbility::Protection(ProtectionQuality::Everything)))
+                if state.objects.get(source).is_some() {
+                    if state.is_protected_target_of(id, source) {
+                        return false;
+                    }
+                } else if state.effective_keywords(id).iter().any(|kw| matches!(kw,
+                    KeywordAbility::Protection(ProtectionQuality::Everything)))
                 {
+                    // Source object unavailable (synthetic/no-source path):
+                    // only the source-agnostic "everything" shield applies.
                     return false;
                 }
             }
@@ -2017,6 +2017,31 @@ mod tests {
         assert!(!req.matches_choice(&TargetChoice::Object(theirs), &s, crate::objects::NULL_OBJECT_ID, 0));
         // From the creature's own controller (player 1): still OK.
         assert!(req.matches_choice(&TargetChoice::Object(theirs), &s, crate::objects::NULL_OBJECT_ID, 1));
+    }
+
+    #[test]
+    fn protection_blocks_matching_source_targeting_uncontroller_gated() {
+        use crate::effects::{KeywordAbility, ProtectionQuality};
+        use crate::types::{Color, ColorSet};
+        let mut s = GameState::new(2, 0);
+        // A creature with protection from red.
+        let pro = put_creature(&mut s, 1, 1, Zone::Battlefield, 2, 2);
+        s.objects.get_mut(pro).unwrap().characteristics.keywords
+            .push(KeywordAbility::Protection(ProtectionQuality::Color(Color::Red)));
+        // A red and a green source object (stand-ins for spells on the stack).
+        let red_src = put_creature(&mut s, 0, 0, Zone::Stack, 1, 1);
+        s.objects.get_mut(red_src).unwrap().characteristics.colors = ColorSet::red();
+        let green_src = put_creature(&mut s, 0, 0, Zone::Stack, 1, 1);
+        s.objects.get_mut(green_src).unwrap().characteristics.colors = ColorSet::green();
+
+        let req = TargetRequirement::target_creature();
+        // Red source → rejected (fine-grained color match, was a TODO).
+        assert!(!req.matches_choice(&TargetChoice::Object(pro), &s, red_src, 0));
+        // Green source → allowed (protection from red doesn't match green).
+        assert!(req.matches_choice(&TargetChoice::Object(pro), &s, green_src, 0));
+        // NOT controller-gated: the protected creature's OWN controller's
+        // red source is rejected too (CR 702.16e, unlike Hexproof).
+        assert!(!req.matches_choice(&TargetChoice::Object(pro), &s, red_src, 1));
     }
 
     #[test]
