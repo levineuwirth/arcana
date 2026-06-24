@@ -18,8 +18,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
     // GAP: "As this creature enters, it becomes your choice of a 3/3 with
     // flying, a 2/5 with vigilance, or a 0/12 with defender." — an as-enters
-    // replacement that fixes P/T and grants a keyword; not expressible as a
-    // triggered/activated ability. P/T emitted as PtValue::Star bones.
+    // PLAYER-CHOICE replacement that fixes P/T and grants a keyword. The
+    // self-CDA constructors resolve a computed/counted `*`, not a one-of-three
+    // player choice, so this is not expressible. P/T emitted as PtValue::Star
+    // bones.
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{U}").expect("valid cost")),

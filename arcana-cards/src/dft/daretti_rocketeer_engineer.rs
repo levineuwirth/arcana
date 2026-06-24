@@ -1,7 +1,10 @@
 //! Daretti, Rocketeer Engineer — `{4}{R}` */5 Legendary Goblin Artificer.
 //!
 //! "Daretti's power is equal to the greatest mana value among artifacts you
-//! control." (a `*` power CDA — engine machinery; modeled as PtValue::Star)
+//! control." (a `*` power CDA — wired via a self-CDA installed on ETB,
+//! ContinuousEffect::self_pt_cda at Layer 7a; only POWER is `*`, so the scalar
+//! compute returns the greatest mana value among artifacts you control for
+//! power and the printed fixed `5` toughness.)
 //! "Whenever Daretti enters or attacks, choose target artifact card in your
 //! graveyard. You may sacrifice an artifact. If you do, return the chosen
 //! card to the battlefield."
@@ -13,8 +16,9 @@
 //! unconditionally — a documented fidelity gap.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::{
@@ -42,9 +46,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::CREATURE.into(),
         subtypes,
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
-        // GAP (CDA): power "equal to the greatest mana value among artifacts
-        // you control" — characteristic-defining ability is engine-side;
-        // modeled as the `*` placeholder.
         power: Some(PtValue::Star),
         toughness: Some(PtValue::Fixed(5)),
         ..Default::default()
@@ -82,8 +83,49 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![artifact_card_target()],
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_cda,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
             }),
     )
+}
+
+/// Layer 7a self-CDA. Only POWER is `*` (= the greatest mana value among
+/// artifacts you control); toughness is the printed fixed `5`.
+fn install_cda(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_cda(
+            trig.source,
+            cda_pt,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
+}
+
+/// Power = greatest mana value among artifacts you control (0 if none);
+/// toughness = printed 5.
+fn cda_pt(s: &GameState, source: ObjectId) -> (i32, i32) {
+    let who = s.objects.get(source).map(|o| o.controller).unwrap_or(0);
+    let greatest = s
+        .objects
+        .objects_in_zone(Zone::Battlefield)
+        .filter(|o| o.controller == who && o.characteristics.types.is_artifact())
+        .map(|o| {
+            o.characteristics
+                .mana_cost
+                .as_ref()
+                .map(|c| c.mana_value())
+                .unwrap_or(0)
+        })
+        .max()
+        .unwrap_or(0) as i32;
+    (greatest, 5)
 }
 
 fn reanimate_artifact(

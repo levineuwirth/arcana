@@ -1,18 +1,20 @@
 //! Silverwing Squadron — `{5}{W}` */* Creature — Human Knight. W.
 //! Flying, vigilance.
 //! "Power and toughness are each equal to the number of creatures you
-//! control." — CDA, recorded as */* (PtValue::Star). GAP: static CDA not
-//! expressible via the effect surface.
+//! control." — CDA, recorded as */* (PtValue::Star), wired at Layer 7a via
+//! a `self_pt_from_match` installed on ETB.
 //! "Whenever this creature attacks, create a number of 2/2 white Knight
 //! creature tokens with vigilance equal to the number of opponents you
 //! have." — SelfAttacks → one Knight per opponent.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -40,16 +42,38 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
 
     reg.register(
-        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
-            id: 1,
-            trigger_condition: TriggerCondition::SelfAttacks,
-            intervening_if: None,
-            effect: make_knights_per_opponent,
-            trigger_zones: vec![Zone::Battlefield],
-            frequency: TriggerFrequency::EachTime,
-            target_requirements: Vec::new(),
-        }),
+        CardDefinition::new(name, chars)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfAttacks,
+                intervening_if: None,
+                effect: make_knights_per_opponent,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // CDA: P/T each equal to the number of creatures you control.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_cda,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            }),
     )
+}
+
+fn install_cda(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_from_match(
+            trig.source,
+            filter,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn make_knights_per_opponent(

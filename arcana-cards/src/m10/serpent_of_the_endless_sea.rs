@@ -3,16 +3,24 @@
 //!  number of Islands you control.
 //!  This creature can't attack unless defending player controls an Island."
 //!
-//! GAP: the characteristic-defining */* (power/toughness = Islands you
-//! control) is recorded as PtValue::Star, but no effect/ability surface wires
-//! the CDA computation here; and "can't attack unless defending player
-//! controls an Island" is a static attack restriction with no
-//! triggered/activated expression. Both are noted gaps.
+//! P/T is a characteristic-defining ability (= Islands you control), wired at
+//! Layer 7a via a SelfEntersBattlefield self_pt_from_match.
+//! GAP: "can't attack unless defending player controls an Island" is a static
+//! attack restriction with no triggered/activated expression.
 
+use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
+use arcana_core::state::GameState;
+use arcana_core::targets::ControllerConstraint;
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Serpent of the Endless Sea");
@@ -31,5 +39,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    reg.register(CardDefinition::new(name, chars))
+    reg.register(
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: install_cda,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
+    )
+}
+
+/// Layer 7a self-CDA: P/T each equal to the number of Islands you control.
+fn install_cda(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
+    let filter = script::subtype_filter(reg, "Island")
+        .controlled_by(ControllerConstraint::You);
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_from_match(
+            trig.source,
+            filter,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }

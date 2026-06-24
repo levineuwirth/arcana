@@ -14,7 +14,9 @@
 //! omitted.
 //! GAP: both remaining abilities are commander-zone copy effects
 //! (CR 903 / Partner-commander interactions) with no `Effect` or static
-//! representation in the engine — omitted.
+//! representation in the engine — omitted. The `*/*` is not a count or
+//! scalar CDA the self-CDA engine resolves: it is whatever the copied
+//! commander's P/T is, so it stays `PtValue::Star`.
 
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};

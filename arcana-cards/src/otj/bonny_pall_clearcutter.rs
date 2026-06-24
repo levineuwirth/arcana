@@ -9,8 +9,13 @@
 //! hand or graveyard onto the battlefield.
 //!
 //! Reach is a base keyword. The ETB mints the Beau token; Beau's */* CDA
-//! ("equal to the number of lands you control") is represented as PtValue::Star
-//! with the lands-count CDA itself GAP'd (token P/T CDAs are unmodeled). The
+//! ("equal to the number of lands you control") is represented as PtValue::Star.
+//! The lands-count CDA itself is GAP'd: it belongs to the freshly-minted TOKEN,
+//! not to Bonny Pall, so the source-anchored `self_pt_*` install (which targets
+//! `trig.source`) cannot reach it; and the only token-borne route,
+//! `TokenDefinition.abilities`, is dropped by `mint_one_token` (the minted
+//! GameObject is built from `to_characteristics()` only, so a token-carried
+//! SelfEntersBattlefield CDA install would never fire). The
 //! attack trigger draws a card and offers a land put from HAND (the graveyard
 //! source is a partial — only the hand path is expressible via
 //! PutFromHandOntoBattlefield).

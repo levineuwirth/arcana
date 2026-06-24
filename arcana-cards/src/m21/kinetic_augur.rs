@@ -7,16 +7,19 @@
 //! cards.
 //!
 //! Trample is wired and the `*` power is set via PtValue::Star. The CDA
-//! ("power equal to instant/sorcery cards in your graveyard") is a continuous
-//! characteristic-defining static with no trigger/activated form (GAP). The
-//! ETB "discard up to two, then draw that many" couples a variable draw count
-//! to a player-chosen discard count, which is not expressible (GAP).
+//! ("power equal to instant/sorcery cards in your graveyard") is wired at
+//! Layer 7a via a SelfEntersBattlefield self_pt_cda (id 2). The ETB "discard
+//! up to two, then draw that many" couples a variable draw count to a
+//! player-chosen discard count, which is not expressible (GAP).
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -37,8 +40,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        // GAP: CDA "power = instant/sorcery cards in your graveyard" — set as
-        // a `*` placeholder.
+        // CDA "power = instant/sorcery cards in your graveyard" — resolved at
+        // Layer 7a by install_cda (id 2); toughness is the printed fixed 4.
         power: Some(PtValue::Star),
         toughness: Some(PtValue::Fixed(4)),
         keywords: vec![KeywordAbility::Trample],
@@ -54,8 +57,39 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             trigger_zones: vec![Zone::Battlefield],
             frequency: TriggerFrequency::EachTime,
             target_requirements: Vec::new(),
+        })
+        .with_triggered_ability(TriggeredAbilityDef {
+            id: 2,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: install_cda,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
         }),
     )
+}
+
+/// Layer 7a self-CDA: power = instant/sorcery cards in your graveyard.
+/// The CDA SETS both base power and toughness, so the compute returns the
+/// printed fixed toughness (4) for the second tuple element.
+fn install_cda(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_cda(
+            trig.source,
+            instant_sorcery_gy_pt,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
+}
+
+/// Power = instant and sorcery cards in your graveyard; toughness fixed 4.
+fn instant_sorcery_gy_pt(s: &GameState, source: ObjectId) -> (i32, i32) {
+    let who = s.objects.get(source).map(|o| o.controller).unwrap_or(0);
+    let filter =
+        ObjectFilter::new().with_types_any(TypeLine(TypeLine::INSTANT | TypeLine::SORCERY));
+    let n = script::graveyard_matching(s, &filter, who, who) as i32;
+    (n, 4)
 }
 
 fn etb_loot(

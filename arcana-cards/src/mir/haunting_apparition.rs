@@ -6,7 +6,10 @@
 //!   entry; not expressible in this shape.
 //! * Power is 1 plus the number of green creature cards in the chosen player's
 //!   graveyard — a characteristic-defining ability. Bones carry power as
-//!   `StarPlus(1)` (1+*); the CDA computation is GAP'd.
+//!   `StarPlus(1)` (1+*). GAP: the `*` is keyed to a PLAYER-CHOSEN opponent
+//!   ("choose an opponent" on entry), which neither self_pt_cda (no chosen
+//!   player) nor self_pt_from_match (battlefield-only filter, not graveyards)
+//!   can express.
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
@@ -31,7 +34,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     // GAP: "As this creature enters, choose an opponent" + the CDA
-    // ("power = 1 + green creature cards in that player's graveyard") are not
-    // expressible as triggered/activated abilities; bones carry power as 1+*.
+    // ("power = 1 + green creature cards in that CHOSEN player's graveyard").
+    // The CDA's `*` depends on a player choice (which opponent) and counts a
+    // graveyard, so neither self_pt_cda nor self_pt_from_match applies; bones
+    // carry power as 1+*.
     reg.register(CardDefinition::new(name, chars))
 }

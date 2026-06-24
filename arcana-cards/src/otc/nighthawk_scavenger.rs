@@ -9,17 +9,24 @@
 //! The keyword line is fully wired. Power is transcribed as `StarPlus(1)`
 //! (`1+*`); toughness is the fixed 3.
 //!
-//! GAP (CDA): "power is equal to 1 plus the number of card types among
-//! cards in your opponents' graveyards" — counting distinct card types in
-//! opponents' graveyards is not expressible with the documented `script`
-//! surface, so the characteristic-defining computation is omitted. The
-//! base `*+1` value is recorded.
+//! The CDA "power is equal to 1 plus the number of card types among cards
+//! in your opponents' graveyards" is wired at Layer 7a via
+//! `ContinuousEffect::self_pt_cda` on a `SelfEntersBattlefield` trigger:
+//! the compute ORs the card-type bits of every card in each opponent's
+//! graveyard, counts the distinct bits `n`, and sets base power to
+//! `n + 1` (toughness fixed 3 — only power is `*`).
 
-use arcana_core::effects::KeywordAbility;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::state::GameState;
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::zones::{Zone, ZoneKind};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Nighthawk Scavenger");
@@ -45,5 +52,50 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    reg.register(CardDefinition::new(name, chars))
+    reg.register(
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: install_cda,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
+    )
+}
+
+/// "Power is equal to 1 plus the number of card types among cards in your
+/// opponents' graveyards" — install the self-CDA at Layer 7a.
+fn install_cda(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_cda(
+            trig.source,
+            opp_gy_types_pt,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
+}
+
+/// Power = 1 + distinct card types among cards in your opponents'
+/// graveyards; toughness fixed 3.
+fn opp_gy_types_pt(s: &GameState, source: ObjectId) -> (i32, i32) {
+    // The eight real card types (Kindred is not a card type for this count).
+    const CARD_TYPE_BITS: u16 = TypeLine::CREATURE
+        | TypeLine::INSTANT
+        | TypeLine::SORCERY
+        | TypeLine::ENCHANTMENT
+        | TypeLine::ARTIFACT
+        | TypeLine::LAND
+        | TypeLine::PLANESWALKER
+        | TypeLine::BATTLE;
+    let who = s.objects.get(source).map(|o| o.controller).unwrap_or(0);
+    let mut seen: u16 = 0;
+    for o in s.objects.objects_in_zone_kind(ZoneKind::Graveyard) {
+        if o.owner != who {
+            seen |= o.characteristics.types.0 & CARD_TYPE_BITS;
+        }
+    }
+    let n = seen.count_ones() as i32;
+    (n + 1, 3)
 }

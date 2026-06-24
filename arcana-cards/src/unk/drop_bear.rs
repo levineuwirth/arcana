@@ -41,9 +41,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    // GAP: characteristic-defining ability "power and toughness each equal to
-    // the number of Forests you control plus the number of Bears you control."
-    // — additive multi-filter CDA is not expressible; printed as */*.
+    // GAP (CDA): "power and toughness each equal to the number of Forests you
+    // control plus the number of Bears you control." The self-CDA engine
+    // resolves a single count filter (self_pt_from_match) or a registry-free
+    // scalar (self_pt_cda); neither expresses the SUM of two distinct subtype
+    // counts (a scalar fn can't resolve the Forest/Bear symbols). Left as */*.
 
     reg.register(
         CardDefinition::new(name, chars)

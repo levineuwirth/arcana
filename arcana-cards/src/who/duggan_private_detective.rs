@@ -5,8 +5,9 @@
 
 use arcana_core::effects::{CommodityToken, Effect};
 use arcana_core::events::DamageTarget;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
@@ -35,9 +36,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::CREATURE.into(),
         subtypes,
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
-        // GAP: CDA — "power and toughness each equal to the number of cards in
-        // your hand"; transcribed as */* but the defining count is not a
-        // triggered/activated ability.
+        // */* — power and toughness are characteristic-defined (= cards in
+        // your hand), installed as a Layer 7a self-CDA on ETB (id 3 below).
         power: Some(PtValue::Star),
         toughness: Some(PtValue::Star),
         ..Default::default()
@@ -59,6 +59,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
                 effect: investigate,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_cda,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -93,6 +102,23 @@ fn investigate(
         kind: CommodityToken::Clue,
         count: 1,
     }]
+}
+
+/// Layer 7a self-CDA: P/T each equal to the number of cards in your hand.
+fn install_cda(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_cda(
+            trig.source,
+            cda_pt,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
+}
+
+fn cda_pt(state: &GameState, source: ObjectId) -> (i32, i32) {
+    let who = state.objects.get(source).map(|o| o.controller).unwrap_or(0);
+    let n = script::hand_size(state, who) as i32;
+    (n, n)
 }
 
 fn punch(

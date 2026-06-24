@@ -4,9 +4,13 @@
 //! exiled cards.
 //!
 //! Trample is expressible. The ETB exile-and-set-P/T characteristic-
-//! defining ability is NOT expressible with the available primitives
-//! (no effect ties exile-count to a base-P/T CDA), so P/T are left as
-//! `*` and the ETB is GAP'd.
+//! defining ability is NOT expressible with the available self-CDA
+//! constructors: `*` is the SUM of the powers (resp. toughnesses) of a
+//! player-chosen set of creature cards exiled from the graveyard as this
+//! enters. `self_pt_from_match` counts matching battlefield permanents and
+//! `self_pt_cda` reads only state scalars — neither can capture the summed
+//! P/T of a specific exiled-card set, so P/T are left as `*` and the ETB is
+//! GAP'd.
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

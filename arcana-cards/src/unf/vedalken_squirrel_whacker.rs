@@ -1,8 +1,9 @@
 //! Vedalken Squirrel-Whacker — `{3}{U}` */* Vedalken Guest.
 //!
-//! Oracle (both lines involve six-sided-die rolls and setting base
-//! P/T from results — no primitive rolls dice or defines base P/T from
-//! a roll, so both are GAP'd and the P/T are left as `*`):
+//! Oracle (both lines set base P/T from six-sided-die ROLLS — the
+//! self-CDA engine resolves in-game counts/scalars, but a d6 roll is RNG
+//! with no game-state count or scalar to read, so both stay GAP'd and the
+//! P/T are left as `*`):
 //! * GAP: As this creature enters, roll a d6 twice; its base power
 //!   becomes the first result and its base toughness the second.
 //! * GAP: If you would roll one or more d6, instead roll them and you

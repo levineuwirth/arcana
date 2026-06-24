@@ -1,14 +1,16 @@
 //! Tishana, Voice of Thunder — `{5}{G}{U}` */* Legendary Merfolk Shaman.
 //! "Tishana's power and toughness are each equal to the number of cards in
-//!  your hand." — GAP: characteristic-defining ability (dynamic base P/T)
-//!  is not expressible; bones use */* (PtValue::Star).
+//!  your hand." — a characteristic-defining ability installed as a Layer 7a
+//!  self-CDA on ETB via `ContinuousEffect::self_pt_cda`; PtValue::Star marks
+//!  the `*/*` bones.
 //! "You have no maximum hand size." — GAP: no expressible static for the
 //!  maximum-hand-size rule.
 //! "When Tishana enters, draw a card for each creature you control."
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
@@ -27,7 +29,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     subtypes.0.insert(merfolk);
     subtypes.0.insert(shaman);
 
-    // GAP: "power and toughness equal to cards in your hand" — CDA P/T.
     // GAP: "You have no maximum hand size." — no expressible static.
 
     let chars = Characteristics {
@@ -51,8 +52,36 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
+            })
+            // CDA: P/T each equal to the number of cards in your hand.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_cda,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
             }),
     )
+}
+
+/// Layer 7a self-CDA: P/T each equal to the number of cards in your hand.
+fn install_cda(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_cda(
+            trig.source,
+            cards_in_hand,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
+}
+
+/// P/T = the number of cards in your hand.
+fn cards_in_hand(s: &GameState, source: ObjectId) -> (i32, i32) {
+    let who = s.objects.get(source).map(|o| o.controller).unwrap_or(0);
+    let n = s.objects.objects_in_zone(Zone::Hand(who)).count() as i32;
+    (n, n)
 }
 
 fn draw_per_creature(

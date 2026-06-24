@@ -1,7 +1,11 @@
 //! Territorial Kavu — `{R}{G}` */* Kavu.
 //! "Domain — Territorial Kavu's power and toughness are each equal to
-//! the number of basic land types among lands you control." — GAP
-//! (characteristic-defining static; P/T modeled as `*`).
+//! the number of basic land types among lands you control." — GAP. `*` is the
+//! number of DISTINCT basic land types (Plains/Island/Swamp/Mountain/Forest)
+//! among your lands. `self_pt_from_match` counts matching permanents (not
+//! distinct subtypes) and `self_pt_cda`'s compute has no registry to resolve
+//! the basic-type subtype symbols, so neither self-CDA constructor can express
+//! a distinct-basic-land-type count. P/T left as `*`.
 //! "Whenever this creature attacks, choose one — …" — a MODAL
 //! triggered ability; modal dispatch is only available for spell
 //! abilities in this card class, so the effect is GAP'd.

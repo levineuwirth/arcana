@@ -34,7 +34,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     // GAP: "As this creature enters, choose an opponent" — no as-enters
     // choice slot.
     // GAP (CDA): "Pallimud's power is equal to the number of tapped lands the
-    // chosen player controls" — no CDA installer; PtValue::Star marks the slot.
+    // chosen player controls" — the count is keyed to an as-enters player
+    // CHOICE that the engine never records, so the self-CDA has no chosen
+    // player to read; a player-choice-parametrized CDA is inexpressible.
+    // PtValue::Star marks the slot.
 
     reg.register(CardDefinition::new(name, chars))
 }

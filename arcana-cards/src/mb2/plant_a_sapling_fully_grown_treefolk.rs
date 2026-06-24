@@ -11,18 +11,26 @@
 //!   a spell shuffling ITSELF into the library (rather than going to the graveyard)
 //!   AND flipping its transform state is not expressible — no Effect for "shuffle
 //!   this spell into library transformed". The tutor-to-hand half is modeled.
-//! - Back face P/T "*/* equal to the number of lands you control" is a
-//!   characteristic-defining ability. Emitted as PtValue::Star (printed `*`); the
-//!   CDA that sets it to the land count is not wireable with the demonstrated API.
+//!
+//! Back face P/T "*/* equal to the number of lands you control" is a
+//! characteristic-defining ability, wired at Layer 7a via a self_pt_from_match.
+//! The back creature only reaches the battlefield by transforming, so the CDA
+//! is installed on a SelfTransforms-into-back trigger (and a SelfEntersBattlefield
+//! trigger for any path that puts the creature face onto the battlefield directly).
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, SpellAbilityDef};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Plant a Sapling");
@@ -46,7 +54,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             colors: ColorSet::green(),
             types: TypeLine::CREATURE.into(),
             subtypes: back_subtypes,
-            // GAP: */* CDA equal to lands you control; emitted as printed `*`.
+            // */* CDA equal to lands you control — resolved at Layer 7a by
+            // install_cda (triggers on the main definition below).
             power: Some(PtValue::Star),
             toughness: Some(PtValue::Star),
             ..Default::default()
@@ -65,8 +74,41 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: Vec::new(),
                 modal: None,
                 effect: resolve_front,
+            })
+            // Back-face CDA: P/T each equal to lands you control.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: install_cda,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_cda,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
             }),
     )
+}
+
+/// Layer 7a self-CDA: P/T each equal to the number of lands you control.
+fn install_cda(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    let filter = ObjectFilter::permanent()
+        .with_types(TypeLine::LAND.into())
+        .controlled_by(ControllerConstraint::You);
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_from_match(
+            trig.source,
+            filter,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn resolve_front(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {

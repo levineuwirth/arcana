@@ -4,7 +4,7 @@
 //! when you do, target creature an opponent controls gets -2/-2 EOT.
 
 use arcana_core::effects::Effect;
-use arcana_core::layers::Duration;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -25,9 +25,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(treefolk);
 
-    // GAP: characteristic-defining ability — "*/* equal to the number of lands
-    // you control" — no CDA / dynamic base-P/T primitive in this card class.
-    // Bones use PtValue::Star; the lands-count CDA is unexpressed.
+    // CDA — "*/* equal to the number of lands you control" — installed at
+    // Layer 7a via a SelfEntersBattlefield self_pt_from_match (id 2 below).
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{B}{G}").expect("valid cost")),
@@ -55,8 +54,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 count: TargetCount::Exactly(1),
                 controller: None,
             }],
+        })
+        .with_triggered_ability(TriggeredAbilityDef {
+            id: 2,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: install_cda,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
         }),
     )
+}
+
+/// Layer 7a self-CDA: P/T each equal to the number of lands you control.
+fn install_cda(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    let filter = ObjectFilter::permanent()
+        .with_types(TypeLine::LAND.into())
+        .controlled_by(ControllerConstraint::You);
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_from_match(
+            trig.source,
+            filter,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn on_attack_minus_two(

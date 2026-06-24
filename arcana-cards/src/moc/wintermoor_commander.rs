@@ -4,10 +4,12 @@
 //! "Whenever this creature attacks, another target Knight you control gains
 //!  indestructible until end of turn."
 //!
-//! Toughness is `PtValue::Star`; the CDA that sets it to the number of Knights
-//! you control is a static continuous effect not expressible with the
-//! demonstrated API, so it is GAP'd. The attack trigger grants indestructible
-//! to another target Knight you control.
+//! Toughness is `PtValue::Star`. GAP: the CDA is an ASYMMETRIC-SUBTYPE one
+//! (power fixed 2, toughness = Knights you control). self_pt_from_match would
+//! SET both P/T to the Knight count (clobbering the fixed 2 power), and
+//! self_pt_cda has no registry to resolve the "Knight" subtype — so neither
+//! constructor applies. The attack trigger grants indestructible to another
+//! target Knight you control.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -40,8 +42,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::CREATURE.into(),
         subtypes,
         power: Some(PtValue::Fixed(2)),
-        // GAP: CDA "toughness equal to the number of Knights you control" is a
-        // static continuous effect not expressible here; toughness is `*`.
+        // GAP: asymmetric-subtype CDA "toughness equal to the number of
+        // Knights you control" (power stays fixed 2) — not expressible by
+        // self_pt_from_match (sets BOTH P/T) or self_pt_cda (no subtype
+        // registry); toughness is `*`.
         toughness: Some(PtValue::Star),
         keywords: vec![KeywordAbility::Deathtouch],
         ..Default::default()

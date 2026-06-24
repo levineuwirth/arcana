@@ -1,13 +1,13 @@
 //! Rubblehulk — `{4}{R}{G}` */* Elemental.
 //! "Rubblehulk's power and toughness are each equal to the number of
-//!  lands you control." (a characteristic-defining static — P/T set to
-//!  `*`; the dynamic value is a GAP.)
+//!  lands you control." (a characteristic-defining ability — `*/*` bones
+//!  with the value installed at Layer 7a via an ETB self-CDA.)
 //! "Bloodrush — {1}{R}{G}, Discard this card: Target attacking creature
 //!  gets +X/+X until end of turn, where X is the number of lands you
 //!  control." (activated from hand via discard.)
 
 use arcana_core::effects::Effect;
-use arcana_core::layers::Duration;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -20,7 +20,11 @@ use arcana_core::targets::{
     ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
     TargetRequirement,
 };
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Rubblehulk");
@@ -36,15 +40,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::red() | ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        // GAP: CDA "power and toughness equal to lands you control" — the
-        // dynamic value is a static; P/T transcribed as `*`.
+        // CDA "power and toughness equal to lands you control" is installed
+        // at Layer 7a via the ETB self-CDA below.
         power: Some(PtValue::Star),
         toughness: Some(PtValue::Star),
         ..Default::default()
     };
 
     reg.register(
-        CardDefinition::new(name, chars).with_activated_ability(ActivatedAbilityDef {
+        CardDefinition::new(name, chars)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_cda,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_activated_ability(ActivatedAbilityDef {
             text: "Bloodrush — {1}{R}{G}, Discard this card: Target attacking creature gets +X/+X until end of turn, where X is the number of lands you control."
                 .into(),
             cost: ActivationCost {
@@ -65,6 +79,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             effect: bloodrush_pump,
         }),
     )
+}
+
+fn install_cda(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let filter = ObjectFilter::permanent()
+        .with_types(TypeLine::LAND.into())
+        .controlled_by(ControllerConstraint::You);
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_from_match(
+            trig.source,
+            filter,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn bloodrush_pump(

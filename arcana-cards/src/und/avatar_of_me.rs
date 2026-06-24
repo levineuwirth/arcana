@@ -27,12 +27,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::blue(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        // P/T are `*` — no in-game CDA can read a player's height/shoe size.
+        // P/T are `*` — the self-CDA engine resolves in-game counts/scalars,
+        // but power = your real height in feet and toughness = your American
+        // shoe size are real-world properties with no game state to read.
         power: Some(PtValue::Star),
         toughness: Some(PtValue::Star),
         // GAP: static — cost increase per ten real years alive (not in-game state).
-        // GAP: static — power = your height in feet (no CDA, real-world property).
-        // GAP: static — toughness = your American shoe size (no CDA, real-world property).
+        // GAP: CDA — power = your height in feet (real-world, no game state).
+        // GAP: CDA — toughness = your American shoe size (real-world, no game state).
         // GAP: static — color = the color of your eyes (no CDA, real-world property).
         ..Default::default()
     };

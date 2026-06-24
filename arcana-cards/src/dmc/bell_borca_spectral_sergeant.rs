@@ -7,10 +7,15 @@
 //! library. You may play that card this turn."
 //!
 //! Power is `*` (a characteristic-defining ability whose value is the
-//! greatest mana value noted from exiles this turn). The noting
-//! bookkeeping and the CDA tie-in have no expressible primitive — GAP'd
-//! (power emitted as `PtValue::Star`, base value 0). The upkeep ability
-//! is a faithful impulse-exile of one card playable this turn.
+//! greatest mana value noted from exiles this turn).
+//!
+//! GAP (genuinely inexpressible even with self-CDA P/T now wired): the value
+//! is a per-turn "greatest noted mana value" accumulator. There is no
+//! noting-bookkeeping primitive and `self_pt_cda`'s compute exposes no
+//! accessor for "the greatest mana value noted this turn", so neither CDA
+//! constructor can express it — power stays `PtValue::Star` (base value 0).
+//! The upkeep ability is a faithful impulse-exile of one card playable this
+//! turn.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -35,8 +40,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     subtypes.0.insert(spirit);
     subtypes.0.insert(soldier);
     // GAP (CDA power): "Bell Borca's power equals the greatest mana value
-    // noted for it this turn." No mana-value-noting bookkeeping nor a CDA
-    // hook — power is left as `*` (Star) with no value source.
+    // noted for it this turn." Even with self-CDA P/T now wired, there is no
+    // mana-value-noting bookkeeping and no compute accessor for a per-turn
+    // "greatest noted value" — power is left as `*` (Star) with no value source.
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{R}{W}").expect("valid cost")),

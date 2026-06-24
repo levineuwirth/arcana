@@ -6,9 +6,10 @@
 //! Keyword line: Trample. The "as it enters, pay any amount of life"
 //! clause is a variable life-payment replacement at entry, with no
 //! expressible cost field — GAP. Its P/T are `*` defined by the life
-//! paid, a characteristic-defining static that needs the entry-payment
-//! amount the engine doesn't track — GAP (`PtValue::Star` transcribes
-//! the printed `*/*` bones).
+//! paid as it entered — a self-CDA whose value is the chosen entry-payment
+//! amount. self_pt_cda reads only state scalars and there is no tracked
+//! "life paid as it entered" quantity to read, so the value is genuinely
+//! inexpressible — GAP (`PtValue::Star` transcribes the printed `*/*`).
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

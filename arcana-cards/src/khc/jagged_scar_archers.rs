@@ -3,14 +3,16 @@
 //! of Elves you control. {T}: This creature deals damage equal to its power
 //! to target creature with flying."
 //!
-//! The */* characteristic-defining ability (CR 604.3) that sets P/T to the
-//! number of Elves you control is a static and is not expressible with the
-//! demonstrated primitives — recorded as a GAP. The tap-to-ding-a-flyer
+//! The */* characteristic-defining ability (CR 604.3) sets P/T to the
+//! number of Elves you control — installed as a Layer 7a self-CDA on ETB via
+//! `ContinuousEffect::self_pt_from_match` (PtValue::Star marks the bones). The
+//! tap-to-ding-a-flyer
 //! activated ability deals damage equal to the creature's current power via
 //! `script::power_of`.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -21,9 +23,14 @@ use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::effects::KeywordAbility;
 use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Jagged-Scar Archers");
@@ -33,8 +40,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     subtypes.0.insert(elf);
     subtypes.0.insert(archer);
 
-    // GAP: static CDA — power and toughness each equal to the number of
-    // Elves you control. Modeled as */* bones; the count is unexpressible.
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{1}{G}{G}").expect("valid cost")),
@@ -47,7 +52,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
 
     reg.register(
-        CardDefinition::new(name, chars).with_activated_ability(ActivatedAbilityDef {
+        CardDefinition::new(name, chars)
+            // CDA: power and toughness each equal to the Elves you control.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_cda,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_activated_ability(ActivatedAbilityDef {
             text: "{T}: This creature deals damage equal to its power to \
                    target creature with flying."
                 .into(),
@@ -67,6 +83,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             effect: ding_flyer,
         }),
     )
+}
+
+/// Layer 7a self-CDA: P/T each equal to the number of Elves you control.
+fn install_cda(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
+    let filter = script::subtype_filter(reg, "Elf").controlled_by(ControllerConstraint::You);
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_from_match(
+            trig.source,
+            filter,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn ding_flyer(

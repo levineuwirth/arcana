@@ -7,9 +7,12 @@
 //!
 //! The "choose an opponent" replacement plus the chosen-player-relative
 //! characteristic-defining ability (P/T = that player's nonbasic land count)
-//! is GAP'd: there is no CDA effect/primitive nor a "choose a player as this
-//! enters and remember them" mechanism in the demonstrated API. P/T are set
-//! to `Star` to record the `*/*` bones; Trample is a base keyword.
+//! is GAP'd: the self-CDA constructors resolve `*` from a count the SOURCE'S
+//! CONTROLLER sees (a fixed `you`/everyone filter or a scalar over the
+//! source's controller); they cannot count over an as-enters-CHOSEN, then
+//! REMEMBERED opponent. No chosen-player-memory channel exists for the CDA to
+//! read, so this is a genuine player-choice P/T GAP. P/T stay `Star` to
+//! record the `*/*` bones; Trample is a base keyword.
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

@@ -3,15 +3,23 @@
 //! Swamps you control."
 //!
 //! Flying is an engine keyword. The characteristic-defining ability
-//! (CR 604.3) that sets P/T to the number of Swamps you control is a
-//! static and is not expressible with the demonstrated primitives —
-//! recorded as a GAP, with P/T left as `*`.
+//! (CR 604.3) sets P/T to the number of Swamps you control — installed
+//! as a Layer 7a self-CDA on ETB (`self_pt_from_match`), with P/T kept
+//! as `*` (PtValue::Star) in the bones.
 
-use arcana_core::effects::KeywordAbility;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
+use arcana_core::state::GameState;
+use arcana_core::targets::ControllerConstraint;
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Nightmare");
@@ -27,13 +35,36 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        // GAP: static CDA — power and toughness each equal to the number of
-        // Swamps you control. Left as `*`.
+        // */* — power and toughness are characteristic-defined (= Swamps you
+        // control), installed as a Layer 7a self-CDA on ETB (id 1 below).
         power: Some(PtValue::Star),
         toughness: Some(PtValue::Star),
         keywords: vec![KeywordAbility::Flying],
         ..Default::default()
     };
 
-    reg.register(CardDefinition::new(name, chars))
+    reg.register(
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: install_cda,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
+    )
+}
+
+/// Layer 7a self-CDA: P/T each equal to the number of Swamps you control.
+fn install_cda(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
+    let filter = script::subtype_filter(reg, "Swamp")
+        .controlled_by(ControllerConstraint::You);
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_from_match(
+            trig.source,
+            filter,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }

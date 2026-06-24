@@ -1,12 +1,15 @@
 //! Uurg, Spawn of Turg — `{B}{B}{G}` */5 Legendary Frog Beast.
-//! GAP: "Uurg's power is equal to the number of land cards in your graveyard"
-//!      — a power-defining static (CDA); modeled as base power `*`.
+//! "Uurg's power is equal to the number of land cards in your graveyard"
+//!      — a power-defining static (CDA) installed as a Layer 7a self-CDA on
+//!      ETB via `ContinuousEffect::self_pt_cda` (power = the count, toughness
+//!      preserved at the printed 5); PtValue::Star marks the `*` power bones.
 //! At the beginning of your upkeep, surveil 1.
 //! {B}{G}, Sacrifice a land: You gain 2 life.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone, CardDefinition,
     CardRegistry,
@@ -72,12 +75,45 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_instant_speed: false,
                 face_gate: None,
                 effect: gain_two_life,
+            })
+            // CDA: power = land cards in your graveyard (toughness stays 5).
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_cda,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
             }),
     )
 }
 
 fn upkeep_surveil(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     vec![Effect::Surveil { player: trig.controller, count: 1 }]
+}
+
+/// Layer 7a self-CDA: power = land cards in your graveyard; toughness is the
+/// printed fixed 5 (the SET overwrites both halves, so return 5).
+fn install_cda(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_cda(
+            trig.source,
+            cda_pt,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
+}
+
+/// Power = number of land cards in your graveyard; toughness = printed 5.
+fn cda_pt(s: &GameState, source: ObjectId) -> (i32, i32) {
+    let who = s.objects.get(source).map(|o| o.controller).unwrap_or(0);
+    let n = s
+        .objects
+        .objects_in_zone(Zone::Graveyard(who))
+        .filter(|o| o.characteristics.types.is_land())
+        .count() as i32;
+    (n, 5)
 }
 
 fn gain_two_life(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {

@@ -1,7 +1,8 @@
 //! Anax, Hardened in the Forge — `{1}{R}{R}` */3 Legendary Enchantment
 //! Creature — Demigod.
-//! "Anax's power is equal to your devotion to red." — GAP (characteristic-
-//!   defining static; power modeled as `*`).
+//! "Anax's power is equal to your devotion to red." — a characteristic-
+//!   defining ability; power is the `*` resolved at Layer 7a via an ETB
+//!   self-CDA (scalar compute = devotion to red), toughness the printed 3.
 //! "Whenever Anax or another nontoken creature you control dies, create a
 //!   1/1 red Satyr creature token with 'This token can't block.' If the
 //!   creature had power 4 or greater, create two of those tokens instead."
@@ -14,8 +15,9 @@
 //! via TokenDefinition; the bare 1/1 red Satyr is created.
 
 use arcana_core::effects::{Effect, TokenDefinition};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
@@ -43,7 +45,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine(TypeLine::ENCHANTMENT | TypeLine::CREATURE),
         subtypes,
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
-        // GAP: "power equal to your devotion to red" — a CDA; modeled as `*`.
+        // "power equal to your devotion to red" is installed at Layer 7a via
+        // the ETB self-CDA below; toughness stays the printed 3.
         power: Some(PtValue::Star),
         toughness: Some(PtValue::Fixed(3)),
         ..Default::default()
@@ -64,8 +67,38 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             trigger_zones: vec![Zone::Battlefield],
             frequency: TriggerFrequency::EachTime,
             target_requirements: Vec::new(),
+        })
+        .with_triggered_ability(TriggeredAbilityDef {
+            id: 2,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: install_cda,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
         }),
     )
+}
+
+fn install_cda(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_cda(
+            trig.source,
+            cda_pt,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
+}
+
+fn cda_pt(s: &GameState, source: ObjectId) -> (i32, i32) {
+    let who = s.objects.get(source).map(|o| o.controller).unwrap_or(0);
+    let n = script::devotion(s, who, ColorSet::red()) as i32;
+    // Only power is `*`; the SET overwrites both, so return the printed 3.
+    (n, 3)
 }
 
 fn make_satyrs(

@@ -4,9 +4,11 @@
 //!  Spells your opponents cast that target Syr Elenora cost {2} more to cast."
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
@@ -22,9 +24,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     subtypes.0.insert(human);
     subtypes.0.insert(knight);
 
-    // GAP (CDA static): "power is equal to the number of cards in your hand" —
-    // no documented characteristic-defining power static hook; bones recorded
-    // as */4 via PtValue::Star.
+    // CDA: "power is equal to the number of cards in your hand" — wired at
+    // Layer 7a via install_cda on ETB (toughness stays the printed fixed 4).
     // GAP (static): "Spells your opponents cast that target Syr Elenora cost {2}
     // more to cast" — no documented spell-cost-increase static hook.
     let chars = Characteristics {
@@ -40,18 +41,47 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
 
     reg.register(
-        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
-            id: 1,
-            trigger_condition: TriggerCondition::SelfEntersBattlefield,
-            intervening_if: None,
-            effect: etb_draw,
-            trigger_zones: vec![Zone::Battlefield],
-            frequency: TriggerFrequency::EachTime,
-            target_requirements: Vec::new(),
-        }),
+        CardDefinition::new(name, chars)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: etb_draw,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // CDA: power = cards in your hand, toughness fixed 4.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_cda,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            }),
     )
 }
 
 fn etb_draw(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
+}
+
+fn install_cda(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_cda(
+            trig.source,
+            cda_pt,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
+}
+
+// Power = number of cards in your hand; toughness fixed 4 (the SET
+// overwrites both base values).
+fn cda_pt(s: &GameState, source: ObjectId) -> (i32, i32) {
+    let who = s.objects.get(source).map(|o| o.controller).unwrap_or(0);
+    let n = script::hand_size(s, who) as i32;
+    (n, 4)
 }

@@ -3,9 +3,11 @@
 //!  Graveyard Busybody's power and toughness are each equal to the number of
 //!  cards with flavor text in your graveyards."
 //!
-//! Both abilities are statics with no primitive: the graveyard-sharing static
-//! and the */* characteristic-defining ability counting flavor-text cards.
-//! Bones (`*`/`*` P/T) are transcribed via `PtValue::Star`; both statics GAP'd.
+//! The graveyard-sharing static has no primitive (GAP). The */* CDA counts
+//! cards "with flavor text" in your graveyards — flavor text is not part of
+//! the engine's card state, so neither the count filter nor the scalar fn can
+//! read it; the self-CDA engine can't resolve it. Bones (`*`/`*`) are kept as
+//! `PtValue::Star`; both statics GAP'd.
 
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -34,6 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     // GAP: static "All graveyards are also your graveyards" — no graveyard
     // ownership-sharing primitive.
     // GAP: CDA "*/* equal to the number of cards with flavor text in your
-    // graveyards" — no flavor-text-counting characteristic-defining ability.
+    // graveyards" — flavor text is not in the engine's card state, so no
+    // count filter / scalar fn can read it.
     reg.register(CardDefinition::new(name, chars))
 }

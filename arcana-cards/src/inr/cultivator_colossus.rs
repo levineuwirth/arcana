@@ -5,20 +5,22 @@
 //! onto the battlefield tapped. If you do, draw a card and repeat this
 //! process."
 //!
-//! Trample is a base keyword; the */* P/T is represented by
-//! PtValue::Star (its defining static is the lands-you-control count,
-//! which is GAP'd as a CDA the demonstrated API can't install). The ETB
+//! Trample is a base keyword; the */* P/T is the lands-you-control count,
+//! installed as a Layer 7a self-CDA on ETB via
+//! `ContinuousEffect::self_pt_from_match` (PtValue::Star marks the bones).
+//! The ETB
 //! is modeled as a single iteration: put a land from hand onto the
 //! battlefield tapped. The "draw a card and repeat this process" loop is
 //! not expressible (no iterate-until-decline primitive), so the draw and
 //! repeat are GAP'd.
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -46,21 +48,42 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    // GAP: "power and toughness are each equal to the number of lands you
-    // control" — the */* defining static (a CDA) cannot be installed via the
-    // demonstrated triggered/activated API; PtValue::Star marks the slot.
-
     reg.register(
-        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
-            id: 1,
-            trigger_condition: TriggerCondition::SelfEntersBattlefield,
-            intervening_if: None,
-            effect: etb_put_land,
-            trigger_zones: vec![Zone::Battlefield],
-            frequency: TriggerFrequency::EachTime,
-            target_requirements: Vec::new(),
-        }),
+        CardDefinition::new(name, chars)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: etb_put_land,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            // CDA: power and toughness each equal to the lands you control.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_cda,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            }),
     )
+}
+
+/// Layer 7a self-CDA: P/T each equal to the number of lands you control.
+fn install_cda(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    let filter = ObjectFilter::permanent()
+        .with_types(TypeLine::LAND.into())
+        .controlled_by(ControllerConstraint::You);
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_from_match(
+            trig.source,
+            filter,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn etb_put_land(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {

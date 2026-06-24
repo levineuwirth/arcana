@@ -4,10 +4,17 @@
 //!  number of permanent cards in your graveyard and its toughness is equal to
 //!  that number plus 1."
 
+use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::state::GameState;
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Souls of the Lost");
@@ -28,9 +35,40 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     // GAP: "As an additional cost to cast this spell, discard a card or sacrifice
     // a permanent." — additional cast cost, not a triggered/activated ability and
     // not expressible on this card class.
-    // GAP: "Fathomless descent — power equals permanent cards in your graveyard,
-    // toughness equals that number plus 1." — a characteristic-defining ability;
-    // no static CDA primitive is available here, so the `*`/`*+1` printed values
-    // remain unresolved.
-    reg.register(CardDefinition::new(name, chars))
+    // Fathomless descent — power = permanent cards in your graveyard, toughness
+    // = that number plus 1 — installed as a Layer 7a self-CDA on ETB.
+    reg.register(
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: install_cda,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
+    )
+}
+
+/// Layer 7a self-CDA: power = permanent cards in your graveyard, toughness =
+/// that number plus 1.
+fn install_cda(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_cda(
+            trig.source,
+            cda_pt,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
+}
+
+/// Power = number of permanent cards in your graveyard; toughness = +1.
+fn cda_pt(s: &GameState, source: ObjectId) -> (i32, i32) {
+    let who = s.objects.get(source).map(|o| o.controller).unwrap_or(0);
+    let n = s
+        .objects
+        .objects_in_zone(Zone::Graveyard(who))
+        .filter(|o| o.characteristics.types.is_permanent())
+        .count() as i32;
+    (n, n + 1)
 }

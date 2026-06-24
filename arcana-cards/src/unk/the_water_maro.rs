@@ -5,10 +5,13 @@
 //!  permanents you control that are tokens and/or have the word 'Maro' in the
 //!  name." (characteristic-defining ability — the */* base)
 //!
-//! The CDA P/T is encoded as `PtValue::Star`; the actual count-based value is a
-//! characteristic-defining static the engine can't compute here (GAP). The cast
-//! trigger mints a token copy of this spell via `Effect::CopyPermanent`; the
-//! "except the copy isn't legendary" rider is not expressible (GAP).
+//! The CDA P/T is `PtValue::Star`. The self-CDA engine resolves a single
+//! count filter, but the count here is "permanents you control that are
+//! tokens OR have the word 'Maro' in the name" — a disjunction of token
+//! status and a NAME-SUBSTRING test, which no ObjectFilter predicate
+//! expresses; left as */* (GAP). The cast trigger mints a token copy of this
+//! spell via `Effect::CopyPermanent`; the "except the copy isn't legendary"
+//! rider is not expressible (GAP).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -30,10 +33,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(elemental);
 
-    // GAP: "power and toughness are each equal to the number of permanents you
-    // control that are tokens and/or have 'Maro' in the name" — a CDA; the */*
-    // base is encoded as PtValue::Star but the count value is not computable
-    // here as a static characteristic.
+    // GAP (CDA): "power and toughness are each equal to the number of permanents
+    // you control that are tokens and/or have 'Maro' in the name" — a disjunction
+    // of token status OR a name-substring test, which no ObjectFilter predicate
+    // (nor the registry-free scalar fn) expresses; left as */* (PtValue::Star).
 
     let chars = Characteristics {
         name,

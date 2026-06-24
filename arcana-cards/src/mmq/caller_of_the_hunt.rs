@@ -28,8 +28,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         // GAP: additional cast cost "choose a creature type" is not
         // expressible.
         // GAP: characteristic-defining "P/T equal to the number of
-        // creatures of the chosen type on the battlefield" — no CDA
-        // wiring is available; the * remains unresolved.
+        // creatures of the CHOSEN type on the battlefield" — the count
+        // filter depends on a player-chosen subtype, which neither
+        // self_pt_from_match (filter fixed at register, no chosen subtype)
+        // nor self_pt_cda (no registry/subtype access) can express; the *
+        // remains unresolved.
         ..Default::default()
     };
 

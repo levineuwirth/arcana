@@ -1,8 +1,12 @@
 //! Archpriest of Iona — `{W}` */2 Creature — Human Cleric (white).
 //!
 //! * "Archpriest of Iona's power is equal to the number of creatures in your
-//!   party." — a power-defining static (CDA); not expressible. Recorded as
-//!   */2 via PtValue::Star.
+//!   party." — a power-defining CDA. GAP: party is "up to one each of
+//!   Cleric, Rogue, Warrior, Wizard you control" (0..=4, each subtype caps
+//!   at 1). `self_pt_from_match` is a single symmetric filter that cannot
+//!   enforce the one-per-subtype cap across four distinct subtypes, and
+//!   `self_pt_cda`'s compute has no registry to resolve those subtype names,
+//!   so neither constructor expresses it. Recorded as */2 via PtValue::Star.
 //! * "At the beginning of combat on your turn, if you have a full party,
 //!   target creature gets +1/+1 and gains flying until end of turn." —
 //!   PhaseBegins(Combat, You) trigger pumping a target creature +1/+1 with
@@ -31,7 +35,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     subtypes.0.insert(human);
     subtypes.0.insert(cleric);
 
-    // GAP: power CDA (creatures in your party) — recorded as */2 via Star.
+    // GAP: power CDA (creatures in your party) — party's one-per-subtype cap
+    // across four subtypes is inexpressible with the self-CDA constructors;
+    // recorded as */2 via Star.
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{W}").expect("valid cost")),

@@ -2,13 +2,15 @@
 //!
 //! * Trample.
 //! * Abominable Treefolk's power and toughness are each equal to the
-//!   number of snow permanents you control. (static CDA — GAP; bones
-//!   recorded as */* via PtValue::Star.)
+//!   number of snow permanents you control. (CDA — wired at Layer 7a via a
+//!   SelfEntersBattlefield self_pt_from_match; bones recorded as */* via
+//!   PtValue::Star.)
 //! * When this creature enters, tap target creature an opponent
 //!   controls. That creature doesn't untap during its controller's
 //!   next untap step. (modeled as a Stun counter.)
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -31,9 +33,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(treefolk);
 
-    // GAP: P/T "each equal to the number of snow permanents you control"
-    // is a characteristic-defining static; bones recorded as */*.
-
+    // P/T "each equal to the number of snow permanents you control" is a
+    // CDA, installed at Layer 7a by install_cda (id 2); bones recorded as */*.
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{G}{U}").expect("valid cost")),
@@ -64,8 +65,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_cda,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
             }),
     )
+}
+
+/// Layer 7a self-CDA: P/T each equal to the number of snow permanents you
+/// control.
+fn install_cda(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    let filter = ObjectFilter::permanent()
+        .with_supertypes(SupertypeSet::new().with(SupertypeSet::SNOW))
+        .controlled_by(ControllerConstraint::You);
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_from_match(
+            trig.source,
+            filter,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn etb_tap_and_stun(

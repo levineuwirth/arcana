@@ -6,8 +6,11 @@
 //! When Darksteel Hydra enters, conjure a card named Darksteel Ingot
 //! and a card named Darksteel Plate into your hand.
 //!
-//! Indestructible is a base keyword. The two oil-counter pieces (enter
-//! with X, twice-oil CDA P/T) and the conjure ETB are not expressible.
+//! Indestructible is a base keyword. The twice-oil CDA reads oil counters
+//! (a `CounterKind::Named("oil")` symbol) on itself, but the self-CDA's
+//! registry-free scalar fn can't intern/look up the "oil" symbol, and the
+//! "enters with X oil counters" piece is also GAP'd (so the count is always
+//! 0 anyway) — left as */*. The conjure ETB is not expressible.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
@@ -35,7 +38,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE),
         subtypes,
         // GAP (CDA): "power and toughness each equal to twice the number of
-        // oil counters on it." No computing static is expressible; left as *.
+        // oil counters on it." The self-CDA scalar fn is registry-free and
+        // can't resolve the CounterKind::Named("oil") symbol; left as *.
         // GAP (ETB): "enters with X oil counters on it." No enters-with-X
         // counter primitive is available.
         power: Some(PtValue::Star),
