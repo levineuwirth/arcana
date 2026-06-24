@@ -224,6 +224,17 @@ pub struct GameState {
     /// random order. Set just before the YesNo prompt; consumed by
     /// the dispatcher on response.
     pub pending_discover: Option<PendingDiscover>,
+    /// CR 727 — loop detection. A bounded FIFO of recent settled-state
+    /// fingerprints, captured once per [`crate::engine::step`]. The
+    /// fingerprint is object-id-INDEPENDENT (keyed on card identity /
+    /// name, not object id) because a loop re-mints permanents with fresh
+    /// ids — an id-based hash would never recur. If one fingerprint recurs
+    /// [`crate::engine::LOOP_DRAW_THRESHOLD`] times inside the window, the
+    /// game is in an unbroken loop of (effectively mandatory) actions that
+    /// no agent has broken → the engine ends it as a draw (CR 727.2/.3).
+    /// `turn_number` is part of the fingerprint, so a progressing game
+    /// never exactly recurs (it decks out instead) — no false positives.
+    pub loop_fingerprints: std::collections::VecDeque<u64>,
 }
 
 /// Parked discover state between exile-and-prompt and the YesNo
@@ -306,6 +317,7 @@ impl GameState {
             prev_turn_event_log_start: 0,
             day_night: crate::turn::DayNight::Neither,
             pending_discover: None,
+            loop_fingerprints: std::collections::VecDeque::new(),
         }
     }
 
@@ -363,6 +375,77 @@ impl GameState {
 
     /// Player who currently has priority.
     pub fn priority_player(&self) -> PlayerId { self.priority.player }
+
+    /// Object-id-INDEPENDENT fingerprint of the settled game state, for
+    /// CR-727 loop detection ([`Self::loop_fingerprints`]). Hashes turn
+    /// structure + per-player scalars + a COMMUTATIVE (multiset) fold over
+    /// battlefield/graveyard/exile objects keyed on
+    /// (zone, name, controller, tapped, visible_face, counters) — NEVER on
+    /// object id, since a loop re-mints permanents with fresh ids. Hand and
+    /// library contribute size only (a draw is progress → size changes).
+    /// The stack folds ordered by source name (order matters; ids don't).
+    pub fn loop_fingerprint(&self) -> u64 {
+        use std::hash::{Hash, Hasher};
+        use std::collections::hash_map::DefaultHasher;
+        let mut h = DefaultHasher::new();
+        // Turn structure — a real loop holds the same turn; progress moves it.
+        self.turn.turn_number.hash(&mut h);
+        self.turn.phase.hash(&mut h);
+        self.turn.step.hash(&mut h);
+        self.turn.active_player.hash(&mut h);
+        self.priority.player.hash(&mut h);
+        std::mem::discriminant(&self.day_night).hash(&mut h);
+        // Per-player scalars (all id-independent).
+        for p in &self.players {
+            p.life.hash(&mut h);
+            p.poison_counters.hash(&mut h);
+            p.has_lost.hash(&mut h);
+            p.has_drawn_from_empty_library.hash(&mut h);
+        }
+        for p in 0..self.players.len() as PlayerId {
+            self.objects.objects_in_zone(crate::zones::Zone::Hand(p)).count().hash(&mut h);
+            self.objects.objects_in_zone(crate::zones::Zone::Library(p)).count().hash(&mut h);
+        }
+        // Battlefield / graveyard / exile: commutative (multiset) fold so
+        // object id and iteration order don't matter.
+        let mut acc: u64 = 0;
+        for o in self.objects.iter() {
+            if !matches!(o.zone,
+                crate::zones::Zone::Battlefield
+                | crate::zones::Zone::Graveyard(_)
+                | crate::zones::Zone::Exile) {
+                continue;
+            }
+            let mut oh = DefaultHasher::new();
+            std::mem::discriminant(&o.zone).hash(&mut oh);
+            o.zone.owner().hash(&mut oh);
+            o.characteristics.name.hash(&mut oh);
+            o.controller.hash(&mut oh);
+            o.is_tapped().hash(&mut oh);
+            o.visible_face.hash(&mut oh);
+            // Counters: commutative over the (kind, count) pairs (HashMap
+            // order is non-deterministic).
+            let mut ca: u64 = 0;
+            for (k, v) in o.counters.iter() {
+                let mut kh = DefaultHasher::new();
+                k.hash(&mut kh);
+                v.hash(&mut kh);
+                ca = ca.wrapping_add(kh.finish());
+            }
+            ca.hash(&mut oh);
+            acc = acc.wrapping_add(oh.finish());
+        }
+        acc.hash(&mut h);
+        // Stack: ordered by source NAME (ids change across a loop).
+        for e in &self.stack {
+            self.objects.get(e.source)
+                .map(|o| o.characteristics.name)
+                .hash(&mut h);
+        }
+        self.stack.len().hash(&mut h);
+        self.pending_choice.is_some().hash(&mut h);
+        h.finish()
+    }
 
     /// Iterator over every player id that is not `player`. In a 2-player
     /// game this yields exactly one opponent.

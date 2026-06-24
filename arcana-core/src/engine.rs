@@ -122,9 +122,45 @@ pub fn step(
 
     apply_action(&mut state, action, registry);
     settle(&mut state, registry);
+    detect_and_mark_loop_draw(&mut state);
 
     let yld = compute_next_decision(&state, registry);
     (state, yld)
+}
+
+/// CR 727 loop-draw detection — rolling window of recent settled-state
+/// fingerprints and the recurrence count at which we declare a draw.
+const LOOP_FINGERPRINT_WINDOW: usize = 256;
+/// How many times the EXACT same settled state must recur within the
+/// window before the engine ends the game as a draw. A progressing game
+/// never recurs (the fingerprint includes `turn_number` and the full
+/// board/zone/life state), so this only fires on a genuine no-progress
+/// loop; the value is a safety margin far above any hash-collision rate.
+pub const LOOP_DRAW_THRESHOLD: usize = 16;
+
+/// CR 727 (Handling "Loops") — when the settled game state recurs
+/// [`LOOP_DRAW_THRESHOLD`] times within the rolling window, the game is in
+/// an unbroken loop of (effectively mandatory) actions that no agent has
+/// broken. Per CR 727.2/.3 an unbroken loop ends the game in a draw: a
+/// loop of only-mandatory actions can't be broken, and one a player COULD
+/// break but doesn't (the exact state keeps recurring) is equally
+/// terminal. End it as a draw. No-op once any result is already set (a
+/// real win/loss takes precedence). The fingerprint is object-id-
+/// INDEPENDENT (see [`GameState::loop_fingerprint`]) — essential because a
+/// loop typically re-mints permanents with fresh ids each cycle.
+fn detect_and_mark_loop_draw(state: &mut GameState) {
+    if state.result.is_some() {
+        return;
+    }
+    let fp = state.loop_fingerprint();
+    let prior = state.loop_fingerprints.iter().filter(|&&x| x == fp).count();
+    state.loop_fingerprints.push_back(fp);
+    if state.loop_fingerprints.len() > LOOP_FINGERPRINT_WINDOW {
+        state.loop_fingerprints.pop_front();
+    }
+    if prior + 1 >= LOOP_DRAW_THRESHOLD {
+        state.result = Some(GameResult::Draw);
+    }
 }
 
 // =============================================================================
@@ -4962,6 +4998,59 @@ mod resolution_choice_framework_tests {
         obj.controller = owner;
         s.objects.insert(obj);
         id
+    }
+
+    // --- CR 727 loop-draw detection -------------------------------------
+
+    #[test]
+    fn loop_fingerprint_is_object_id_independent() {
+        use crate::objects::{Characteristics, GameObject};
+        use crate::zones::Zone;
+        let fp = |id: ObjectId, name: u32| -> u64 {
+            let mut s = GameState::new(2, 0);
+            let chars = Characteristics {
+                name,
+                types: TypeLine::CREATURE.into(),
+                power: Some(PtValue::Fixed(2)),
+                toughness: Some(PtValue::Fixed(2)),
+                ..Default::default()
+            };
+            let mut o = GameObject::new(id, 0, Zone::Battlefield, 1, chars);
+            o.controller = 0;
+            s.objects.insert(o);
+            s.loop_fingerprint()
+        };
+        // Same card identity, DIFFERENT object id → SAME fingerprint. This
+        // is the property that lets the detector see a permanent a loop
+        // re-mints with a fresh id each cycle.
+        assert_eq!(fp(100, 7), fp(200, 7));
+        // Different card identity → different fingerprint.
+        assert_ne!(fp(100, 7), fp(100, 8));
+    }
+
+    #[test]
+    fn loop_detection_draws_on_static_recurrence() {
+        // A frozen state fed to the detector LOOP_DRAW_THRESHOLD times →
+        // same fingerprint each call → game ends in a draw (CR 727).
+        let mut s = GameState::new(2, 0);
+        for _ in 0..LOOP_DRAW_THRESHOLD {
+            assert!(s.result.is_none());
+            detect_and_mark_loop_draw(&mut s);
+        }
+        assert_eq!(s.result, Some(GameResult::Draw));
+    }
+
+    #[test]
+    fn loop_detection_ignores_a_progressing_state() {
+        // A state that changes every step (life ticking down) yields a
+        // distinct fingerprint each call → never a false-positive draw,
+        // even well past the window.
+        let mut s = GameState::new(2, 0);
+        for i in 0..(LOOP_FINGERPRINT_WINDOW * 2) {
+            s.player_mut(0).life = 1_000 - i as i32;
+            detect_and_mark_loop_draw(&mut s);
+            assert!(s.result.is_none(), "a progressing game must never draw by loop");
+        }
     }
 
     #[test]
