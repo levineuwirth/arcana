@@ -3,8 +3,13 @@
 //! Front face: `{1}{W}{W}` Legendary Creature — Spirit Warlock
 //! Flying, lifelink, protection from Vampires (GAP: Protection not modeled).
 //! Power and toughness each equal to the number of permanents you control
-//! that are Spirits and/or enchantments (GAP: dynamic */* P/T not expressible
-//! as PtValue; emitted as Fixed(0) placeholder — verify will flag).
+//! that are Spirits and/or enchantments.
+//! GAP: this CDA counts a CROSS-AXIS disjunction (Spirit SUBTYPE *or* enchantment
+//!   TYPE). A single `ObjectFilter` ANDs its type and subtype predicates, so it
+//!   can't express subtype-OR-type; and the registry-free `self_pt_cda`/`custom`
+//!   compute paths can't name the interned "Spirit" subtype symbol. Left as a
+//!   Fixed(0) placeholder pending a subtype-OR-type count filter (or a
+//!   compute-with-interned-symbol hook).
 //! Disturb {3}{W}{W} (GAP: Disturb cast-from-graveyard not modeled).
 //!
 //! Back face (transform): Legendary Enchantment — Aura
@@ -35,8 +40,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::CREATURE.into(),
         subtypes,
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
-        // GAP: P/T is */* (equal to number of Spirits and/or enchantments you control)
-        // — dynamic characteristic not expressible; using Fixed(0) as placeholder.
+        // GAP: P/T = Spirits and/or enchantments you control — a cross-axis
+        // (subtype-OR-type) count not expressible via a single ObjectFilter, and
+        // the registry-free CDA compute can't name the "Spirit" subtype symbol.
+        // Using Fixed(0) as a placeholder.
         power: Some(PtValue::Fixed(0)),
         toughness: Some(PtValue::Fixed(0)),
         // GAP: Protection from Vampires not modeled (Protection keyword not in engine surface).

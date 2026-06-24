@@ -10,11 +10,15 @@
 //! GAPs:
 //! - "power X or less, where X = lands you control" power cap is also applied
 //!   at resolution via script::power_of + script::count_matching.
-//! - Back face "P/T = number of lands you control" — dynamic static layer not
-//!   expressible; back face is registered without P/T (default).
 //! - GAP: defeat→cast-back-face not auto-wired (CR 310.11).
+//!
+//! Back-face P/T "each equal to the number of lands you control" is a Layer 7a
+//! self-CDA (`ContinuousEffect::self_pt_from_match` over lands you control),
+//! installed on ETB and gated to the back face via
+//! `Duration::WhileSourceShowsFace(1)`; the back bones carry PtValue::Star.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, EntersWithSpec};
@@ -27,7 +31,7 @@ use arcana_core::targets::{
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -56,7 +60,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         colors: ColorSet::black() | ColorSet::green(),
         types: TypeLine::CREATURE.into(),
         subtypes: back_subtypes,
-        // GAP: "P/T = number of lands you control" — dynamic P/T not wired.
+        // P/T each equal to the number of lands you control (Layer 7a self-CDA,
+        // installed on ETB, gated to the back face); Star marks the bones.
+        power: Some(PtValue::Star),
+        toughness: Some(PtValue::Star),
         ..Default::default()
     };
     let back_face = CardFace {
@@ -90,8 +97,38 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![etb_target],
             })
+            // Back-face CDA: P/T each equal to the number of lands you control
+            // (live only while showing the back face).
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_back_land_cda,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
             .with_transform_back(back_face),
     )
+}
+
+/// Layer 7a self-CDA gated to the back face (Winnowing Forces): P/T each equal
+/// to the number of lands you control.
+fn install_back_land_cda(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let filter = ObjectFilter::permanent()
+        .with_types(TypeLine::LAND.into())
+        .controlled_by(ControllerConstraint::You);
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_from_match(
+            trig.source,
+            filter,
+            Duration::WhileSourceShowsFace(1),
+        ),
+    }]
 }
 
 fn etb_resolve(

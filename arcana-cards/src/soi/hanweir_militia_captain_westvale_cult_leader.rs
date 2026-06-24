@@ -8,12 +8,14 @@
 //!
 //! "if you control four or more creatures" intervening-if modeled via
 //!   `conditions::you_control_at_least` on the front-face upkeep transform trigger.
-//! GAP: Back face dynamic P/T (equal to number of creatures you control) not expressible as a
-//!   characteristic (PtValue has only Fixed/Star/StarPlus, no board-count CDA); back face is
-//!   registered as a fixed-size creature with placeholder 0/0 stats.
+//! Back face P/T each equal to the number of creatures you control: wired as a
+//!   Layer-7a self-CDA (`self_pt_from_match`, creatures you control) installed on
+//!   `SelfTransforms{to_face:Some(1)}` with `Duration::WhileSourceOnBattlefield`
+//!   (the front never returns). Back-face bones are `PtValue::Star`.
 
 use arcana_core::conditions;
 use arcana_core::effects::{Effect, TokenDefinition};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::objects::ObjectId;
@@ -66,9 +68,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             colors: ColorSet::white(),
             types: TypeLine::CREATURE.into(),
             subtypes: back_subtypes,
-            // GAP: dynamic P/T; placeholder 0/0 — actual value equals creatures you control.
-            power: Some(PtValue::Fixed(0)),
-            toughness: Some(PtValue::Fixed(0)),
+            // */* — defined by the CDA (creatures you control) installed on transform.
+            power: Some(PtValue::Star),
+            toughness: Some(PtValue::Star),
             ..Default::default()
         },
         spell_ability: None,
@@ -106,9 +108,38 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
+            // Back face CDA: P/T each equal to the number of creatures you
+            // control. Installed when the front flips to Westvale Cult Leader
+            // (the front never returns); lights up while on the battlefield.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: install_back_cda,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
             .with_trigger_face_gate(1, 0) // front upkeep transform — front face only
             .with_trigger_face_gate(2, 1), // back end-step token — back face only
     )
+}
+
+/// Layer 7a self-CDA: Westvale Cult Leader's P/T each equal to the number of
+/// creatures you control.
+fn install_back_cda(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_from_match(
+            trig.source,
+            filter,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn iif_four_creatures(state: &GameState, _source: ObjectId, you: PlayerId, _reg: &CardRegistry) -> bool {

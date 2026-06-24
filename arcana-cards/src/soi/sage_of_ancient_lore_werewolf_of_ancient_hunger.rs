@@ -14,10 +14,11 @@
 //!   At the beginning of each upkeep, if a player cast two or more spells last turn,
 //!   transform this creature.
 //!
-//! GAP: */* P/T — dynamic power/toughness based on hand size is a characteristic
-//!      replacement effect, not expressible in Characteristics; using PtValue::Fixed(0)
-//!      as placeholder (the actual * value is engine debt).
-//! GAP: Back-face P/T equal to total cards in all players' hands — same gap.
+//! Both faces' */* P/T are wired as Layer-7a self-CDAs (`self_pt_cda`) installed
+//!      on `SelfEntersBattlefield`, each with a face-gated duration so only the
+//!      live face's value applies: front = cards in YOUR hand
+//!      (`WhileSourceShowsFace(0)`); back = total cards in ALL players' hands
+//!      (`WhileSourceShowsFace(1)`). Both faces' bones are `PtValue::Star`.
 //! Both werewolf upkeep transforms are wired: the front
 //!      ("if no spells were cast last turn") and back ("if a player cast two or
 //!      more spells last turn") transforms use the `conditions::` intervening-ifs
@@ -25,6 +26,7 @@
 
 use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::objects::ObjectId;
@@ -36,7 +38,7 @@ use arcana_core::triggers::{
 };
 use arcana_core::turn::Step;
 use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine};
-use arcana_core::zones::Zone;
+use arcana_core::zones::{Zone, ZoneKind};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Sage of Ancient Lore");
@@ -55,9 +57,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::CREATURE.into(),
         subtypes,
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
-        // GAP: */* P/T — dynamic hand size not expressible; placeholder Fixed(0).
-        power: Some(PtValue::Fixed(0)),
-        toughness: Some(PtValue::Fixed(0)),
+        // */* — defined by the front-face CDA (cards in your hand) installed below.
+        power: Some(PtValue::Star),
+        toughness: Some(PtValue::Star),
         keywords: vec![KeywordAbility::Vigilance],
         ..Default::default()
     };
@@ -75,9 +77,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             types: TypeLine::CREATURE.into(),
             subtypes: back_subtypes,
             supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
-            // GAP: P/T = total cards in all players' hands — dynamic; placeholder Fixed(0).
-            power: Some(PtValue::Fixed(0)),
-            toughness: Some(PtValue::Fixed(0)),
+            // */* — defined by the back-face CDA (total cards in all hands)
+            // installed below, face-gated to the back face.
+            power: Some(PtValue::Star),
+            toughness: Some(PtValue::Star),
             keywords: vec![KeywordAbility::Vigilance, KeywordAbility::Trample],
             ..Default::default()
         },
@@ -87,12 +90,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
-            // ETB: draw a card.
+            // ETB: install both faces' P/T CDAs (each face-gated so only the
+            // live face's value applies) and draw a card.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: etb_draw,
+                effect: etb_install_cdas_and_draw,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![],
@@ -130,15 +134,46 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_draw(
+fn etb_install_cdas_and_draw(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::DrawCards {
-        player: trig.controller,
-        count: 1,
-    }]
+    vec![
+        // Front (Sage of Ancient Lore): P/T = cards in your hand.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::self_pt_cda(
+                trig.source,
+                cards_in_your_hand,
+                Duration::WhileSourceShowsFace(0),
+            ),
+        },
+        // Back (Werewolf of Ancient Hunger): P/T = total cards in all hands.
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::self_pt_cda(
+                trig.source,
+                cards_in_all_hands,
+                Duration::WhileSourceShowsFace(1),
+            ),
+        },
+        Effect::DrawCards {
+            player: trig.controller,
+            count: 1,
+        },
+    ]
+}
+
+/// Front CDA: P/T = the number of cards in your hand.
+fn cards_in_your_hand(s: &GameState, source: ObjectId) -> (i32, i32) {
+    let who = s.objects.get(source).map(|o| o.controller).unwrap_or(0);
+    let n = s.objects.objects_in_zone(Zone::Hand(who)).count() as i32;
+    (n, n)
+}
+
+/// Back CDA: P/T = the total number of cards in all players' hands.
+fn cards_in_all_hands(s: &GameState, _source: ObjectId) -> (i32, i32) {
+    let n = s.objects.objects_in_zone_kind(ZoneKind::Hand).count() as i32;
+    (n, n)
 }
 
 fn iif_no_spells_last_turn(state: &GameState, _source: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {
