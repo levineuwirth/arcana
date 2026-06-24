@@ -3,14 +3,13 @@
 //! "{T}, Exile a card from your graveyard: Add {R}. When you do, this
 //!  creature deals 1 damage to each opponent."
 //!
-//! The ETB trigger is wired structurally but its effect is GAP'd: "you may
-//! discard a card; if you do, draw" is a may-discard-then-draw, and discard is
-//! not an OptionalPaymentKind (only Mana / Life), so the optionality and the
-//! conditional draw can't be expressed. The activated ability is also GAP'd:
-//! there is no "exile a card from your graveyard" activation-cost field, and
-//! the reflexive "when you do, deal 1 to each opponent" rider on a mana
-//! ability isn't expressible.
+//! The ETB "you may discard a card; if you do, draw" is wired as an
+//! OptionalPayment (cost = Discard(1), then = draw a card). The activated
+//! ability is GAP'd: there is no "exile a card from your graveyard"
+//! activation-cost field, and the reflexive "when you do, deal 1 to each
+//! opponent" rider on a mana ability isn't expressible.
 
+use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -58,9 +57,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_rummage(_state: &GameState, _trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "you may discard a card. If you do, draw a card." Discard is not an
-    // OptionalPaymentKind (only Mana / Life), so the may-discard-then-draw gate
-    // is not expressible.
-    Vec::new()
+fn etb_rummage(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    // "You may discard a card. If you do, draw a card."
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Discard(1),
+        then: Box::new(Effect::DrawCards { player: trig.controller, count: 1 }),
+        else_effect: None,
+    }]
 }

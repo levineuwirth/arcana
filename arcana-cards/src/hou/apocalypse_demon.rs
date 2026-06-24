@@ -8,11 +8,13 @@
 //!   controller's graveyard size and sets base P/T to `(gy, gy)` (symmetric
 //!   scalar).
 //! * "At the beginning of your upkeep, tap this creature unless you sacrifice
-//!   another creature." — an upkeep trigger. We model the baseline (tap this
-//!   creature). The "unless you sacrifice another creature" escape is a non-
-//!   mana / non-life optional payment (sacrifice is not an `OptionalPaymentKind`
-//!   variant) — GAP'd; the creature taps unconditionally.
+//!   another creature." — an upkeep trigger modeled as an inverted
+//!   `OptionalPayment`: pay (sacrifice a creature) and the tap is avoided;
+//!   decline and the creature taps. (Minor over-inclusion: the "another"
+//!   exclude-source rider isn't expressible — the sacrifice selection can
+//!   offer this Demon itself; accepted as the closest faithful model.)
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
@@ -91,8 +93,14 @@ fn cda_pt(s: &GameState, source: ObjectId) -> (i32, i32) {
 }
 
 fn upkeep_tap(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "unless you sacrifice another creature" — sacrifice is not an
-    // OptionalPaymentKind, so the escape clause cannot be modeled. Tap the
-    // creature unconditionally (the baseline of the trigger).
-    vec![Effect::Tap { target: trig.source }]
+    // "tap this creature unless you sacrifice another creature." Inverted
+    // optional payment: paying (sacrifice a creature) avoids the tap; declining
+    // taps. The "another" exclude-source clause isn't expressible (the
+    // selection can offer this Demon) — accepted as minor over-inclusion.
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::Creature),
+        then: Box::new(Effect::Sequence(vec![])),
+        else_effect: Some(Box::new(Effect::Tap { target: trig.source })),
+    }]
 }

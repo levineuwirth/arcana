@@ -29,8 +29,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // The "unless you discard a basic land" alternative cost cannot be
-    // modeled; emit the draw plus the baseline two-card discard.
+    // GAP: the "unless you discard a basic land card" payment can't constrain
+    // the discarded card to a basic-land type (OptionalPaymentKind::Discard is a
+    // bare count); emit the draw plus the baseline two-card discard.
     vec![
         Effect::DrawCards {
             player: entry.controller,

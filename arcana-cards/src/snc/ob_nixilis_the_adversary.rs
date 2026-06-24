@@ -4,13 +4,15 @@
 //!   copy-with-starting-loyalty-X rider are not expressible from the demonstrated
 //!   surface (and `keywords: vec![]` for planeswalker class per system prompt).
 //! +1: Each opponent loses 2 life unless they discard a card. If you control a
-//!   Demon or Devil, you gain 2 life. GAP: the "unless they discard" player choice
-//!   is not expressible — the life-loss is applied unconditionally as an
-//!   approximation; the conditional 2-life gain IS modeled.
+//!   Demon or Devil, you gain 2 life. The per-opponent "lose 2 life unless they
+//!   discard a card" is wired as one OptionalPayment per opponent (chooser =
+//!   that opponent, cost = Discard(1), else_effect = lose 2 life); the
+//!   conditional 2-life gain is modeled.
 //! −2: Create a 1/1 red Devil creature token with "When this token dies, it deals
 //!   1 damage to any target."
 //! −7: Target player draws seven cards and loses 7 life.
 
+use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::{Condition, Effect, TokenDefinition};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
@@ -105,10 +107,16 @@ fn plus_one_drain(
     reg: &CardRegistry,
 ) -> Vec<Effect> {
     let mut effects = Vec::new();
-    // GAP: "unless they discard a card" — opponent-choice prevention not
-    //      expressible; the 2-life loss is applied unconditionally.
+    // "Each opponent loses 2 life unless they discard a card." One
+    // OptionalPayment per opponent: the chooser is that opponent, paying =
+    // discard one card (avoiding the penalty), declining = lose 2 life.
     for opp in script::opponents(state, ctx.controller) {
-        effects.push(Effect::LoseLife { player: opp, amount: 2 });
+        effects.push(Effect::OptionalPayment {
+            chooser: opp,
+            cost: OptionalPaymentKind::Discard(1),
+            then: Box::new(Effect::Sequence(vec![])),
+            else_effect: Some(Box::new(Effect::LoseLife { player: opp, amount: 2 })),
+        });
     }
     // If you control a Demon or Devil, you gain 2 life.
     let demon = reg.interner().lookup("Demon");

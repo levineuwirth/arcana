@@ -10,10 +10,10 @@
 //! * "When this creature enters, you get {E}{E}{E}" → ETB trigger (id 1)
 //!   producing 3 energy via `Effect::GainEnergy`.
 //! * "Whenever this creature attacks, you may pay {E}{E}{E}. If you do, put a
-//!   +1/+1 counter on it" → attack trigger (id 2). GAP: paying energy as a
-//!   cost is not yet a cost/payment field (`OptionalPaymentKind` covers only
-//!   mana and life), so the conditional payment cannot be expressed and the
-//!   counter is left unwired.
+//!   +1/+1 counter on it" → attack trigger (id 2). GAP: the optional cost here
+//!   is an ENERGY spend, and `OptionalPaymentKind` has no energy cost (only
+//!   Mana / Life / Sacrifice / Discard), so the conditional payment cannot be
+//!   expressed and the counter is left unwired.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
@@ -82,6 +82,7 @@ fn maybe_pay_energy(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: "you may pay {E}{E}{E}. If you do, put a +1/+1 counter on it" —
-    // energy is not a payable cost (OptionalPaymentKind has only Mana/Life).
+    // energy is not a payable cost (OptionalPaymentKind has Mana/Life/Sacrifice/
+    // Discard but no energy spend).
     Vec::new()
 }

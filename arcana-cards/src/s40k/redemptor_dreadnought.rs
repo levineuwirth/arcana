@@ -24,9 +24,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     subtypes.0.insert(dreadnought);
 
     // GAP: Fallen Warrior — "as an additional cost to cast this spell, you may
-    // exile a creature card from your graveyard" is an optional additional cast
-    // cost that imprints a card; OptionalPaymentKind has only Mana/Life, so the
-    // exile-with-it imprint is not expressible.
+    // exile a creature card from your graveyard" is an optional ADDITIONAL CAST
+    // cost that IMPRINTS the exiled card (read later as "exiled with it"). The
+    // payment is an exile-from-graveyard with imprint — not a sacrifice/discard
+    // — and there is no additional-cost / imprint surface, so it is not
+    // expressible.
 
     let chars = Characteristics {
         name,

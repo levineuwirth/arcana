@@ -2,6 +2,7 @@
 //! enters, you may sacrifice an artifact. If you do, this creature deals 4
 //! damage divided as you choose among any number of targets."
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
@@ -56,9 +57,9 @@ fn divided_damage(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: the "you may sacrifice an artifact. If you do" gate is not
-    // expressible — OptionalPaymentKind covers only Mana/Life, not a
-    // sacrifice cost. Best-effort: resolve the divided damage rider directly.
+    // "You may sacrifice an artifact. If you do, this creature deals 4 damage
+    // divided as you choose among any number of targets." The optional
+    // sacrifice gates the divided-damage rider (the `then`).
     let targets: Vec<DamageTarget> = trig
         .targets
         .targets
@@ -77,9 +78,14 @@ fn divided_damage(
     if targets.is_empty() {
         return Vec::new();
     }
-    vec![Effect::DealDamageDivided {
-        source: trig.source,
-        targets,
-        total: 4,
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::Artifact),
+        then: Box::new(Effect::DealDamageDivided {
+            source: trig.source,
+            targets,
+            total: 4,
+        }),
+        else_effect: None,
     }]
 }

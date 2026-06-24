@@ -1,9 +1,12 @@
 //! Torment of Venom — `{2}{B}{B}` instant. "Put three -1/-1 counters
 //! on target creature. Its controller loses 3 life unless they
 //! sacrifice another nonland permanent of their choice or discard a
-//! card." The -1/-1 counters are wired (`CounterKind::MinusOneMinusOne`);
-//! the unless-choice rider is not expressible — emit a flat 3 life
-//! loss as a best-effort.
+//! card." The -1/-1 counters are wired (`CounterKind::MinusOneMinusOne`).
+//! GAP: the "unless they sacrifice OR discard" rider is a COMPOUND
+//! sac-OR-discard payment (two alternative modes); OptionalPaymentKind is a
+//! single cost, so the unless-choice can't be expressed. A flat 3 life loss is
+//! emitted as a best-effort (over-applies the penalty when they would have
+//! paid).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

@@ -3,6 +3,7 @@
 //! Adventure (Flush Out — Sorcery): Discard a card. If you do, draw two cards.
 //! GAP: "{1}{R}: this creature gets +1/+0 until end of turn" — activated ability on creature not modeled here (ActivatedAbilityDef with face_gate needed; omitted for simplicity, using ETB trigger placeholder).
 
+use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -13,7 +14,6 @@ use arcana_core::registry::{
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::layers::Duration;
-use arcana_core::effects::DiscardChoice;
 use arcana_core::registry::ActivationContext;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 
@@ -92,10 +92,12 @@ fn flush_out_resolve(
     entry: &StackEntry,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "discard a card. If you do, draw two cards." — OptionalPayment with Discard cost not in OptionalPaymentKind
-    // Emitting raw discard + draw as best-effort (no conditionality on "if you do")
-    vec![
-        Effect::Discard { player: entry.controller, count: 1, choice: DiscardChoice::ControllerChooses },
-        Effect::DrawCards { player: entry.controller, count: 2 },
-    ]
+    // "Discard a card. If you do, draw two cards." — optional Discard payment;
+    // the two-card draw `then` runs only after the discard resolves.
+    vec![Effect::OptionalPayment {
+        chooser: entry.controller,
+        cost: OptionalPaymentKind::Discard(1),
+        then: Box::new(Effect::DrawCards { player: entry.controller, count: 2 }),
+        else_effect: None,
+    }]
 }

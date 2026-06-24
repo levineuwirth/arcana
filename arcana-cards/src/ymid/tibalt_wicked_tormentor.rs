@@ -12,8 +12,11 @@
 //! GAP: the first +1's spellbook draft + "you may cast that card" rider is not
 //!   expressible; only the "Add {R}{R}" half is emitted.
 //! GAP: the second +1's "unless its controller has Tibalt deal 4 damage to
-//!   them" is a bespoke unless/discard/draw clause not in the demonstrated
-//!   surface; declared with its +1 cost and target, effect empty.
+//!   them" is a bespoke target-controller-chooses redirect (deal 4 to the
+//!   target OR to its controller); the inner "if they do, you may discard a
+//!   card; if you do, draw" would be an OptionalPayment Discard, but it is
+//!   nested under that inexpressible outer choice, so the whole clause stays
+//!   GAP'd. Declared with its +1 cost and target, effect empty.
 //! GAP: the −X ultimate uses a dynamic chosen X as its loyalty cost, which
 //!   `remove_self_counter` (a fixed u32) cannot express — the ability is
 //!   OMITTED entirely.
@@ -122,8 +125,10 @@ fn plus_one_unless_damage(
     _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: the "unless its controller has Tibalt deal 4 damage to them; if
-    // they do, you may discard a card; if you do, draw a card" clause is a
-    // bespoke conditional not in the demonstrated Effect surface.
+    // GAP: the "unless its controller has Tibalt deal 4 damage to them" is a
+    // target-controller-chooses damage redirect with no Effect surface; the
+    // inner "if they do, you may discard a card; if you do, draw a card" is an
+    // OptionalPayment Discard but is nested under that inexpressible outer
+    // choice, so the whole clause stays GAP'd.
     Vec::new()
 }

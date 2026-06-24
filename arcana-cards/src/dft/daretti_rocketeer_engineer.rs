@@ -10,11 +10,11 @@
 //! card to the battlefield."
 //!
 //! The enters/attacks pair becomes two triggered abilities, each targeting
-//! an artifact card in your graveyard and returning it to the battlefield.
-//! The "you may sacrifice an artifact" payment gate is GAP'd (OptionalPayment
-//! supports only Mana/Life, not a sacrifice cost), so the return is applied
-//! unconditionally — a documented fidelity gap.
+//! an artifact card in your graveyard. The "you may sacrifice an artifact"
+//! payment gate is wired as an OptionalPayment (Sacrifice(Artifact) → return
+//! the chosen card to the battlefield; decline returns nothing).
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::effects::Effect;
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
@@ -135,8 +135,12 @@ fn reanimate_artifact(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // GAP (cost gate): "You may sacrifice an artifact. If you do, …" —
-    // OptionalPayment supports only Mana/Life, not a sacrifice payment, so
-    // the return is applied unconditionally.
-    vec![Effect::ReturnFromGraveyardToBattlefield { target: *id }]
+    // "You may sacrifice an artifact. If you do, return the chosen card to the
+    // battlefield." Pay = sacrifice an artifact then return; decline does nothing.
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::Artifact),
+        then: Box::new(Effect::ReturnFromGraveyardToBattlefield { target: *id }),
+        else_effect: None,
+    }]
 }

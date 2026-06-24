@@ -2,6 +2,7 @@
 //! "Whenever this creature becomes tapped, you may discard a card. If you
 //!  do, draw a card."
 
+use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -49,12 +50,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn optional_loot(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may discard a card. If you do, draw a card." — there is no
-    // optional-discard payment (OptionalPaymentKind has only Mana/Life), so
-    // the may-discard-then-draw rider is unexpressible without forcing the
-    // discard.
-    Vec::new()
+    // "You may discard a card. If you do, draw a card."
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Discard(1),
+        then: Box::new(Effect::DrawCards { player: trig.controller, count: 1 }),
+        else_effect: None,
+    }]
 }

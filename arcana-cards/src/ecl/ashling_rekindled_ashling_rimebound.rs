@@ -15,11 +15,11 @@
 //! GAP: "add two mana of any one color" — any-color choice not expressible (single color only).
 //! GAP: "spend this mana only to cast spells with mana value 4 or greater" restriction not modeled.
 //! GAP: Back-face triggered abilities not auto-installed on transform.
-//! GAP: OptionalPayment discard+draw pattern encoded as draw-only (discard cost via
-//!   Sacrifice/Discard not in OptionalPaymentKind v1; approximated with draw).
+//! The front-face "you may discard a card. If you do, draw a card" loot trigger is wired
+//! via an optional discard payment (discard a card, then draw a card).
 
 use arcana_core::actions::OptionalPaymentKind;
-use arcana_core::effects::{DiscardChoice, Effect};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
@@ -78,8 +78,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
-            // Trigger 1: front face — ETB: you may discard, if you do draw a card
-            // GAP: OptionalPayment discard cost not available; simplified to optional draw.
+            // Trigger 1: front face — ETB: you may discard a card, if you do draw a card.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
@@ -136,13 +135,13 @@ fn etb_loot(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may discard a card. If you do, draw a card" — OptionalPayment with discard
-    // cost not available (no Discard variant in OptionalPaymentKind v1).
-    // Simplified: you may pay nothing and draw, which approximates the loot effect weakly.
-    vec![
-        Effect::Discard { player: trig.controller, count: 1, choice: DiscardChoice::ControllerChooses },
-        Effect::DrawCards { player: trig.controller, count: 1 },
-    ]
+    // "you may discard a card. If you do, draw a card."
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Discard(1),
+        then: Box::new(Effect::DrawCards { player: trig.controller, count: 1 }),
+        else_effect: None,
+    }]
 }
 
 fn front_main_phase_transform(

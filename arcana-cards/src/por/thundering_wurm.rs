@@ -1,7 +1,9 @@
 //! Thundering Wurm — `{2}{G}` 4/4 green Wurm.
 //! "When this creature enters, sacrifice it unless you discard a land card."
-//! GAP: OptionalPaymentKind only supports Mana and Life costs; discarding a
-//! typed card ("a land card") as a payment gate is not expressible.
+//! GAP: the payment is a TYPED discard ("a land card"), but
+//! `OptionalPaymentKind::Discard(u32)` discards N cards of the chooser's choice
+//! with no card-type restriction. Wiring it would let any card be discarded —
+//! a materially weaker gate — so the conditional stays GAP'd.
 //! Emitting the unconditional sacrifice (the "unless you discard" guard is GAP).
 
 use arcana_core::effects::Effect;
@@ -50,8 +52,8 @@ fn etb_sacrifice_unless_discard_land(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "unless you discard a land card" — OptionalPaymentKind does not
-    // support a discard-typed-card payment gate; the conditional is not
+    // GAP: "unless you discard a land card" — OptionalPaymentKind::Discard(u32)
+    // is untyped, so a "land card"-restricted discard payment is not
     // expressible. Emitting the unconditional self-sacrifice.
     vec![Effect::Sacrifice {
         player: trig.controller,

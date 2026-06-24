@@ -1,14 +1,15 @@
 //! Vulshok War Boar — `{2}{R}{R}` 5/5 red Creature — Boar Beast.
 //! "When this creature enters, sacrifice it unless you sacrifice an artifact."
-//! GAP: conditional cost ("unless you sacrifice an artifact") not expressible
-//! in the Effect catalog; sacrificing self unconditionally as approximation.
+//! Wired as an optional sacrifice payment: the controller may sacrifice an
+//! artifact (the payment); if they decline, Vulshok War Boar is sacrificed
+//! (the penalty).
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -37,8 +38,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: "unless you sacrifice an artifact" conditional cost not
-                // expressible; sacrificing self unconditionally as approximation
                 intervening_if: None,
                 effect: etb_sacrifice_self,
                 trigger_zones: vec![Zone::Battlefield],
@@ -53,11 +52,16 @@ fn etb_sacrifice_self(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: should sacrifice an artifact as an alternative cost; approximated
-    // as unconditional self-sacrifice
-    vec![Effect::Sacrifice {
-        player: trig.controller,
-        filter: ObjectFilter::permanent(),
-        count: 1,
+    // "sacrifice it unless you sacrifice an artifact" — the controller may pay
+    // by sacrificing an artifact; declining sacrifices Vulshok War Boar itself
+    // (the source, routed through DestroyPermanent per the "sacrifice this"
+    // idiom).
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::Artifact),
+        then: Box::new(Effect::Sequence(vec![])),
+        else_effect: Some(Box::new(Effect::DestroyPermanent {
+            target: trig.source,
+        })),
     }]
 }

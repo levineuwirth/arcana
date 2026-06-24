@@ -2,14 +2,14 @@
 //!
 //! Oracle:
 //! * "When this creature enters, you may discard a card. If you do,
-//!   draw a card." — ETB loot, wired as a best-effort discard-then-draw
-//!   Sequence (the "only if you discarded" gate is a fidelity partial;
-//!   OptionalPaymentKind has no Discard cost).
+//!   draw a card." — ETB loot, wired as an OptionalPayment (Discard 1 →
+//!   DrawCards 1; decline does nothing).
 //! * Unearth {1}{R} — GAP: Unearth is not a `KeywordAbility` variant
 //!   (the graveyard alt-cast cast mechanic is not modeled); emitted as
 //!   no keyword.
 
-use arcana_core::effects::{DiscardChoice, Effect};
+use arcana_core::actions::OptionalPaymentKind;
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -53,18 +53,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn etb_loot(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
-    // "You may discard a card. If you do, draw a card." The optional
-    // "only if you discarded" gate is a fidelity partial: discard one
-    // then draw one (an empty hand discards 0).
-    vec![Effect::Sequence(vec![
-        Effect::Discard {
-            player: trig.controller,
-            count: 1,
-            choice: DiscardChoice::ControllerChooses,
-        },
-        Effect::DrawCards {
-            player: trig.controller,
-            count: 1,
-        },
-    ])]
+    // "You may discard a card. If you do, draw a card."
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Discard(1),
+        then: Box::new(Effect::DrawCards { player: trig.controller, count: 1 }),
+        else_effect: None,
+    }]
 }

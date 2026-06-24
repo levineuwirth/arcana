@@ -7,12 +7,13 @@
 //! (Surveil and Treasure are reminder/mechanic words, not KeywordAbility
 //! variants — no keywords vec.)
 //!
-//! ETB trigger is fully wired. The attack trigger is GAP'd: "you may
-//! sacrifice another creature or artifact. If you do, surveil 2" is an
-//! optional sacrifice gate, but OptionalPaymentKind only supports Mana /
-//! Life (no Sacrifice cost), so the may-sacrifice-then-surveil link is
-//! unexpressible.
+//! Both triggers are wired. The attack trigger "you may sacrifice another
+//! creature or artifact. If you do, surveil 2" uses an optional sacrifice
+//! payment (sacrifice a creature or artifact, then surveil 2). Minor
+//! over-inclusion: the selection can't exclude the source ("another"), so
+//! Namazu Trader itself is technically offerable; harmless in practice.
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::effects::{CommodityToken, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -75,9 +76,12 @@ fn etb_lose_life_treasure(_state: &GameState, trig: &PendingTrigger, _reg: &Card
     ]
 }
 
-fn attack_may_sac_surveil(_state: &GameState, _trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "you may sacrifice another creature or artifact. If you do,
-    // surveil 2" — OptionalPaymentKind has no Sacrifice variant, so the
-    // optional-sacrifice-then-surveil link is unexpressible.
-    Vec::new()
+fn attack_may_sac_surveil(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    // "you may sacrifice another creature or artifact. If you do, surveil 2."
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::CreatureOrArtifact),
+        then: Box::new(Effect::Surveil { player: trig.controller, count: 2 }),
+        else_effect: None,
+    }]
 }

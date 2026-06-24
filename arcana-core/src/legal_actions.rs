@@ -200,6 +200,20 @@ fn legal_resolution_choice_actions(state: &GameState) -> Vec<Action> {
                     state.player(pending.choosing_player).life
                         >= *amount as i32
                 }
+                // Same candidate predicate as push_sacrifice_choice, so
+                // "pay" is offered iff the sacrifice will find a target.
+                crate::actions::OptionalPaymentKind::Sacrifice(sf) => {
+                    let filter = sf.to_object_filter();
+                    let chooser = pending.choosing_player;
+                    state.objects.iter().any(|o| o.is_permanent_on_battlefield()
+                        && o.controller == chooser
+                        && filter.matches(o, state, chooser))
+                }
+                crate::actions::OptionalPaymentKind::Discard(n) => {
+                    *n > 0 && sorted_ids_in_zone(
+                        state, Zone::Hand(pending.choosing_player),
+                    ).len() as u32 >= *n
+                }
             };
             if can_pay {
                 out.push(Action::SubmitResolutionChoice {

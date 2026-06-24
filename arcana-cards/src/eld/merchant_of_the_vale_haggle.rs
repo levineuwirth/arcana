@@ -5,9 +5,9 @@
 //!
 //! Adventure: `{R}` Instant — Haggle
 //!   You may discard a card. If you do, draw a card.
-//!   (GAP: "you may discard, if you do draw" — OptionalPaymentKind has no
-//!   Discard variant; emitting DrawCards without the condition.)
+//!   (Wired via an optional discard payment: discard a card, then draw a card.)
 
+use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -53,6 +53,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn adv_resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "you may discard, if you do draw" — Discard variant not in OptionalPaymentKind
-    vec![Effect::DrawCards { player: entry.controller, count: 1 }]
+    // "You may discard a card. If you do, draw a card."
+    vec![Effect::OptionalPayment {
+        chooser: entry.controller,
+        cost: OptionalPaymentKind::Discard(1),
+        then: Box::new(Effect::DrawCards { player: entry.controller, count: 1 }),
+        else_effect: None,
+    }]
 }

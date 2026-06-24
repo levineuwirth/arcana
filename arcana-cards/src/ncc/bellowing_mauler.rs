@@ -1,7 +1,13 @@
 //! Bellowing Mauler — `{4}{B}` 4/6 black Ogre Warrior.
 //! "At the beginning of your end step, each player loses 4 life unless they sacrifice
 //! a nontoken creature of their choice."
+//!
+//! Wired via one Effect::OptionalPayment per player: the chooser may
+//! Sacrifice(Creature) to avoid the 4-life penalty (else_effect = LoseLife 4).
+//! Caveat: SacrificeFilter::Creature can't encode "nontoken" — a player could
+//! satisfy the cost with a token creature (minor over-inclusion).
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -54,13 +60,18 @@ fn each_player_sac_or_lose_life(
     _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // "unless they sacrifice a nontoken creature" — OptionalPaymentKind has no Sacrifice variant
-    // GAP: "sacrifice or lose life" per player uses Sacrifice as the OptionalPaymentKind which isn't available;
-    // using LoseLife for all players as approximation
+    // "each player loses 4 life unless they sacrifice a [nontoken] creature."
+    // One penalty-avoidance gate per player: pay = sacrifice a creature, decline
+    // = lose 4 life.
     let players = script::all_players(state);
     let effects: Vec<Effect> = players
         .into_iter()
-        .map(|p| Effect::LoseLife { player: p, amount: 4 })
+        .map(|p| Effect::OptionalPayment {
+            chooser: p,
+            cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::Creature),
+            then: Box::new(Effect::Sequence(vec![])),
+            else_effect: Some(Box::new(Effect::LoseLife { player: p, amount: 4 })),
+        })
         .collect();
     vec![Effect::Sequence(effects)]
 }

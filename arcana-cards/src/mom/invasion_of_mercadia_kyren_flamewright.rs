@@ -6,15 +6,16 @@
 //!     creature tokens. Creatures you control get +1/+0 and gain haste
 //!     until end of turn.
 //!
+//! ETB "you may discard a card. If you do, draw two cards." is wired via
+//! Effect::OptionalPayment { Discard(1) → draw 2 }.
+//!
 //! GAPs:
-//! - ETB "you may discard a card. If you do, draw two cards.": a may-discard
-//!   gate (discard as the optional cost) is not expressible — OptionalPaymentKind
-//!   only models mana / life payments. Emitted as a no-op.
 //! - When defeated, exile and cast the back face transformed (CR 310.11) is not
 //!   auto-wired; the battle just goes to the graveyard. The back face is authored
 //!   via with_transform_back so it is at least defined.
 //! - Back face has no printed P/T in the spec; modeled as a 1/1 placeholder.
 
+use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -116,12 +117,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn etb_may_discard_draw(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may discard a card. If you do, draw two cards." — discard as an
-    // optional cost is not expressible (OptionalPaymentKind has only Mana/Life).
-    Vec::new()
+    // "you may discard a card. If you do, draw two cards."
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Discard(1),
+        then: Box::new(Effect::DrawCards {
+            player: trig.controller,
+            count: 2,
+        }),
+        else_effect: None,
+    }]
 }
 
 fn flamewright_tokens(

@@ -68,7 +68,7 @@ fn attack_pay_energy(
 ) -> Vec<Effect> {
     // GAP: "you may pay {E}. If you do, put your choice of a +1/+1, first
     // strike, or trample counter on that creature." Energy is not a payable
-    // cost (OptionalPaymentKind has only Mana/Life), and the
-    // choose-a-counter-kind payoff has no primitive. Omitted.
+    // cost (OptionalPaymentKind has Mana/Life/Sacrifice/Discard but no energy
+    // spend), and the choose-a-counter-kind payoff has no primitive. Omitted.
     Vec::new()
 }

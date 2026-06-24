@@ -8,14 +8,14 @@
 //! you may sacrifice another creature or artifact. If you do, this creature gets
 //! +2/+1 until end of turn.
 //!
-//! GAP: the back-face attack trigger ("you may sacrifice another creature or artifact;
-//! if you do, this creature gets +2/+1") is left omitted: there is no in-resolution
-//! optional-sacrifice primitive (OptionalPaymentKind has only Mana/Life; no Sacrifice
-//! variant) and so no way to gate the conditional pump on whether a sacrifice happened.
-//! Wiring an unconditional pump would fabricate the effect; wiring the trigger with no
-//! effect would be a no-op. Both are forbidden, so the whole back-face trigger is omitted.
+//! The back-face attack trigger is wired as a face-gated trigger (face 1) via
+//! Effect::OptionalPayment { Sacrifice(CreatureOrArtifact) → pump source +2/+1
+//! EOT }. Caveat: SacrificeFilter can't encode "another" — the source itself is
+//! offered as a legal sacrifice (minor over-inclusion).
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -23,7 +23,11 @@ use arcana_core::registry::{
     CardDefinition, CardFace, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Seraph of New Capenna");
@@ -86,8 +90,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_instant_speed: false,
                 face_gate: Some(0), // front face only
                 effect: front_transform,
-            }),
-        // GAP: back-face attack trigger (optional sacrifice → +2/+1) omitted; see header.
+            })
+            // Back face (face 1): "Whenever this creature attacks, you may
+            // sacrifice another creature or artifact. If you do, this creature
+            // gets +2/+1 until end of turn."
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfAttacks,
+                intervening_if: None,
+                effect: back_attacks_pump,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(1, 1),
     )
 }
 
@@ -97,4 +113,25 @@ fn front_transform(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::Transform { target: ctx.source }]
+}
+
+fn back_attacks_pump(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // "you may sacrifice another creature or artifact. If you do, this creature
+    // gets +2/+1 until end of turn."
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::CreatureOrArtifact),
+        then: Box::new(Effect::Pump {
+            target: trig.source,
+            power: 2,
+            toughness: 1,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        }),
+        else_effect: None,
+    }]
 }

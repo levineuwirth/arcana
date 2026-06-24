@@ -6,9 +6,10 @@
 //!
 //! Haste + the ETB two-oil-counters trigger are wired. The end-step
 //! ability is GAP'd at the effect level: "unless you remove two oil
-//! counters" is a counter-removal payment, and OptionalPaymentKind
-//! supports only Mana / Life — so the unless-pay gate is inexpressible
-//! (returning unconditionally would be wrong). The trigger is wired.
+//! counters" is a counter-REMOVAL payment, and OptionalPaymentKind has
+//! Mana / Life / Sacrifice / Discard but no remove-counters cost — so the
+//! unless-pay gate is inexpressible (returning unconditionally would be
+//! wrong). The trigger is wired.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
@@ -108,7 +109,7 @@ fn end_step_bounce_unless_pay(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: "return this to hand unless you remove two oil counters from it"
-    //      — OptionalPaymentKind has no counter-removal cost; the
-    //      unless-pay gate is inexpressible.
+    //      — OptionalPaymentKind (Mana/Life/Sacrifice/Discard) has no
+    //      counter-removal cost; the unless-pay gate is inexpressible.
     Vec::new()
 }

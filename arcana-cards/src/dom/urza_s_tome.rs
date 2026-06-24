@@ -3,9 +3,10 @@
 //! historic card from your graveyard."
 //!
 //! The draw is wired; the "discard unless you exile a historic card
-//! from your graveyard" gate is an exile-from-graveyard payment, which
-//! is not an `OptionalPaymentKind` (only Mana / Life exist), so that
-//! clause is an honest GAP.
+//! from your graveyard" gate's PAYMENT is exile-a-card-from-graveyard,
+//! which is not an `OptionalPaymentKind` (Mana / Life / Sacrifice /
+//! Discard only — no exile-from-graveyard cost), so that clause is an
+//! honest GAP.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -57,8 +58,8 @@ fn draw_then_maybe_discard(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: 'Then discard a card unless you exile a historic card from
-    // your graveyard' — exile-from-graveyard is not an
-    // OptionalPaymentKind (only Mana / Life), so the discard-unless
-    // gate is omitted.
+    // your graveyard' — the PAYMENT here is exile-a-card-from-graveyard,
+    // which is not an OptionalPaymentKind (Mana / Life / Sacrifice /
+    // Discard only), so the discard-unless gate is omitted.
     vec![Effect::DrawCards { player: ctx.controller, count: 1 }]
 }

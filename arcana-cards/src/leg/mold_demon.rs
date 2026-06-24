@@ -1,10 +1,12 @@
 //! Mold Demon — `{5}{B}{B}` 6/6 black Fungus Demon. "When this creature
 //! enters, sacrifice it unless you sacrifice two Swamps."
 //!
-//! GAP: OptionalPaymentKind has no Sacrifice variant; "sacrifice two Swamps"
-//! cost is not expressible. Emitting sacrifice-self as else_effect on a
-//! best-effort mana gate instead — both polarity and cost type are incorrect.
-//! Full effect: Vec::new() with gap note.
+//! GAP: the payment is "sacrifice two SWAMPS" — both a COUNT > 1 and a
+//! Land-SUBTYPE constraint. OptionalPaymentKind::Sacrifice sacrifices exactly
+//! ONE permanent and SacrificeFilter has no Land-subtype variant, so neither
+//! the count nor the subtype is expressible. Emitting an unconditional
+//! sacrifice-self would over-apply the penalty (fabrication), so the whole
+//! ETB clause is GAP'd.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -50,10 +52,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn etb_unless_sac_swamps(
     _state: &GameState,
-    trig: &PendingTrigger,
+    _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: OptionalPaymentKind has no Sacrifice variant; "sacrifice two Swamps"
-    // cost is not expressible. Emitting sacrifice-self as the fallback.
-    vec![Effect::Sacrifice { player: trig.controller, filter: arcana_core::targets::ObjectFilter::new(), count: 1 }]
+    // GAP: "sacrifice it unless you sacrifice two Swamps." The payment is a
+    // COUNT > 1 + Land-SUBTYPE sacrifice (two Swamps); OptionalPaymentKind::
+    // Sacrifice handles exactly one permanent with no Land-subtype filter, so
+    // it isn't expressible. An unconditional sacrifice-self would over-apply
+    // the penalty (fabrication), so the whole clause is GAP'd.
+    Vec::new()
 }

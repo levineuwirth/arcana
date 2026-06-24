@@ -14,8 +14,9 @@
 //! that many cards.
 //!
 //! GAP: "Super Nova" — emblem creation not modeled.
-//! GAP: "you may sacrifice another creature. If you do, draw a card" — OptionalPaymentKind has no
-//! Sacrifice variant; modeled as plain draw (sacrifice not enforced).
+//! Front "you may sacrifice another creature. If you do, draw a card" (enters / attacks) is wired
+//! as an optional sacrifice payment (sacrifice a creature, then draw). Minor over-inclusion: the
+//! selection can't exclude the source ("another"), so Sephiroth itself is technically offerable.
 //! GAP: "If this is the fourth time this ability has resolved this turn" — per-ability-resolution
 //! count tracking not available; transform fires on every resolution (overfires).
 //! GAP: "Whenever Sephiroth attacks, you may sacrifice any number of other creatures. If you do,
@@ -29,6 +30,7 @@
 //! combined "enters or attacks" modeled as two separate triggers.
 //! Keywords: Super Nova not in engine keyword list; not emitted.
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::effects::Effect;
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
@@ -94,7 +96,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
-            // Trigger 1: Sephiroth enters the battlefield — draw (GAP: may sacrifice for draw).
+            // Trigger 1: Sephiroth enters the battlefield — may sacrifice a creature, then draw.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
@@ -104,7 +106,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            // Trigger 2: Sephiroth attacks — draw (GAP: may sacrifice for draw).
+            // Trigger 2: Sephiroth attacks — may sacrifice a creature, then draw.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::SelfAttacks,
@@ -147,11 +149,15 @@ fn etb_draw(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may sacrifice another creature. If you do, draw a card" — sacrifice gate not
-    // enforceable; draw unconditionally as best-effort.
-    vec![Effect::DrawCards {
-        player: trig.controller,
-        count: 1,
+    // "you may sacrifice another creature. If you do, draw a card."
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::Creature),
+        then: Box::new(Effect::DrawCards {
+            player: trig.controller,
+            count: 1,
+        }),
+        else_effect: None,
     }]
 }
 

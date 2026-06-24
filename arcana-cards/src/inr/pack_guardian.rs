@@ -3,10 +3,11 @@
 //! create a 2/2 green Wolf creature token."
 //!
 //! Flash is a base keyword. The ETB trigger is wired, but its "you may
-//! discard a land card. If you do, …" gate is unexpressible: the only
-//! `OptionalPaymentKind` variants are `Mana`/`Life` — there is no
-//! discard-a-card optional cost — so the conditional discard → token
-//! clause is GAP'd rather than firing the token unconditionally.
+//! discard a LAND card. If you do, …" gate is a TYPED discard payment
+//! (discard a card of a specific type). `OptionalPaymentKind::Discard(u32)`
+//! only takes a count with no card-type filter, so "discard a land card"
+//! isn't expressible — the conditional discard → token clause is GAP'd rather
+//! than firing the token unconditionally.
 
 use arcana_core::effects::Effect;
 use arcana_core::effects::KeywordAbility;
@@ -58,9 +59,10 @@ fn etb_discard_land_for_wolf(
     _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may discard a land card. If you do, create a 2/2 green Wolf"
-    // — OptionalPaymentKind has only Mana/Life, so a "discard a land card"
-    // optional cost gate is not expressible; emitting the token would be a
-    // wrong (unconditional) card, so the whole conditional clause is GAP'd.
+    // GAP: "you may discard a LAND card. If you do, create a 2/2 green Wolf"
+    // — this is a TYPED discard payment, but OptionalPaymentKind::Discard(u32)
+    // takes only a count (no card-type filter), so "discard a land card" isn't
+    // expressible. Emitting the token unconditionally would be wrong, so the
+    // whole conditional clause is GAP'd.
     Vec::new()
 }

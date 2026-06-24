@@ -1,7 +1,12 @@
 //! Furnace Scamp — `{R}` 1/1 red creature. "Whenever this creature deals
 //! combat damage to a player, you may sacrifice it. If you do, this creature
 //! deals 3 damage to that player."
+//!
+//! Wired via Effect::OptionalPayment { Sacrifice(Creature) → deal 3 to the
+//! damaged player }. Caveat: SacrificeFilter::Creature can't pin the cost to the
+//! source ("it") — the chooser is offered any creature they control to sacrifice.
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
@@ -57,18 +62,15 @@ fn combat_damage_to_player(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let Some(p) = trig.damaged_player() else { return Vec::new(); };
-    // "you may sacrifice it; if you do, deal 3 damage" — GAP: optional sacrifice before effect not supported
-    // Approximate: sacrifice self then deal 3 damage
-    vec![
-        Effect::Sacrifice {
-            player: trig.controller,
-            filter: ObjectFilter::new(),
-            count: 1,
-        },
-        Effect::DealDamage {
+    // "you may sacrifice it. If you do, this creature deals 3 damage to that player."
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::Creature),
+        then: Box::new(Effect::DealDamage {
             target: DamageTarget::Player(p),
             amount: 3,
             source: trig.source,
-        },
-    ]
+        }),
+        else_effect: None,
+    }]
 }

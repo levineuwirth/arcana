@@ -5,13 +5,14 @@
 //! Level 3: At the beginning of your draw step, draw an additional card for each opponent
 //!          who has one or fewer cards in hand.
 //!
-//! GAP: Level 1 ETB — "discard two cards unless they discard a nonland card" is a
-//! conditional-discard gate; OptionalPaymentKind does not support Discard as a cost.
-//! Approximating with Discard { count: 2 } for each opponent (the "unless nonland" choice
-//! is dropped).
+//! Level 1 ETB — "each opponent discards two cards unless they discard a nonland card" is
+//! wired as a per-opponent OptionalPayment: pay (discard 1) avoids the penalty, decline
+//! discards 2. Fidelity note: the payment can't enforce "nonland" — Discard(N) takes no
+//! filter — so the discarded card isn't constrained to nonland.
 //! Level 2 trigger: "that player" is the upkeep owner — the active player while
 //! the trigger resolves (`state.active_player()`).
 
+use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -45,7 +46,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars)
-            // Level 1 ETB: each opponent discards two cards (unless nonland — GAP)
+            // Level 1 ETB: each opponent discards two cards unless they discard a nonland card.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
@@ -121,14 +122,20 @@ fn etb_discard(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "unless they discard a nonland card" conditional discard not expressible
-    // Applying discard 2 to each opponent as best effort.
+    // "Each opponent discards two cards unless they discard a nonland card."
+    // Per-opponent OptionalPayment: pay = discard 1 (the chooser's card; nonland
+    // constraint not enforced — Discard takes no filter), decline = discard 2.
     script::opponents(state, trig.controller)
         .into_iter()
-        .flat_map(|p| {
-            vec![
-                Effect::Discard { player: p, count: 2, choice: DiscardChoice::ControllerChooses },
-            ]
+        .map(|p| Effect::OptionalPayment {
+            chooser: p,
+            cost: OptionalPaymentKind::Discard(1),
+            then: Box::new(Effect::Sequence(vec![])),
+            else_effect: Some(Box::new(Effect::Discard {
+                player: p,
+                count: 2,
+                choice: DiscardChoice::ControllerChooses,
+            })),
         })
         .collect()
 }

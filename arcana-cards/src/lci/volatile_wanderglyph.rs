@@ -1,7 +1,8 @@
 //! Volatile Wanderglyph — `{1}{R}` 2/2 red Artifact Creature — Golem.
 //! "Whenever this creature becomes tapped, you may discard a card. If you do, draw a card."
 
-use arcana_core::effects::{DiscardChoice, Effect};
+use arcana_core::actions::OptionalPaymentKind;
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -46,11 +47,12 @@ fn loot_optional(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // "you may discard a card. If you do, draw a card."
-    // GAP: OptionalPaymentKind has no Discard variant; can't model "discard as cost" gate.
-    // Emitting discard then draw unconditionally as best-effort approximation.
-    vec![
-        Effect::Discard { player: trig.controller, count: 1, choice: DiscardChoice::ControllerChooses },
-        Effect::DrawCards { player: trig.controller, count: 1 },
-    ]
+    // "you may discard a card. If you do, draw a card." Positive optional
+    // payment: paying (discard 1) runs the draw; declining does nothing.
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Discard(1),
+        then: Box::new(Effect::DrawCards { player: trig.controller, count: 1 }),
+        else_effect: None,
+    }]
 }

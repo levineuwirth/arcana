@@ -4,11 +4,12 @@
 //! At the beginning of your upkeep, sacrifice this creature unless you
 //! sacrifice two lands.
 //!
-//! GAP: "sacrifice this creature unless you sacrifice two lands" — the
-//! optional-payment gate (`Effect::OptionalPayment`) only models Mana / Life
-//! costs (`OptionalPaymentKind::{Mana, Life}`); there is no sacrifice-as-cost
-//! variant, so the "unless you sacrifice two lands" alternative cannot be
-//! posted. The upkeep trigger fires faithfully; its effect body is the gap.
+//! GAP: "sacrifice this creature unless you sacrifice TWO lands" — the
+//! payment is a MULTI-COUNT sacrifice (two permanents), but
+//! `OptionalPaymentKind::Sacrifice(SacrificeFilter)` sacrifices exactly ONE
+//! matching permanent. A count-N sacrifice payment is not expressible, so the
+//! "unless you sacrifice two lands" alternative cannot be posted faithfully.
+//! The upkeep trigger fires faithfully; its effect body is the gap.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;

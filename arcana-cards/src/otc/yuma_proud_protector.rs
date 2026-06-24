@@ -8,12 +8,12 @@
 //!   create a 4/2 green Plant Warrior creature token with reach."
 //!
 //! The cost-reduction static has no cost-reduction primitive and is
-//! GAP'd. The "enters or attacks" ability is split into two triggers, but
-//! its "you may sacrifice a land. If you do, draw a card." payload is not
-//! expressible (OptionalPayment supports only Mana / Life costs, not a
-//! sacrifice gate) — GAP'd. The Desert-to-graveyard trigger mints the
-//! token.
+//! GAP'd. The "enters or attacks" ability is split into two triggers sharing
+//! one resolver; its "you may sacrifice a land. If you do, draw a card." payload
+//! is wired via Effect::OptionalPayment { Sacrifice(Land) → draw 1 }. The
+//! Desert-to-graveyard trigger mints the token.
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -96,13 +96,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn enters_or_attacks(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may sacrifice a land. If you do, draw a card."
-    // OptionalPayment supports only Mana / Life costs — a sacrifice-a-land
-    // gate is not expressible.
-    Vec::new()
+    // "you may sacrifice a land. If you do, draw a card."
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::Land),
+        then: Box::new(Effect::DrawCards {
+            player: trig.controller,
+            count: 1,
+        }),
+        else_effect: None,
+    }]
 }
 
 fn make_plant_warrior(

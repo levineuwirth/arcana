@@ -3,12 +3,13 @@
 //! * Protection from white — Protection is not a usable `KeywordAbility`
 //!   variant, so it is GAP'd.
 //! * "At the beginning of your upkeep, sacrifice this creature unless you
-//!   sacrifice a land." — an upkeep trigger whose "unless you sacrifice a
-//!   land" gate has no expressible cost shape (`OptionalPaymentKind` is
-//!   Mana/Life only; sacrifice-a-permanent is not a payment kind). The whole
-//!   conditional sacrifice is GAP'd rather than firing an unconditional
-//!   self-sacrifice (which would be a materially wrong card).
+//!   sacrifice a land." — wired via Effect::OptionalPayment { Sacrifice(Land)
+//!   → avoid penalty; else_effect = destroy this creature }. No self-sacrifice
+//!   Effect variant exists, so the "sacrifice this creature" punishment is a
+//!   direct DestroyPermanent of the source (the established idiom, e.g.
+//!   me4/phantasmal_forces).
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -58,11 +59,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn upkeep_sacrifice_unless_land(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "sacrifice this creature unless you sacrifice a land" — neither side
-    // of the choice is an expressible OptionalPayment cost (sacrifice is not a
-    // payment kind), so the conditional self-sacrifice is omitted.
-    Vec::new()
+    // "sacrifice this creature unless you sacrifice a land" — pay = sacrifice a
+    // land (penalty avoided); decline = sacrifice (destroy) this creature.
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::Land),
+        then: Box::new(Effect::Sequence(vec![])),
+        else_effect: Some(Box::new(Effect::DestroyPermanent { target: trig.source })),
+    }]
 }

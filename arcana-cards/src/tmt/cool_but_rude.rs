@@ -5,12 +5,11 @@
 //! Level 3 ({1}{R}): When this Class becomes level 3, search your library for a card,
 //!   put it into your hand, shuffle, then discard a card at random.
 //!
-//! GAP: Level 1 "you may discard a card, if you do draw a card" — OptionalPaymentKind
-//!   does not support Discard as a cost; level-1 trigger fires but returns Vec::new().
 //! GAP: Level 2 "whenever you discard a card, deals 2 damage to each opponent" —
 //!   per-level trigger gating not implemented; trigger fires regardless of level.
 //! GAP: Level 3 "when this becomes level 3" — modeled as effect in level-up-to-3 activation.
 
+use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
@@ -50,7 +49,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 count: 1,
             })
             // Level 1: Whenever you attack, you may discard a card. If you do, draw a card.
-            // GAP: discard-to-draw loot not expressible (OptionalPaymentKind has no Discard).
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::CreatureAttacks {
@@ -110,12 +108,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn on_attack_loot(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may discard a card, if you do draw a card" —
-    // OptionalPaymentKind does not support Discard as a cost.
-    Vec::new()
+    // "you may discard a card. If you do, draw a card." — optional Discard
+    // payment; the draw `then` runs only after the discard resolves.
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Discard(1),
+        then: Box::new(Effect::DrawCards { player: trig.controller, count: 1 }),
+        else_effect: None,
+    }]
 }
 
 fn on_discard_damage_opponents(

@@ -8,14 +8,16 @@
 //! `SelfEntersBattlefield` as closest available trigger; the specialization trigger
 //! will not fire correctly.
 //!
-//! GAP: The "you may sacrifice another creature or an artifact" optional cost gate is
-//! not expressible with `OptionalPaymentKind` (no Sacrifice variant). The reanimate
-//! effect is wired unconditionally as a best-effort.
+//! The "you may sacrifice another creature or an artifact. When you do, return target
+//! creature card …" gate is wired as an optional sacrifice payment (sacrifice a creature
+//! or artifact, then reanimate the target with haste). Minor over-inclusion: the selection
+//! can't exclude the source ("another"), so Wyll itself is technically offerable.
 //!
 //! GAP: Conditional "if its mana value is 4 or greater, sacrifice at beginning of
 //! next end step" — mana value check on a just-returned permanent is not expressible
 //! via `script::*`; the delayed sacrifice is omitted.
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
@@ -83,15 +85,21 @@ fn specializes_reanimate(
     let TargetChoice::Object(id) = target else {
         return Vec::new();
     };
-    // GAP: Optional sacrifice cost (creature or artifact) not expressible via
-    // OptionalPaymentKind (no Sacrifice variant).
+    // "you may sacrifice another creature or an artifact. When you do, return
+    // target creature card from your graveyard to the battlefield. It gains
+    // haste."
     // GAP: Conditional delayed sacrifice if mana value >= 4 not expressible via script::*.
-    vec![
-        Effect::ReturnFromGraveyardToBattlefield { target: *id },
-        Effect::GrantKeyword {
-            target: *id,
-            keyword: KeywordAbility::Haste,
-            duration: Duration::WhileSourceOnBattlefield,
-        },
-    ]
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::CreatureOrArtifact),
+        then: Box::new(Effect::Sequence(vec![
+            Effect::ReturnFromGraveyardToBattlefield { target: *id },
+            Effect::GrantKeyword {
+                target: *id,
+                keyword: KeywordAbility::Haste,
+                duration: Duration::WhileSourceOnBattlefield,
+            },
+        ])),
+        else_effect: None,
+    }]
 }

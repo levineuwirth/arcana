@@ -1,10 +1,11 @@
 //! Immersturm Raider — `{1}{R}` 2/1 red Demon Berserker.
 //! "When this creature enters, you may discard a card. If you do,
 //! draw a card."
-//! GAP: OptionalPayment cost has no Discard variant; using a looting
-//! effect (discard then draw unconditionally) as best effort.
+//! Wired as a positive `OptionalPayment`: pay (discard a card) → draw a card;
+//! decline → nothing.
 
-use arcana_core::effects::{DiscardChoice, Effect};
+use arcana_core::actions::OptionalPaymentKind;
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -51,11 +52,12 @@ fn etb_optional_loot(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: OptionalPaymentKind has no Discard variant. The "may discard,
-    // if you do draw" pattern cannot be fully represented. Emitting
-    // discard + draw unconditionally as best effort — the optional gate is missing.
-    vec![
-        Effect::Discard { player: trig.controller, count: 1, choice: DiscardChoice::ControllerChooses },
-        Effect::DrawCards { player: trig.controller, count: 1 },
-    ]
+    // "you may discard a card. If you do, draw a card." Positive optional
+    // payment: paying (discard 1) runs the draw; declining does nothing.
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Discard(1),
+        then: Box::new(Effect::DrawCards { player: trig.controller, count: 1 }),
+        else_effect: None,
+    }]
 }

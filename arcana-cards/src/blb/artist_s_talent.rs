@@ -5,14 +5,15 @@
 //! {2}{R}: Level 3 — If a source you control would deal noncombat damage to an opponent or a
 //!   permanent an opponent controls, it deals that much damage plus 2 instead.
 //!
-//! GAP: Level-1 "whenever you cast a noncreature spell, you may discard a card; if you do, draw
-//!      a card" — optional discard-then-draw trigger not modeled (OptionalPaymentKind has no
-//!      Discard variant; whole triggered ability omitted).
+//! Level-1 "whenever you cast a noncreature spell, you may discard a card; if you do, draw a card"
+//!      is wired as an OptionalPayment (Discard 1 → DrawCards 1). Per-level gating of the trigger
+//!      is a separate known debt; Level 1 is the base level so the trigger is always active.
 //! GAP: Level-2 static "noncreature spells you cast cost {1} less" — per-level cost-reduction
 //!      continuous effect not in engine (continuous-effect engine subsystem).
 //! GAP: Level-3 replacement "deals that much damage plus 2" — damage-replacement continuous effect
 //!      not in engine (continuous-effect engine subsystem).
 
+use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -21,7 +22,12 @@ use arcana_core::registry::{
     CardRegistry, EntersWithSpec,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Artist's Talent");
@@ -43,6 +49,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_enters_with(EntersWithSpec::Counters {
                 kind: CounterKind::Level,
                 count: 1,
+            })
+            // Level 1: whenever you cast a noncreature spell, you may discard a
+            // card. If you do, draw a card.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SpellCast {
+                    filter: Some(ObjectFilter::new().without_types(TypeLine::CREATURE.into())),
+                    caster: ControllerConstraint::You,
+                },
+                intervening_if: None,
+                effect: level1_loot,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
             })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{2}{R}: Level 2.".into(),
@@ -75,6 +95,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: level_up_to_3,
             })
     )
+}
+
+fn level1_loot(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // "You may discard a card. If you do, draw a card."
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Discard(1),
+        then: Box::new(Effect::DrawCards { player: trig.controller, count: 1 }),
+        else_effect: None,
+    }]
 }
 
 fn level_up_to_2(

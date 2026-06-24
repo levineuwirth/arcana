@@ -3,10 +3,11 @@
 //! do, destroy target Room."
 //!
 //! Modeled as an ETB trigger that targets a Room and, after the controller
-//! optionally pays {2}, destroys it. The "discard a card" alternative cost
-//! is gapped — `OptionalPaymentKind` only expresses Mana / Life, so the
-//! choose-between-two-costs shape isn't available; the pay-{2} branch is
-//! wired faithfully.
+//! optionally pays {2}, destroys it.
+//! GAP: "discard a card OR pay {2}" is a COMPOUND optional payment (two
+//! alternative modes). `OptionalPaymentKind` carries a single cost, so the
+//! choose-between-two-costs shape isn't expressible; the pay-{2} mode is wired
+//! as the closest faithful single mode (the discard alternative is dropped).
 
 use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::{Effect, KeywordAbility};
@@ -70,9 +71,9 @@ fn etb_destroy_room(
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     // "you may discard a card or pay {2}. When you do, destroy target Room."
-    // GAP: the "discard a card" alternative cost is not expressible —
-    //      OptionalPaymentKind has only Mana / Life. The pay-{2} branch is
-    //      wired: pay {2}, then destroy the targeted Room.
+    // GAP: compound "discard a card OR pay {2}" — OptionalPaymentKind is a
+    //      single cost, so two alternative modes can't be combined. The pay-{2}
+    //      mode is wired (closest faithful single mode): pay {2}, then destroy.
     vec![Effect::OptionalPayment {
         chooser: trig.controller,
         cost: OptionalPaymentKind::Mana(ManaCost::parse("{2}").expect("valid cost")),

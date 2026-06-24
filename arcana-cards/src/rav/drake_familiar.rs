@@ -5,11 +5,11 @@
 //! enchantment to its owner's hand.
 //!
 //! The "sacrifice unless you return an enchantment" gate cannot be
-//! expressed: OptionalPaymentKind has only Mana / Life variants, so a
-//! "return an enchantment to hand" alternative cost is not available.
-//! Sacrificing unconditionally would be materially wrong (it ignores the
-//! "unless"), so the ETB effect is GAP'd. The Flying keyword and the
-//! trigger shell are faithful.
+//! expressed: the payment is a RETURN-TO-HAND, and OptionalPaymentKind only
+//! covers Mana / Life / Sacrifice / Discard — there is no return-a-permanent
+//! payment variant. Sacrificing unconditionally would be materially wrong (it
+//! ignores the "unless"), so the ETB effect is GAP'd. The Flying keyword and
+//! the trigger shell are faithful.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
@@ -60,8 +60,8 @@ fn etb_sacrifice_unless(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: "sacrifice it unless you return an enchantment to its owner's
-    // hand" — OptionalPaymentKind has only Mana/Life; a return-a-permanent
-    // alternative cost is not expressible. Unconditional sacrifice would
-    // be wrong, so the whole effect is dropped.
+    // hand" — the payment is a return-to-hand, which OptionalPaymentKind has
+    // no variant for (only Mana/Life/Sacrifice/Discard). Unconditional
+    // sacrifice would be wrong, so the whole effect is dropped.
     Vec::new()
 }

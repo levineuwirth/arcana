@@ -1378,9 +1378,44 @@ pub(crate) fn apply_resolution_choice(
                     "OptionalCost dispatch: unexpected follow-up {other:?}"),
             };
             if *pay {
-                apply_optional_cost_payment(
-                    state, pending.choosing_player, cost);
-                execute_optional_branch(state, then_eff);
+                use crate::actions::OptionalPaymentKind;
+                let chooser = pending.choosing_player;
+                match cost {
+                    // Mana / life deduct deterministically, then `then`.
+                    OptionalPaymentKind::Mana(_)
+                    | OptionalPaymentKind::Life(_) => {
+                        apply_optional_cost_payment(state, chooser, cost);
+                        execute_optional_branch(state, then_eff);
+                    }
+                    // Sacrifice / discard post the real SELECTION; the
+                    // Sequence + park machinery runs `then` only after the
+                    // chooser has picked (so the cost is actually paid
+                    // before the benefit).
+                    OptionalPaymentKind::Sacrifice(sf) => {
+                        let pay_eff = crate::effects::Effect::Sacrifice {
+                            player: chooser,
+                            filter: sf.to_object_filter(),
+                            count: 1,
+                        };
+                        execute_optional_branch(
+                            state,
+                            crate::effects::Effect::Sequence(
+                                vec![pay_eff, then_eff]),
+                        );
+                    }
+                    OptionalPaymentKind::Discard(n) => {
+                        let pay_eff = crate::effects::Effect::Discard {
+                            player: chooser,
+                            count: *n,
+                            choice: crate::effects::DiscardChoice::ControllerChooses,
+                        };
+                        execute_optional_branch(
+                            state,
+                            crate::effects::Effect::Sequence(
+                                vec![pay_eff, then_eff]),
+                        );
+                    }
+                }
             } else if let Some(eff) = else_eff {
                 execute_optional_branch(state, eff);
             }
@@ -1708,6 +1743,13 @@ fn apply_optional_cost_payment(
         }
         OptionalPaymentKind::Life(amount) => {
             crate::effects::lose_life(state, player, *amount);
+        }
+        // Sacrifice / discard are routed through execute_optional_branch
+        // in the OptionalCost dispatch (they post a selection), never
+        // through this synchronous deduct path.
+        OptionalPaymentKind::Sacrifice(_) | OptionalPaymentKind::Discard(_) => {
+            unreachable!("Sacrifice/Discard OptionalPayment is applied via \
+                          execute_optional_branch, not apply_optional_cost_payment");
         }
     }
 }
@@ -5653,6 +5695,99 @@ mod resolution_choice_framework_tests {
         assert_eq!(s.zone_count(Zone::Graveyard(1)), 1, "player 1 sacrificed one");
         assert!(s.pending_choice.is_none());
         assert!(s.pending_resolution.is_none(), "parked resolution drained");
+    }
+
+    #[test]
+    fn optional_payment_sacrifice_pays_then_runs() {
+        // "You may sacrifice a creature. If you do, gain 3 life." The pay
+        // branch posts the real sacrifice SELECTION; the then-effect runs
+        // only once the chooser has actually sacrificed.
+        use crate::actions::{ChoiceContext, ChoiceFollowUp, ChoiceKind,
+                             ChoiceResponse, OptionalPaymentKind, PendingResolution,
+                             SacrificeFilter};
+        use crate::stack::StackEntry;
+        use crate::zones::Zone;
+        use crate::effects::Effect;
+
+        let mut s = GameState::new(2, 0);
+        // Two creatures so the sacrifice posts a real choice.
+        let c0a = put_creature_in_zone(&mut s, 0, Zone::Battlefield, 1, 1);
+        let _c0b = put_creature_in_zone(&mut s, 0, Zone::Battlefield, 2, 2);
+        let prev_life = s.player(0).life;
+
+        let entry = StackEntry::new_spell(
+            s.allocate_object_id(), 0, 0,
+            Characteristics { types: TypeLine::INSTANT.into(), ..Default::default() },
+            Default::default(), Vec::new(), None);
+        let resolving = entry.id;
+        s.currently_resolving = Some(resolving);
+        s.pending_resolution = Some(PendingResolution {
+            entry, remaining_effects: Vec::new(), is_spell: true });
+        s.pending_choice_follow_up = Some(ChoiceFollowUp::OptionalPaymentBranch {
+            then: Effect::GainLife { player: 0, amount: 3 }, else_effect: None });
+        let pc_id = s.push_pending_choice(0,
+            ChoiceContext::ResolvingStack(resolving),
+            ChoiceKind::OptionalCost {
+                cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::Creature) });
+
+        // Pay → the sacrifice selection posts; the then-effect has NOT run yet.
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
+            ChoiceResponse::OptionalCost { pay: true });
+        assert!(s.pending_choice.is_some(), "sacrifice selection posts on pay");
+        assert_eq!(s.player(0).life, prev_life,
+            "then-effect waits until the payment resolves");
+
+        // Pick the creature → it dies AND then (GainLife) runs.
+        let sel = s.pending_choice.as_ref().unwrap().id;
+        apply_resolution_choice(&mut s, &CardRegistry::new(), sel,
+            ChoiceResponse::PickCards { picked: vec![c0a] });
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1, "creature sacrificed");
+        assert_eq!(s.player(0).life, prev_life + 3, "then ran after payment");
+        assert!(s.pending_choice.is_none());
+        assert!(s.pending_resolution.is_none(), "resolution drained");
+    }
+
+    #[test]
+    fn optional_payment_discard_pays_then_runs() {
+        // "You may discard a card. If you do, gain 5 life."
+        use crate::actions::{ChoiceContext, ChoiceFollowUp, ChoiceKind,
+                             ChoiceResponse, OptionalPaymentKind, PendingResolution};
+        use crate::stack::StackEntry;
+        use crate::zones::Zone;
+        use crate::effects::Effect;
+
+        let mut s = GameState::new(2, 0);
+        // Two cards in hand so the discard posts a real choice.
+        let h0a = put_creature_in_zone(&mut s, 0, Zone::Hand(0), 1, 1);
+        let _h0b = put_creature_in_zone(&mut s, 0, Zone::Hand(0), 1, 1);
+        let prev_life = s.player(0).life;
+
+        let entry = StackEntry::new_spell(
+            s.allocate_object_id(), 0, 0,
+            Characteristics { types: TypeLine::INSTANT.into(), ..Default::default() },
+            Default::default(), Vec::new(), None);
+        let resolving = entry.id;
+        s.currently_resolving = Some(resolving);
+        s.pending_resolution = Some(PendingResolution {
+            entry, remaining_effects: Vec::new(), is_spell: true });
+        s.pending_choice_follow_up = Some(ChoiceFollowUp::OptionalPaymentBranch {
+            then: Effect::GainLife { player: 0, amount: 5 }, else_effect: None });
+        let pc_id = s.push_pending_choice(0,
+            ChoiceContext::ResolvingStack(resolving),
+            ChoiceKind::OptionalCost { cost: OptionalPaymentKind::Discard(1) });
+
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
+            ChoiceResponse::OptionalCost { pay: true });
+        assert!(s.pending_choice.is_some(), "discard selection posts on pay");
+        assert_eq!(s.player(0).life, prev_life,
+            "then-effect waits until the discard resolves");
+
+        let sel = s.pending_choice.as_ref().unwrap().id;
+        apply_resolution_choice(&mut s, &CardRegistry::new(), sel,
+            ChoiceResponse::PickCards { picked: vec![h0a] });
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1, "card discarded");
+        assert_eq!(s.player(0).life, prev_life + 5, "then ran after payment");
+        assert!(s.pending_choice.is_none());
     }
 
     #[test]

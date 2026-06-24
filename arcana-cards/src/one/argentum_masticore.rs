@@ -5,13 +5,18 @@
 //! nonland permanent an opponent controls with mana value less than or
 //! equal to the mana value of the discarded card.
 //!
+//! The upkeep "sacrifice this creature unless you discard a card" gate is wired
+//! via Effect::OptionalPayment { Discard(1) → avoid penalty; else_effect =
+//! destroy this creature }.
+//!
 //! GAP: protection from multicolored is not an expressible KeywordAbility.
-//! GAP: the upkeep ability is a "sacrifice unless you discard a card"
-//! gate (OptionalPaymentKind only supports Mana/Life, not a discard
-//! cost) chained with a "when you discard this way" sub-trigger whose
-//! destroy target is bounded by the discarded card's mana value — none
-//! of that pipeline is expressible, so the trigger effect is GAP'd.
+//! GAP: the reflexive "When you discard a card this way, destroy target nonland
+//! permanent an opponent controls with mana value ≤ the discarded card's mana
+//! value" sub-trigger is not expressible — there is no reflexive when-you-discard
+//! sub-trigger, and the discarded card's mana value (which bounds the destroy
+//! target) is not readable. That payoff is omitted.
 
+use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -64,12 +69,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn upkeep_sac_unless_discard(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "sacrifice this unless you discard a card" cannot be modeled
-    // (no discard-as-payment OptionalPaymentKind), and the linked
-    // mana-value-bounded destroy depends on the discarded card. Firing
-    // either branch unconditionally would be a materially wrong card.
-    Vec::new()
+    // "sacrifice this creature unless you discard a card" — pay = discard a card
+    // (penalty avoided); decline = sacrifice (destroy) this creature.
+    //
+    // GAP: the reflexive "When you discard a card this way, destroy target
+    // nonland permanent an opponent controls with mana value ≤ the discarded
+    // card's mana value" payoff is omitted — no reflexive when-you-discard
+    // sub-trigger and the discarded card's mana value is not readable here.
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Discard(1),
+        then: Box::new(Effect::Sequence(vec![])),
+        else_effect: Some(Box::new(Effect::DestroyPermanent { target: trig.source })),
+    }]
 }

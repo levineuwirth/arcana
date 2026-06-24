@@ -5,8 +5,9 @@
 //! player, you may pay {3} and sacrifice it. If you do, choose a land you
 //! control, then search your library for up to two basic land cards with
 //! the same name as the chosen land, put them onto the battlefield tapped,
-//! then shuffle. (GAP — combined pay-and-sacrifice cost plus
-//! choose-a-land/same-name tutor has no documented surface.)
+//! then shuffle. (GAP — COMPOUND pay-{3}-AND-sacrifice cost: OptionalPaymentKind
+//! holds a single cost, not mana-plus-sacrifice; plus the choose-a-land /
+//! same-name tutor has no surface.)
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -79,9 +80,10 @@ fn transdimensional_scout(
     _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may pay {3} and sacrifice it" (combined pay + sacrifice
-    // gate — OptionalPaymentKind has no Sacrifice variant), then "choose a
-    // land you control" and tutor up to two basics matching its name (no
+    // GAP: "you may pay {3} and sacrifice it" is a COMPOUND optional cost
+    // (mana AND a sacrifice); OptionalPaymentKind holds a single cost, so the
+    // combined payment is not expressible. Then "choose a land you control"
+    // and tutor up to two basics matching its name (no
     // choose-then-search-by-matching-name primitive).
     Vec::new()
 }

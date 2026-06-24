@@ -4,9 +4,12 @@
 //! your graveyard to the battlefield."
 //! - The intervening-if (more cards than EACH opponent) has no conditions
 //!   helper, so it stays None and is noted.
-//! - The "you may sacrifice a Swamp. If you do, return ~" body has no
-//!   expressible optional-sacrifice→reanimate primitive (OptionalPaymentKind
-//!   has only Mana/Life), so the effect is GAP'd.
+//! - The "you may sacrifice a Swamp. If you do, return ~" body is GAP'd
+//!   because the payment is a SUBTYPE-restricted sacrifice (a Swamp) and
+//!   `SacrificeFilter` has no land-subtype class (Land would over-include any
+//!   land — a materially different, color-agnostic cost). The then-branch
+//!   (ReturnFromGraveyardToBattlefield) is expressible, but without the
+//!   correct Swamp-only cost the whole gate stays GAP'd.
 
 use arcana_core::effects::Effect;
 use arcana_core::effects::KeywordAbility;
@@ -68,7 +71,9 @@ fn upkeep_reanimate(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: "you may sacrifice a Swamp. If you do, return Akuta from your
-    // graveyard" — optional-sacrifice-as-payment then self-reanimate is not
-    // expressible (OptionalPaymentKind has only Mana/Life).
+    // graveyard" — the payment is a SUBTYPE-restricted sacrifice (a Swamp) and
+    // SacrificeFilter has no land-subtype class (Land would over-include any
+    // land). Without the correct cost the optional-sacrifice→reanimate gate
+    // stays GAP'd.
     Vec::new()
 }

@@ -58,9 +58,12 @@ fn combat_damage_steal(
     _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may SACRIFICE it. If you do, gain control of target creature
-    // that player controls." The optional self-sacrifice gate is not expressible
-    // (OptionalPayment only takes Mana/Life, not a sacrifice), and the target
-    // must be constrained to the damaged player's creatures (dynamic). Omitted.
+    // GAP: "you may sacrifice it. If you do, gain control of target creature
+    // that player controls." The optional self-sacrifice IS now expressible
+    // (OptionalPaymentKind::Sacrifice), but the payoff is the real blocker: the
+    // gain-control target must be chosen at resolution and constrained to the
+    // DAMAGED player's creatures (a dynamic per-resolution target the trigger's
+    // target_requirements can't pin to that player). With no faithful target
+    // there is no honest `then` to run, so the whole ability is omitted.
     Vec::new()
 }

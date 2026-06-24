@@ -4,10 +4,12 @@
 //! Whenever Acererak attacks, for each opponent, you create a 2/2 black
 //! Zombie token unless that player sacrifices a creature.
 
-use arcana_core::effects::Effect;
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
+use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
@@ -48,15 +50,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            // GAP: attack trigger — "for each opponent, create a 2/2 Zombie
-            // unless that player sacrifices a creature of their choice" is a
-            // per-opponent unless-sacrifice gate not expressible with the
-            // available OptionalPayment kinds (no Sacrifice cost form).
+            // Attack: "for each opponent, create a 2/2 black Zombie unless
+            // that player sacrifices a creature of their choice." Per-opponent
+            // OptionalPayment whose chooser is that opponent (pay = sacrifice a
+            // creature, decline = you create the Zombie).
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: attack_gap,
+                effect: attack_zombies,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -68,6 +70,30 @@ fn etb_venture(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -
     vec![Effect::Venture { player: trig.controller }]
 }
 
-fn attack_gap(_state: &GameState, _trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
-    Vec::new()
+fn attack_zombies(state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
+    let zombie = reg.interner().lookup("Zombie").unwrap_or_default();
+    let mut subtypes = SubtypeSet::default();
+    subtypes.0.insert(zombie);
+    let token = TokenDefinition {
+        name: zombie,
+        colors: ColorSet::black(),
+        types: TypeLine::CREATURE.into(),
+        subtypes,
+        power: Some(PtValue::Fixed(2)),
+        toughness: Some(PtValue::Fixed(2)),
+        keywords: vec![],
+        abilities: vec![],
+    };
+    script::opponents(state, trig.controller)
+        .into_iter()
+        .map(|p| Effect::OptionalPayment {
+            chooser: p,
+            cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::Creature),
+            then: Box::new(Effect::Sequence(vec![])),
+            else_effect: Some(Box::new(Effect::CreateToken {
+                controller: trig.controller,
+                token: token.clone(),
+            })),
+        })
+        .collect()
 }

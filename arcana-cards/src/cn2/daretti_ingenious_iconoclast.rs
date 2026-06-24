@@ -20,12 +20,14 @@
 //! All three abilities have their loyalty shells declared, but every
 //! effect body is GAP'd:
 //! * `+1` creates a token (TokenDefinition builder not demonstrated).
-//! * `−1` is gated on an OPTIONAL SACRIFICE additional cost; the v1
-//!   `OptionalPaymentKind` only supports Mana/Life, so the
-//!   "may sacrifice an artifact. If you do, …" gate is unexpressible.
+//! * `−1` is gated on an OPTIONAL SACRIFICE additional cost
+//!   ("you may sacrifice an artifact. If you do, destroy target artifact or
+//!   creature") — wired as an OptionalPayment (Sacrifice(Artifact) → destroy
+//!   the chosen target; decline destroys nothing).
 //! * `−6` targets a card in a graveyard (no any-graveyard sentinel) and
 //!   creates token copies (token-copy not demonstrated).
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -35,7 +37,7 @@ use arcana_core::registry::{
 };
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ObjectFilter, TargetCount, TargetFilter, TargetRequirement,
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
 };
 use arcana_core::types::{
     CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine,
@@ -133,15 +135,21 @@ fn plus_one_token(
 /// artifact or creature.`
 fn minus_one_destroy(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: the destroy is gated on an OPTIONAL SACRIFICE additional cost
-    // ("you may sacrifice an artifact. If you do, …"). v1
-    // OptionalPaymentKind supports only Mana/Life, so the sacrifice gate
-    // is unexpressible; firing the destroy unconditionally would
-    // misrepresent the card.
-    Vec::new()
+    // "You may sacrifice an artifact. If you do, destroy target artifact or
+    // creature." Pay = sacrifice an artifact then destroy the chosen target;
+    // decline destroys nothing.
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::OptionalPayment {
+        chooser: ctx.controller,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::Artifact),
+        then: Box::new(Effect::DestroyPermanent { target: *id }),
+        else_effect: None,
+    }]
 }
 
 /// `−6: Choose target artifact card in a graveyard or artifact on the

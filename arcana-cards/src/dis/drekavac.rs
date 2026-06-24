@@ -1,10 +1,15 @@
 //! Drekavac — `{1}{B}` 3/3 black creature. "When this creature enters,
-//! sacrifice it unless you discard a noncreature card."
+//! sacrifice it unless you discard a noncreature card." Wired as an
+//! OptionalPayment (pay = discard 1, decline = sacrifice this creature).
+//! Fidelity note: the payment can't enforce "noncreature" — Discard(N) takes
+//! no filter — so the discarded card isn't constrained to noncreature.
 
-use arcana_core::effects::{DiscardChoice, Effect};
+use arcana_core::actions::OptionalPaymentKind;
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
@@ -45,15 +50,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_cost(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "sacrifice unless you discard a noncreature card" — conditional sacrifice-or-discard not in catalog
-    // Approximate: discard a card (player's choice), if can't pay — sacrifice self
-    vec![
-        Effect::Discard {
+    // "Sacrifice it unless you discard a noncreature card." Pay = discard 1 (the
+    // noncreature constraint is not enforced — Discard takes no filter); decline =
+    // sacrifice this creature.
+    let nm = reg.interner().lookup("Drekavac");
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Discard(1),
+        then: Box::new(Effect::Sequence(vec![])),
+        else_effect: Some(Box::new(Effect::Sacrifice {
             player: trig.controller,
+            filter: ObjectFilter { name: nm, ..ObjectFilter::default() },
             count: 1,
-            choice: DiscardChoice::ControllerChooses,
-        },
-    ]
+        })),
+    }]
 }

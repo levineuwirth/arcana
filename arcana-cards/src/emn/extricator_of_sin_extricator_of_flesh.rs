@@ -11,14 +11,17 @@
 //!   {2}, {T}, Sacrifice a non-Eldrazi creature: Create a 3/2 colorless Eldrazi Horror creature token.
 //!
 //! # GAPs
-//! - ETB "you may sacrifice another permanent. If you do," gate — OptionalPaymentKind does not
-//!   support Sacrifice; the token is created unconditionally as best-effort.
-//!   GAP: sacrifice-gate on ETB not expressible via OptionalPaymentKind.
 //! - Delirium intervening-if (four or more card types in graveyard) gates the upkeep transform
 //!   trigger via `conditions::delirium`.
 //! - "Eldrazi you control have vigilance" is a static keyword-grant — not modeled.
 //!   GAP: static keyword-grant to subtype not modeled.
+//!
+//! The front-face ETB "you may sacrifice another permanent. If you do, create a 3/2 Eldrazi
+//! Horror" is wired as an optional sacrifice payment (sacrifice a permanent, then create the
+//! token). Minor over-inclusion: the selection can't exclude the source ("another"), so
+//! Extricator of Sin itself is technically offerable; harmless in practice.
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::conditions;
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -87,9 +90,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
-            // Triggered ability 1: ETB — create a 3/2 colorless Eldrazi Horror token
-            // GAP: the "you may sacrifice another permanent. If you do," gate is not expressible;
-            // token is created unconditionally.
+            // Triggered ability 1: ETB — you may sacrifice a permanent; if you
+            // do, create a 3/2 colorless Eldrazi Horror token.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
@@ -183,9 +185,16 @@ fn etb_create_token(
         .expect("Eldrazi interned during register()");
     let horror_id = reg.interner().lookup("Horror")
         .expect("Horror interned during register()");
-    vec![Effect::CreateToken {
-        controller: trig.controller,
-        token: make_eldrazi_horror_token(eldrazi_id, horror_id),
+    // "you may sacrifice another permanent. If you do, create a 3/2 colorless
+    // Eldrazi Horror creature token."
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::Permanent),
+        then: Box::new(Effect::CreateToken {
+            controller: trig.controller,
+            token: make_eldrazi_horror_token(eldrazi_id, horror_id),
+        }),
+        else_effect: None,
     }]
 }
 

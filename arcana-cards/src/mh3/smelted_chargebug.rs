@@ -71,8 +71,8 @@ fn etb_gain_energy(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistr
 
 fn attacks_pump(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     // GAP: the "you may pay {E}" optional energy-payment gate is not
-    // expressible (OptionalPaymentKind has only Mana/Life — no energy
-    // spend cost). The +1/+0 + menace grant is applied directly.
+    // expressible (OptionalPaymentKind has Mana/Life/Sacrifice/Discard but
+    // no energy spend cost). The +1/+0 + menace grant is applied directly.
     let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else {
         return Vec::new();
     };

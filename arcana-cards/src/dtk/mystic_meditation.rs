@@ -1,7 +1,9 @@
 //! Mystic Meditation — `{3}{U}` sorcery. "Draw three cards. Then
-//! discard two cards unless you discard a creature card." GAP:
-//! 'discard N unless you discard a card of type X' branching choice
-//! not in catalog; emit the draw and an unconditional discard-2.
+//! discard two cards unless you discard a creature card."
+//! GAP: the unless-payment is "discard a CREATURE card" — a TYPED discard.
+//! `OptionalPaymentKind::Discard(u32)` discards N cards of the chooser's
+//! choice with no type filter, so the typed payment isn't expressible; emit
+//! the draw and an unconditional discard-2 as best-effort.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -36,7 +38,8 @@ fn resolve(
     entry: &StackEntry,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: 'discard-2-unless-you-discard-creature' branching choice not in catalog.
+    // GAP: 'discard 2 unless you discard a CREATURE card' — the unless-payment
+    // is a typed discard; OptionalPaymentKind::Discard has no type filter.
     vec![
         Effect::DrawCards { player: entry.controller, count: 3 },
         Effect::Discard { player: entry.controller, count: 2, choice: DiscardChoice::ControllerChooses },

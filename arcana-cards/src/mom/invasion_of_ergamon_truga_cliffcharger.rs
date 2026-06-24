@@ -9,17 +9,18 @@
 //!   When this creature enters, you may discard a card. If you do, search your
 //!   library for a land or battle card, reveal it, put it into your hand, then shuffle.
 //!
+//! Front ETB "Then you may discard a card. If you do, draw a card." is wired
+//! via Effect::OptionalPayment { Discard(1) → draw 1 }.
+//!
 //! GAP: defeat→cast-back-face not auto-wired (CR 310.11).
-//! GAP: Back-face ETB "you may discard a card. If you do, search for a land or battle
-//!      card" — the discard gate uses OptionalPaymentKind but Discard is not a valid
-//!      OptionalPaymentKind variant (only Mana and Life); this is a GAP.
-//!      The search for "land or battle card" combining two types is modeled via
-//!      with_types_any.
-//! GAP: back-face-only triggered ability (ETB tutor) not auto-installed on transform.
+//! GAP: back-face-only triggered ability (back ETB "you may discard a card. If
+//!      you do, search your library for a land or battle card") not auto-installed
+//!      on transform — the back-face trigger has no face-gated home here.
 //!
 //! Defense counter count: 4 (as printed on Invasion of Ergamon).
 //! Back face P/T: 4/4 (as printed on Truga Cliffcharger).
 
+use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::{CommodityToken, Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -100,13 +101,15 @@ fn etb_treasure_loot(
             kind: CommodityToken::Treasure,
             count: 1,
         },
-        // "Then you may discard a card. If you do, draw a card." — loot effect.
-        // OptionalPaymentKind::Discard not available; modeling as unconditional
-        // Discard+Draw would be wrong. GAP: discard gate not expressible via
-        // OptionalPaymentKind (only Mana/Life variants exist).
-        // Approximate as: discard 1, draw 1 (always). This is a fidelity gap —
-        // the "you may" choice is lost. GAP'd as Vec::new() to avoid auto-executing.
-        // GAP: "you may discard a card. If you do, draw a card" — discard gate not
-        //      expressible; emitting Vec::new() for this sub-effect.
+        // "Then you may discard a card. If you do, draw a card." — optional loot.
+        Effect::OptionalPayment {
+            chooser: trig.controller,
+            cost: OptionalPaymentKind::Discard(1),
+            then: Box::new(Effect::DrawCards {
+                player: trig.controller,
+                count: 1,
+            }),
+            else_effect: None,
+        },
     ]
 }

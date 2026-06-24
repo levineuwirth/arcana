@@ -5,6 +5,7 @@
 //! GAP: Chapter III "exile target players' graveyards" — ExileFromGraveyard
 //! targets individual cards not whole graveyards.
 
+use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -18,7 +19,6 @@ use arcana_core::triggers::{
 use arcana_core::turn::Phase;
 use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
-use arcana_core::effects::DiscardChoice;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("The Death of Gwen Stacy");
@@ -121,14 +121,18 @@ fn chapter_ii(
     _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // "each player may discard a card. Each player who doesn't loses 3 life."
-    // GAP: OptionalPayment doesn't support discard cost; using discard+life-loss
-    // for all players as best-effort
+    // "Each player may discard a card. Each player who doesn't loses 3 life."
+    // One OptionalPayment per player: paying = discard one card (avoiding the
+    // penalty), declining = lose 3 life.
     let all = script::all_players(state);
     let mut effects = Vec::new();
     for p in all {
-        effects.push(Effect::Discard { player: p, count: 1, choice: DiscardChoice::ControllerChooses });
-        // GAP: "if they didn't discard" condition not expressible
+        effects.push(Effect::OptionalPayment {
+            chooser: p,
+            cost: OptionalPaymentKind::Discard(1),
+            then: Box::new(Effect::Sequence(vec![])),
+            else_effect: Some(Box::new(Effect::LoseLife { player: p, amount: 3 })),
+        });
     }
     effects
 }

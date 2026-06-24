@@ -1,10 +1,11 @@
 //! Dread Defiler — `{6}{B}` 6/8 Eldrazi with Devoid (colorless).
 //! Its only ability ("{3}{C}, Exile a creature card from your graveyard: Target
 //! opponent loses life equal to the exiled card's power") has an
-//! exile-a-graveyard-card activation cost that ActivationCost cannot express
-//! (no exile-from-graveyard cost field; OptionalPaymentKind has only Mana/Life),
-//! and its payload scales on that exiled card's power, which is unknowable
-//! without the cost mechanism — so the whole ability is GAP'd. Bones-only.
+//! exile-a-graveyard-card ACTIVATION cost that ActivationCost cannot express
+//! (no exile-from-graveyard cost field — this is not an optional sacrifice/
+//! discard payment), and its payload scales on that exiled card's power, which
+//! is unknowable without the cost mechanism — so the whole ability is GAP'd.
+//! Bones-only.
 
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

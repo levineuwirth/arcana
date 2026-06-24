@@ -64,8 +64,8 @@ fn attack_loot(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: "you may pay {1} and discard a card. If you do, draw a card." — the
-    // optional cost is a COMPOUND of mana AND a card discard;
-    // OptionalPaymentKind has only Mana / Life, so a "pay {1} and discard"
-    // gate cannot be expressed.
+    // optional cost is a COMPOUND of mana AND a card discard (both paid
+    // together). OptionalPaymentKind carries a single cost, so a "pay {1} AND
+    // discard a card" gate cannot be expressed.
     Vec::new()
 }

@@ -1,11 +1,12 @@
 //! Razormane Masticore — `{5}` 5/5 colorless Artifact Creature — Masticore
 //! with First strike.
 //! - At the beginning of your upkeep, sacrifice this creature unless you
-//!   discard a card (GAP'd — "discard a card" is not an OptionalPayment
-//!   cost kind).
+//!   discard a card — wired as an OptionalPayment (pay = discard 1, decline =
+//!   sacrifice this creature).
 //! - At the beginning of your draw step, you may have this creature deal 3
 //!   damage to target creature.
 
+use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::Effect;
 use arcana_core::effects::KeywordAbility;
 use arcana_core::events::DamageTarget;
@@ -13,7 +14,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -70,13 +71,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn upkeep_sac_unless_discard(
     _state: &GameState,
-    _trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    trig: &PendingTrigger,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "sacrifice this creature unless you discard a card" — the
-    // unless-clause cost is "discard a card", which is not an
-    // OptionalPaymentKind (only Mana / Life are expressible).
-    Vec::new()
+    // "Sacrifice this creature unless you discard a card." Pay = discard 1;
+    // decline = sacrifice this creature.
+    let nm = reg.interner().lookup("Razormane Masticore");
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Discard(1),
+        then: Box::new(Effect::Sequence(vec![])),
+        else_effect: Some(Box::new(Effect::Sacrifice {
+            player: trig.controller,
+            filter: ObjectFilter { name: nm, ..ObjectFilter::default() },
+            count: 1,
+        })),
+    }]
 }
 
 fn draw_step_ping(

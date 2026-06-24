@@ -3,7 +3,9 @@
 //! land card."
 //!
 //! The draw and the two-card discard are expressed. The "unless they
-//! discard a land card" alternative is not expressible — GAP.
+//! discard a land card" alternative is a GAP: OptionalPaymentKind::Discard(N)
+//! is a bare count and can't constrain the paid card to a land type (paying
+//! with any card would be strictly easier than the oracle).
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -36,8 +38,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: the "unless they discard a land card" alternative is not
-    // expressible.
+    // GAP: the "unless they discard a land card" payment can't constrain the
+    // discarded card to a land type (OptionalPaymentKind::Discard is a bare
+    // count); emitting the baseline draw + two-card discard.
     vec![
         Effect::DrawCards { player: *p, count: 3 },
         Effect::Discard {

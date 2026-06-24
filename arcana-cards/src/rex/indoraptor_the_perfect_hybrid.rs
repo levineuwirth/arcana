@@ -59,9 +59,11 @@ fn enrage(
     _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: the damage is gated by "unless they sacrifice a nontoken creature" —
-    // OptionalPayment supports only Mana/Life costs, not a sacrifice cost, so
-    // the conditional damage cannot be expressed. Emitting unconditional damage
-    // would be materially wrong, so the whole Enrage effect is omitted.
+    // The "unless they sacrifice a nontoken creature" gate is now expressible
+    // (OptionalPaymentKind::Sacrifice), but the PENALTY (else_effect) is not:
+    // it requires "choose an opponent at random" (no random-opponent primitive)
+    // and "deals damage equal to its power" (no power-valued damage primitive).
+    // Without a faithful else_effect the whole Enrage ability stays GAP'd.
+    // (Also "nontoken" is not a SacrificeFilter class.)
     Vec::new()
 }

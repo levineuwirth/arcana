@@ -3,7 +3,8 @@
 //! hand. If you do, draw cards equal to the number of spells you've
 //! cast this turn."
 
-use arcana_core::effects::{DiscardChoice, Effect};
+use arcana_core::actions::OptionalPaymentKind;
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -63,21 +64,17 @@ fn discard_hand_draw_spells(
         &ObjectFilter::new(),
         trig.controller,
     );
-    // "you may discard your hand. If you do, draw N cards"
-    // Discard hand = discard all cards. hand_size gives current count.
+    // "you may discard your hand. If you do, draw N cards" — optional Discard
+    // payment of the whole hand; the DrawCards `then` runs only after the
+    // discard resolves. "Discard your hand" = discard all current cards.
     let hand = script::hand_size(state, trig.controller);
-    
-    // GAP: OptionalPayment only supports Mana/Life costs, not "discard hand".
-    // Emitting sequence as best effort: discard hand then draw.
     if hand == 0 {
         return Vec::new();
     }
-    vec![Effect::Sequence(vec![
-        Effect::Discard {
-            player: trig.controller,
-            count: hand,
-            choice: DiscardChoice::ControllerChooses,
-        },
-        Effect::DrawCards { player: trig.controller, count: n },
-    ])]
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Discard(hand),
+        then: Box::new(Effect::DrawCards { player: trig.controller, count: n }),
+        else_effect: None,
+    }]
 }

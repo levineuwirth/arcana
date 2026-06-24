@@ -7,9 +7,9 @@
 //! (dynamic, equal to this creature's power) is expressible via
 //! `Effect::GainEnergy` with a `script::power_of` amount. The "may pay
 //! one or more {E}, put that many +1/+1 counters" rider is NOT
-//! expressible: `OptionalPaymentKind` has only Mana/Life (no energy
-//! payment), and "that many" depends on a variable energy spend the
-//! engine can't model. That clause is GAP'd.
+//! expressible: `OptionalPaymentKind` has no energy-payment variant
+//! (Mana/Life/Sacrifice/Discard only), and "that many" depends on a
+//! variable energy spend the engine can't model. That clause is GAP'd.
 
 use arcana_core::effects::Effect;
 use arcana_core::effects::KeywordAbility;
@@ -75,8 +75,8 @@ fn upkeep_gain_energy(
     let n = script::power_of(state, trig.source).max(0) as u32;
     // GAP: "Then you may pay one or more {E}. If you do, put that many
     // +1/+1 counters on this creature." — OptionalPaymentKind has no
-    // energy variant, and "that many" is a variable-spend amount the
-    // engine can't model. Only the energy gain is emitted.
+    // energy-payment variant, and "that many" is a variable-spend amount
+    // the engine can't model. Only the energy gain is emitted.
     vec![Effect::GainEnergy {
         player: trig.controller,
         amount: n,

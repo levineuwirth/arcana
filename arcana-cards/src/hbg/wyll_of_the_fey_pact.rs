@@ -7,9 +7,13 @@
 //! GAP: "perpetually gets +3/+3 and gains trample" — perpetual stat/keyword
 //! modification is not modeled; Effect::Pump with Duration::EndOfTurn is used
 //! as a best-effort substitute.
-//! GAP: "you may sacrifice another creature or an artifact" conditional cost
-//! is not expressible via OptionalPaymentKind (no Sacrifice variant).
+//!
+//! The "you may sacrifice another creature or an artifact. If you do, …" gate is wired
+//! as an optional sacrifice payment (sacrifice a creature or artifact, then pump). Minor
+//! over-inclusion: the selection can't exclude the source ("another"), so Wyll itself is
+//! technically offerable.
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
@@ -61,15 +65,19 @@ fn on_specialize(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may sacrifice another creature or an artifact. If you do, ..."
-    // conditional sacrifice cost is not expressible (OptionalPaymentKind has no
-    // Sacrifice variant). Emitting the pump as unconditional best-effort.
+    // "you may sacrifice another creature or an artifact. If you do, Wyll of
+    // the Fey Pact perpetually gets +3/+3 and gains trample."
     // GAP: "perpetually" — using Duration::EndOfTurn as placeholder.
-    vec![Effect::Pump {
-        target: trig.source,
-        power: 3,
-        toughness: 3,
-        duration: Duration::EndOfTurn,
-        keywords: vec![KeywordAbility::Trample],
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::CreatureOrArtifact),
+        then: Box::new(Effect::Pump {
+            target: trig.source,
+            power: 3,
+            toughness: 3,
+            duration: Duration::EndOfTurn,
+            keywords: vec![KeywordAbility::Trample],
+        }),
+        else_effect: None,
     }]
 }

@@ -1,7 +1,9 @@
 //! Beetle-Headed Merchants — `{4}{B}` 5/4 Human Citizen.
 //! "Whenever this creature attacks, you may sacrifice another creature or artifact. If you do, draw a card and put a +1/+1 counter on this creature."
-//! GAP: "you may sacrifice another creature or artifact" — OptionalPaymentKind has no Sacrifice variant; emitting draw + counter unconditionally.
+//! NOTE: "another" (exclude source) can't be expressed by SacrificeFilter, so the
+//! sacrifice selection may include this creature itself — minor over-inclusion.
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -50,13 +52,21 @@ fn on_attack(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may sacrifice another creature or artifact" — Sacrifice cost not expressible; emitting unconditionally
-    vec![
-        Effect::DrawCards { player: trig.controller, count: 1 },
-        Effect::AddCounters {
-            target: trig.source,
-            kind: CounterKind::PlusOnePlusOne,
-            count: 1,
-        },
-    ]
+    // "you may sacrifice another creature or artifact. If you do, draw a card
+    // and put a +1/+1 counter on this creature." Optional Sacrifice payment; the
+    // draw + counter `then` runs only after the sacrifice resolves.
+    // ("another" can't exclude the source — minor over-inclusion.)
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::CreatureOrArtifact),
+        then: Box::new(Effect::Sequence(vec![
+            Effect::DrawCards { player: trig.controller, count: 1 },
+            Effect::AddCounters {
+                target: trig.source,
+                kind: CounterKind::PlusOnePlusOne,
+                count: 1,
+            },
+        ])),
+        else_effect: None,
+    }]
 }

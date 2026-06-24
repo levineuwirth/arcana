@@ -1,8 +1,10 @@
 //! Elder Spawn — `{4}{U}{U}{U}` 6/6 Spawn.
 //! "At the beginning of your upkeep, unless you sacrifice an Island,
 //!  sacrifice this creature and it deals 6 damage to you." — GAP: the
-//!  "unless you sacrifice an Island" gate is not expressible (OptionalPayment
-//!  supports only Mana/Life costs, not a sacrifice-a-permanent cost).
+//!  payment is "sacrifice an ISLAND" (a subtype-specific sacrifice).
+//!  SacrificeFilter only has Land (any land), not a Land-subtype filter, so
+//!  using it would over-include non-Island lands — a meaningful semantic
+//!  change. Subtype-specific sacrifice payment isn't expressible; GAP'd.
 //! "This creature can't be blocked by red creatures." — GAP: source-filtered
 //!  blocking restriction (can't-be-blocked-by-<color>) is not expressible.
 
@@ -60,9 +62,10 @@ fn upkeep_unless_sacrifice_island(
     _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "unless you sacrifice an Island, sacrifice this creature and it
-    // deals 6 damage to you." — OptionalPayment supports only Mana/Life
-    // costs, so the "sacrifice an Island" gate (and its conditional
-    // punishment) cannot be expressed.
+    // GAP: "unless you sacrifice an ISLAND, sacrifice this creature and it
+    // deals 6 damage to you." — the payment is a subtype-specific sacrifice
+    // (an Island), but SacrificeFilter only offers Land (any land); using it
+    // would over-include non-Island lands. Subtype-specific sacrifice payment
+    // isn't expressible, so the gate (and its conditional punishment) is GAP'd.
     Vec::new()
 }

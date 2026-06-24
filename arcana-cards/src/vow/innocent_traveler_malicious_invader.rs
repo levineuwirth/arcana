@@ -3,10 +3,12 @@
 //! Front face: `{2}{B}{B}` Creature — Human 1/3.
 //! At the beginning of your upkeep, any opponent may sacrifice a creature of
 //! their choice. If no one does, transform this creature.
-//! (GAP: "any opponent may sacrifice a creature" conditional check — the
-//! OptionalPaymentKind does not support Sacrifice as a cost; the exact
-//! "if no one does, transform" conditional cannot be fully modeled.
-//! Emitting a transform trigger on upkeep as best approximation;
+//! (GAP: this is a cross-opponent aggregate — "if NO ONE does, transform".
+//! Effect::OptionalPayment is a single-chooser pay/decline gate; mapping one per
+//! opponent can't express "transform only if EVERY opponent declined" (each
+//! per-opponent else_effect would fire the transform even when another opponent
+//! sacrificed). The aggregation blocker is unrelated to the sacrifice payment
+//! itself. Emitting an unconditional transform on upkeep as best approximation;
 //! the opponent-sacrifice gate is a GAP.)
 //!
 //! Back face: Creature — Vampire with Flying.
@@ -70,9 +72,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
     // Front face trigger: at beginning of your upkeep, any opponent may
     // sacrifice a creature. If no one does, transform.
-    // GAP: Sacrifice-as-optional-payment gate not expressible (OptionalPaymentKind
-    // has no Sacrifice variant). Approximating as a simple transform trigger on
-    // upkeep — the opponent-sacrifice gate is omitted.
+    // GAP: cross-opponent "if NO ONE does" aggregate can't be expressed by a
+    // single-chooser OptionalPayment (see header). Approximating as an
+    // unconditional transform trigger on upkeep — the opponent-sacrifice gate is
+    // omitted.
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
@@ -98,9 +101,9 @@ fn upkeep_transform(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: Should prompt each opponent to optionally sacrifice a creature;
-    // only transforms if none do. The opponent-sacrifice gate is not expressible
-    // with OptionalPaymentKind (no Sacrifice variant) — emitting unconditional
-    // Transform as best approximation.
+    // GAP: Should prompt each opponent to optionally sacrifice a creature; only
+    // transforms if none do. The cross-opponent "if no one does" aggregate is
+    // not expressible by single-chooser OptionalPayment gates — emitting
+    // unconditional Transform as best approximation.
     vec![Effect::Transform { target: trig.source }]
 }

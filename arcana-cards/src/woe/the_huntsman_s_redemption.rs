@@ -2,16 +2,19 @@
 //! I — Create a 3/3 green Beast creature token.
 //! II — You may sacrifice a creature. If you do, search your library for a creature or basic land card, reveal it, put to hand.
 //! III — Up to two target creatures each get +2/+2 and gain trample until end of turn.
-//! GAP: Chapter II "you may sacrifice, if you do search" — OptionalPayment with sacrifice cost not in catalog.
+//! NOTE: Chapter II's search filter "creature or basic land" is approximated as
+//! creature-or-land (over-includes nonbasic lands) — a single ObjectFilter can't
+//! OR a type-only with a type+supertype clause.
 //! Final-chapter sacrifice is automatic (engine SBA).
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{PendingTrigger, TriggerCondition, TriggerFrequency, TriggerSelf, TriggeredAbilityDef};
 use arcana_core::turn::Phase;
 use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
@@ -47,9 +50,22 @@ fn chapter_i(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> V
     vec![Effect::CreateToken { controller: trig.controller, token }]
 }
 
-fn chapter_ii(_state: &GameState, _trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
-    // GAP: "you may sacrifice a creature; if you do, search library" — sacrifice-conditional not in catalog
-    Vec::new()
+fn chapter_ii(_state: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
+    // "you may sacrifice a creature. If you do, search your library for a
+    // creature or basic land card, reveal it, put to hand." Optional Sacrifice
+    // payment; the tutor `then` runs only after the sacrifice resolves.
+    let search_filter = ObjectFilter::new()
+        .with_types_any(TypeLine(TypeLine::CREATURE | TypeLine::LAND));
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::Creature),
+        then: Box::new(Effect::TutorToHand {
+            player: trig.controller,
+            filter: search_filter,
+            reveal: true,
+        }),
+        else_effect: None,
+    }]
 }
 
 fn chapter_iii(_state: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {

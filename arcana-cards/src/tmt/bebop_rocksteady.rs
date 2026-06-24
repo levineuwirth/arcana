@@ -2,9 +2,8 @@
 //! Boar Rhino Mutant.
 //! "Whenever Bebop & Rocksteady attack or block, sacrifice a permanent unless
 //! you discard a card."
-//! GAP: "unless you discard a card" optional choice not expressible;
-//! emitting Sacrifice unconditionally.
 
+use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -65,10 +64,16 @@ fn on_attack_or_block_sacrifice(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "unless you discard a card" optional choice not expressible
-    vec![Effect::Sacrifice {
-        player: trig.controller,
-        filter: ObjectFilter::permanent(),
-        count: 1,
+    // "sacrifice a permanent unless you discard a card" — pay the Discard to
+    // avoid the penalty; declining sacrifices a permanent.
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Discard(1),
+        then: Box::new(Effect::Sequence(vec![])),
+        else_effect: Some(Box::new(Effect::Sacrifice {
+            player: trig.controller,
+            filter: ObjectFilter::permanent(),
+            count: 1,
+        })),
     }]
 }

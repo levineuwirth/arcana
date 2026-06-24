@@ -37,8 +37,11 @@ fn resolve(
 ) -> Vec<Effect> {
     let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    // GAP: "unless they discard an artifact" branch not expressible; emit the
-    // base discard-two effect.
+    // GAP: "unless they discard an ARTIFACT card" — the payment is a TYPED
+    // discard (discard a card of a specific type), but OptionalPaymentKind::
+    // Discard(u32) only takes a count, with no card-type filter. The
+    // discard-an-artifact payment mode isn't expressible; emit the base
+    // discard-two penalty (over-applies when they hold an artifact to pitch).
     vec![Effect::Discard {
         player: *p,
         count: 2,

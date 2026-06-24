@@ -589,6 +589,59 @@ pub enum OptionalPaymentKind {
     /// payer has less than `amount` (CR 119.4 — can't pay life you don't
     /// have).
     Life(u32),
+    /// Sacrifice one permanent matching the filter (CR 701.17). The
+    /// pay-branch posts the real sacrifice SELECTION (the chooser picks
+    /// which permanent) then runs `then`; legal action filtered when the
+    /// chooser controls no matching permanent. A serializable
+    /// [`SacrificeFilter`] (not a full `ObjectFilter`, which carries a
+    /// non-serializable `custom` predicate) keeps [`ChoiceKind`]
+    /// serializable.
+    Sacrifice(SacrificeFilter),
+    /// Discard N cards (the chooser's choice). Legal action filtered
+    /// when the chooser holds fewer than `N` cards.
+    Discard(u32),
+}
+
+/// Serializable permanent-class filter for [`OptionalPaymentKind::Sacrifice`]
+/// — the common "sacrifice a [class]" costs. Mapped to a full
+/// [`crate::targets::ObjectFilter`] at dispatch time via
+/// [`Self::to_object_filter`]. ("You control" is implied — the sacrifice
+/// selection only ever offers the chooser's own permanents.)
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SacrificeFilter {
+    /// Any permanent.
+    Permanent,
+    Creature,
+    Artifact,
+    Enchantment,
+    Land,
+    /// Creature or artifact (e.g. Seraph of New Capenna).
+    CreatureOrArtifact,
+    /// Any nonland permanent (e.g. Tergrid's Lantern).
+    NonLand,
+}
+
+impl SacrificeFilter {
+    /// Build the [`crate::targets::ObjectFilter`] this class selects.
+    pub fn to_object_filter(self) -> crate::targets::ObjectFilter {
+        use crate::targets::ObjectFilter;
+        use crate::types::TypeLine;
+        match self {
+            SacrificeFilter::Permanent => ObjectFilter::default(),
+            SacrificeFilter::Creature => ObjectFilter::creature(),
+            SacrificeFilter::Artifact =>
+                ObjectFilter::default().with_types(TypeLine::ARTIFACT.into()),
+            SacrificeFilter::Enchantment =>
+                ObjectFilter::default().with_types(TypeLine::ENCHANTMENT.into()),
+            SacrificeFilter::Land =>
+                ObjectFilter::default().with_types(TypeLine::LAND.into()),
+            SacrificeFilter::CreatureOrArtifact =>
+                ObjectFilter::default()
+                    .with_types_any((TypeLine::CREATURE | TypeLine::ARTIFACT).into()),
+            SacrificeFilter::NonLand =>
+                ObjectFilter::default().without_types(TypeLine::LAND.into()),
+        }
+    }
 }
 
 /// Agent reply to a [`PendingChoice`]. Paired 1:1 with [`ChoiceKind`];

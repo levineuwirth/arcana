@@ -5,16 +5,19 @@
 //! shuffle your library then exile the top card of your library. You may
 //! play that card without paying its mana cost this turn."
 //!
-//! No keyword line. Trigger 1 (upkeep "sacrifice unless you discard a
-//! card") is a discard-payment gate; OptionalPaymentKind carries only
-//! Mana/Life in v1, so "unless you discard a card" is not an expressible
-//! cost — GAP the effect. Trigger 2 is an attack impulse: the closest
-//! primitive is Effect::ImpulseExile of one card (exile the top card,
-//! may play it this turn). FIDELITY GAP: ImpulseExile lets you play at
-//! normal cost, whereas the oracle is "without paying its mana cost";
-//! the pre-exile shuffle is also un-modeled.
+//! No keyword line. Trigger 1 (upkeep "sacrifice this unless you discard a
+//! card") is a discard-payment gate, expressed as an optional Discard payment
+//! whose decline branch sacrifices a creature (the engine has no
+//! sacrifice-this-specific effect; filter-creature is the closest, a minor
+//! over-inclusion). Trigger 2 is an attack impulse: the closest primitive is
+//! Effect::ImpulseExile of one card (exile the top card, may play it this
+//! turn). FIDELITY GAP: ImpulseExile lets you play at normal cost, whereas the
+//! oracle is "without paying its mana cost"; the pre-exile shuffle is also
+//! un-modeled.
 
+use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::Effect;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -73,12 +76,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn upkeep_sacrifice_unless_discard(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "sacrifice ~ unless you discard a card" — discard is not an
-    // OptionalPaymentKind, so the unless-discard gate is unexpressible.
-    Vec::new()
+    // "sacrifice this unless you discard a card" — pay the Discard to avoid the
+    // penalty; declining sacrifices a creature (no sacrifice-this-specific
+    // effect — filter-creature is the closest, minor over-inclusion).
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Discard(1),
+        then: Box::new(Effect::Sequence(vec![])),
+        else_effect: Some(Box::new(Effect::Sacrifice {
+            player: trig.controller,
+            filter: ObjectFilter::creature(),
+            count: 1,
+        })),
+    }]
 }
 
 fn attack_impulse(

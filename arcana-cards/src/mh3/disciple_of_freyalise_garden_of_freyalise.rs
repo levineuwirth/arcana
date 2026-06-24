@@ -8,10 +8,13 @@
 //! "As this land enters, you may pay 3 life. If you don't, it enters tapped."
 //! {T}: Add {G}.
 //!
-//! GAP: Front-face ETB "you may sacrifice a creature; if you do, gain X life and draw X cards
-//!      where X is that creature's power" — sacrifice-choice cost (OptionalPaymentKind has no
-//!      Sacrifice variant); the X-scaling off the sacrificed creature's power is also not
-//!      expressible without knowing which creature was sacrificed. Whole ETB effect GAP'd.
+//! GAP: Front-face ETB "you may sacrifice another creature; if you do, gain X life and draw X
+//!      cards where X is that creature's power." The optional sacrifice itself IS now expressible
+//!      (OptionalPaymentKind::Sacrifice(Creature)), but the `then` benefit is DYNAMIC X off the
+//!      SACRIFICED creature's power — OptionalPayment's `then` runs after the payment resolves and
+//!      receives no handle on which permanent was sacrificed or its power, so X can't be read.
+//!      Wiring a fixed gain/draw would fabricate the value. Whole ETB effect GAP'd (dynamic-X off
+//!      the paid permanent).
 //! GAP: Back-face land "enters tapped unless you pay 3 life" is an enters-tapped replacement
 //!      effect conditioned on an OptionalPayment; replacement effects not yet modeled.
 //! GAP: Back-face {T}: Add {G} — land mana ability on MDFC back face (ActivatedAbilityDef with
@@ -60,8 +63,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             // GAP: ETB "may sacrifice another creature; if you do, gain X life and draw X cards
-            //      where X is that creature's power" — sacrifice-choice OptionalPaymentKind not
-            //      expressible; whole ETB effect omitted.
+            //      where X is that creature's power" — the optional sacrifice is expressible, but
+            //      the benefit's X reads the SACRIFICED creature's power, which OptionalPayment's
+            //      `then` can't access (dynamic-X off the paid permanent); whole ETB effect omitted.
             .with_mdfc_back(back)
     )
 }

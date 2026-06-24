@@ -2,10 +2,14 @@
 //! I — You may sacrifice a creature. When you do, this Saga deals 3 damage to any target.
 //! II — Each player discards a card.
 //! III — Return target creature card from your graveyard to the battlefield. Put a +1/+1 counter on it. It gains haste until your next turn.
-//! GAP: Chapter I "you may sacrifice a creature. When you do, deal 3 damage" — OptionalPayment with sacrifice cost not in catalog.
+//! Chapter I "you may sacrifice a creature. When you do, this Saga deals 3
+//! damage to any target" is wired as a positive `OptionalPayment`: paying
+//! (sacrifice a creature) runs the 3-damage to the pre-chosen target; declining
+//! does nothing.
 //! GAP: Chapter III — the return re-ids the object, so the follow-up counter and haste grant on the graveyard id may miss (no return-with-riders variant).
 //! Final-chapter sacrifice is automatic (engine SBA).
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::effects::{DiscardChoice, Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
 use arcana_core::layers::Duration;
@@ -116,18 +120,25 @@ fn chapter_i(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may sacrifice a creature. When you do, deal 3 damage" — sacrifice-conditional not in catalog
-    // Emitting direct damage as approximation
+    // "you may sacrifice a creature. When you do, this Saga deals 3 damage to
+    // any target." Positive optional payment: paying (sacrifice a creature)
+    // runs the 3-damage to the pre-chosen target; declining does nothing.
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
-    match target {
+    let damage = match target {
         arcana_core::targets::TargetChoice::Object(id) => {
-            vec![Effect::DealDamage { target: DamageTarget::Object(*id), amount: 3, source: trig.source }]
+            Effect::DealDamage { target: DamageTarget::Object(*id), amount: 3, source: trig.source }
         }
         arcana_core::targets::TargetChoice::Player(p) => {
-            vec![Effect::DealDamage { target: DamageTarget::Player(*p), amount: 3, source: trig.source }]
+            Effect::DealDamage { target: DamageTarget::Player(*p), amount: 3, source: trig.source }
         }
-        _ => Vec::new(),
-    }
+        _ => return Vec::new(),
+    };
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::Creature),
+        then: Box::new(damage),
+        else_effect: None,
+    }]
 }
 
 fn chapter_ii(

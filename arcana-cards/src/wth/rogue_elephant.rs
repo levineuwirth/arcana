@@ -1,8 +1,11 @@
 //! Rogue Elephant — `{G}` 3/3 Creature — Elephant.
 //! When this creature enters, sacrifice it unless you sacrifice a Forest.
-//! NOTE: The "unless you sacrifice a Forest" is an OptionalPayment with sacrifice-a-land cost.
-//! OptionalPaymentKind only has Mana and Life — no Sacrifice variant. GAP.
+//! NOTE: pay = sacrifice a land (SacrificeFilter::Land over-includes lands that
+//! aren't Forests — the filter can't constrain to a subtype); declining
+//! sacrifices a creature (no sacrifice-this-specific effect — minor
+//! over-inclusion).
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -48,11 +51,16 @@ fn on_enter(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "sacrifice it unless you sacrifice a Forest" — OptionalPaymentKind has no Sacrifice
-    //      variant; only Mana and Life supported. Emitting unconditional sacrifice as partial.
-    vec![Effect::Sacrifice {
-        player: trig.controller,
-        filter: arcana_core::targets::ObjectFilter::creature(),
-        count: 1,
+    // "sacrifice it unless you sacrifice a Forest" — pay the land-sacrifice to
+    // avoid the penalty; declining sacrifices a creature (the source).
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::Land),
+        then: Box::new(Effect::Sequence(vec![])),
+        else_effect: Some(Box::new(Effect::Sacrifice {
+            player: trig.controller,
+            filter: arcana_core::targets::ObjectFilter::creature(),
+            count: 1,
+        })),
     }]
 }

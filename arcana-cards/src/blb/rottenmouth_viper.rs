@@ -66,9 +66,10 @@ fn add_blight_then_drain(
         return Vec::new();
     };
     // GAP: "Then for each blight counter on it, each opponent loses 4 life
-    // unless that player sacrifices a nonland permanent or discards a card."
-    // The lose-life-unless-sacrifice-or-discard choice is not expressible
-    // (OptionalPaymentKind has only Mana/Life). Only the counter is added.
+    // unless that player sacrifices a nonland permanent OR discards a card."
+    // This is a COMPOUND sac-or-discard payment (two alternative cost modes the
+    // opponent chooses between); OptionalPaymentKind is a single cost, so the
+    // either/or choice is not expressible. Only the counter is added.
     vec![Effect::AddCounters {
         target: trig.source,
         kind: blight,

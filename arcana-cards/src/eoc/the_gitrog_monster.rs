@@ -1,11 +1,13 @@
 //! The Gitrog Monster — `{3}{B}{G}` 6/6 Legendary Frog Horror with Deathtouch.
 //! "At the beginning of your upkeep, sacrifice The Gitrog Monster unless you
-//! sacrifice a land." (GAP — "unless you sacrifice a land" is not an
-//! expressible optional cost; OptionalPaymentKind has only Mana/Life.)
+//! sacrifice a land." — wired as an optional sacrifice payment: the controller
+//! may sacrifice a land (the payment); declining sacrifices The Gitrog Monster
+//! itself (the penalty).
 //! "You may play an additional land on each of your turns." (GAP — static.)
 //! "Whenever one or more land cards are put into your graveyard from
 //! anywhere, draw a card."
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -42,8 +44,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars)
-            // GAP: upkeep "sacrifice ~ unless you sacrifice a land" — the
-            // unless-sacrifice cost is inexpressible.
+            // Upkeep "sacrifice ~ unless you sacrifice a land" — optional
+            // sacrifice payment (sacrifice a land, else sacrifice this).
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::StepBegins {
@@ -74,11 +76,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn upkeep_sac_unless(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "sacrifice The Gitrog Monster unless you sacrifice a land".
-    Vec::new()
+    // "sacrifice The Gitrog Monster unless you sacrifice a land" — the
+    // controller may pay by sacrificing a land; declining sacrifices The
+    // Gitrog Monster itself (the source, routed through DestroyPermanent).
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::Land),
+        then: Box::new(Effect::Sequence(vec![])),
+        else_effect: Some(Box::new(Effect::DestroyPermanent {
+            target: trig.source,
+        })),
+    }]
 }
 
 fn draw_on_land_to_graveyard(

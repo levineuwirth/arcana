@@ -7,11 +7,13 @@
 //!
 //! # GAP
 //! The upkeep triggered ability "you may sacrifice an artifact, enchantment,
-//! or token — if you don't, tap this creature" requires a choice-gate with
-//! sacrifice whose OptionalPayment sacrifice variant is not in v1
-//! (OptionalPaymentKind only supports Mana/Life). The triggered ability is
-//! partially emitted: the tap consequence only (the sacrifice option is
-//! GAP'd, so the creature always taps at upkeep).
+//! or token — if you don't, tap this creature" pays by sacrificing one of an
+//! artifact/enchantment/token disjunction. SacrificeFilter has no variant for
+//! that class (NonLand is strictly more permissive — it would also let you
+//! sacrifice a creature/planeswalker, which the oracle forbids; and there is no
+//! token-only class). No faithful single-mode mapping exists, so the optional
+//! sacrifice stays GAP'd: the tap consequence only is emitted (the creature
+//! always taps at upkeep).
 
 use arcana_core::effects::{CommodityToken, Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -94,8 +96,10 @@ fn upkeep_trigger(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: "you may sacrifice an artifact, enchantment, or token — if you
-    // don't, tap this creature" — OptionalPaymentKind has no Sacrifice
-    // variant in v1. Emitting only the tap consequence (always taps).
+    // don't, tap this creature" — SacrificeFilter has no artifact/enchantment/
+    // token disjunction (NonLand is over-permissive, no token-only class), so no
+    // faithful single-mode payment exists. Emitting only the tap consequence
+    // (always taps).
     vec![Effect::Tap { target: trig.source }]
 }
 

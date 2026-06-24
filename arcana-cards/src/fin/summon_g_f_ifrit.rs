@@ -2,10 +2,11 @@
 //! 3/2. 4 chapters.
 //! I, II — You may discard a card. If you do, draw a card.
 //! III, IV — Add {R}.
-//! GAP: Chapter I/II "you may discard, if you do draw" — OptionalPayment with Discard cost not in catalog.
-//! Final-chapter sacrifice is automatic (engine SBA).
+//! Chapter I/II "you may discard a card. If you do, draw a card" is wired via an
+//! optional discard payment. Final-chapter sacrifice is automatic (engine SBA).
 
-use arcana_core::effects::{DiscardChoice, Effect};
+use arcana_core::actions::OptionalPaymentKind;
+use arcana_core::effects::Effect;
 use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
@@ -122,11 +123,13 @@ fn chapter_i_ii(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may discard, if you do draw" — OptionalPayment with Discard not in catalog
-    vec![
-        Effect::Discard { player: trig.controller, count: 1, choice: DiscardChoice::ControllerChooses },
-        Effect::DrawCards { player: trig.controller, count: 1 },
-    ]
+    // "You may discard a card. If you do, draw a card."
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Discard(1),
+        then: Box::new(Effect::DrawCards { player: trig.controller, count: 1 }),
+        else_effect: None,
+    }]
 }
 
 fn chapter_iii_iv(

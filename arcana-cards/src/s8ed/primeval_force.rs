@@ -1,8 +1,10 @@
 //! Primeval Force — `{2}{G}{G}{G}` 8/8 green Elemental.
 //! "When this creature enters, sacrifice it unless you sacrifice three Forests."
-//! GAP: effect — "unless you sacrifice three Forests" conditional sacrifice
-//! is not expressible; using unconditional self-sacrifice as best-effort
-//! (worst-case approximation).
+//! GAP: the payment is a MULTI-COUNT, SUBTYPE-restricted sacrifice (three
+//! Forests). `OptionalPaymentKind::Sacrifice(SacrificeFilter)` sacrifices
+//! exactly ONE permanent and SacrificeFilter has no land-subtype (Forest)
+//! class, so neither the count nor the subtype is expressible. Using
+//! unconditional self-sacrifice as best-effort (worst-case approximation).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -50,8 +52,10 @@ fn on_etb(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: effect — conditional "unless you sacrifice three Forests" not
-    // expressible; emitting unconditional self-sacrifice as approximation.
+    // GAP: "unless you sacrifice three Forests" is a multi-count,
+    // subtype-restricted sacrifice payment; OptionalPaymentKind::Sacrifice
+    // sacrifices one permanent and has no Forest-subtype class. Emitting
+    // unconditional self-sacrifice as approximation.
     vec![Effect::Sacrifice {
         player: trig.controller,
         filter: arcana_core::targets::ObjectFilter::creature(),

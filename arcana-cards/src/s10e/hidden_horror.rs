@@ -2,9 +2,11 @@
 //! "When this creature enters, sacrifice it unless you discard a creature card."
 //!
 //! # Notes
-//! GAP: conditional sacrifice-unless (no Effect::Conditional variant with a discard-check
-//! condition). Modeled as ETB discard a creature card; sacrifice is omitted.
-//! GAP: "unless you discard a creature card" — condition on player choice not expressible.
+//! GAP: the payment is a TYPED discard ("a creature card"), but
+//! `OptionalPaymentKind::Discard(u32)` is untyped (discards N cards of any
+//! type). Wiring it would let any card be discarded — a materially weaker
+//! gate — so the sacrifice-unless conditional stays GAP'd; modeled as an
+//! unconditional ETB discard of a creature card as best-effort.
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
@@ -52,7 +54,9 @@ fn etb_discard_or_sacrifice(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "sacrifice unless you discard a creature card" — conditional on player choice
-    // not expressible; emitting discard as best-effort approximation.
+    // GAP: "sacrifice unless you discard a creature card" — the payment is a
+    // TYPED discard ("a creature card") and OptionalPaymentKind::Discard(u32)
+    // is untyped, so the gate can't be faithfully posted; emitting an
+    // unconditional (any-card) discard as best-effort approximation.
     vec![Effect::Discard { player: trig.controller, count: 1, choice: DiscardChoice::ControllerChooses }]
 }

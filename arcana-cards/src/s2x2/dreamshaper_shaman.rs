@@ -3,8 +3,9 @@
 //! permanent. If you do, reveal cards from the top of your library until you reveal
 //! a nonland permanent card. Put that card onto the battlefield and the rest on the
 //! bottom of your library in a random order."
-//! GAP: OptionalPayment only supports Mana or Life costs; the additional
-//! "sacrifice a nonland permanent" cost cannot be expressed in OptionalPaymentKind.
+//! GAP: COMPOUND payment — "pay {2}{R} AND sacrifice a nonland permanent" is a
+//! single optional cost combining mana plus a sacrifice. OptionalPaymentKind
+//! holds exactly one cost, so a mana-and-sacrifice payment cannot be expressed.
 //! Emitting the RevealUntil effect without the optional-payment/sacrifice gate.
 
 use arcana_core::effects::{DigRest, Effect, RevealDest};
@@ -59,8 +60,9 @@ fn end_step_reveal_permanent(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may pay {2}{R} and sacrifice a nonland permanent" optional cost not
-    // expressible — OptionalPaymentKind only supports Mana or Life, not sacrifice.
+    // GAP: "you may pay {2}{R} and sacrifice a nonland permanent" is a COMPOUND
+    // optional cost (mana AND a sacrifice); OptionalPaymentKind holds a single
+    // cost, so the combined payment is not expressible.
     // Emitting the RevealUntil effect unconditionally as best-effort.
     vec![Effect::RevealUntil {
         player: trig.controller,

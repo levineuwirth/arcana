@@ -7,11 +7,13 @@
 //! target.
 //!
 //! Menace is a base keyword. The trigger fires on a spell you cast. The
-//! "second spell each turn" gating, the optional artifact-sacrifice cost
-//! (OptionalPayment supports only mana/life, not sacrifice), and the
-//! coin-flip branch (copy that spell / deal that-spell's-mana-value
-//! damage — neither "that spell" nor its mana value is readable at the
-//! trigger) are all GAPs, so the effect body is empty.
+//! optional artifact-sacrifice cost IS now expressible
+//! (OptionalPaymentKind::Sacrifice), but the rest of the ability is not: the
+//! "second spell each turn" ordinal gate, and the coin-flip payoff (on a win,
+//! copy that spell; on a loss, deal damage equal to that spell's mana value)
+//! whose branches both reference "that spell" — neither the triggering spell
+//! nor its mana value is readable at this trigger. With no honest payoff to put
+//! behind the sacrifice gate, the effect body stays empty.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
@@ -70,9 +72,9 @@ fn breeches_payoff(
     _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may sacrifice an artifact" (OptionalPayment has no sacrifice
-    // kind) gating a coin flip whose branches copy "that spell" or deal
-    // damage equal to "that spell's mana value" — the triggering spell and
-    // its mana value are not readable from this trigger.
+    // GAP: "you may sacrifice an artifact" IS now expressible, but it gates a
+    // coin flip whose branches copy "that spell" or deal damage equal to "that
+    // spell's mana value" — the triggering spell and its mana value are not
+    // readable from this trigger, so there is no honest payoff to gate. Omitted.
     Vec::new()
 }

@@ -2,10 +2,11 @@
 //! "When this creature enters, it deals 5 damage to target opponent unless
 //! that player sacrifices a creature of their choice."
 //!
-//! GAP: the "unless that player sacrifices a creature" alternative is not
-//! expressible (OptionalPayment only supports mana/life costs). Best-effort:
-//! the trigger deals 5 damage to the target opponent unconditionally.
+//! The targeted opponent may sacrifice a creature to avoid the 5 damage —
+//! an OptionalPayment whose chooser is that player (pay = sacrifice a creature,
+//! decline = take 5 damage).
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
@@ -62,9 +63,17 @@ fn etb_demand(
 ) -> Vec<Effect> {
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Player(p) = target else { return Vec::new(); };
-    vec![Effect::DealDamage {
-        source: trig.source,
-        target: DamageTarget::Player(*p),
-        amount: 5,
+    // "...unless that player sacrifices a creature of their choice." The
+    // opponent chooses: pay (sacrifice a creature) avoids the damage; decline
+    // takes 5.
+    vec![Effect::OptionalPayment {
+        chooser: *p,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::Creature),
+        then: Box::new(Effect::Sequence(vec![])),
+        else_effect: Some(Box::new(Effect::DealDamage {
+            source: trig.source,
+            target: DamageTarget::Player(*p),
+            amount: 5,
+        })),
     }]
 }

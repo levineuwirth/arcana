@@ -1,9 +1,12 @@
 //! Balduvian Horde — `{2}{R}{R}` 5/5 red Human Barbarian.
 //! "When this creature enters, sacrifice it unless you discard a card at random."
-//! ETB trigger: OptionalPayment gate — the "discard a card at random" cost is not
-//! expressible as OptionalPaymentKind (only Mana/Life supported); GAP noted below.
+//! ETB trigger: OptionalPayment gate — pay = discard a card (decline = sacrifice
+//! this creature). Fidelity note: "at random" is approximated as a chooser-picked
+//! discard (OptionalPaymentKind::Discard offers no random-selection variant).
 
+use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::Effect;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -49,14 +52,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 fn etb_unless_discard(
     _state: &GameState,
     trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "sacrifice unless you discard a card at random" — OptionalPaymentKind has no
-    // Discard variant; cannot express "discard at random" as a cost gate. Sacrificing
-    // unconditionally as a best-effort degraded implementation.
-    vec![Effect::Sacrifice {
-        player: trig.controller,
-        filter: arcana_core::targets::ObjectFilter::creature(),
-        count: 1,
+    // "Sacrifice it unless you discard a card." Pay = discard 1 (nothing else);
+    // decline = sacrifice this creature. (Fidelity: "at random" approximated as a
+    // chooser-picked discard — Discard offers no random-selection variant.)
+    let nm = reg.interner().lookup("Balduvian Horde");
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Discard(1),
+        then: Box::new(Effect::Sequence(vec![])),
+        else_effect: Some(Box::new(Effect::Sacrifice {
+            player: trig.controller,
+            filter: ObjectFilter { name: nm, ..ObjectFilter::default() },
+            count: 1,
+        })),
     }]
 }

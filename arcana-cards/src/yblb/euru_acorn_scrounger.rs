@@ -5,9 +5,9 @@
 //!    and Conjure are unmodeled; effect GAP'd.
 //! 2. "Whenever one or more Squirrels you control deal combat damage to a
 //!    player, you may sacrifice a token; if you do, put an acorn counter on
-//!    each permanent you control named Chitterspitter." — the optional
-//!    sacrifice of a token (non-mana/life optional cost) is not expressible;
-//!    effect GAP'd, trigger shell wired.
+//!    each permanent you control named Chitterspitter." — SacrificeFilter has
+//!    no token-only class, so the "sacrifice a token" payment can't be
+//!    expressed; effect GAP'd, trigger shell wired.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -88,8 +88,8 @@ fn squirrels_combat_damage(
     _trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "you may sacrifice a token" is an optional non-mana/life cost
-    // (OptionalPaymentKind has only Mana/Life), so the conditional acorn
-    // counter placement cannot be gated; whole effect GAP'd.
+    // GAP: "you may sacrifice a token" — SacrificeFilter has no token-only
+    // class, so the payment can't be expressed; the conditional acorn-counter
+    // placement cannot be gated; whole effect GAP'd.
     Vec::new()
 }

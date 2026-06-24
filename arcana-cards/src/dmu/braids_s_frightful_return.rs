@@ -3,14 +3,17 @@
 //! Read ahead — GAP: not modeled; using standard saga starting at chapter I.
 //!
 //! I — You may sacrifice a creature. If you do, each opponent discards a card.
-//!     (GAP: "sacrifice a creature, if you do" — OptionalPaymentKind has no
-//!     Sacrifice variant v1; emitting each opponent discards without the gate.)
+//!     (Wired as an OptionalPayment: pay = sacrifice a creature → each opponent
+//!     discards 1; decline does nothing.)
 //! II — Return target creature card from your graveyard to your hand.
 //! III — Target opponent may sacrifice a nonland, nontoken permanent. If they
 //!        don't, they lose 2 life and you draw a card.
-//!        (GAP: opponent choice not expressible; emitting LoseLife + DrawCards
-//!        without the sacrifice option.)
+//!        (Wired as an OptionalPayment whose chooser is the targeted opponent:
+//!        pay = sacrifice a nonland permanent → nothing more; decline = they lose
+//!        2 life and you draw. Fidelity note: SacrificeFilter::NonLand can't add
+//!        the "nontoken" constraint, so a token could satisfy the payment.)
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -79,10 +82,17 @@ fn add_lore_counter(_s: &GameState, trig: &PendingTrigger, _r: &CardRegistry) ->
 }
 
 fn chapter_i(state: &GameState, trig: &PendingTrigger, _r: &CardRegistry) -> Vec<Effect> {
-    let opponents = script::opponents(state, trig.controller);
-    opponents.into_iter()
+    // "You may sacrifice a creature. If you do, each opponent discards a card."
+    let discards: Vec<Effect> = script::opponents(state, trig.controller)
+        .into_iter()
         .map(|p| Effect::Discard { player: p, count: 1, choice: DiscardChoice::ControllerChooses })
-        .collect()
+        .collect();
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::Creature),
+        then: Box::new(Effect::Sequence(discards)),
+        else_effect: None,
+    }]
 }
 
 fn chapter_ii(_s: &GameState, trig: &PendingTrigger, _r: &CardRegistry) -> Vec<Effect> {
@@ -92,10 +102,17 @@ fn chapter_ii(_s: &GameState, trig: &PendingTrigger, _r: &CardRegistry) -> Vec<E
 
 fn chapter_iii(_s: &GameState, trig: &PendingTrigger, _r: &CardRegistry) -> Vec<Effect> {
     let Some(TargetChoice::Player(p)) = trig.targets.targets.first() else { return Vec::new(); };
-    // GAP: "opponent may sacrifice, if they don't lose 2 life and you draw"
-    // emitting punishment without the sacrifice option
-    vec![
-        Effect::LoseLife { player: *p, amount: 2 },
-        Effect::DrawCards { player: trig.controller, count: 1 },
-    ]
+    // "Target opponent may sacrifice a nonland, nontoken permanent. If they
+    // don't, they lose 2 life and you draw a card." The opponent chooses: pay
+    // (sacrifice a nonland permanent) avoids the penalty; decline triggers it.
+    // (Nontoken can't be added to SacrificeFilter::NonLand — minor over-inclusion.)
+    vec![Effect::OptionalPayment {
+        chooser: *p,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::NonLand),
+        then: Box::new(Effect::Sequence(vec![])),
+        else_effect: Some(Box::new(Effect::Sequence(vec![
+            Effect::LoseLife { player: *p, amount: 2 },
+            Effect::DrawCards { player: trig.controller, count: 1 },
+        ]))),
+    }]
 }

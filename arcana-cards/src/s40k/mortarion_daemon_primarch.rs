@@ -6,10 +6,11 @@
 //! tokens with menace. X can't be greater than the amount of life you
 //! lost this turn."
 //!
-//! The end-step ability is GAP'd: `OptionalPaymentKind` has no variable
-//! {X} mana form, and there is no primitive to bound X by life lost this
-//! turn nor to mint X tokens from a paid X. Flying is the only fully
-//! expressible piece.
+//! The end-step ability is GAP'd: the payment is a VARIABLE {X} mana cost,
+//! and `OptionalPaymentKind::Mana` takes a fixed ManaCost (no variable-X
+//! form); there is also no primitive to bound X by life lost this turn nor to
+//! mint X tokens from a paid X. Not a sacrifice/discard payment. Flying is the
+//! only fully expressible piece.
 
 use arcana_core::effects::Effect;
 use arcana_core::effects::KeywordAbility;
@@ -69,8 +70,8 @@ fn end_step_primarch(
 ) -> Vec<Effect> {
     // GAP: "you may pay {X}. If you do, create X 2/2 black Astartes
     // Warrior tokens with menace, where X can't exceed life lost this
-    // turn." OptionalPaymentKind has only Mana(fixed) / Life — no
+    // turn." OptionalPaymentKind::Mana takes a FIXED ManaCost — there is no
     // variable-X mana payment, no way to mint X tokens from the paid X,
-    // and no life-lost-this-turn cap primitive.
+    // and no life-lost-this-turn cap primitive. Not a sacrifice/discard cost.
     Vec::new()
 }

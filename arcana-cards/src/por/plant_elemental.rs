@@ -1,13 +1,17 @@
 //! Plant Elemental — `{1}{G}` 3/4 Plant Elemental.
 //! "When this creature enters, sacrifice it unless you sacrifice a Forest."
-//! GAP: "sacrifice a Forest" (not self, specific subtype) as OptionalPayment — Sacrifice cost not expressible; emitting self-sacrifice as worst case.
+//!
+//! Wired via Effect::OptionalPayment { Sacrifice(Land) → avoid penalty;
+//! else_effect = destroy this creature }. Caveat: SacrificeFilter::Land is the
+//! closest single mode — it can't encode the "Forest" land subtype, so any land
+//! satisfies the cost (minor over-inclusion).
 
+use arcana_core::actions::{OptionalPaymentKind, SacrificeFilter};
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -51,11 +55,12 @@ fn on_etb(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "sacrifice it unless you sacrifice a Forest" — Sacrifice-other-as-payment not expressible;
-    // emitting self-sacrifice as worst-case approximation (card always sacrifices itself)
-    vec![Effect::Sacrifice {
-        player: trig.controller,
-        filter: ObjectFilter::creature(),
-        count: 1,
+    // "sacrifice it unless you sacrifice a Forest" — pay = sacrifice a land
+    // (penalty avoided); decline = sacrifice (destroy) this creature.
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Sacrifice(SacrificeFilter::Land),
+        then: Box::new(Effect::Sequence(vec![])),
+        else_effect: Some(Box::new(Effect::DestroyPermanent { target: trig.source })),
     }]
 }

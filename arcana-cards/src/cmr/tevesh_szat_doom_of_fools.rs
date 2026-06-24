@@ -9,8 +9,10 @@
 //! * `+2`: Create two 0/1 black Thrull creature tokens.
 //! * `+1`: You may sacrifice another creature or planeswalker. If you do,
 //!   draw two cards, then draw another if the sacrificed permanent was a
-//!   commander. — GAP (OptionalPayment supports only Mana/Life costs, not
-//!   sacrifice; the commander-conditional extra draw is also unbuilt).
+//!   commander. — GAP: SacrificeFilter has no "creature or planeswalker"
+//!   class (no faithful single mode), and "another" can't exclude this
+//!   planeswalker from its own selection; the commander-conditional extra
+//!   draw is also unbuilt.
 //! * `−10`: Gain control of all commanders; put all commanders from the
 //!   command zone onto the battlefield under your control. — GAP
 //!   (command-zone reanimation + mass control has no demonstrated
@@ -139,9 +141,9 @@ fn plus_one_sac(
     _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: OptionalPayment supports only Mana/Life costs, not "sacrifice a
-    // creature or planeswalker"; the commander-conditional extra draw is
-    // also unbuilt.
+    // GAP: SacrificeFilter has no "creature or planeswalker" class (no faithful
+    // single mode) and "another" can't exclude this planeswalker from its own
+    // selection; the commander-conditional extra draw is also unbuilt.
     Vec::new()
 }
 

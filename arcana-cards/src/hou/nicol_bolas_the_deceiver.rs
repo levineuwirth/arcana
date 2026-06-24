@@ -7,10 +7,11 @@
 //! −11: Nicol Bolas deals 7 damage to each opponent. You draw seven cards.
 //!
 //! GAP: +3 "loses 3 life unless that player sacrifices a nonland permanent or
-//!   discards a card" — the demonstrated OptionalPayment surface only offers
-//!   Mana/Life payments; a "sacrifice OR discard" rummage-choice as an
-//!   alternative-cost-to-avoid-life-loss is not expressible. The +3 ability
-//!   shell is declared with the correct cost and returns Vec::new().
+//!   discards a card" — this is a COMPOUND sac-OR-discard payment (two
+//!   alternative payment modes). OptionalPaymentKind is a single cost, so the
+//!   "sacrifice OR discard" choice is not expressible faithfully; wiring only
+//!   one mode would silently drop the other. The +3 ability shell is declared
+//!   with the correct cost and returns Vec::new().
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -101,8 +102,9 @@ fn plus_three_gap(
     _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "loses 3 life unless sacrifices a nonland permanent or discards a
-    // card" — the unless-pay-sacrifice/discard choice is not expressible.
+    // GAP: "loses 3 life unless sacrifices a nonland permanent OR discards a
+    // card" — a compound sac-OR-discard payment (two alternative modes).
+    // OptionalPaymentKind is a single cost, so this isn't expressible.
     Vec::new()
 }
 
