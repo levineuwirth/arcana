@@ -3054,6 +3054,34 @@ fn mint_one_token(
     );
     obj.is_token = true;
     state.objects.insert(obj);
+    // Attach the token's printed TRIGGERED abilities (a token that "when
+    // it enters/dies/attacks, …"). Tokens have no registry def, so — like
+    // emblem abilities and `Effect::GrantTriggeredAbility` — they live on
+    // the object's `granted_triggered_abilities`, ids remapped into the
+    // granted range so collection/resolution route to the def's effect fn
+    // instead of a (nonexistent) registry lookup. Keep the ability's own
+    // `trigger_zones` (a token's are battlefield-scoped, NOT Command like
+    // an emblem); `WhileSourceOnBattlefield` so they persist across turns
+    // and are shed when the token leaves. Attached BEFORE the ETB event
+    // below so a token's own enters-the-battlefield trigger is present
+    // when that event fires.
+    if !token.abilities.is_empty() {
+        if let Some(obj) = state.objects.get_mut(id) {
+            for (i, ability) in token.abilities.iter().enumerate() {
+                let mut def = ability.clone();
+                def.id = crate::triggers::GRANTED_TRIGGER_ID_BASE
+                    + 1 + i as crate::types::TriggerId;
+                if def.trigger_zones.is_empty() {
+                    def.trigger_zones = vec![Zone::Battlefield];
+                }
+                obj.granted_triggered_abilities.push(
+                    crate::triggers::GrantedTrigger {
+                        def,
+                        duration: crate::layers::Duration::WhileSourceOnBattlefield,
+                    });
+            }
+        }
+    }
     state.emit(GameEvent::TokenCreated { object_id: id, controller });
     // Tokens are fair game for global ETB replacements (Hardened
     // Scales, enter-tapped fields, etc.); route through the same
@@ -5933,6 +5961,49 @@ mod tests {
             .filter(|o| o.zone.is_battlefield()).collect();
         assert_eq!(tokens.len(), 1);
         assert!(tokens[0].status.summoning_sick);
+    }
+
+    #[test]
+    fn token_triggered_abilities_attach_to_minted_object() {
+        // A token that "when it enters/dies/attacks, …" — its printed
+        // triggered ability must land on the minted object's
+        // granted_triggered_abilities (tokens have no registry def), with
+        // the id remapped into the granted range so collection/resolution
+        // route to the def's effect fn. (Firing is the shared granted-
+        // trigger path the emblem tests + harness already exercise.)
+        fn draw_one(_s: &GameState, trig: &crate::triggers::PendingTrigger,
+                    _r: &crate::registry::CardRegistry) -> Vec<Effect> {
+            vec![Effect::DrawCards { player: trig.controller, count: 1 }]
+        }
+        let mut s = GameState::new(2, 0);
+        let def = TokenDefinition {
+            name: 0,
+            colors: ColorSet::white(),
+            types: TypeLine::CREATURE.into(),
+            subtypes: SubtypeSet::new(),
+            power: Some(PtValue::Fixed(2)),
+            toughness: Some(PtValue::Fixed(2)),
+            keywords: vec![],
+            abilities: vec![crate::triggers::TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: crate::triggers::TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: draw_one,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: crate::triggers::TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            }],
+        };
+        Effect::CreateToken { controller: 0, token: def }.execute(&mut s);
+        let tok = s.objects.iter().find(|o| o.is_token).expect("token minted");
+        assert_eq!(tok.granted_triggered_abilities.len(), 1,
+            "the token's printed triggered ability is attached (was silently dropped before)");
+        let g = &tok.granted_triggered_abilities[0];
+        assert!(g.def.id >= crate::triggers::GRANTED_TRIGGER_ID_BASE,
+            "id remapped into the granted range for non-registry dispatch");
+        assert_eq!(g.def.trigger_zones, vec![Zone::Battlefield],
+            "the ability keeps its battlefield scope (not Command like an emblem)");
+        assert_eq!(g.duration, crate::layers::Duration::WhileSourceOnBattlefield);
     }
 
     // --- commodity tokens (Treasure / Clue / Food / Powerstone / Incubator) -
