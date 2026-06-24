@@ -79,3 +79,4 @@ pub mod skarrg_guildmage;
 pub mod spark_trooper;
 pub mod fortress_cyclops;
 pub mod hold_the_gates;
+pub mod guildscorn_ward;

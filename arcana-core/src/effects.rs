@@ -2795,6 +2795,12 @@ pub enum ProtectionQuality {
     AnyColor,
     /// "Protection from Goblins" — matches by subtype name.
     CreatureType(SmallString),
+    /// "Protection from multicolored" — matches sources with two or
+    /// more colors (Guildscorn Ward).
+    Multicolored,
+    /// "Protection from monocolored" — matches sources with exactly one
+    /// color.
+    Monocolored,
     /// "Protection from everything" (Pristine Angel-style).
     Everything,
 }
@@ -2806,6 +2812,8 @@ impl ProtectionQuality {
             Self::Everything => true,
             Self::Color(c) => source.colors.contains(*c),
             Self::AnyColor => !source.colors.is_colorless(),
+            Self::Multicolored => source.colors.0.count_ones() >= 2,
+            Self::Monocolored => source.colors.0.count_ones() == 1,
             Self::CreatureType(name) => source.subtypes.contains(*name),
         }
     }
@@ -6480,6 +6488,20 @@ mod tests {
     // --- Counter (stack interaction) ---------------------------------------
 
     // --- Protection / Attach ----------------------------------------------
+
+    #[test]
+    fn protection_multicolored_monocolored_match_by_color_count() {
+        let chars = |cs: ColorSet| Characteristics { colors: cs, ..Default::default() };
+        let mono = chars(ColorSet::red());
+        let multi = chars(ColorSet::red() | ColorSet::white());
+        let colorless = chars(ColorSet::new());
+        assert!(ProtectionQuality::Multicolored.matches_source(&multi));
+        assert!(!ProtectionQuality::Multicolored.matches_source(&mono));
+        assert!(!ProtectionQuality::Multicolored.matches_source(&colorless));
+        assert!(ProtectionQuality::Monocolored.matches_source(&mono));
+        assert!(!ProtectionQuality::Monocolored.matches_source(&multi));
+        assert!(!ProtectionQuality::Monocolored.matches_source(&colorless));
+    }
 
     #[test]
     fn protection_from_red_prevents_damage_from_red_source() {

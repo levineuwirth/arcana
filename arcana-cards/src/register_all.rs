@@ -6811,6 +6811,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::gtc::spark_trooper::register(reg); n += 1;
     crate::gtc::fortress_cyclops::register(reg); n += 1;
     crate::gtc::hold_the_gates::register(reg); n += 1;
+    crate::gtc::guildscorn_ward::register(reg); n += 1;
     // --- cmm ---
     crate::cmm::yargle_glutton_of_urborg::register(reg); n += 1;
     crate::cmm::goliath_sphinx::register(reg); n += 1;
