@@ -165,3 +165,4 @@ pub mod dragon_egg;
 pub mod kodama_of_the_east_tree;
 pub mod stingerfling_spider;
 pub mod sifter_wurm;
+pub mod benevolent_blessing;

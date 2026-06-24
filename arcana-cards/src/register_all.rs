@@ -943,6 +943,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::tor::cephalid_illusionist::register(reg); n += 1;
     crate::tor::reborn_hero::register(reg); n += 1;
     crate::tor::gloomdrifter::register(reg); n += 1;
+    crate::tor::floating_shield::register(reg); n += 1;
     // --- eld ---
     crate::eld::bonecrusher_giant::register(reg); n += 1;
     crate::eld::knight_of_the_keep::register(reg); n += 1;
@@ -2414,6 +2415,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::mmq::aerial_caravan::register(reg); n += 1;
     crate::mmq::cateran_overlord::register(reg); n += 1;
     crate::mmq::rushwood_elemental::register(reg); n += 1;
+    crate::mmq::cho_manno_s_blessing::register(reg); n += 1;
     // --- gs1 ---
     crate::gs1::leopard_spotted_jiao::register(reg); n += 1;
     crate::gs1::ferocious_zheng::register(reg); n += 1;
@@ -5676,6 +5678,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::mir::vigilant_martyr::register(reg); n += 1;
     crate::mir::suq_ata_firewalker::register(reg); n += 1;
     crate::mir::wellspring::register(reg); n += 1;
+    crate::mir::ward_of_lights::register(reg); n += 1;
     // --- shm ---
     crate::shm::old_ghastbark::register(reg); n += 1;
     crate::shm::loamdragger_giant::register(reg); n += 1;
@@ -13265,6 +13268,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::cmr::kodama_of_the_east_tree::register(reg); n += 1;
     crate::cmr::stingerfling_spider::register(reg); n += 1;
     crate::cmr::sifter_wurm::register(reg); n += 1;
+    crate::cmr::benevolent_blessing::register(reg); n += 1;
     // --- dst ---
     crate::dst::arcbound_bruiser::register(reg); n += 1;
     crate::dst::ritual_of_restoration::register(reg); n += 1;

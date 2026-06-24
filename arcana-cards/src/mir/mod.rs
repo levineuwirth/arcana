@@ -121,3 +121,4 @@ pub mod locust_swarm;
 pub mod vigilant_martyr;
 pub mod suq_ata_firewalker;
 pub mod wellspring;
+pub mod ward_of_lights;

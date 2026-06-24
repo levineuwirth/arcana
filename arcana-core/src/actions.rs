@@ -543,6 +543,11 @@ pub enum ChoiceKind {
     ChooseTargets {
         source: ObjectId,
     },
+    /// Choose one of the five colors (CR 700.4 — "choose a color").
+    /// Answer: [`ChoiceResponse::ChooseColor`]. The follow-up that
+    /// consumes the chosen color lives on
+    /// [`crate::state::GameState::pending_choice_follow_up`].
+    ChooseColor,
 }
 
 /// Destinations a card can be placed during an `OrderCards` choice.
@@ -621,6 +626,8 @@ pub enum ChoiceResponse {
     /// of requirements; each `TargetChoice` is validated at the
     /// dispatcher (legality is rechecked per CR 608.2b).
     ChooseTargets { selection: crate::targets::TargetSelection },
+    /// Reply to [`ChoiceKind::ChooseColor`].
+    ChooseColor { color: crate::types::Color },
 }
 
 /// A spell/ability resolution that yielded mid-way to push a
@@ -683,6 +690,11 @@ pub enum ChoiceFollowUp {
     /// attacker list, no `CreatureAttacks` event). Pushed by
     /// [`crate::effects::Effect::PutFromHandOntoBattlefieldTappedAttacking`].
     MoveToBattlefieldAttacking { controller: PlayerId },
+    /// Consume a [`ChoiceResponse::ChooseColor`]: install on `source` an
+    /// attached "protection from the chosen color" (Cho-Manno's Blessing,
+    /// Floating Shield) — `attached_keyword(Protection(Color(chosen)))`,
+    /// `Duration::WhileSourceOnBattlefield`.
+    AttachProtectionFromChosenColor { source: ObjectId },
     /// Sacrifice each picked permanent (move to owner's graveyard,
     /// emit [`crate::events::GameEvent::Sacrifice`]).
     Sacrifice { player: PlayerId },

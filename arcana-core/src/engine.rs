@@ -1293,6 +1293,30 @@ pub(crate) fn apply_resolution_choice(
             effect.for_player(*picked).execute(state);
         }
 
+        // --- ChooseColor mid-resolution ("choose a color; …") --------
+        (
+            ChoiceKind::ChooseColor,
+            ChoiceContext::ResolvingStack(_),
+            ChoiceResponse::ChooseColor { color },
+        ) => {
+            let follow_up = state.pending_choice_follow_up.take()
+                .expect("apply_resolution_choice: ChooseColor at \
+                         ResolvingStack context requires a \
+                         pending_choice_follow_up");
+            match follow_up {
+                crate::actions::ChoiceFollowUp::AttachProtectionFromChosenColor { source } => {
+                    state.add_continuous_effect(
+                        crate::layers::ContinuousEffect::attached_keyword(
+                            source,
+                            crate::effects::KeywordAbility::Protection(
+                                crate::effects::ProtectionQuality::Color(*color)),
+                            crate::layers::Duration::WhileSourceOnBattlefield));
+                }
+                other => panic!("apply_resolution_choice: ChooseColor follow-up \
+                                 must be AttachProtectionFromChosenColor, got {other:?}"),
+            }
+        }
+
         // --- PickCards at SBA time: Legend rule (CR 704.5j) ----------
         (
             ChoiceKind::PickCards { candidates, min, max },
@@ -1940,6 +1964,14 @@ fn apply_choice_follow_up(
             panic!(
                 "apply_choice_follow_up: ExploreMayMill should be consumed \
                  at the ChoiceKind::YesNo dispatch arm");
+        }
+        ChoiceFollowUp::AttachProtectionFromChosenColor { .. } => {
+            // Paired with ChoiceKind::ChooseColor (not PickCards); its
+            // dispatch lives inline at the ChooseColor arm in
+            // apply_resolution_choice.
+            panic!(
+                "apply_choice_follow_up: AttachProtectionFromChosenColor \
+                 should be consumed at the ChoiceKind::ChooseColor dispatch arm");
         }
     }
 }
@@ -5443,6 +5475,34 @@ mod resolution_choice_framework_tests {
         assert!(s.pending_choice.is_none());
         assert!(s.pending_resolution.is_none());
         assert!(s.stack_is_empty());
+    }
+
+    #[test]
+    fn choose_color_installs_protection_from_chosen_color() {
+        use crate::actions::{ChoiceContext, ChoiceFollowUp, ChoiceKind, ChoiceResponse};
+        use crate::effects::ProtectionQuality;
+        use crate::types::Color;
+        let mut s = GameState::new(2, 0);
+        let creature = put_creature_in_zone(&mut s, 0, Zone::Battlefield, 2, 2);
+        // Aura source, attached to the creature.
+        let aura = put_creature_in_zone(&mut s, 0, Zone::Battlefield, 0, 0);
+        s.objects.get_mut(aura).unwrap().attached_to = Some(creature);
+        assert!(s.protections_on(creature).is_empty());
+
+        // Drive the ChooseColor resolution choosing Red, with the
+        // attach-protection follow-up the aura's ETB would have stored.
+        s.currently_resolving = Some(aura);
+        s.pending_choice_follow_up = Some(
+            ChoiceFollowUp::AttachProtectionFromChosenColor { source: aura });
+        let pc_id = s.push_pending_choice(
+            0, ChoiceContext::ResolvingStack(aura), ChoiceKind::ChooseColor);
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
+            ChoiceResponse::ChooseColor { color: Color::Red });
+
+        let prot = s.protections_on(creature);
+        assert!(prot.contains(&ProtectionQuality::Color(Color::Red)),
+            "enchanted creature gains protection from the chosen color: {prot:?}");
+        assert!(!prot.contains(&ProtectionQuality::Color(Color::Blue)));
     }
 
     #[test]

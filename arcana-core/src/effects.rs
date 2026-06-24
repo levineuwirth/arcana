@@ -443,6 +443,15 @@ pub enum Effect {
         else_effect: Option<Box<Effect>>,
     },
 
+    /// CR 700.4 — "choose a color". Posts a [`crate::actions::ChoiceKind::ChooseColor`]
+    /// to `chooser` mid-resolution; the chosen color is consumed by
+    /// `follow_up` (e.g. install protection from the chosen color). Must
+    /// execute mid-resolution (needs `currently_resolving`).
+    ChooseColor {
+        chooser: PlayerId,
+        follow_up: Box<crate::actions::ChoiceFollowUp>,
+    },
+
     /// CR 701.40 — "[Creature] explores." Reveal the top card of
     /// `player`'s library. If it's a land card, put it into their
     /// hand. Otherwise, put a +1/+1 counter on `target` and the
@@ -1671,6 +1680,18 @@ impl Effect {
                     crate::actions::ChoiceKind::OptionalCost {
                         cost: cost.clone(),
                     },
+                );
+            }
+            Effect::ChooseColor { chooser, follow_up } => {
+                if !valid_player(state, *chooser) { return; }
+                let resolving = state.currently_resolving
+                    .expect("Effect::ChooseColor: no currently_resolving \
+                             stack entry — must execute mid-resolution");
+                state.pending_choice_follow_up = Some((**follow_up).clone());
+                state.push_pending_choice(
+                    *chooser,
+                    crate::actions::ChoiceContext::ResolvingStack(resolving),
+                    crate::actions::ChoiceKind::ChooseColor,
                 );
             }
             Effect::Explore { player, target } => {

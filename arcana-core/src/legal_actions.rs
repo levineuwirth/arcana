@@ -245,6 +245,14 @@ fn legal_resolution_choice_actions(state: &GameState) -> Vec<Action> {
                 }
             }
         }
+        ChoiceKind::ChooseColor => {
+            for color in crate::types::Color::all() {
+                out.push(Action::SubmitResolutionChoice {
+                    id,
+                    response: ChoiceResponse::ChooseColor { color },
+                });
+            }
+        }
     }
 
     // Concede is always legal (spec §41.6 R3).
