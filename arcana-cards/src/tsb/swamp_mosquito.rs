@@ -11,7 +11,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -46,12 +46,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn defending_player_gets_poison(
-    _state: &GameState,
-    _trig: &PendingTrigger,
+    state: &GameState,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "defending player gets a poison counter" — Effect::AddCounters
-    // targets an ObjectId (a permanent), not a player; there is no
-    // player-directed poison-counter Effect.
-    Vec::new()
+    // "defending player gets a poison counter." SelfAttacksUnblocked fires on
+    // CreatureNotBlocked (no defender on the event), so read the attacker's
+    // defending_player from combat state, falling back to trig.defending_player().
+    let player = state
+        .combat
+        .as_ref()
+        .and_then(|c| c.attacker(trig.source))
+        .map(|a| a.defending_player)
+        .or_else(|| trig.defending_player());
+    let Some(player) = player else { return Vec::new(); };
+    vec![Effect::GivePlayerCounters { player, kind: CounterKind::Poison, count: 1 }]
 }

@@ -5,9 +5,10 @@ use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::script;
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Infectious Inquiry");
@@ -28,10 +29,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: poison counters on players have no catalog primitive —
-    // only the draw and life loss are emitted.
-    vec![
+fn resolve(state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    // "You draw two cards and you lose 2 life. Each opponent gets a poison counter."
+    let mut effects = vec![
         Effect::DrawCards {
             player: entry.controller,
             count: 2,
@@ -40,5 +40,13 @@ fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<E
             player: entry.controller,
             amount: 2,
         },
-    ]
+    ];
+    for opp in script::opponents(state, entry.controller) {
+        effects.push(Effect::GivePlayerCounters {
+            player: opp,
+            kind: CounterKind::Poison,
+            count: 1,
+        });
+    }
+    effects
 }

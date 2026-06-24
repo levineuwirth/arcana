@@ -2,9 +2,11 @@
 //! "Whenever this creature attacks and isn't blocked, defending player gets a
 //! poison counter."
 //!
-//! Fear is a base keyword. The unblocked-attack trigger fires, but
-//! `Effect::AddCounters` targets an ObjectId (a permanent), and there is no
-//! shown effect for putting a poison counter on a PLAYER — GAP the body.
+//! Fear is a base keyword. The unblocked-attack trigger fires; the defending
+//! player gets a poison counter via Effect::GivePlayerCounters { kind: Poison }.
+//! SelfAttacksUnblocked fires on CreatureNotBlocked (no defending player on the
+//! event), so the defender is read from combat state via the source attacker,
+//! falling back to trig.defending_player().
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
@@ -14,7 +16,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -52,10 +54,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn poison_defending_player(
-    _state: &GameState,
-    _trig: &PendingTrigger,
+    state: &GameState,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no effect for putting a poison counter on a PLAYER (AddCounters targets a permanent).
-    Vec::new()
+    // "defending player gets a poison counter." The defender is the attacker's
+    // defending_player in combat state (the CreatureNotBlocked event has none).
+    let player = state
+        .combat
+        .as_ref()
+        .and_then(|c| c.attacker(trig.source))
+        .map(|a| a.defending_player)
+        .or_else(|| trig.defending_player());
+    let Some(player) = player else { return Vec::new(); };
+    vec![Effect::GivePlayerCounters { player, kind: CounterKind::Poison, count: 1 }]
 }

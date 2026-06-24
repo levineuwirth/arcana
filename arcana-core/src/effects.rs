@@ -78,6 +78,14 @@ pub enum Effect {
     /// the "you get N energy" gain side. Spending energy is an
     /// activation/cost concern handled elsewhere.
     GainEnergy { player: PlayerId, amount: u32 },
+    /// Place `count` counters of `kind` on a PLAYER (CR 122 / 704.5c) —
+    /// poison, energy, experience, etc. The player-counter substitution
+    /// already lives in [`GameState::place_counters`] via
+    /// [`crate::replacement::CounterTarget::Player`]; this is the Effect
+    /// front-door (the player analog of [`Self::AddCounters`], which only
+    /// targets objects). `kind`s without a first-class player slot
+    /// (anything but Poison / Energy today) no-op in `place_counters`.
+    GivePlayerCounters { player: PlayerId, kind: CounterKind, count: u32 },
     LoseLife { player: PlayerId, amount: u32 },
     SetLifeTotal { player: PlayerId, amount: u32 },
     /// CR 615 — Install a prevention shield on `target`. `amount` of
@@ -1060,6 +1068,7 @@ impl Effect {
             | Effect::Scry { player, .. }
             | Effect::GainLife { player, .. }
             | Effect::LoseLife { player, .. }
+            | Effect::GivePlayerCounters { player, .. }
             | Effect::GainEnergy { player, .. }
             | Effect::SetLifeTotal { player, .. }
             | Effect::AddMana { player, .. }
@@ -1120,6 +1129,14 @@ impl Effect {
             }
             Effect::LoseLife { player, amount } => {
                 lose_life(state, *player, *amount);
+            }
+            Effect::GivePlayerCounters { player, kind, count } => {
+                if !valid_player(state, *player) || *count == 0 { return; }
+                state.place_counters(
+                    crate::replacement::CounterTarget::Player(*player),
+                    *kind,
+                    *count,
+                );
             }
             Effect::SetLifeTotal { player, amount } => {
                 if !valid_player(state, *player) { return; }
@@ -4898,6 +4915,27 @@ mod tests {
         assert_eq!(s.player(0).life, 25);
         Effect::LoseLife { player: 0, amount: 10 }.execute(&mut s);
         assert_eq!(s.player(0).life, 15);
+    }
+
+    #[test]
+    fn give_player_counters_poison_and_energy() {
+        let mut s = GameState::new(2, 0);
+        Effect::GivePlayerCounters { player: 1, kind: CounterKind::Poison, count: 3 }
+            .execute(&mut s);
+        assert_eq!(s.player(1).poison_counters, 3);
+        // Stacks; energy routes to the player energy pool.
+        Effect::GivePlayerCounters { player: 1, kind: CounterKind::Poison, count: 2 }
+            .execute(&mut s);
+        assert_eq!(s.player(1).poison_counters, 5);
+        Effect::GivePlayerCounters { player: 0, kind: CounterKind::Energy, count: 4 }
+            .execute(&mut s);
+        assert_eq!(s.player(0).energy, 4);
+        // count == 0 and a kind with no player slot are no-ops, not panics.
+        Effect::GivePlayerCounters { player: 0, kind: CounterKind::Poison, count: 0 }
+            .execute(&mut s);
+        Effect::GivePlayerCounters { player: 0, kind: CounterKind::Charge, count: 2 }
+            .execute(&mut s);
+        assert_eq!(s.player(0).energy, 4);
     }
 
     #[test]

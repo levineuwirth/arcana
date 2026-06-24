@@ -9,20 +9,26 @@
 //! "Annihinfect (Whenever this creature attacks, defending player sacrifices a
 //! permanent for each poison counter they have.)"
 //!
-//! Both abilities depend on player-directed poison counters, which are not
-//! expressible: there is no player-poison Effect (AddCounters is object-only)
-//! and no script helper to read a player's poison count. Effects are GAP'd.
+//! The cast trigger's "each opponent gets two poison counters" half is wired
+//! via Effect::GivePlayerCounters { kind: Poison, count: 2 } per opponent.
+//! GAP (remaining): "then each opponent with more than two cards in hand
+//! discards cards equal to the difference" — a per-opponent dynamic discard of
+//! (hand size − 2) has no dynamic-count discard primitive, so it is omitted.
+//! GAP: "Annihinfect (defending player sacrifices a permanent for each poison
+//! counter they have)" — a dynamic sacrifice-N driven by a player's poison
+//! count needs the sacrifice-N-permanents machinery; effect GAP'd.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -71,12 +77,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn cast_trigger(_state: &GameState, _trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "each opponent gets two poison counters, then each opponent with
-    // more than two cards in hand discards cards equal to the difference" —
-    // no player-directed poison-counter Effect; the per-opponent dynamic
-    // discard depends on the poison delta. Whole effect unexpressible.
-    Vec::new()
+fn cast_trigger(state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    // "each opponent gets two poison counters" — wired per opponent.
+    // GAP (remaining): "then each opponent with more than two cards in hand
+    // discards cards equal to the difference" — no dynamic-count discard
+    // primitive for (hand size − 2); the discard rider is omitted.
+    script::opponents(state, trig.controller)
+        .into_iter()
+        .map(|opp| Effect::GivePlayerCounters {
+            player: opp,
+            kind: CounterKind::Poison,
+            count: 2,
+        })
+        .collect()
 }
 
 fn annihinfect(_state: &GameState, _trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {

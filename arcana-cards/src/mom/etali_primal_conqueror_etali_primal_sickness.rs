@@ -11,14 +11,9 @@
 //!
 //! Back face (Etali, Primal Sickness): Legendary Phyrexian Elder Dinosaur, Trample + Indestructible.
 //! - Whenever Etali deals combat damage to a player, they get that many poison counters.
-//!   GAP: the combat-damage-to-player trigger (TriggerCondition::DamageDealt) and the dealt
-//!   amount (PendingTrigger::damage_amount / damaged_player) are both available, but there is
-//!   NO Effect variant that gives poison counters to a PLAYER. CounterKind::Poison +
-//!   CounterTarget::Player + GameState::place_counters exist internally, but Effect::AddCounters
-//!   only targets an ObjectId (a permanent), not a player. Missing primitive: an
-//!   Effect::GivePlayerCounters { player, kind, count } routing to place_counters with
-//!   CounterTarget::Player. The trigger is left unwired because its only payload is the
-//!   unexpressible poison-counter effect (wiring it would be a pure no-op).
+//!   Wired via Effect::GivePlayerCounters { player, kind: Poison, count } (the player-counter
+//!   front-door over GameState::place_counters / CounterTarget::Player); source restricted by
+//!   the back-face name, face-gated to face 1, amount = PendingTrigger::damage_amount().
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
@@ -27,8 +22,9 @@ use arcana_core::registry::{
     ActivatedAbilityDef, ActivationCost, ActivationContext, CardDefinition, CardFace, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::{ObjectFilter, TargetFilter};
 use arcana_core::triggers::{PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef};
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -81,6 +77,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     // ETB trigger: each player exiles until nonland, cast any number free.
     // GAP: not expressible.
 
+    // Restrict the back-face combat-damage trigger's source to Etali, Primal
+    // Sickness itself by name (the unique back face that printed it).
+    let back_self_name = reg.interner().lookup("Etali, Primal Sickness");
+    let back_self_filter = ObjectFilter { name: back_self_name, ..ObjectFilter::default() };
+
     // {9}{G/P}: Transform. Activate only as a sorcery.
     reg.register(
         CardDefinition::new(name, chars)
@@ -94,6 +95,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
+            // Back face: "Whenever Etali, Primal Sickness deals combat damage to
+            // a player, they get that many poison counters." Face-gated to back.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::DamageDealt {
+                    source_filter: back_self_filter,
+                    target_filter: TargetFilter::Player,
+                    combat_only: true,
+                },
+                intervening_if: None,
+                effect: back_poison_counters,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(2, 1)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{9}{G/P}: Transform Etali. Activate only as a sorcery.".into(),
                 cost: ActivationCost {
@@ -120,6 +137,17 @@ fn etali_etb(
     // You may cast any number of spells from among the nonland cards exiled this way without paying
     // their mana costs." — mass per-player RevealUntil with multi-card free-cast is not expressible.
     Vec::new()
+}
+
+fn back_poison_counters(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let (Some(player), Some(count)) = (trig.damaged_player(), trig.damage_amount())
+    else { return Vec::new(); };
+    if count == 0 { return Vec::new(); }
+    vec![Effect::GivePlayerCounters { player, kind: CounterKind::Poison, count }]
 }
 
 fn transform_etali(

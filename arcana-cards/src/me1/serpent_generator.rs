@@ -3,11 +3,10 @@
 //! It has 'Whenever this creature deals damage to a player, that
 //! player gets a poison counter.'"
 //!
-//! GAP: the token's printed triggered ability ("that player gets a
-//! poison counter") cannot be attached to a `TokenDefinition`
-//! (`abilities` carries no authored triggered abilities here) — the
-//! bare 1/1 Snake artifact creature token is minted without the
-//! poison rider.
+//! The token's triggered ability rides on `TokenDefinition.abilities` (a
+//! `Vec<TriggeredAbilityDef>`): a `DamageDealt` trigger (any damage, not
+//! combat-only) whose source is restricted to a Snake by name and whose effect
+//! gives the damaged player a poison counter via Effect::GivePlayerCounters.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -17,9 +16,14 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::types::{
-    CardId, ColorSet, PtValue, SubtypeSet, TypeLine,
+use arcana_core::targets::{ObjectFilter, TargetFilter};
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
+use arcana_core::types::{
+    CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine,
+};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Serpent Generator");
@@ -62,9 +66,6 @@ fn make_snake(
     ctx: &ActivationContext,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: the token's "Whenever this creature deals damage to a player,
-    // that player gets a poison counter" triggered ability is not
-    // expressible on a TokenDefinition — bare token only.
     let snake = reg.interner().lookup("Snake").unwrap_or_default();
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(snake);
@@ -78,7 +79,33 @@ fn make_snake(
             power: Some(PtValue::Fixed(1)),
             toughness: Some(PtValue::Fixed(1)),
             keywords: vec![],
-            abilities: vec![],
+            // "Whenever this creature deals damage to a player, that player
+            // gets a poison counter." The damage source is restricted to a
+            // Snake by name (the token's own name); damage is any kind, not
+            // just combat.
+            abilities: vec![TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::DamageDealt {
+                    source_filter: ObjectFilter { name: Some(snake), ..ObjectFilter::default() },
+                    target_filter: TargetFilter::Player,
+                    combat_only: false,
+                },
+                intervening_if: None,
+                effect: snake_poisons_player,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            }],
         },
     }]
+}
+
+fn snake_poisons_player(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // "that player gets a poison counter."
+    let Some(player) = trig.damaged_player() else { return Vec::new(); };
+    vec![Effect::GivePlayerCounters { player, kind: CounterKind::Poison, count: 1 }]
 }

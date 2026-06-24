@@ -2,9 +2,8 @@
 //! "{4}, {T}: Target opponent loses 2 life, gets a poison counter,
 //! then mills six cards."
 //!
-//! GAP: poison counters on PLAYERS are not expressible
-//! (`Effect::AddCounters` takes an `ObjectId`) — the life loss and
-//! mill are wired; the poison counter is omitted.
+//! The life loss, poison counter, and mill are wired in order; the poison
+//! counter on the target player is via Effect::GivePlayerCounters { kind: Poison }.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -15,7 +14,7 @@ use arcana_core::registry::{
 };
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetRequirement};
-use arcana_core::types::{CardId, ColorSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Decimator Web");
@@ -59,10 +58,10 @@ fn decimate(
     let Some(TargetChoice::Player(p)) = ctx.targets.targets.first() else {
         return Vec::new();
     };
-    // GAP: 'gets a poison counter' — no player-counter effect
-    // (AddCounters targets objects only).
+    // "loses 2 life, gets a poison counter, then mills six cards."
     vec![
         Effect::LoseLife { player: *p, amount: 2 },
+        Effect::GivePlayerCounters { player: *p, kind: CounterKind::Poison, count: 1 },
         Effect::Mill { player: *p, count: 6 },
     ]
 }

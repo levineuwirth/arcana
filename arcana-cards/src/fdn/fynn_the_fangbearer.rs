@@ -5,10 +5,10 @@
 //!
 //! Deathtouch is a base characteristic. The trigger condition (a deathtouch
 //! creature you control dealing combat damage to a player) is wired faithfully
-//! via DamageDealt, but the effect ("that player gets two poison counters") is
-//! GAPped: there is no effect that adds counters to a PLAYER (Effect::AddCounters
-//! targets an ObjectId; player-poison is only routed through the Toxic/Infect
-//! keywords, not an explicit effect).
+//! via DamageDealt; the effect ("that player gets two poison counters") is wired
+//! via Effect::GivePlayerCounters { player: trig.damaged_player(), kind: Poison,
+//! count: 2 } — the player-counter front-door over GameState::place_counters /
+//! CounterTarget::Player.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
@@ -19,7 +19,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -62,11 +62,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn poison_player(
     _state: &GameState,
-    _trig: &PendingTrigger,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "that player gets two poison counters" — no effect adds counters to
-    // a PLAYER (Effect::AddCounters targets an ObjectId; player poison is only
-    // routed through Toxic/Infect keywords).
-    Vec::new()
+    // "that player gets two poison counters" — the damaged player gets 2 poison.
+    let Some(player) = trig.damaged_player() else { return Vec::new(); };
+    vec![Effect::GivePlayerCounters { player, kind: CounterKind::Poison, count: 2 }]
 }

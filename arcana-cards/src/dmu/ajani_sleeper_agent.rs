@@ -11,9 +11,11 @@
 //!   demonstrated Effect surface (no DistributeCounters). Ability shell declared
 //!   with the correct −3 cost; effect GAP'd.
 //! −6: emblem ("Whenever you cast a creature or planeswalker spell, target
-//!   opponent gets two poison counters."). GAP: giving a PLAYER poison counters
-//!   is not expressible (`Effect::AddCounters` targets an object, not a player).
-//!   Emblem shell declared with the cast trigger; effect GAP'd.
+//!   opponent gets two poison counters."). The emblem's cast trigger gives two
+//!   poison counters to an opponent via Effect::GivePlayerCounters { kind:
+//!   Poison, count: 2 }. The emblem-granted trigger carries no target
+//!   requirement, so "target opponent" is approximated as the first opponent
+//!   (script::opponents).
 //!
 //! Compleated ({G/W/P}) is a casting/ETB-loyalty modifier not modeled by the
 //! demonstrated surface; the printed starting loyalty (3) is recorded.
@@ -25,6 +27,7 @@ use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
 };
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
@@ -167,11 +170,15 @@ fn minus_six_emblem(
 }
 
 fn emblem_poison(
-    _state: &GameState,
-    _trig: &PendingTrigger,
+    state: &GameState,
+    trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "target opponent gets two poison counters" — giving a PLAYER poison
-    //      counters is not expressible (AddCounters targets an object).
-    Vec::new()
+    // "target opponent gets two poison counters." The emblem-granted trigger
+    // carries no target requirement, so "target opponent" is approximated as
+    // the first opponent of the emblem's controller.
+    let Some(&opp) = script::opponents(state, trig.controller).first() else {
+        return Vec::new();
+    };
+    vec![Effect::GivePlayerCounters { player: opp, kind: CounterKind::Poison, count: 2 }]
 }

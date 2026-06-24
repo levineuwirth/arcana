@@ -1,14 +1,16 @@
 //! Necrogen Rotpriest — `{2}{B}{G}` 1/5 Phyrexian Zombie Cleric with Toxic 2.
 //! "Whenever a creature you control with toxic deals combat damage to a
-//!  player, that player gets an additional poison counter." (GAP — see below)
+//!  player, that player gets an additional poison counter."
 //! "{1}{B}{G}: Target creature you control with toxic gains deathtouch until
 //!  end of turn."
 //!
-//! GAP: there is no `Effect` that adds a poison counter directly to a player
-//!      (poison is applied via Toxic combat damage / proliferate), so the
-//!      "additional poison counter" trigger effect is GAP'd.
-//! Partial: the activated ability's "with toxic" restriction is dropped
-//!      (Toxic is a parametrized keyword and can't be filtered generically);
+//! The "additional poison counter" trigger effect is wired via
+//!      Effect::GivePlayerCounters { player: trig.damaged_player(), kind: Poison,
+//!      count: 1 }.
+//! GAP: the trigger's "with toxic" source restriction is dropped (Toxic is a
+//!      parametrized keyword that can't be filtered generically) — it fires on
+//!      any creature you control dealing combat damage to a player.
+//! Partial: the activated ability's "with toxic" restriction is likewise dropped;
 //!      it targets a creature you control.
 
 use arcana_core::effects::Effect;
@@ -27,7 +29,7 @@ use arcana_core::targets::{
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -91,9 +93,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn additional_poison(_state: &GameState, _trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: no Effect adds a poison counter directly to a player.
-    Vec::new()
+fn additional_poison(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    // "that player gets an additional poison counter."
+    let Some(player) = trig.damaged_player() else { return Vec::new(); };
+    vec![Effect::GivePlayerCounters { player, kind: CounterKind::Poison, count: 1 }]
 }
 
 fn grant_deathtouch(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {

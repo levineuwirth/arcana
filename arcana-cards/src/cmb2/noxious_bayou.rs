@@ -1,8 +1,8 @@
 //! Noxious Bayou — nonbasic land.
 //! "{T}: Add {B} or {G}. You get a poison counter." The two-color choice
-//! is modeled as TWO mana abilities (CR 605.1a / CR 106.3); the
-//! poison-counter rider is a documented gap (player counters are not an
-//! Effect target — AddCounters takes an ObjectId).
+//! is modeled as TWO mana abilities (CR 605.1a / CR 106.3); each adds its
+//! mana then gives the controller a poison counter via
+//! Effect::GivePlayerCounters { kind: Poison }.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaUnit;
@@ -12,7 +12,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, ColorSet, ManaColor, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, ManaColor, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Noxious Bayou");
@@ -23,8 +23,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::LAND.into(),
         ..Default::default()
     };
-    // GAP: 'You get a poison counter' — Effect::AddCounters targets
-    // objects, not players; the self-poison rider is not expressible.
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
@@ -57,10 +55,13 @@ fn add_black_mana(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::AddMana {
-        player: ctx.controller,
-        mana: vec![ManaUnit::plain(ManaColor::Black, ctx.source)],
-    }]
+    vec![
+        Effect::AddMana {
+            player: ctx.controller,
+            mana: vec![ManaUnit::plain(ManaColor::Black, ctx.source)],
+        },
+        Effect::GivePlayerCounters { player: ctx.controller, kind: CounterKind::Poison, count: 1 },
+    ]
 }
 
 fn add_green_mana(
@@ -68,8 +69,11 @@ fn add_green_mana(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::AddMana {
-        player: ctx.controller,
-        mana: vec![ManaUnit::plain(ManaColor::Green, ctx.source)],
-    }]
+    vec![
+        Effect::AddMana {
+            player: ctx.controller,
+            mana: vec![ManaUnit::plain(ManaColor::Green, ctx.source)],
+        },
+        Effect::GivePlayerCounters { player: ctx.controller, kind: CounterKind::Poison, count: 1 },
+    ]
 }

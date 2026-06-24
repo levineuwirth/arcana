@@ -1,9 +1,8 @@
 //! Mox Poison — `{0}` artifact (playtest card, Mystery Booster).
 //! "{T}: Add one mana of any color. You get two poison counters."
 //! The any-color choice is five mana abilities, one per WUBRG color.
-//! GAP: "You get two poison counters" — poison counters on a PLAYER are
-//! not expressible (Effect::AddCounters targets objects only), so each
-//! ability adds only the mana.
+//! Each adds its mana then gives the controller two poison counters via
+//! Effect::GivePlayerCounters { kind: Poison, count: 2 }.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::{ManaCost, ManaUnit};
@@ -13,7 +12,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, ColorSet, ManaColor, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, ManaColor, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Mox Poison");
@@ -52,12 +51,14 @@ fn mana_ability(
 }
 
 fn add_of(color: ManaColor, ctx: &ActivationContext) -> Vec<Effect> {
-    // GAP: "You get two poison counters" — player poison counters are not
-    // expressible via the effect catalog.
-    vec![Effect::AddMana {
-        player: ctx.controller,
-        mana: vec![ManaUnit::plain(color, ctx.source)],
-    }]
+    // "Add one mana of any color. You get two poison counters."
+    vec![
+        Effect::AddMana {
+            player: ctx.controller,
+            mana: vec![ManaUnit::plain(color, ctx.source)],
+        },
+        Effect::GivePlayerCounters { player: ctx.controller, kind: CounterKind::Poison, count: 2 },
+    ]
 }
 
 fn add_white(
