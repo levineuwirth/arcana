@@ -1,7 +1,6 @@
 //! Serra Avatar — `{4}{W}{W}{W}` */* Avatar.
 //! "Serra Avatar's power and toughness are each equal to your life
-//! total." (GAP — a characteristic-defining static, not a triggered/
-//! activated ability.)
+//! total." (CDA — Layer 7a self-CDA, installed on ETB.)
 //! "When Serra Avatar is put into a graveyard from anywhere, shuffle it
 //! into its owner's library." (effect GAP — no shuffle-self-into-library
 //! effect; SelfDies is the closest available trigger.)
@@ -10,8 +9,9 @@
 //! its body is GAP'd.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
@@ -33,25 +33,52 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::CREATURE.into(),
         subtypes,
         // */* — power and toughness are characteristic-defined (= life
-        // total). GAP: the CDA that sets them to life total is a static.
+        // total), installed as a Layer 7a self-CDA on ETB (id 2 below).
         power: Some(PtValue::Star),
         toughness: Some(PtValue::Star),
         ..Default::default()
     };
 
     reg.register(
-        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
-            id: 1,
-            // Closest available trigger: SelfDies (battlefield→graveyard);
-            // oracle says "from anywhere".
-            trigger_condition: TriggerCondition::SelfDies,
-            intervening_if: None,
-            effect: shuffle_into_library,
-            trigger_zones: vec![Zone::Battlefield],
-            frequency: TriggerFrequency::EachTime,
-            target_requirements: Vec::new(),
-        }),
+        CardDefinition::new(name, chars)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                // Closest available trigger: SelfDies (battlefield→graveyard);
+                // oracle says "from anywhere".
+                trigger_condition: TriggerCondition::SelfDies,
+                intervening_if: None,
+                effect: shuffle_into_library,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_cda,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            }),
     )
+}
+
+/// Layer 7a self-CDA: P/T each equal to controller's life total.
+fn install_cda(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_cda(
+            trig.source,
+            cda_pt,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
+}
+
+fn cda_pt(state: &GameState, source: ObjectId) -> (i32, i32) {
+    let who = state.objects.get(source).map(|o| o.controller).unwrap_or(0);
+    let n = state.player(who).life;
+    (n, n)
 }
 
 fn shuffle_into_library(

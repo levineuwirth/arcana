@@ -2,11 +2,12 @@
 //! Sorcerer. "Protection from planeswalkers and from Wizards" (GAP'd —
 //! Protection is not a usable keyword for this card class). "Greensleeves's
 //! power and toughness are each equal to the number of lands you control"
-//! (CDA — GAP'd; no shown way to wire a characteristic-defining P/T).
+//! (self-CDA — wired via ContinuousEffect::self_pt_from_match at Layer 7a).
 //! "Landfall — Whenever a land you control enters, create a 3/3 green
 //! Badger creature token."
 
 use arcana_core::effects::{Effect, TokenDefinition};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -29,8 +30,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
     // GAP: "Protection from planeswalkers and from Wizards" — Protection is
     // not an available keyword for this card class.
-    // GAP: "power and toughness equal to the number of lands you control" —
-    // characteristic-defining ability; no shown wiring for dynamic base P/T.
 
     let chars = Characteristics {
         name,
@@ -45,22 +44,47 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
 
     reg.register(
-        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
-            id: 1,
-            trigger_condition: TriggerCondition::ZoneChange {
-                filter: ObjectFilter::permanent()
-                    .with_types(TypeLine::LAND.into())
-                    .controlled_by(ControllerConstraint::You),
-                from: None,
-                to: Zone::Battlefield,
-            },
-            intervening_if: None,
-            effect: landfall_badger,
-            trigger_zones: vec![Zone::Battlefield],
-            frequency: TriggerFrequency::EachTime,
-            target_requirements: Vec::new(),
-        }),
+        CardDefinition::new(name, chars)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::ZoneChange {
+                    filter: ObjectFilter::permanent()
+                        .with_types(TypeLine::LAND.into())
+                        .controlled_by(ControllerConstraint::You),
+                    from: None,
+                    to: Zone::Battlefield,
+                },
+                intervening_if: None,
+                effect: landfall_badger,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_cda,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            }),
     )
+}
+
+/// "Greensleeves's power and toughness are each equal to the number of lands
+/// you control" — install the self-CDA at Layer 7a (battlefield land count).
+fn install_cda(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    let filter = ObjectFilter::permanent()
+        .with_types(TypeLine::LAND.into())
+        .controlled_by(ControllerConstraint::You);
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_from_match(
+            trig.source,
+            filter,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn landfall_badger(

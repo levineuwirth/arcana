@@ -5,9 +5,11 @@
 //! target creature card from an opponent's graveyard. If you do, create a token
 //! that's a copy of this creature."
 //!
-//! The power is `*` (PtValue::Star). GAP: the characteristic-defining ability
-//! that sets the star value to the count of Crabs/Oozes/Horrors you control is
-//! not expressible (no documented CDA wiring) — base Star is emitted.
+//! The power is `*` (PtValue::Star). GAP: this CDA sets ONLY power (toughness is
+//! a fixed 4), so the symmetric self_pt_from_match (which sets both P/T equal to
+//! a count) is wrong, and the asymmetric self_pt_cda compute fn has no registry,
+//! so it cannot resolve the Crab/Ooze/Horror subtypes by name. Neither CDA
+//! constructor can express an asymmetric-by-subtype count — base Star is emitted.
 //! The end-step ability is implemented: exile up to one target creature card
 //! from an opponent's graveyard, then create a token copy of this creature.
 
@@ -37,7 +39,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     subtypes.0.insert(ooze);
     subtypes.0.insert(horror);
 
-    // GAP: CDA setting power = number of Crabs/Oozes/Horrors you control — base Star emitted.
+    // GAP: CDA setting power = number of Crabs/Oozes/Horrors you control while
+    // toughness stays a fixed 4 — asymmetric-by-subtype, inexpressible with the
+    // two CDA constructors (see header); base Star emitted.
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{B}").expect("valid cost")),

@@ -8,19 +8,23 @@
 //!
 //! Flying is a base keyword. Affinity is a cost-reduction keyword with no
 //! expressible variant — GAP. The characteristic-defining "power and toughness
-//! each equal to the number of artifacts you control" has no registration hook
-//! for a CDA P/T static, so P/T is left as `*` (PtValue::Star) and the
-//! computing static is GAP'd (cf. Phyrexian Broodstar).
+//! each equal to the number of artifacts you control" is recorded as `*`
+//! (PtValue::Star) and installed as a Layer 7a self-CDA on ETB.
 
 // GAP (keyword): Affinity for artifacts — cost reduction not expressible.
-// GAP (CDA): "power and toughness are each equal to the number of artifacts you
-// control" — no registration hook for a characteristic-defining P/T static.
 
-use arcana_core::effects::KeywordAbility;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::state::GameState;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Broodstar");
@@ -40,5 +44,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    reg.register(CardDefinition::new(name, chars))
+    reg.register(
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: install_cda,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
+    )
+}
+
+/// Layer 7a self-CDA: P/T each equal to the number of artifacts you control.
+fn install_cda(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    let filter = ObjectFilter::permanent()
+        .with_types(TypeLine::ARTIFACT.into())
+        .controlled_by(ControllerConstraint::You);
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_from_match(
+            trig.source,
+            filter,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }

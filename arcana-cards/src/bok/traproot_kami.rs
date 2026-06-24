@@ -2,8 +2,11 @@
 //! Defender, Reach.
 //! Traproot Kami's toughness is equal to the number of Forests on the battlefield.
 //!
-//! GAP: the characteristic-defining toughness (= number of Forests) is a
-//! static CDA, not a triggered/activated ability; toughness is left as Star.
+//! GAP: this CDA sets ONLY toughness (power stays a fixed 0), so the symmetric
+//! self_pt_from_match (which sets both P/T equal to a battlefield count) is
+//! wrong, and the asymmetric self_pt_cda compute fn has no registry, so it
+//! cannot resolve the "Forest" subtype by name. Neither CDA constructor can
+//! express an asymmetric-by-subtype count; toughness is left as Star.
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

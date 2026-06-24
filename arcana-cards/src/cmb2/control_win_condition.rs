@@ -7,9 +7,12 @@
 //!   the number of turns you've taken this game." (CDA — GAP)
 //!
 //! Base power/toughness are `*` (`PtValue::Star`). The
-//! characteristic-defining ability that sets `*` to the number of
-//! turns you've taken is not computable with the demonstrated script
-//! helpers, so the CDA is GAP'd; only Shroud is wired.
+//! characteristic-defining ability that sets `*` to the number of turns
+//! you've taken this game is not computable: the engine tracks only a
+//! global `turn.turn_number`, with no PER-PLAYER "turns you've taken"
+//! counter, and extra turns make `turn_number` diverge from a single
+//! player's turn count. No script helper exposes it either, so the CDA
+//! is GAP'd; only Shroud is wired.
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
@@ -26,7 +29,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     // GAP: "This spell can't be countered." — no can't-be-countered
     // static primitive in the demonstrated API.
     // GAP: "power and toughness each equal to the number of turns
-    // you've taken this game" — CDA not computable; base P/T left as *.
+    // you've taken this game" — no per-player turns-taken counter
+    // (only global turn_number); CDA not computable; base P/T left as *.
 
     let chars = Characteristics {
         name,

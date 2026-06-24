@@ -1,22 +1,22 @@
 //! Ulvenwald Hydra — `{4}{G}{G}` */* Hydra with Reach.
 //! Reach.
 //! "Ulvenwald Hydra's power and toughness are each equal to the number
-//! of lands you control." (a CDA — GAP'd; PtValue::Star marks the slot.)
+//! of lands you control." (a Layer 7a self-CDA, installed on ETB.)
 //! When this creature enters, you may search your library for a land
 //! card, put it onto the battlefield tapped, then shuffle.
 //!
-//! Reach is a base keyword. The */* defining static cannot be installed
-//! via the demonstrated API (it is a CDA) so PtValue::Star marks the
-//! slot and the count static is GAP'd. The ETB tutor is fully modeled
-//! ("you may" — TutorToBattlefield posts a may-search). The shuffle is
-//! automatic on a library search.
+//! Reach is a base keyword. The */* defining static is recorded via
+//! PtValue::Star and installed as a self-CDA on ETB (id 2). The ETB
+//! tutor (id 1) is fully modeled ("you may" — TutorToBattlefield posts a
+//! may-search). The shuffle is automatic on a library search.
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -41,21 +41,41 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    // GAP (CDA): "power and toughness are each equal to the number of lands
-    // you control" — the */* defining static cannot be installed via the
-    // demonstrated triggered/activated API; PtValue::Star marks the slot.
-
     reg.register(
-        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
-            id: 1,
-            trigger_condition: TriggerCondition::SelfEntersBattlefield,
-            intervening_if: None,
-            effect: etb_tutor_land,
-            trigger_zones: vec![Zone::Battlefield],
-            frequency: TriggerFrequency::EachTime,
-            target_requirements: Vec::new(),
-        }),
+        CardDefinition::new(name, chars)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: etb_tutor_land,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_cda,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            }),
     )
+}
+
+/// Layer 7a self-CDA: P/T each equal to the number of lands you control.
+fn install_cda(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    let filter = ObjectFilter::permanent()
+        .with_types(TypeLine::LAND.into())
+        .controlled_by(ControllerConstraint::You);
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_from_match(
+            trig.source,
+            filter,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn etb_tutor_land(

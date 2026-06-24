@@ -1,6 +1,7 @@
 //! Eluge, the Shoreless Sea — `{1}{U}{U}{U}` */* legendary Elemental Fish.
 //! "Eluge's power and toughness are each equal to the number of Islands
-//!  you control." (CDA — GAP'd; P/T modeled as `*`.)
+//!  you control." (CDA — wired via a self_pt_from_match on Islands you
+//!  control, installed on ETB.)
 //! "Whenever Eluge enters or attacks, put a flood counter on target
 //!  land. It's an Island in addition to its other types for as long as
 //!  it has a flood counter on it." (counter placed; the conferred
@@ -9,12 +10,15 @@
 //!  (cost reduction static — GAP'd.)
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
 };
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
@@ -39,7 +43,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::CREATURE.into(),
         subtypes,
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
-        // GAP: P/T are each equal to the number of Islands you control (CDA).
+        // P/T are each equal to the number of Islands you control (CDA);
+        // resolved at Layer 7a by the install_cda ETB trigger below.
         power: Some(PtValue::Star),
         toughness: Some(PtValue::Star),
         ..Default::default()
@@ -65,10 +70,32 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![flood_target()],
+            })
+            // P/T = number of Islands you control (CDA).
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_cda,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
             }),
         // GAP: continuous "it's an Island while it has a flood counter".
         // GAP: first instant/sorcery you cast each turn costs less.
     )
+}
+
+fn install_cda(_s: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
+    let filter =
+        script::subtype_filter(reg, "Island").controlled_by(ControllerConstraint::You);
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_from_match(
+            trig.source,
+            filter,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn flood_target() -> TargetRequirement {

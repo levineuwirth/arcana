@@ -600,6 +600,53 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build a SELF characteristic-defining P/T ability (CR 604.3 / Layer
+    /// 7a): "[this creature]'s power and toughness are each equal to …" /
+    /// "*/* where * is …" (Tarmogoyf, Nightmare, Lhurgoyf, Mortivore,
+    /// Veteran Warleader). `compute(state, source)` returns the (power,
+    /// toughness) the `*` resolves to, re-evaluated every layer pass. The
+    /// effect SETS the source's base P/T at 7a (resolving the `Star`), so
+    /// later +N/+N pumps (7c) and counters (7d) add on top, and a 7b
+    /// "becomes 1/1" (Humility) still overrides it. Install via a
+    /// `SelfEntersBattlefield` trigger with `Duration::WhileSourceOnBattlefield`
+    /// (the value is only needed while on the battlefield). RECURSION RULE:
+    /// `compute` must read BASE characteristics / state scalars / zone
+    /// counts — NEVER a layer-computed P/T (it would re-enter Layer 7).
+    pub fn self_pt_cda(source: ObjectId,
+                       compute: fn(&GameState, ObjectId) -> (i32, i32),
+                       duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L7aPTCharacteristicDefining,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::SetBasePtFromCda { compute },
+        }
+    }
+
+    /// Build a SELF CDA whose `*` is the COUNT of a `count_filter` (Layer
+    /// 7a) — "[this]'s power and toughness are each equal to the number of
+    /// [filter]" (Lumra: Forests+Plains you control; Kodama: Forests;
+    /// Multani: lands you control + in your graveyard via a fn variant).
+    /// The filter is built in `register()` (so it can carry interned
+    /// SUBTYPE symbols the no-registry `compute` fn can't resolve) and
+    /// counted at apply via `matches_base` — recursion-proof, no registry
+    /// needed. SETS base P/T at 7a (pumps/counters stack on top). Pair with
+    /// `Duration::WhileSourceOnBattlefield`.
+    pub fn self_pt_from_match(source: ObjectId,
+                              count_filter: crate::targets::ObjectFilter,
+                              duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L7aPTCharacteristicDefining,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::SetBasePtFromMatch { count_filter },
+        }
+    }
+
     /// Build a GLOBAL filtered keyword grant ("all [filter] have
     /// [keyword]"), layer 6.
     pub fn filtered_keyword(source: ObjectId,
@@ -1070,6 +1117,21 @@ pub enum ContinuousEffectKind {
         per_power: i32,
         per_toughness: i32,
     },
+    /// Layer 7a — a SELF characteristic-defining P/T ability: the
+    /// source's `*`/`*+N` base P/T resolves to `compute(state, source)`.
+    /// SETS (not adds) the in-flight P/T to the computed Fixed values, so
+    /// 7c pumps / 7d counters stack on top and a 7b "becomes N/N" still
+    /// wins. `compute` must read base characteristics only (Layer-7
+    /// recursion guard). Applies only to its own source.
+    SetBasePtFromCda { compute: fn(&GameState, ObjectId) -> (i32, i32) },
+    /// Layer 7a — a SELF CDA whose `*` is the COUNT of `count_filter`
+    /// (matched via `matches_base` from the source's controller's
+    /// perspective). SETS the in-flight P/T to (count, count). The filter
+    /// variant of [`Self::SetBasePtFromCda`] for the common "equal to the
+    /// number of [filter]" case — carries interned subtype symbols the
+    /// no-registry compute fn can't, and the base-count never re-enters
+    /// Layer 7 (recursion-proof). Applies only to its own source.
+    SetBasePtFromMatch { count_filter: crate::targets::ObjectFilter },
     /// Layer 6 — global filtered keyword grant ("all Zombies have
     /// menace", "creatures with power 2 or less have shroud"). Same
     /// base-characteristics filter posture as
@@ -1230,6 +1292,10 @@ impl ContinuousEffectKind {
                     .and_then(|src| src.attached_to)
                     == Some(object_id)
             }
+            // Self characteristic-defining ability — applies only to its
+            // own source (CR 604.3).
+            Self::SetBasePtFromCda { .. }
+            | Self::SetBasePtFromMatch { .. } => object_id == source,
             Self::FilteredPump { filter, .. }
             | Self::FilteredPumpDynamic { filter, .. }
             | Self::FilteredPumpPerMatch { filter, .. }
@@ -1315,6 +1381,24 @@ impl ContinuousEffectKind {
             Self::FilteredPumpDynamic { compute, .. } => {
                 let (power, toughness) = compute(state, source);
                 add_to_pt(chars, power, toughness);
+            }
+            Self::SetBasePtFromCda { compute } => {
+                // CR 604.3 / Layer 7a — resolve the `*` to a Fixed value
+                // (SET, not add) so 7c pumps / 7d counters stack on top.
+                let (power, toughness) = compute(state, source);
+                chars.power = Some(PtValue::Fixed(power));
+                chars.toughness = Some(PtValue::Fixed(toughness));
+            }
+            Self::SetBasePtFromMatch { count_filter } => {
+                let who = state.objects.get(source)
+                    .map(|s| s.controller).unwrap_or(0);
+                // BASE-characteristics count — recursion-proof at Layer 7a.
+                let n = state.objects
+                    .objects_in_zone(crate::zones::Zone::Battlefield)
+                    .filter(|o| count_filter.matches_base(o, state, who))
+                    .count() as i32;
+                chars.power = Some(PtValue::Fixed(n));
+                chars.toughness = Some(PtValue::Fixed(n));
             }
             Self::FilteredPumpPerMatch {
                 count_filter, per_power, per_toughness, ..
@@ -2520,6 +2604,103 @@ mod tests {
         // P0 controls 3 creatures → +0/+3 on each of its creatures.
         assert_eq!(s.computed_power(a), Some(2));
         assert_eq!(s.computed_toughness(a), Some(5));
+    }
+
+    #[test]
+    fn self_pt_cda_resolves_star_and_stacks_with_pumps_and_counters() {
+        // "*/* where * = creatures you control" (Veteran Warleader class).
+        fn my_creatures(s: &GameState, src: ObjectId) -> (i32, i32) {
+            let who = s.objects.get(src).map(|o| o.controller).unwrap_or(0);
+            let n = s.objects.iter()
+                .filter(|o| o.zone.is_battlefield() && o.is_creature()
+                    && o.controller == who)
+                .count() as i32;
+            (n, n)
+        }
+        let mut s = GameState::new(2, 0);
+        let goyf = {
+            let id = s.allocate_object_id();
+            let mut chars = creature_chars(0, 0);
+            chars.power = Some(PtValue::Star);
+            chars.toughness = Some(PtValue::Star);
+            let mut o = GameObject::new(id, 0, Zone::Battlefield, 0, chars);
+            o.controller = 0;
+            s.objects.insert(o);
+            id
+        };
+        // Unresolved `*` before the CDA installs.
+        assert_eq!(s.computed_power(goyf), None);
+        s.add_continuous_effect(ContinuousEffect::self_pt_cda(
+            goyf, my_creatures, Duration::WhileSourceOnBattlefield));
+        // Only goyf → */* = 1/1.
+        assert_eq!(s.computed_power(goyf), Some(1));
+        assert_eq!(s.computed_toughness(goyf), Some(1));
+        // Board grows → recomputes (2 creatures).
+        let _other = put_creature(&mut s, 0, 2, 2);
+        assert_eq!(s.computed_power(goyf), Some(2));
+        // +1/+1 counter (7d) stacks on the CDA: 2/2 → 3/3.
+        s.objects.get_mut(goyf).unwrap().add_counters(CounterKind::PlusOnePlusOne, 1);
+        assert_eq!(s.computed_power(goyf), Some(3));
+        // A controller anthem +1/+0 (7c) also stacks. src2 is a 3rd
+        // creature, so CDA = 3, +counter = 4, +anthem(+1/+0) = 5/4.
+        let src2 = put_creature(&mut s, 0, 0, 0);
+        s.add_continuous_effect(ContinuousEffect::filtered_pump(
+            src2,
+            crate::targets::ObjectFilter::creature()
+                .controlled_by(crate::targets::ControllerConstraint::You),
+            1, 0, Duration::WhileSourceOnBattlefield));
+        assert_eq!(s.computed_power(goyf), Some(5));
+        assert_eq!(s.computed_toughness(goyf), Some(4));
+    }
+
+    #[test]
+    fn self_pt_from_match_counts_base_and_is_recursion_proof() {
+        // "*/* = number of creatures you control" — STRESS: goyf itself
+        // matches the count_filter, so a layer-aware count would re-enter
+        // 7a and overflow; matches_base does not.
+        let mut s = GameState::new(2, 0);
+        let goyf = {
+            let id = s.allocate_object_id();
+            let mut chars = creature_chars(0, 0);
+            chars.power = Some(PtValue::Star);
+            chars.toughness = Some(PtValue::Star);
+            let mut o = GameObject::new(id, 0, Zone::Battlefield, 0, chars);
+            o.controller = 0;
+            s.objects.insert(o);
+            id
+        };
+        let you = crate::targets::ObjectFilter::creature()
+            .controlled_by(crate::targets::ControllerConstraint::You);
+        s.add_continuous_effect(ContinuousEffect::self_pt_from_match(
+            goyf, you, Duration::WhileSourceOnBattlefield));
+        assert_eq!(s.computed_power(goyf), Some(1));
+        assert_eq!(s.computed_toughness(goyf), Some(1));
+        let _other = put_creature(&mut s, 0, 2, 2);
+        assert_eq!(s.computed_power(goyf), Some(2));
+    }
+
+    #[test]
+    fn self_pt_cda_is_overridden_by_layer_7b_set() {
+        let mut s = GameState::new(2, 0);
+        let goyf = {
+            let id = s.allocate_object_id();
+            let mut chars = creature_chars(0, 0);
+            chars.power = Some(PtValue::Star);
+            chars.toughness = Some(PtValue::Star);
+            let mut o = GameObject::new(id, 0, Zone::Battlefield, 0, chars);
+            o.controller = 0;
+            s.objects.insert(o);
+            id
+        };
+        s.add_continuous_effect(ContinuousEffect::self_pt_cda(
+            goyf, |_, _| (5, 5), Duration::WhileSourceOnBattlefield));
+        assert_eq!(s.computed_power(goyf), Some(5));
+        // Humility "becomes 1/1" (7b) overrides the 7a CDA.
+        let humility = put_creature(&mut s, 0, 0, 0);
+        s.add_continuous_effect(ContinuousEffect::set_pt(
+            humility, goyf, 1, 1, Duration::WhileSourceOnBattlefield));
+        assert_eq!(s.computed_power(goyf), Some(1));
+        assert_eq!(s.computed_toughness(goyf), Some(1));
     }
 
     #[test]
