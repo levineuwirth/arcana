@@ -5,15 +5,16 @@
 //! target creature card from an opponent's graveyard. If you do, create a token
 //! that's a copy of this creature."
 //!
-//! The power is `*` (PtValue::Star). GAP: this CDA sets ONLY power (toughness is
-//! a fixed 4), so the symmetric self_pt_from_match (which sets both P/T equal to
-//! a count) is wrong, and the asymmetric self_pt_cda compute fn has no registry,
-//! so it cannot resolve the Crab/Ooze/Horror subtypes by name. Neither CDA
-//! constructor can express an asymmetric-by-subtype count — base Star is emitted.
-//! The end-step ability is implemented: exile up to one target creature card
-//! from an opponent's graveyard, then create a token copy of this creature.
+//! The power is `*` (PtValue::Star): an ASYMMETRIC subtype CDA — power = the
+//! number of Crabs, Oozes, and/or Horrors you control, toughness fixed 4 —
+//! wired at Layer 7a via `self_pt_from_match_asym` over a multi-subtype filter
+//! (the Crab/Ooze/Horror symbols are resolved by name in the install fn, which
+//! has the interner). The end-step ability is implemented: exile up to one
+//! target creature card from an opponent's graveyard, then create a token copy
+//! of this creature.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -39,9 +40,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     subtypes.0.insert(ooze);
     subtypes.0.insert(horror);
 
-    // GAP: CDA setting power = number of Crabs/Oozes/Horrors you control while
-    // toughness stays a fixed 4 — asymmetric-by-subtype, inexpressible with the
-    // two CDA constructors (see header); base Star emitted.
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{B}").expect("valid cost")),
@@ -54,27 +52,57 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
 
     reg.register(
-        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
-            id: 1,
-            trigger_condition: TriggerCondition::StepBegins {
-                step: Step::End,
-                whose: ControllerConstraint::You,
-            },
-            intervening_if: None,
-            effect: exile_gy_creature_and_copy_self,
-            trigger_zones: vec![Zone::Battlefield],
-            frequency: TriggerFrequency::EachTime,
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Card {
-                    zone: Zone::Graveyard(0),
-                    filter: ObjectFilter::creature()
-                        .controlled_by(ControllerConstraint::Opponent),
+        CardDefinition::new(name, chars)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::End,
+                    whose: ControllerConstraint::You,
                 },
-                count: TargetCount::UpTo(1),
-                controller: None,
-            }],
-        }),
+                intervening_if: None,
+                effect: exile_gy_creature_and_copy_self,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Card {
+                        zone: Zone::Graveyard(0),
+                        filter: ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::Opponent),
+                    },
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                }],
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_cda,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            }),
     )
+}
+
+/// Power = Crabs/Oozes/Horrors you control; toughness fixed 4.
+fn install_cda(_s: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
+    let syms: Vec<u32> = ["Crab", "Ooze", "Horror"]
+        .iter()
+        .filter_map(|s| reg.interner().lookup(s))
+        .collect();
+    let filter = ObjectFilter::creature()
+        .with_subtypes_any(syms)
+        .controlled_by(ControllerConstraint::You);
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_from_match_asym(
+            trig.source,
+            filter,
+            /*count_is_power=*/ true,
+            /*other_fixed=*/ 4,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn exile_gy_creature_and_copy_self(

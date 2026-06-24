@@ -20537,6 +20537,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::msh::captain_america_super_soldier::register(reg); n += 1;
     crate::msh::quicksilver_brash_blur::register(reg); n += 1;
     crate::msh::moon_girl_and_devil_dinosaur::register(reg); n += 1;
+    crate::msh::namor_the_sub_mariner::register(reg); n += 1;
     // --- blc ---
     crate::blc::gourmand_s_talent::register(reg); n += 1;
     crate::blc::fisher_s_talent::register(reg); n += 1;

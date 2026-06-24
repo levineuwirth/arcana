@@ -647,6 +647,32 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build an ASYMMETRIC self CDA (Layer 7a) where ONE axis is the count
+    /// of `count_filter` and the OTHER is a fixed value — the missing case
+    /// for "0/*" / "*/N" CDAs whose `*` is a SUBTYPE count (Traproot Kami
+    /// 0/* = Forests; Uchuulon */4 = Crabs/Oozes/Horrors; Wintermoor 2/* =
+    /// Knights; Namor */4 = Merfolk). `self_pt_from_match` is symmetric (no
+    /// good for `*/N`) and `self_pt_cda`'s compute has no registry to name
+    /// subtypes — this carries the interner-built filter AND the asymmetry.
+    /// `count_is_power`: the count fills power (toughness = `other_fixed`)
+    /// when true, else toughness (power = `other_fixed`). Counted via
+    /// `matches_base` — recursion-proof.
+    pub fn self_pt_from_match_asym(source: ObjectId,
+                                   count_filter: crate::targets::ObjectFilter,
+                                   count_is_power: bool,
+                                   other_fixed: i32,
+                                   duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L7aPTCharacteristicDefining,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::SetBasePtFromMatchAsym {
+                count_filter, count_is_power, other_fixed },
+        }
+    }
+
     /// Build a GLOBAL filtered keyword grant ("all [filter] have
     /// [keyword]"), layer 6.
     pub fn filtered_keyword(source: ObjectId,
@@ -1132,6 +1158,16 @@ pub enum ContinuousEffectKind {
     /// no-registry compute fn can't, and the base-count never re-enters
     /// Layer 7 (recursion-proof). Applies only to its own source.
     SetBasePtFromMatch { count_filter: crate::targets::ObjectFilter },
+    /// Layer 7a — ASYMMETRIC self CDA: one axis = count of `count_filter`
+    /// (via `matches_base`), the other = `other_fixed`. `count_is_power`
+    /// routes the count to power (else toughness). The asymmetric sibling
+    /// of [`Self::SetBasePtFromMatch`] for "0/*" / "*/N" subtype-count CDAs
+    /// the symmetric variant and the registry-less compute fn can't express.
+    SetBasePtFromMatchAsym {
+        count_filter: crate::targets::ObjectFilter,
+        count_is_power: bool,
+        other_fixed: i32,
+    },
     /// Layer 6 — global filtered keyword grant ("all Zombies have
     /// menace", "creatures with power 2 or less have shroud"). Same
     /// base-characteristics filter posture as
@@ -1295,7 +1331,8 @@ impl ContinuousEffectKind {
             // Self characteristic-defining ability — applies only to its
             // own source (CR 604.3).
             Self::SetBasePtFromCda { .. }
-            | Self::SetBasePtFromMatch { .. } => object_id == source,
+            | Self::SetBasePtFromMatch { .. }
+            | Self::SetBasePtFromMatchAsym { .. } => object_id == source,
             Self::FilteredPump { filter, .. }
             | Self::FilteredPumpDynamic { filter, .. }
             | Self::FilteredPumpPerMatch { filter, .. }
@@ -1399,6 +1436,18 @@ impl ContinuousEffectKind {
                     .count() as i32;
                 chars.power = Some(PtValue::Fixed(n));
                 chars.toughness = Some(PtValue::Fixed(n));
+            }
+            Self::SetBasePtFromMatchAsym { count_filter, count_is_power, other_fixed } => {
+                let who = state.objects.get(source)
+                    .map(|s| s.controller).unwrap_or(0);
+                let n = state.objects
+                    .objects_in_zone(crate::zones::Zone::Battlefield)
+                    .filter(|o| count_filter.matches_base(o, state, who))
+                    .count() as i32;
+                let (p, t) = if *count_is_power { (n, *other_fixed) }
+                             else { (*other_fixed, n) };
+                chars.power = Some(PtValue::Fixed(p));
+                chars.toughness = Some(PtValue::Fixed(t));
             }
             Self::FilteredPumpPerMatch {
                 count_filter, per_power, per_toughness, ..
@@ -2677,6 +2726,34 @@ mod tests {
         assert_eq!(s.computed_toughness(goyf), Some(1));
         let _other = put_creature(&mut s, 0, 2, 2);
         assert_eq!(s.computed_power(goyf), Some(2));
+    }
+
+    #[test]
+    fn self_pt_from_match_asym_counts_one_axis_fixes_other() {
+        // "0/* = number of creatures you control" (Traproot-class, asymmetric):
+        // toughness = the count, power fixed 0.
+        let mut s = GameState::new(2, 0);
+        let wall = {
+            let id = s.allocate_object_id();
+            let mut chars = creature_chars(0, 0);
+            chars.power = Some(PtValue::Fixed(0));
+            chars.toughness = Some(PtValue::Star);
+            let mut o = GameObject::new(id, 0, Zone::Battlefield, 0, chars);
+            o.controller = 0;
+            s.objects.insert(o);
+            id
+        };
+        let you = crate::targets::ObjectFilter::creature()
+            .controlled_by(crate::targets::ControllerConstraint::You);
+        s.add_continuous_effect(ContinuousEffect::self_pt_from_match_asym(
+            wall, you, /*count_is_power=*/ false, /*other_fixed=*/ 0,
+            Duration::WhileSourceOnBattlefield));
+        // 1 creature (wall) → 0/1; power stays fixed 0.
+        assert_eq!(s.computed_power(wall), Some(0));
+        assert_eq!(s.computed_toughness(wall), Some(1));
+        let _other = put_creature(&mut s, 0, 2, 2);
+        assert_eq!(s.computed_power(wall), Some(0));
+        assert_eq!(s.computed_toughness(wall), Some(2));
     }
 
     #[test]

@@ -4,15 +4,14 @@
 //! "Whenever this creature attacks, another target Knight you control gains
 //!  indestructible until end of turn."
 //!
-//! Toughness is `PtValue::Star`. GAP: the CDA is an ASYMMETRIC-SUBTYPE one
-//! (power fixed 2, toughness = Knights you control). self_pt_from_match would
-//! SET both P/T to the Knight count (clobbering the fixed 2 power), and
-//! self_pt_cda has no registry to resolve the "Knight" subtype — so neither
-//! constructor applies. The attack trigger grants indestructible to another
-//! target Knight you control.
+//! Toughness is `PtValue::Star`: an ASYMMETRIC subtype CDA — power fixed 2,
+//! toughness = the number of Knights you control — wired at Layer 7a via
+//! `self_pt_from_match_asym` over a Knight-subtype filter (built in the ETB fn,
+//! which has the interner to name "Knight"). The attack trigger grants
+//! indestructible to another target Knight you control.
 
 use arcana_core::effects::{Effect, KeywordAbility};
-use arcana_core::layers::Duration;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -42,10 +41,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::CREATURE.into(),
         subtypes,
         power: Some(PtValue::Fixed(2)),
-        // GAP: asymmetric-subtype CDA "toughness equal to the number of
-        // Knights you control" (power stays fixed 2) — not expressible by
-        // self_pt_from_match (sets BOTH P/T) or self_pt_cda (no subtype
-        // registry); toughness is `*`.
         toughness: Some(PtValue::Star),
         keywords: vec![KeywordAbility::Deathtouch],
         ..Default::default()
@@ -56,20 +51,45 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         script::subtype_filter(reg, "Knight").controlled_by(ControllerConstraint::You);
 
     reg.register(
-        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
-            id: 1,
-            trigger_condition: TriggerCondition::SelfAttacks,
-            intervening_if: None,
-            effect: grant_indestructible,
-            trigger_zones: vec![Zone::Battlefield],
-            frequency: TriggerFrequency::EachTime,
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(knight_filter),
-                count: TargetCount::Exactly(1),
-                controller: None,
-            }],
-        }),
+        CardDefinition::new(name, chars)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfAttacks,
+                intervening_if: None,
+                effect: grant_indestructible,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(knight_filter),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_cda,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            }),
     )
+}
+
+/// Toughness = Knights you control; power fixed 2.
+fn install_cda(_s: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
+    let knights =
+        script::subtype_filter(reg, "Knight").controlled_by(ControllerConstraint::You);
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_from_match_asym(
+            trig.source,
+            knights,
+            /*count_is_power=*/ false,
+            /*other_fixed=*/ 2,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn grant_indestructible(

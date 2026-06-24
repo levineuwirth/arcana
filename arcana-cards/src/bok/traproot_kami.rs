@@ -2,17 +2,22 @@
 //! Defender, Reach.
 //! Traproot Kami's toughness is equal to the number of Forests on the battlefield.
 //!
-//! GAP: this CDA sets ONLY toughness (power stays a fixed 0), so the symmetric
-//! self_pt_from_match (which sets both P/T equal to a battlefield count) is
-//! wrong, and the asymmetric self_pt_cda compute fn has no registry, so it
-//! cannot resolve the "Forest" subtype by name. Neither CDA constructor can
-//! express an asymmetric-by-subtype count; toughness is left as Star.
+//! Asymmetric subtype CDA (power fixed 0, toughness = the count): wired at
+//! Layer 7a via `self_pt_from_match_asym` over a Forest-subtype filter (the
+//! filter is built in the ETB fn, which has the interner to name "Forest").
 
-use arcana_core::effects::KeywordAbility;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
+use arcana_core::state::GameState;
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Traproot Kami");
@@ -32,5 +37,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    reg.register(CardDefinition::new(name, chars))
+    reg.register(CardDefinition::new(name, chars).with_triggered_ability(
+        TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: install_cda,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        },
+    ))
+}
+
+/// Toughness = Forests on the battlefield (all controllers); power fixed 0.
+fn install_cda(_s: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
+    let forests = script::subtype_filter(reg, "Forest");
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::self_pt_from_match_asym(
+            trig.source, forests, /*count_is_power=*/ false, /*other_fixed=*/ 0,
+            Duration::WhileSourceOnBattlefield),
+    }]
 }
