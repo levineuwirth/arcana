@@ -131,3 +131,5 @@ pub mod gorgon_recluse;
 pub mod yavimaya_dryad;
 pub mod ivory_giant;
 pub mod dormant_sliver;
+pub mod benalish_commander;
+pub mod aeon_chronicler;

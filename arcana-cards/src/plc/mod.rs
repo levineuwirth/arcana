@@ -30,3 +30,6 @@ pub mod volcano_hellion;
 pub mod psychotrope_thallid;
 pub mod lavacore_elemental;
 pub mod dust_elemental;
+pub mod fungal_behemoth;
+pub mod roiling_horror;
+pub mod detritivore;

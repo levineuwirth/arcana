@@ -202,8 +202,16 @@ pub fn dynamic_literal_reason(
     //    apply time (attached_pt_per_match / filtered_pump_per_match) — the
     //    "for each [count_filter]" lives in the builder, not a script amount
     //    (Blanchwood Armor, Hold the Gates).
+    //  - self_pt_from_match(src, count_filter, dur): a `*/*` CDA whose value is
+    //    the engine-side count of count_filter (Layer 7a) — the "equal to the
+    //    number of [filter]" scaling is in the builder (Veteran Warleader class).
+    //  - self_pt_cda(src, compute, dur): a `*/*` CDA whose value is a free
+    //    compute fn; the "equal to …" lives in that fn (which may read scalars
+    //    inline without `script::`), so the install IS the sanctioned form.
     if clean.contains("attack_tax(")
         || clean.contains("_per_match(")
+        || clean.contains("self_pt_from_match(")
+        || clean.contains("self_pt_cda(")
     {
         return None;
     }
@@ -334,6 +342,31 @@ mod tests {
             Some("StaticEnchantment"),
             "Creatures you control get +0/+1 for each Gate you control.",
             src).is_none());
+    }
+
+    #[test]
+    fn self_pt_cda_builders_clear_dynamic() {
+        // "*/* = number of creatures you control" — the count lives in the
+        // self_pt_from_match builder (Layer-7a CDA), so a literal-free install
+        // is correct, not a hardcoded placeholder.
+        let from_match = r#"fn install(_s:&GameState,t:&PendingTrigger,reg:&CardRegistry)->Vec<Effect>{
+            vec![Effect::InstallContinuousEffect{ effect:
+                ContinuousEffect::self_pt_from_match(t.source,
+                    ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    Duration::WhileSourceOnBattlefield) }]}"#;
+        assert!(dynamic_literal_reason(
+            Some("MultiAbilityCreature"),
+            "Trapsmith's power and toughness are each equal to the number of creatures you control.",
+            from_match).is_none());
+        // self_pt_cda with an inline (no-script) compute is equally sanctioned.
+        let cda = r#"fn install(_s:&GameState,t:&PendingTrigger,_r:&CardRegistry)->Vec<Effect>{
+            vec![Effect::InstallContinuousEffect{ effect:
+                ContinuousEffect::self_pt_cda(t.source, life_pt,
+                    Duration::WhileSourceOnBattlefield) }]}"#;
+        assert!(dynamic_literal_reason(
+            Some("MultiAbilityCreature"),
+            "Avatar's power and toughness are each equal to your life total.",
+            cda).is_none());
     }
 
     #[test]

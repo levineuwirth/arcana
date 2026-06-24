@@ -163,3 +163,4 @@ pub mod terror_of_the_peaks;
 pub mod bounding_felidar;
 pub mod holy_cow;
 pub mod gisa_the_hellraiser;
+pub mod duelist_of_the_mind;

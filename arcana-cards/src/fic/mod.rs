@@ -77,3 +77,4 @@ pub mod maester_seymour;
 pub mod yuffie_materia_hunter;
 pub mod krile_baldesion;
 pub mod lulu_stern_guardian;
+pub mod avalanche_of_sector_7;

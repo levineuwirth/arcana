@@ -72,3 +72,4 @@ pub mod galvanic_alchemist;
 pub mod wolfir_silverheart;
 pub mod searchlight_geist;
 pub mod builder_s_blessing;
+pub mod malignus;

@@ -172,3 +172,4 @@ pub mod gimli_counter_of_kills;
 pub mod soldier_of_the_grey_host;
 pub mod shelob_child_of_ungoliant;
 pub mod gwaihir_the_windlord;
+pub mod minas_tirith_garrison;

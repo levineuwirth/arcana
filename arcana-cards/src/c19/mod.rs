@@ -48,3 +48,4 @@ pub mod angel_of_sanctions;
 pub mod wingmate_roc;
 pub mod champion_of_stray_souls;
 pub mod anje_falkenrath;
+pub mod wayfaring_temple;

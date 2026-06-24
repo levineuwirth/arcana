@@ -120,3 +120,4 @@ pub mod xira_arien;
 pub mod pashalik_mons;
 pub mod phantom_flock;
 pub mod aven_fateshaper;
+pub mod terravore;

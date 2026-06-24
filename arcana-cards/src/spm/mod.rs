@@ -123,3 +123,4 @@ pub mod daily_bugle_reporters;
 pub mod anti_venom_horrifying_healer;
 pub mod ara_a_heart_of_the_spider;
 pub mod the_spot_living_portal;
+pub mod sandman_shifting_scoundrel;

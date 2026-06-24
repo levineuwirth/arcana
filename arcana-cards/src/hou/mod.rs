@@ -92,3 +92,4 @@ pub mod wasp_of_the_bitter_end;
 pub mod aven_of_enduring_hope;
 pub mod ruin_rat;
 pub mod wall_of_forgotten_pharaohs;
+pub mod apocalypse_demon;

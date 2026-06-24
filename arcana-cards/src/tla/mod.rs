@@ -154,3 +154,5 @@ pub mod north_pole_patrol;
 pub mod jeong_jeong_the_deserter;
 pub mod guru_pathik;
 pub mod watery_grasp;
+pub mod toph_the_blind_bandit;
+pub mod dragonfly_swarm;

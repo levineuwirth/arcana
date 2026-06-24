@@ -49,3 +49,4 @@ pub mod necroplasm;
 pub mod vulturous_zombie;
 pub mod scythe_specter;
 pub mod festercreep;
+pub mod mortivore;

@@ -59,3 +59,4 @@ pub mod silvar_devourer_of_the_free;
 pub mod fireflux_squad;
 pub mod thalia_s_lieutenant;
 pub mod herald_of_the_forgotten;
+pub mod majestic_myriarch;

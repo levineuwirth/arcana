@@ -157,3 +157,4 @@ pub mod loyal_apprentice;
 pub mod keiga_the_tide_star;
 pub mod wall_of_roots;
 pub mod skarrgan_hellkite;
+pub mod haughty_djinn;

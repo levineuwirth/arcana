@@ -207,3 +207,4 @@ pub mod sethron_hurloon_general;
 pub mod harvester_of_souls;
 pub mod hellrider;
 pub mod cauldron_familiar;
+pub mod ironroot_warlord;

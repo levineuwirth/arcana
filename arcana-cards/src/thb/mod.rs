@@ -137,3 +137,4 @@ pub mod klothys_god_of_destiny;
 pub mod ashiok_s_forerunner;
 pub mod gallia_of_the_endless_dance;
 pub mod underworld_charger;
+pub mod callaphe_beloved_of_the_sea;

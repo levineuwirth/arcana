@@ -226,3 +226,4 @@ pub mod the_river_warlock;
 pub mod the_companion_of_the_wilds;
 pub mod battle_myrsphere;
 pub mod one_does_not;
+pub mod the_duke_of_midrange;

@@ -92,3 +92,5 @@ pub mod kemuri_onna;
 pub mod kitsune_dawnblade;
 pub mod haru_onna;
 pub mod meishin_the_mind_cage;
+pub mod kiyomaro_first_to_stand;
+pub mod soramaro_first_to_dream;

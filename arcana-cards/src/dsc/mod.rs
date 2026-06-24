@@ -109,3 +109,4 @@ pub mod curator_beastie;
 pub mod rendmaw_creaking_nest;
 pub mod gleeful_arsonist;
 pub mod metamorphosis_fanatic;
+pub mod old_stickfingers;

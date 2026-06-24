@@ -133,3 +133,4 @@ pub mod a_hagra_constrictor;
 pub mod shadow_stinger;
 pub mod charix_the_raging_isle;
 pub mod tajuru_paragon;
+pub mod scourge_of_the_skyclaves;

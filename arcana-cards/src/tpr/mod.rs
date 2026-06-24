@@ -128,3 +128,4 @@ pub mod spirit_en_kor;
 pub mod flowstone_wyvern;
 pub mod wall_of_essence;
 pub mod skyshroud_elf;
+pub mod dauthi_warlord;

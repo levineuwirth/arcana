@@ -154,3 +154,5 @@ pub mod keldon_flamesage;
 pub mod zur_eternal_schemer;
 pub mod nemata_primeval_warden;
 pub mod the_raven_man;
+pub mod a_uurg_spawn_of_turg;
+pub mod urborg_lhurgoyf;

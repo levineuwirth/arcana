@@ -13,3 +13,4 @@ pub mod landlore_navigator;
 pub mod chitinous_crawler;
 pub mod stalwart_speartail;
 pub mod kamachal_ship_s_mascot;
+pub mod mythweaver_poq;

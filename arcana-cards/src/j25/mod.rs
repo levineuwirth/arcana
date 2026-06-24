@@ -45,3 +45,4 @@ pub mod merfolk_pupil;
 pub mod generous_pup;
 pub mod slinza_the_spiked_stampede;
 pub mod urdnan_dromoka_warrior;
+pub mod braulios_of_pheres_band;
