@@ -6004,6 +6004,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::arb::naya_sojourners::register(reg); n += 1;
     crate::arb::lightning_reaver::register(reg); n += 1;
     crate::arb::retaliator_griffin::register(reg); n += 1;
+    crate::arb::tainted_sigil::register(reg); n += 1;
     // --- mm3 ---
     crate::mm3::woolly_thoctar::register(reg); n += 1;
     crate::mm3::spike_jester::register(reg); n += 1;
@@ -12328,6 +12329,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::all::lim_d_l_s_paladin::register(reg); n += 1;
     crate::all::whip_vine::register(reg); n += 1;
     crate::all::urza_s_engine::register(reg); n += 1;
+    crate::all::scarab_of_the_unseen::register(reg); n += 1;
     // --- ima ---
     crate::ima::dead_reveler::register(reg); n += 1;
     crate::ima::greater_basilisk::register(reg); n += 1;
@@ -15032,6 +15034,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::unk::battle_myrsphere::register(reg); n += 1;
     crate::unk::one_does_not::register(reg); n += 1;
     crate::unk::the_duke_of_midrange::register(reg); n += 1;
+    crate::unk::famous_museum::register(reg); n += 1;
     // --- ddt ---
     crate::ddt::goblin_wardriver::register(reg); n += 1;
     crate::ddt::tidal_wave::register(reg); n += 1;
@@ -18761,6 +18764,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::eoc::szarel_genesis_shepherd::register(reg); n += 1;
     crate::eoc::soul_of_windgrace::register(reg); n += 1;
     crate::eoc::god_eternal_bontu::register(reg); n += 1;
+    crate::eoc::insight_engine::register(reg); n += 1;
     // --- c19 ---
     crate::c19::sundering_growth::register(reg); n += 1;
     crate::c19::trostani_s_judgment::register(reg); n += 1;
@@ -19925,6 +19929,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::spe::spider_man_peter_parker::register(reg); n += 1;
     crate::spe::green_goblin_nemesis::register(reg); n += 1;
     crate::spe::spider_man_miles_morales::register(reg); n += 1;
+    crate::spe::pumpkin_bombs::register(reg); n += 1;
     // --- khc ---
     crate::khc::eerie_interlude::register(reg); n += 1;
     crate::khc::elvish_promenade::register(reg); n += 1;

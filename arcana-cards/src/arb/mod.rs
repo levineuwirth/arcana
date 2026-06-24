@@ -45,3 +45,4 @@ pub mod messenger_falcons;
 pub mod naya_sojourners;
 pub mod lightning_reaver;
 pub mod retaliator_griffin;
+pub mod tainted_sigil;
