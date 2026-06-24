@@ -1,10 +1,12 @@
 //! Banshee — `{2}{B}{B}` 0/1 black Spirit. "{X}, {T}: This creature deals half
 //! X damage, rounded down, to any target, and half X damage, rounded up, to you."
 //!
-//! GAP: X-cost activation cost and "half X rounded down/up" split damage not
-//! expressible with current ActivationCost or Effect catalog.
+//! The `{X}` activation reads the chosen X from `ctx.x_value`; the split is
+//! `floor(X/2)` to the chosen target and `ceil(X/2)` to the activator, each via
+//! [`Effect::DealDamage`].
 
 use arcana_core::effects::Effect;
+use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -12,7 +14,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::TargetRequirement;
+use arcana_core::targets::{ObjectOrPlayer, TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -35,10 +37,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{X}, {T}: This creature deals half X damage, rounded down, to any target, and half X damage, rounded up, to you.".into(),
                 cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{X}").expect("valid cost"),
                     tap: true,
                     ..ActivationCost::default()
                 },
-                // GAP: X-cost mana activation not expressible; tap-only as placeholder.
                 target_requirements: vec![TargetRequirement::any_target()],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
@@ -52,9 +54,35 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn banshee_split_damage(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: X-cost activation and "half X rounded down/up" split damage not expressible.
-    Vec::new()
+    let x = ctx.x_value.unwrap_or(0);
+    let Some(target) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    let any_target = match target {
+        TargetChoice::Object(id) => DamageTarget::Object(*id),
+        TargetChoice::Player(p) => DamageTarget::Player(*p),
+        TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Object(id)) => {
+            DamageTarget::Object(*id)
+        }
+        TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Player(p)) => {
+            DamageTarget::Player(*p)
+        }
+        _ => return Vec::new(),
+    };
+    // "half X rounded down" to the chosen target; "half X rounded up" to you.
+    vec![
+        Effect::DealDamage {
+            source: ctx.source,
+            target: any_target,
+            amount: x / 2,
+        },
+        Effect::DealDamage {
+            source: ctx.source,
+            target: DamageTarget::Player(ctx.controller),
+            amount: x.div_ceil(2),
+        },
+    ]
 }

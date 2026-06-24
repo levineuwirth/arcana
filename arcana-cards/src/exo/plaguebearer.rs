@@ -1,8 +1,10 @@
 //! Plaguebearer — `{1}{B}` 1/1 black Zombie.
 //! "{X}{X}{B}: Destroy target nonblack creature with mana value X."
 //!
-//! GAP: "{X}{X}" X-cost parsing and "nonblack creature with mana value X"
-//! filter — X-cost activation and CMC-filter targeting not fully expressible.
+//! The `{X}{X}{B}` cost fans out per affordable X; the resolver reads the
+//! paid X from `ctx.x_value` and destroys the chosen creature only if it is
+//! a nonblack creature whose mana value equals X (the "nonblack ... with
+//! mana value X" restriction, validated at resolution).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -12,7 +14,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -34,9 +36,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{X}{X}{B}: Destroy target nonblack creature with mana value X.".into(),
-                // GAP: "{X}{X}{B}" X-cost not fully expressible.
                 cost: ActivationCost {
-                    mana_cost: ManaCost::parse("{B}").unwrap(),
+                    mana_cost: ManaCost::parse("{X}{X}{B}").expect("valid cost"),
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![TargetRequirement::target_creature()],
@@ -51,11 +52,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn destroy_creature(
-    _state: &GameState,
+    state: &GameState,
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
+    let x = ctx.x_value.unwrap_or(0);
     let Some(target) = ctx.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
+    // "nonblack creature with mana value X" — validate the chosen target
+    // at resolution against a nonblack-creature, exact-CMC-X filter.
+    let filter = ObjectFilter::creature()
+        .without_colors(ColorSet::black())
+        .with_exact_cmc(x);
+    let Some(obj) = state.objects.get(*id) else { return Vec::new(); };
+    if !filter.matches(obj, state, ctx.controller) {
+        return Vec::new();
+    }
     vec![Effect::DestroyPermanent { target: *id }]
 }

@@ -2136,10 +2136,39 @@ fn enumerate_activation_actions(
                 ability.cost.mana_cost
                     .with_generic_delta(state.ability_cost_delta(obj.id))
             };
-            let plans = if modified_ability_cost.is_empty() {
-                vec![crate::actions::ManaPaymentPlan::empty()]
+            // Generic-{X} fan-out (CR 107.3 / 601.2b for activated costs):
+            // expand {X} to each affordable value (0..=pool total, a safe
+            // over-approximation the mana solver filters), tagging each
+            // resulting plan with its X. The tag rides onto the activation
+            // as an `ActivationX` marker so apply stamps the stack entry's
+            // x_value (the mana analog of the −X loyalty path). Only loyalty
+            // activations fanned out before; a normal `{X}` cost used to
+            // resolve at X=0.
+            let has_mana_x = modified_ability_cost.x_count() > 0;
+            let mana_x_values: Vec<u32> = if has_mana_x {
+                let max_x = pool.total() as u32;
+                (0..=max_x).collect()
             } else {
-                enumerate_payment_plans(&modified_ability_cost, pool, None, &ctx)
+                vec![0] // sentinel; cost used as-is, tag = None
+            };
+            let plans: Vec<(crate::actions::ManaPaymentPlan, Option<u32>)> = {
+                let mut out = Vec::new();
+                for &mx in &mana_x_values {
+                    let cost = if has_mana_x {
+                        modified_ability_cost.with_x_expanded(mx)
+                    } else {
+                        modified_ability_cost.clone()
+                    };
+                    let tag = if has_mana_x { Some(mx) } else { None };
+                    if cost.is_empty() {
+                        out.push((crate::actions::ManaPaymentPlan::empty(), tag));
+                    } else {
+                        for plan in enumerate_payment_plans(&cost, pool, None, &ctx) {
+                            out.push((plan, tag));
+                        }
+                    }
+                }
+                out
             };
             if plans.is_empty() { continue; }
 
@@ -2184,13 +2213,17 @@ fn enumerate_activation_actions(
             } else {
                 vec![None]
             };
-            for plan in &plans {
+            for (plan, mana_x) in &plans {
                 for targets in &target_selections {
                     for sac in &sac_choices {
                         for disc in &discard_choices {
                             for taps in &tap_choices {
                                 for x in &x_loyalties {
                                 let mut costs = additional.clone();
+                                if let Some(mx) = mana_x {
+                                    costs.push(
+                                        crate::actions::AdditionalCostPayment::ActivationX(*mx));
+                                }
                                 if let Some(n) = x {
                                     costs.push(
                                         crate::actions::AdditionalCostPayment::RemoveCounters {
@@ -3322,6 +3355,52 @@ mod tests {
             crate::actions::AdditionalCostPayment::RemoveCounters {
                 source: s, kind: CounterKind::PlusOnePlusOne, count: 1,
             } if *s == obj)));
+    }
+
+    #[test]
+    fn generic_x_activated_ability_fans_out_x_values() {
+        use crate::registry::{ActivatedAbilityDef, ActivationCost, CardDefinition};
+        use crate::mana::ManaCost;
+        let mut reg = CardRegistry::new();
+        let name = reg.interner_mut().intern("X Pinger");
+        let chars = creature_chars(0, 0);
+        let cid = reg.register(
+            CardDefinition::new(name, chars)
+                .with_activated_ability(ActivatedAbilityDef {
+                    text: "{X}: reads X".into(),
+                    cost: ActivationCost {
+                        mana_cost: ManaCost::parse("{X}").expect("valid"),
+                        ..ActivationCost::default()
+                    },
+                    target_requirements: vec![],
+                    is_mana_ability: false,
+                    is_loyalty_ability: false,
+                    activation_zone: crate::registry::ActivationZone::Battlefield,
+                    is_instant_speed: false,
+                    face_gate: None,
+                    effect: |_, _, _| Vec::new(),
+                }));
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let chars = creature_chars(0, 0);
+        let obj = state_put_with_card(&mut s, 0, Zone::Battlefield, chars, cid);
+        s.objects.get_mut(obj).unwrap().status.summoning_sick = false;
+        add_mana(&mut s, 0, crate::types::ManaColor::Colorless, 3);
+
+        // One activation per X in 0..=3, each carrying its ActivationX marker.
+        let xs: Vec<u32> = legal_actions(&s, &reg).iter().filter_map(|a| match a {
+            Action::ActivateAbility { source, additional_costs, .. } if *source == obj =>
+                additional_costs.iter().find_map(|c| match c {
+                    crate::actions::AdditionalCostPayment::ActivationX(x) => Some(*x),
+                    _ => None,
+                }),
+            _ => None,
+        }).collect();
+        for expected in 0..=3u32 {
+            assert!(xs.contains(&expected),
+                "X={expected} activation should be enumerated; got {xs:?}");
+        }
+        assert!(!xs.contains(&4), "X cannot exceed available mana (3)");
     }
 
     // --- min_self_counters precondition (Class level-up CR 717.5b) -------

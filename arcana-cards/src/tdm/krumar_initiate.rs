@@ -1,8 +1,12 @@
 //! Krumar Initiate — `{1}{B}` 2/2 Creature — Human Cleric.
 //! `{X}{B}, {T}, Pay X life: This creature endures X.`
 //! (Endure X: Put X +1/+1 counters on it or create an X/X white Spirit creature token.)
-//! GAP: "{X}" variable mana cost with dynamic life payment — no X-cost in ActivationCost.
-//! GAP: "endures X" — player choice between +1/+1 counters or Spirit token not expressible.
+//! GAP: "Pay X life" — the life cost is dynamic (equals the X paid), but
+//!      ActivationCost.life is a fixed value with no coupling to x_value.
+//! GAP: "endures X" — player choice between X +1/+1 counters or an X/X Spirit
+//!      token is not expressible (no choose-mode-then-X effect).
+//! (The generic-{X} mana cost itself now fans out; both remaining blockers are
+//!  the X-coupled life cost and the Endure choice, so the ability is omitted.)
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

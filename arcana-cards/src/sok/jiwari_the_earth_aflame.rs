@@ -3,9 +3,8 @@
 //! Oracle:
 //! * "{X}{R}, {T}: Jiwari deals X damage to target creature without
 //!   flying." — a tap + {X}{R} activated ability dealing X damage to a
-//!   non-flying creature. X is read from `ctx.x_value`; generic-{X}
-//!   threading into `x_value` is a documented fidelity gap (it may be 0 if
-//!   the engine doesn't thread it for non-loyalty {X}).
+//!   non-flying creature. X is read from `ctx.x_value` (the engine fans out
+//!   generic-{X} on activated costs and threads the chosen X here).
 //! * "Channel — {X}{R}{R}{R}, Discard this card: It deals X damage to each
 //!   creature without flying." — a Channel ability (mana + discard-self
 //!   from hand) dealing X damage to every non-flying creature via a

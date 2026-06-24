@@ -3,8 +3,9 @@
 //! times. You may choose new targets for the copies."
 //! Targeting an activated/triggered ability is wired via
 //! TargetFilter::AbilityOnStack; GAP: copying the ability X times is not in
-//! the Effect catalog (Effect::Counter is the only ability-entry consumer);
-//! emitting Vec::new().
+//! the Effect catalog (Effect::Counter is the only ability-entry consumer).
+//! The {X}{X} cost is expressible, but with the copy-ability effect missing
+//! the ability stays GAP'd (cost left unwired); emitting Vec::new().
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -69,8 +70,10 @@ fn copy_ability(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: copying an activated or triggered ability X times is not in the
-    // Effect catalog (CopySpell only copies spells, not abilities; the new
-    // AbilityOnStack target is only consumable by Effect::Counter). Also
-    // GAP: the {X}{X} cost is not modeled on ActivationCost.
+    // Effect catalog (CopySpell only copies spells, not abilities; the
+    // AbilityOnStack target is only consumable by Effect::Counter). The
+    // {X}{X} cost is now expressible, but with no copy-ability primitive the
+    // whole effect stays GAP'd, so the cost is left unwired rather than
+    // charging mana for a no-op.
     Vec::new()
 }

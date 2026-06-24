@@ -415,6 +415,14 @@ pub enum AdditionalCostPayment {
         count: u32,
     },
     RevealCard(ObjectId),
+    /// Generic-{X} on an ACTIVATED ability (CR 107.3). Zero-payment
+    /// marker carrying the X the activator chose — the X mana itself is
+    /// already in `mana_payment` (the cost was `with_x_expanded(x)` at
+    /// enumeration). Apply surfaces this as the activation stack entry's
+    /// `x_value` so the effect reads `ActivationContext::x_value`. The
+    /// mana analog of the −X loyalty path (which rides a Loyalty
+    /// `RemoveCounters`).
+    ActivationX(u32),
     /// CR 702.32 — Kicker. Zero-payload marker that the caster elected
     /// the kicked cost. The kicker mana cost is looked up via
     /// [`crate::effects::KeywordAbility::Kicker`] and added to the

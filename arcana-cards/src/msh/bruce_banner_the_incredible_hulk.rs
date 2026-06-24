@@ -4,15 +4,19 @@
 //! Enrage — Whenever The Incredible Hulk is dealt damage, put a +1/+1 counter on him.
 //! If he's attacking, untap him and there is an additional combat phase after this phase.
 //!
-//! GAP: {X}{X},{T} activated ability — X-cost activated abilities are not modeled
-//!      (no ActivatedAbilityDef with variable X cost in engine API).
-//! GAP: {2}{R}{R}{G}{G}: Transform — activated transform ability not modeled
-//!      (ActivatedAbilityDef is not shown in MDFC prompt; Transform effect from a cost is a GAP).
+//! Front-face "{X}{X}, {T}: Draw X cards" is WIRED via a front-face-gated
+//! ActivatedAbilityDef whose {X}{X} mana cost fans out and threads the chosen X
+//! onto ActivationContext::x_value, read in the resolver as Effect::DrawCards.
+//! GAP: {2}{R}{R}{G}{G}: Transform — an activated transform-from-cost ability is
+//!      not modeled (no ActivationCost→Transform path for an MDFC face).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
-use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::registry::{
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardFace, CardRegistry,
+};
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
@@ -41,8 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
         power: Some(PtValue::Fixed(1)),
         toughness: Some(PtValue::Fixed(1)),
-        // GAP: {X}{X},{T}: Draw X cards — variable X activated ability not modeled
-        // GAP: {2}{R}{R}{G}{G}: Transform — activated transform not modeled
+        // GAP: {2}{R}{R}{G}{G}: Transform — activated transform-from-cost not modeled
         ..Default::default()
     };
 
@@ -76,6 +79,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_mdfc_back(back_face)
+            // Front face (Bruce Banner) — "{X}{X}, {T}: Draw X cards." (sorcery speed).
+            // Face-gated to the front (visible_face == 0); the {X}{X} mana cost fans
+            // out and threads the chosen X onto ctx.x_value.
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "{X}{X}, {T}: Draw X cards. Activate only as a sorcery.".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{X}{X}").expect("valid cost"),
+                    tap: true,
+                    ..ActivationCost::default()
+                },
+                target_requirements: Vec::new(),
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: false,
+                face_gate: Some(0),
+                effect: draw_x,
+            })
             // Back face (The Incredible Hulk) — Enrage: "Whenever The Incredible
             // Hulk is dealt damage, put a +1/+1 counter on him. If he's attacking,
             // untap him and there is an additional combat phase after this phase."
@@ -90,6 +111,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             })
             .with_trigger_face_gate(1, 1),
     )
+}
+
+/// Front face "{X}{X}, {T}: Draw X cards." — X is the activation's chosen X.
+fn draw_x(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let x = ctx.x_value.unwrap_or(0);
+    vec![Effect::DrawCards {
+        player: ctx.controller,
+        count: x,
+    }]
 }
 
 /// Enrage: put a +1/+1 counter on this creature; if it's attacking, untap it

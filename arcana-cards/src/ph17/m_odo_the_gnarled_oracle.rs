@@ -3,9 +3,16 @@
 //! of their library until a creature card with mana value X or less is revealed;
 //! put it onto the battlefield under your control, shuffle the rest away.
 //! Activate only on the battlefield or in the command zone (Eminence).
-//! GAP: X-cost activated ability, Eminence zone restriction (command zone),
-//! and library-reveal-until effects are not expressible with catalog variants;
-//! returning Vec::new() with GAP comment.
+//! GAP: the {X} mana cost itself now fans out, but the PAYLOAD is still not
+//! faithfully expressible, so the whole ability is left gapped:
+//!   - Effect::RevealUntil with found_dest Battlefield grants control to the
+//!     REVEALED player (the library's owner), not to the activator — M'Odo puts
+//!     the creature onto the battlefield under YOUR control, so an opponent-
+//!     targeted reveal would seat it under the wrong controller.
+//!   - "shuffle the rest into their library" has no exact DigRest (only
+//!     bottom-random / graveyard).
+//!   - Eminence command-zone activation (ActivationZone is Battlefield-only)
+//!     is a separate GAP.
 
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -63,8 +70,10 @@ fn eminence_ability(
     _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: X-cost activated ability, Eminence zone restriction (command zone),
-    // and library-reveal-until-creature-with-mv-X effect are not expressible
-    // with catalog variants.
+    // GAP: the {X} cost now fans out, but the payload is not faithfully
+    // expressible — RevealUntil seats the found creature under the revealed
+    // player's control (not the activator's), and "shuffle the rest into their
+    // library" has no exact DigRest. Eminence command-zone activation is also
+    // unmodeled. Left as a no-op rather than half-wired.
     Vec::new()
 }

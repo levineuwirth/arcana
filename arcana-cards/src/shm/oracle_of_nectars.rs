@@ -1,6 +1,6 @@
 //! Oracle of Nectars — `{2}{G/W}` 2/2 Elf Cleric.
 //! `{X}, {T}:` You gain X life.
-//! GAP: X-cost activated ability not expressible.
+//! Wired as an `{X}, {T}` activated ability; X is read from `ctx.x_value`.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -33,7 +33,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{X}, {T}: You gain X life.".into(),
-                cost: ActivationCost::tap_only(), // X cost not expressible
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{X}").expect("valid cost"),
+                    tap: true,
+                    ..ActivationCost::default()
+                },
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: false,
@@ -50,7 +54,6 @@ fn gain_x_life(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: X-cost activated ability not expressible; gaining 1 life as stub.
-    let x = ctx.x_value.unwrap_or(1);
+    let x = ctx.x_value.unwrap_or(0);
     vec![Effect::GainLife { player: ctx.controller, amount: x }]
 }

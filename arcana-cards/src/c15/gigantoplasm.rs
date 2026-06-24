@@ -3,9 +3,9 @@
 //! This creature has base power and toughness X/X.'"
 //!
 //! GAP: "enter as a copy ... except it has [ability]" — copy-on-entry with
-//! ability injection not expressible. The {X}: set base PT activation is also
-//! not directly expressible (X-cost activation with SetBasePT). Emitting a
-//! basic creature shell with a GAP placeholder.
+//! ability injection not expressible. Emitting a basic creature shell that
+//! carries the granted "{X}: base power/toughness X/X" activated ability
+//! directly (the {X} cost fans out; the resolver reads ctx.x_value).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,7 +36,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{X}: This creature has base power and toughness X/X.".into(),
-                cost: ActivationCost::default(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{X}").expect("valid cost"),
+                    ..ActivationCost::default()
+                },
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: false,
@@ -53,7 +56,6 @@ fn set_base_pt_x(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: X-cost activation not expressible; ctx.x_value carries the X.
     let x = ctx.x_value.unwrap_or(0) as i32;
     vec![Effect::SetBasePT {
         target: ctx.source,

@@ -1,18 +1,23 @@
 //! Minamo Sightbender — `{1}{U}` 1/2 Human Wizard.
 //! `{X}, {T}:` Target creature with power X or less can't be blocked this
 //! turn.
-//! GAP: X-cost activation, power-X filter for target, and "can't be blocked"
-//! not expressible.
+//!
+//! The `{X}` cost fans out per affordable X; the resolver reads the paid X
+//! from `ctx.x_value`, gates on the target's computed power being ≤ X (the
+//! "power X or less" restriction, checked at resolution), and applies
+//! `CantBeBlocked` for the turn.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
 };
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::TargetRequirement;
+use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -36,7 +41,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{X}, {T}: Target creature with power X or less can't be blocked this turn.".into(),
-                cost: ActivationCost::tap_only(), // X cost not expressible
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{X}").expect("valid cost"),
+                    tap: true,
+                    ..ActivationCost::default()
+                },
                 target_requirements: vec![TargetRequirement::target_creature()],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
@@ -49,11 +58,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn unblockable_x(
-    _state: &GameState,
-    _ctx: &ActivationContext,
+    state: &GameState,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: X-cost activation, power-X filter, and "can't be blocked" not
-    // expressible with catalog variants.
-    Vec::new()
+    let x = ctx.x_value.unwrap_or(0) as i32;
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    // "Target creature with power X or less" — gate the effect on the
+    // chosen creature's current power being ≤ the paid X.
+    if script::power_of(state, *id) > x {
+        return Vec::new();
+    }
+    vec![Effect::CantBeBlocked {
+        target: *id,
+        duration: Duration::EndOfTurn,
+    }]
 }

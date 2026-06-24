@@ -1,8 +1,8 @@
 //! Magus of the Candelabra — `{G}` 1/2 green Human Wizard.
 //! "{X}, {T}: Untap X target lands."
 //!
-//! GAP: "{X}" X-cost and "untap X target lands" — X-cost activation and
-//! multi-target untap. Modeling as untap 1 target land.
+//! The `{X}` activation fans out per affordable X; `TargetCount::X` ties the
+//! land-target count to the paid X, and the resolver untaps each chosen land.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -36,13 +36,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{X}, {T}: Untap X target lands.".into(),
-                // GAP: "{X}" X-cost not fully expressible.
-                cost: ActivationCost::tap_only(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{X}").expect("valid cost"),
+                    tap: true,
+                    ..ActivationCost::default()
+                },
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(
                         ObjectFilter::new().with_types(TypeLine::LAND.into()),
                     ),
-                    count: TargetCount::Any,
+                    count: TargetCount::X,
                     controller: None,
                 }],
                 is_mana_ability: false,

@@ -17,8 +17,11 @@
 //! GAP: ETB "exile a creature card from each opponent's revealed hand until Valki
 //!   leaves" — no Duration variant for "until source leaves battlefield" exile;
 //!   effect emits Vec::new().
-//! GAP: {X} activated ability "Valki becomes a copy of an exiled card" — no
-//!   Effect::BecomesCopy taking an exiled card reference; GAP'd.
+//! GAP: {X} activated ability "Valki becomes a copy of an exiled card" — the
+//!   {X} cost itself is now expressible, but there is no Effect::BecomesCopy
+//!   taking an exiled-card reference (and the ETB exile-until-leaves that
+//!   populates the choice pool is also unmodeled), so the whole ability is
+//!   GAP'd (cost left unwired).
 //! GAP: Tibalt emblem — no Effect::CreateEmblem; GAP'd.
 //! GAP: Tibalt +2/−3/−8 loyalty abilities — planeswalker loyalty ability shape
 //!   not yet in engine API; GAP'd (back-face-only activated abilities not modeled).

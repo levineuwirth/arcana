@@ -1,6 +1,8 @@
 //! Orcish Settlers — `{1}{R}` 1/1 red Orc.
 //! `{X}{X}{R}, {T}, Sacrifice this creature: Destroy X target lands.`
-//! GAP: X-cost not modeled in ActivationCost; TargetCount::X needs dynamic_x; complex setup deferred.
+//! Wired as an `{X}{X}{R}, {T}, Sacrifice` activated ability — the engine
+//! charges 2·X (both `{X}` symbols expand to the chosen X) and `TargetCount::X`
+//! selects X target lands, each destroyed.
 
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -32,9 +34,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{X}{X}{R}, {T}, Sacrifice this creature: Destroy X target lands.".into(),
-                // GAP: X-cost mana not expressible; using {R} tap sacrifice as placeholder
                 cost: ActivationCost {
-                    mana_cost: ManaCost::parse("{R}").unwrap(),
+                    mana_cost: ManaCost::parse("{X}{X}{R}").expect("valid cost"),
                     tap: true,
                     sacrifice: true,
                     ..ActivationCost::default()
@@ -43,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     filter: TargetFilter::Permanent(
                         ObjectFilter::new().with_types(TypeLine::LAND.into()),
                     ),
-                    count: TargetCount::UpTo(1),
+                    count: TargetCount::X,
                     controller: None,
                 }],
                 is_mana_ability: false,
@@ -61,7 +62,12 @@ fn destroy_land(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    let Some(target) = ctx.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
-    vec![Effect::DestroyPermanent { target: *id }]
+    ctx.targets
+        .targets
+        .iter()
+        .filter_map(|t| match t {
+            TargetChoice::Object(id) => Some(Effect::DestroyPermanent { target: *id }),
+            _ => None,
+        })
+        .collect()
 }

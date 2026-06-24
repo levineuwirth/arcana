@@ -1116,6 +1116,9 @@ fn apply_activate_ability(
             crate::actions::AdditionalCostPayment::RemoveCounters {
                 kind: crate::types::CounterKind::Loyalty, count, ..
             } => Some(*count),
+            // Generic-{X} activated cost: the chosen X rides as a marker
+            // (the mana is already in the plan).
+            crate::actions::AdditionalCostPayment::ActivationX(x) => Some(*x),
             _ => None,
         });
         // Snapshot the effect fn so a token whose activation sacrifices
@@ -4189,6 +4192,11 @@ fn apply_additional_costs(
                 // `apply_cast_spell` stamps `StackEntry::kicked` from
                 // the presence of this variant so resolution-time
                 // effect fns can branch on the kicked rider.
+            }
+            A::ActivationX(_) => {
+                // Zero-payment marker — the X mana is already in
+                // `mana_payment`. apply_activate_ability reads it to set
+                // the stack entry's x_value (see the x_value find_map).
             }
         }
     }

@@ -11,10 +11,12 @@
 //! GAP: Delve (cast-time cost reduction by exiling graveyard cards) is not in
 //!      the supported keyword surface — omitted.
 //! GAP: the "{X}, {T}, Exile X cards from your graveyard: target creature gets
-//!      -X/-X" activated ability has no expressible cost — there is no
-//!      "exile X cards from graveyard" activation-cost field nor a generic X
-//!      mana cost (cf. Taigam, Sidisi's Hand). Omitted whole rather than
-//!      emitting an ungated -X/-X effect.
+//!      -X/-X" activated ability is not expressible. The generic-{X} mana
+//!      cost itself now fans out, but the linked additional cost "Exile X
+//!      cards from your graveyard" (the same X as the mana paid) has no
+//!      activation-cost field, and TargetCount::X on a -X/-X sweep with that
+//!      coupled cost can't be assembled. Omitted whole rather than emitting
+//!      an ungated -X/-X effect.
 
 use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;

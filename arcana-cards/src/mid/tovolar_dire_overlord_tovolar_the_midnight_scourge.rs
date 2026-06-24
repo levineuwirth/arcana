@@ -12,17 +12,21 @@
 //! trigger (present on BOTH faces) is WIRED via TriggerCondition::DamageDealt with a
 //! subtype-filtered, controller=You source_filter; left ungated so it fires on both faces.
 //! GAP: "transform any number of Human Werewolves you control" — mass transform of others not expressible.
-//! GAP: Back-face activated ability ({X}{R}{G}: pump target Wolf/Werewolf) not modeled — there is
-//!      no generic-{X} mana cost on activated abilities (only loyalty-X fans out; a normal
-//!      activated ability's {X} silently resolves to 0). Missing primitive: an ActivationCost
-//!      generic-X fan-out feeding the chosen X into ActivationContext.x_value.
+//! Back-face activated ability ({X}{R}{G}: target Wolf/Werewolf you control gets +X/+0 and gains
+//! trample) is WIRED via a back-face-gated ActivatedAbilityDef whose {X} mana cost fans out and
+//! threads the chosen X onto ActivationContext::x_value, read in the resolver as a single
+//! Effect::Pump (+X/+0 + Trample, end of turn).
 
 use arcana_core::conditions;
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::objects::ObjectId;
-use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::registry::{
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardFace, CardRegistry,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -31,7 +35,10 @@ use arcana_core::types::{
     CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine,
 };
 use arcana_core::zones::Zone;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetFilter};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::state::GameState;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -112,10 +119,54 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
+            // Back-face activated ability — "{X}{R}{G}: Target Wolf or Werewolf you
+            // control gets +X/+0 and gains trample until end of turn." Face-gated to the
+            // back (visible_face == 1); the {X} mana cost fans out and threads the chosen
+            // X onto ctx.x_value.
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "{X}{R}{G}: Target Wolf or Werewolf you control gets +X/+0 and gains trample until end of turn.".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{X}{R}{G}").expect("valid cost"),
+                    ..ActivationCost::default()
+                },
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature()
+                            .with_subtypes_any(vec![wolf_sub, werewolf_sub])
+                            .controlled_by(ControllerConstraint::You),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: true,
+                face_gate: Some(1),
+                effect: pump_wolf_x,
+            })
             // Combat-damage draw (1) is on both faces (ungated); the upkeep transform (2)
             // is front-face only.
             .with_trigger_face_gate(2, 0),
     )
+}
+
+fn pump_wolf_x(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let x = ctx.x_value.unwrap_or(0) as i32;
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::Pump {
+        target: *id,
+        power: x,
+        toughness: 0,
+        duration: Duration::EndOfTurn,
+        keywords: vec![KeywordAbility::Trample],
+    }]
 }
 
 fn draw_a_card(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
