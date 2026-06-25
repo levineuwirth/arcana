@@ -536,6 +536,45 @@ pub mod ydft;
 
 pub mod register_all;
 
+/// Build a [`CardRegistry`](arcana_core::registry::CardRegistry) with the whole
+/// catalog registered. Convenience for downstream crates (arcana-ai self-play /
+/// eval) that need a populated registry.
+pub fn build_catalog() -> arcana_core::registry::CardRegistry {
+    let mut reg = arcana_core::registry::CardRegistry::new();
+    register_all::register_all(&mut reg);
+    reg
+}
+
+/// Sample a playable 40-card deck — 18 random basic lands + 22 random catalog
+/// cards — mirroring the random-game harness's deck shape (so games actually
+/// function: mana + threats). Deterministic in `seed`.
+pub fn sample_deck(
+    reg: &arcana_core::registry::CardRegistry,
+    seed: u64,
+) -> Vec<arcana_core::types::CardId> {
+    use arcana_core::types::CardId;
+    let n = reg.len() as u32;
+    let valid: Vec<CardId> = (0..n).filter(|&c| reg.get(c).is_some()).collect();
+    let basics: Vec<CardId> = ["Plains", "Island", "Swamp", "Mountain", "Forest"].iter()
+        .filter_map(|name| {
+            let sym = reg.interner().lookup(name)?;
+            valid.iter().copied().find(|&c| reg.get(c).map(|d| d.name) == Some(sym))
+        })
+        .collect();
+    // Small splitmix-style PRNG (deterministic, no rand dep needed here).
+    let mut s = seed.wrapping_mul(2654435761).wrapping_add(0x9E3779B97F4A7C15);
+    let mut next = |m: usize| -> usize {
+        s ^= s >> 30; s = s.wrapping_mul(0xBF58476D1CE4E5B9);
+        s ^= s >> 27; s = s.wrapping_mul(0x94D049BB133111EB);
+        s ^= s >> 31;
+        (s as usize) % m.max(1)
+    };
+    let mut deck = Vec::with_capacity(40);
+    if !basics.is_empty() { for _ in 0..18 { deck.push(basics[next(basics.len())]); } }
+    if !valid.is_empty() { for _ in 0..22 { deck.push(valid[next(valid.len())]); } }
+    deck
+}
+
 pub mod ltc;
 
 pub mod exo;
