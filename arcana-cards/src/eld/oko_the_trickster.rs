@@ -14,18 +14,18 @@
 //!   becomes-a-copy onto the source planeswalker — the demonstrated
 //!   CopyPermanent variant mints a TOKEN copy rather than overwriting Oko's
 //!   characteristics, so this is GAP'd (correct `0` cost + target shell kept).
-//! - The `−7` sets each of your creatures to base 10/10 (SetBasePT per id) and
-//!   grants trample (GrantKeyword per id), iterated over the matching ids.
+//! - The `−7` sets each of your creatures to base 10/10 (board-wide
+//!   filtered_set_base_pt) and grants trample (board-wide filtered_keyword),
+//!   both until end of turn.
 
 use arcana_core::effects::{Effect, KeywordAbility};
-use arcana_core::layers::Duration;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone, CardDefinition,
     CardRegistry,
 };
-use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
     ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
@@ -135,21 +135,28 @@ fn zero_become_copy(_state: &GameState, _ctx: &ActivationContext, _reg: &CardReg
 }
 
 /// `−7: Each creature you control has base P/T 10/10 and gains trample.`
-fn minus_seven_tenten(state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+fn minus_seven_tenten(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    // Board-wide: every creature you control becomes base 10/10 and gains
+    // trample until end of turn (re-evaluated each layer pass, so creatures
+    // entering this turn are also affected).
     let filter = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
-    let mut effects = Vec::new();
-    for id in script::ids_matching(state, &filter, ctx.controller) {
-        effects.push(Effect::SetBasePT {
-            target: id,
-            power: 10,
-            toughness: 10,
-            duration: Duration::EndOfTurn,
-        });
-        effects.push(Effect::GrantKeyword {
-            target: id,
-            keyword: KeywordAbility::Trample,
-            duration: Duration::EndOfTurn,
-        });
-    }
-    effects
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::filtered_set_base_pt(
+                ctx.source,
+                filter.clone(),
+                10,
+                10,
+                Duration::EndOfTurn,
+            ),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::filtered_keyword(
+                ctx.source,
+                filter,
+                KeywordAbility::Trample,
+                Duration::EndOfTurn,
+            ),
+        },
+    ]
 }

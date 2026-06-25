@@ -2,9 +2,12 @@
 //! Exhaust — "{X}{G}{G}{U}: Put X +1/+1 counters on Sita Varma. Then you may
 //! have the base power and toughness of each other creature you control become
 //! equal to Sita Varma's power until end of turn."
-//! GAP: Exhaust mechanic (activate only once) is not modeled; "base power
-//! and toughness = Sita's power" for all creatures is not in the Effect
-//! catalog.
+//! GAP: Exhaust mechanic (activate only once) is not modeled. The board-wide
+//! base-P/T set ("each OTHER creature you control become Sita's power") cannot
+//! be expressed: filtered_set_base_pt takes a fixed N/M and ObjectFilter has no
+//! source-exclusion predicate, so it would wrongly catch Sita herself (and the
+//! value is dynamic = Sita's power, not a constant). Left GAP'd until an
+//! exclude-source filter + dynamic-value filtered set-base-PT exist.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;

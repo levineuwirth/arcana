@@ -2,9 +2,13 @@
 //! "Whenever this creature enters or attacks, put a slime counter on up to one
 //! other target creature."
 //! "Non-Horror creatures with slime counters on them lose all abilities and
-//! have base power and toughness 2/2." (global static — GAP'd)
+//! have base power and toughness 2/2." — a global static (filtered over all
+//! non-Horror creatures bearing a slime counter), installed from the ETB
+//! trigger with `Duration::WhileSourceOnBattlefield` via
+//! filtered_lose_abilities + filtered_set_base_pt.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -24,10 +28,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(horror);
     let _slime = reg.interner_mut().intern("slime");
-
-    // GAP (global static): "Non-Horror creatures with slime counters lose all
-    // abilities and have base power and toughness 2/2" — counter-keyed global
-    // ability-strip + base-PT static is not expressible here.
 
     let chars = Characteristics {
         name,
@@ -65,8 +65,56 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![slime_target()],
+            })
+            // Global static: "Non-Horror creatures with slime counters on them
+            // lose all abilities and have base power and toughness 2/2" —
+            // installed once from the ETB trigger, live while Sludge Monster is
+            // on the battlefield. The filter re-evaluates each layer pass, so a
+            // creature gaining/losing a slime counter is added/dropped.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_slime_static,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
             }),
     )
+}
+
+/// "Non-Horror creatures with slime counters on them lose all abilities and
+/// have base power and toughness 2/2."
+fn install_slime_static(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(slime) = reg.interner().lookup("slime") else { return Vec::new(); };
+    let Some(horror) = reg.interner().lookup("Horror") else { return Vec::new(); };
+    // creature + has a slime counter + NOT a Horror.
+    let filter = ObjectFilter {
+        has_counter: Some(CounterKind::Named(slime)),
+        ..ObjectFilter::creature().without_subtype_sym(horror)
+    };
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::filtered_lose_abilities(
+                trig.source,
+                filter.clone(),
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::filtered_set_base_pt(
+                trig.source,
+                filter,
+                2,
+                2,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        },
+    ]
 }
 
 fn put_slime(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {

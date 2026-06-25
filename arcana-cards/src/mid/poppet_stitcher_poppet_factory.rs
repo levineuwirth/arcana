@@ -14,12 +14,12 @@
 //! # GAPs
 //! - "Decayed" keyword on Zombie token: Decayed is not in the engine keyword
 //!   list. The token is created without the Decayed keyword.
-//! - Back face "creature tokens you control lose all abilities and have base
-//!   power and toughness 3/3" — a FILTERED continuous static (over all creature
-//!   tokens you control). The engine has only single-target `Effect::LoseAllAbilities`
-//!   / `Effect::SetBasePT`; there is no `filtered_lose_abilities` / `filtered_set_pt`
-//!   ContinuousEffect constructor to apply lose-abilities + set-base-P/T to a filter.
-//!   Left GAP'd.
+//!
+//! The back-face static "creature tokens you control lose all abilities and have
+//! base power and toughness 3/3" is installed from an ETB trigger with
+//! `Duration::WhileSourceShowsFace(1)` (filtered_lose_abilities +
+//! filtered_set_base_pt over creature tokens you control) — dimmed while the
+//! front (Poppet Stitcher) shows, live on Poppet Factory.
 //!
 //! The front upkeep transform is now count-gated ("if you control three or more
 //! creature tokens") via an intervening-if, and the back-face "you may transform
@@ -27,6 +27,7 @@
 
 use arcana_core::conditions;
 use arcana_core::effects::{Effect, TokenDefinition};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
@@ -128,14 +129,58 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
+            // Back-face static "creature tokens you control lose all abilities and
+            // have base power and toughness 3/3" — installed once from the ETB
+            // trigger; the WhileSourceShowsFace(1) duration keeps it dimmed while
+            // the front (Poppet Stitcher) shows and live on Poppet Factory.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 4,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_back_face_static,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
             // Token-maker + front upkeep transform are front-only; the back upkeep
-            // transform is back-only.
+            // transform is back-only. The static install (4) fires on ETB regardless
+            // of face — the face-gated duration handles liveness.
             .with_trigger_face_gate(1, 0)
             .with_trigger_face_gate(2, 0)
             .with_trigger_face_gate(3, 1),
-        // GAP: back-face static "creature tokens you control lose all abilities and
-        //      have base 3/3" — no filtered lose-abilities / set-base-P/T constructor.
     )
+}
+
+/// Back-face static: "Creature tokens you control lose all abilities and have
+/// base power and toughness 3/3." Live only while Poppet Factory (visible_face
+/// == 1) shows.
+fn install_back_face_static(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // Filter: creature + token + controlled by you.
+    let filter = ObjectFilter::creature()
+        .controlled_by(ControllerConstraint::You)
+        .tokens_only();
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::filtered_lose_abilities(
+                trig.source,
+                filter.clone(),
+                Duration::WhileSourceShowsFace(1),
+            ),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::filtered_set_base_pt(
+                trig.source,
+                filter,
+                3,
+                3,
+                Duration::WhileSourceShowsFace(1),
+            ),
+        },
+    ]
 }
 
 /// "if you control three or more creature tokens".

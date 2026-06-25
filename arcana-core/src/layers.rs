@@ -918,6 +918,37 @@ impl ContinuousEffect {
         }
     }
 
+    /// "[filter] permanents lose all abilities" (Layer 6) — the board-wide
+    /// sibling of [`Self::lose_all_abilities`]. Strips keyword abilities from
+    /// every battlefield object matching `filter` (base-characteristics,
+    /// recursion-proof). Registry-defined activated/triggered abilities
+    /// dispatch off card_id and aren't reachable here (documented partial,
+    /// same as the single-target form).
+    pub fn filtered_lose_abilities(source: ObjectId,
+                                   filter: crate::targets::ObjectFilter,
+                                   duration: Duration) -> Self {
+        Self {
+            source, layer: Layer::L6Ability, timestamp: 0, duration,
+            dependency: None,
+            kind: ContinuousEffectKind::FilteredLoseAllAbilities { filter },
+        }
+    }
+
+    /// "[filter] permanents have base power and toughness N/M" (Layer 7b) —
+    /// the board-wide sibling of `SetPt`. Sets (not adds) base P/T on every
+    /// battlefield object matching `filter`; Layer 7c pumps and 7d counters
+    /// stack on top per CR 613.
+    pub fn filtered_set_base_pt(source: ObjectId,
+                                filter: crate::targets::ObjectFilter,
+                                power: i32, toughness: i32,
+                                duration: Duration) -> Self {
+        Self {
+            source, layer: Layer::L7bPTSetting, timestamp: 0, duration,
+            dependency: None,
+            kind: ContinuousEffectKind::FilteredSetBasePt { filter, power, toughness },
+        }
+    }
+
     /// "Target becomes a/an [types] in addition", Layer 4.
     pub fn add_type(source: ObjectId, target: ObjectId,
                     types: crate::types::TypeLine, duration: Duration) -> Self {
@@ -980,6 +1011,15 @@ pub enum ContinuousEffectKind {
     /// KEYWORD abilities (flying, etc.) but not registry abilities —
     /// a documented partial until abilities migrate into characteristics.
     LoseAllAbilities { target: ObjectId },
+    /// Board-wide "[filter] permanents lose all abilities" (Layer 6).
+    FilteredLoseAllAbilities { filter: crate::targets::ObjectFilter },
+    /// Board-wide "[filter] permanents have base power/toughness N/M"
+    /// (Layer 7b) — sets, doesn't add.
+    FilteredSetBasePt {
+        filter: crate::targets::ObjectFilter,
+        power: i32,
+        toughness: i32,
+    },
     /// Layer 4 — "Target is a/an [types] in addition to its other
     /// types" (Ardenvale Tactician's land animation, "becomes an
     /// artifact", "is also a creature"). ORs `types` into the
@@ -1337,6 +1377,8 @@ impl ContinuousEffectKind {
             | Self::FilteredPumpDynamic { filter, .. }
             | Self::FilteredPumpPerMatch { filter, .. }
             | Self::FilteredRemoveKeyword { filter, .. }
+            | Self::FilteredLoseAllAbilities { filter }
+            | Self::FilteredSetBasePt { filter, .. }
             | Self::FilteredGrantKeyword { filter, .. } => {
                 // Battlefield-only, base-characteristics filter from
                 // the source controller's perspective.
@@ -1509,11 +1551,17 @@ impl ContinuousEffectKind {
                 // combat-time modifiers consumed by `legal_actions`
                 // (attack) / `combat` (block).
             }
-            Self::LoseAllAbilities { .. } => {
+            Self::LoseAllAbilities { .. }
+            | Self::FilteredLoseAllAbilities { .. } => {
                 // Layer 6 — strip keyword abilities. Registry-defined
                 // activated/triggered abilities dispatch off card_id and
                 // aren't reachable here (documented partial).
                 chars.keywords.clear();
+            }
+            Self::FilteredSetBasePt { power, toughness, .. } => {
+                // Layer 7b — SET base P/T (7c pumps / 7d counters stack on top).
+                chars.power = Some(PtValue::Fixed(*power));
+                chars.toughness = Some(PtValue::Fixed(*toughness));
             }
             Self::AddType { types, .. } => {
                 // Layer 4 — additive: OR the new type bits in.
@@ -2518,6 +2566,47 @@ mod tests {
         assert_eq!(s.computed_power(my_grounded), Some(2));
         assert_eq!(s.computed_power(their_flyer), Some(2));
         assert!(!s.has_keyword(their_flyer, &KeywordAbility::Vigilance));
+    }
+
+    #[test]
+    fn filtered_lose_abilities_and_set_base_pt() {
+        use crate::targets::{ControllerConstraint, ObjectFilter};
+        // Poppet Factory: "Creature tokens you control lose all abilities and
+        // have base power and toughness 3/3."
+        let mut s = GameState::new(2, 0);
+        let src = put_creature(&mut s, 0, 0, 0);
+        // A creature token you control: Flying, base 5/5.
+        let token = {
+            let id = s.allocate_object_id();
+            let mut chars = creature_chars(5, 5);
+            chars.keywords.push(KeywordAbility::Flying);
+            let mut o = GameObject::new(id, 0, Zone::Battlefield, 0, chars);
+            o.controller = 0;
+            o.is_token = true;
+            s.objects.insert(o);
+            id
+        };
+        // A non-token creature you control (must be untouched).
+        let nontoken = put_creature(&mut s, 0, 4, 4);
+        s.objects.get_mut(nontoken).unwrap()
+            .characteristics.keywords.push(KeywordAbility::Trample);
+
+        let tok_filter = ObjectFilter {
+            is_token: Some(true),
+            ..ObjectFilter::creature().controlled_by(ControllerConstraint::You)
+        };
+        s.add_continuous_effect(ContinuousEffect::filtered_lose_abilities(
+            src, tok_filter.clone(), Duration::WhileSourceOnBattlefield));
+        s.add_continuous_effect(ContinuousEffect::filtered_set_base_pt(
+            src, tok_filter, 3, 3, Duration::WhileSourceOnBattlefield));
+
+        // Token: abilities stripped, base 3/3.
+        assert_eq!(s.computed_power(token), Some(3));
+        assert_eq!(s.computed_toughness(token), Some(3));
+        assert!(!s.has_keyword(token, &KeywordAbility::Flying));
+        // Non-token: untouched.
+        assert_eq!(s.computed_power(nontoken), Some(4));
+        assert!(s.has_keyword(nontoken, &KeywordAbility::Trample));
     }
 
     #[test]
