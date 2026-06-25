@@ -25,6 +25,8 @@ pub mod format;
 pub mod legal_actions;
 pub mod registry;
 pub mod engine;
+pub mod record;
+pub mod render;
 
 // Re-export core types for convenience
 pub use state::GameState;

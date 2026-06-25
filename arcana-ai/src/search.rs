@@ -204,6 +204,39 @@ pub fn play_match(
     }
 }
 
+/// Like [`play_match`] but also captures a replayable [`GameRecord`]
+/// (decks + seed + the action taken at each decision + the result). The record
+/// re-derives any intermediate state via `arcana_core::record::replay_to`, so
+/// self-play games are fully inspectable without serializing the live state.
+pub fn play_match_recorded(
+    decks: Vec<Vec<CardId>>,
+    registry: &CardRegistry,
+    seed: u64,
+    policies: &mut [&mut dyn StatePolicy],
+    max_steps: u32,
+) -> (GameResult, arcana_core::record::GameRecord) {
+    let mut record = arcana_core::record::GameRecord::new(decks.clone(), seed);
+    let (mut state, mut yld) = new_game(decks, registry, seed);
+    let mut steps = 0u32;
+    let result = loop {
+        match yld {
+            EngineYield::GameOver(r) => break r,
+            EngineYield::PendingDecision { player, legal_actions, .. } => {
+                if steps >= max_steps || legal_actions.is_empty() {
+                    break GameResult::Draw;
+                }
+                let action = policies[player as usize]
+                    .choose(&state, registry, player, &legal_actions);
+                record.actions.push(action.clone());
+                let (s, y) = step(state, action, registry);
+                state = s; yld = y; steps += 1;
+            }
+        }
+    };
+    record.result = Some(result.clone());
+    (result, record)
+}
+
 /// Win-rate of policy A vs policy B over `n_games`, ALTERNATING seats each game
 /// to cancel first-player bias. `mk_a`/`mk_b` build a fresh policy per game
 /// (seeded by game index). Returns `(a_wins, b_wins, draws)`.
@@ -268,6 +301,45 @@ mod tests {
             let a = p.choose(&state, &reg, player, &legal_actions);
             assert!(legal_actions.contains(&a));
         }
+    }
+
+    /// A recorded random match round-trips through JSON, replays to the same
+    /// final state, and renders to a readable snapshot.
+    #[test]
+    fn recorded_match_replays_and_renders() {
+        use arcana_core::record::{replay, replay_to};
+        use arcana_core::render::{render, render_oneline};
+        let reg = arcana_cards::build_catalog();
+        let deck = arcana_cards::sample_deck(&reg, 11);
+        let mut a = RandomStatePolicy::new(1);
+        let mut b = RandomStatePolicy::new(2);
+        let mut slots: Vec<&mut dyn StatePolicy> = vec![&mut a, &mut b];
+        let (result, record) =
+            play_match_recorded(vec![deck.clone(), deck], &reg, 99, &mut slots, 4000);
+
+        // Record round-trips through JSON.
+        let json = serde_json::to_string(&record).expect("serialize");
+        let back: arcana_core::record::GameRecord =
+            serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.actions.len(), record.actions.len());
+        assert_eq!(back.result, Some(result));
+
+        // Replay reaches the same final life totals + turn.
+        let (final_state, _) = replay(&back, &reg);
+        let (mut state, mut yld) = arcana_core::engine::new_game(
+            record.decks.clone(), &reg, record.seed);
+        for act in &record.actions {
+            if matches!(yld, arcana_core::engine::EngineYield::GameOver(_)) { break; }
+            let (s, y) = arcana_core::engine::step(state, act.clone(), &reg);
+            state = s; yld = y;
+        }
+        assert_eq!(final_state.turn.turn_number, state.turn.turn_number);
+
+        // render() and replay_to() work at an intermediate point.
+        let (mid, _) = replay_to(&back, &reg, record.actions.len() / 2);
+        let snap = render(&mid, &reg);
+        assert!(snap.contains("Turn ") && snap.contains("life"));
+        assert!(render_oneline(&mid).starts_with('T'));
     }
 
     /// BASELINE: flat Monte-Carlo should beat progress-biased random. Slow

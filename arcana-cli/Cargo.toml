@@ -8,3 +8,4 @@ arcana-core = { path = "../arcana-core" }
 arcana-cards = { path = "../arcana-cards" }
 arcana-ai = { path = "../arcana-ai" }
 anyhow = { workspace = true }
+serde_json = { workspace = true }
