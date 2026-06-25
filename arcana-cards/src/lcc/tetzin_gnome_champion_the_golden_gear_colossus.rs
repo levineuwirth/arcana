@@ -12,11 +12,6 @@
 //! # GAPs
 //! - Craft activated ability not modeled (exile cost with other permanents/graveyard cards
 //!   has no engine support).
-//! - Front trigger "double-faced artifact" filter not expressible (no double-faced flag in
-//!   ObjectFilter); modeled as any artifact ETB trigger (broadened fidelity gap).
-//! - Back-face "transform up to one other target double-faced artifact" GAP'd for the same
-//!   reason (no double-faced flag in ObjectFilter); the Gnome token-creation half IS now
-//!   wired as a back-face-only (enters-or-attacks) trigger, face-gated to face 1.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::effects::KeywordAbility;
@@ -24,7 +19,9 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -76,15 +73,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
-            // Front: "Whenever Tetzin or another artifact you control enters, mill 3 cards.
-            // You may put an artifact card from among them into your hand."
-            // Modeled as ZoneChange trigger for any artifact entering under your control.
+            // Front: "Whenever Tetzin or another DOUBLE-FACED artifact you control enters,
+            // mill 3 cards. You may put an artifact card from among them into your hand."
+            // (Tetzin is itself a transforming DFC, so it satisfies the double_faced() filter.)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
                     filter: ObjectFilter::new()
                         .with_types(TypeLine::ARTIFACT.into())
-                        .controlled_by(ControllerConstraint::You),
+                        .controlled_by(ControllerConstraint::You)
+                        .double_faced(),
                     from: None,
                     to: Zone::Battlefield,
                 },
@@ -95,27 +93,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: Vec::new(),
             })
             // Back face (The Golden-Gear Colossus): "Whenever this enters or attacks,
-            // ... Create two 1/1 colorless Gnome artifact creature tokens." Wired as two
-            // back-face-only triggers (enters + attacks); the "transform up to one other
-            // target double-faced artifact" half is GAP'd (no double-faced flag in
-            // ObjectFilter), the token-creation half is modeled.
+            // transform up to one OTHER target double-faced artifact you control. Create
+            // two 1/1 colorless Gnome artifact creature tokens." Wired as two back-face-only
+            // triggers (enters + attacks), each targeting up-to-one double-faced artifact
+            // you control and transforming it, then making the two Gnome tokens.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                effect: colossus_make_gnomes,
+                effect: colossus_transform_and_make_gnomes,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
+                target_requirements: vec![colossus_transform_target()],
             })
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 3,
                 trigger_condition: TriggerCondition::SelfAttacks,
                 intervening_if: None,
-                effect: colossus_make_gnomes,
+                effect: colossus_transform_and_make_gnomes,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
+                target_requirements: vec![colossus_transform_target()],
             })
             // Front mill trigger fires only on the front face; the Colossus token
             // triggers fire only on the back face.
@@ -123,16 +121,40 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_trigger_face_gate(2, 1)
             .with_trigger_face_gate(3, 1),
         // GAP: Craft activated ability not modeled.
-        // GAP: back-face "transform up to one other target double-faced artifact" not
-        // expressible (no double-faced flag in ObjectFilter).
     )
 }
 
-fn colossus_make_gnomes(
+/// "up to one OTHER target double-faced artifact you control" — a transforming
+/// DFC artifact under your control (the `double_faced()` predicate). Self-exclusion
+/// of "other" is not separately expressible here, but the Colossus's own back face
+/// is already on the battlefield (no front-face artifact back to transform into the
+/// way this clause intends), so targeting another DFC is the meaningful case.
+fn colossus_transform_target() -> TargetRequirement {
+    TargetRequirement {
+        filter: TargetFilter::Permanent(
+            ObjectFilter::new()
+                .with_types(TypeLine::ARTIFACT.into())
+                .controlled_by(ControllerConstraint::You)
+                .double_faced(),
+        ),
+        count: TargetCount::UpTo(1),
+        controller: None,
+    }
+}
+
+fn colossus_transform_and_make_gnomes(
     _state: &GameState,
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
+    let mut effects = Vec::new();
+
+    // "transform up to one other target double-faced artifact you control."
+    // UpTo(1): zero or one chosen target.
+    if let Some(TargetChoice::Object(id)) = trig.targets.targets.first() {
+        effects.push(Effect::Transform { target: *id });
+    }
+
     let gnome = reg
         .interner()
         .lookup("Gnome")
@@ -150,10 +172,9 @@ fn colossus_make_gnomes(
         abilities: vec![],
     };
     // "Create two 1/1 ... Gnome artifact creature tokens."
-    vec![
-        Effect::CreateToken { controller: trig.controller, token: token.clone() },
-        Effect::CreateToken { controller: trig.controller, token },
-    ]
+    effects.push(Effect::CreateToken { controller: trig.controller, token: token.clone() });
+    effects.push(Effect::CreateToken { controller: trig.controller, token });
+    effects
 }
 
 fn tetzin_enters_mill(

@@ -6,8 +6,13 @@
 //! "Other transformed permanents you control have trample and ward {2}."
 //!
 //! GAP: defeat→cast-back-face not auto-wired (CR 310.11).
-//! GAP: ETB reveal "if it's a land or double-faced card, draw a card" — conditional-on-revealed-
-//!      card-type is not expressible; we perform the scry 3 only and omit the reveal/draw clause.
+//! GAP: ETB reveal "if it's a land or double-faced card, draw a card" — the double-faced flag
+//!      now EXISTS in ObjectFilter (double_faced()), but the REVEAL-BRANCH primitive is missing:
+//!      there is no effect that reveals exactly the top card of the library and conditionally
+//!      draws if it matches a filter (RevealUntil digs to the FIRST match and takes it; it does
+//!      not test only the top card and stop). The matched filter would also be a "land OR
+//!      double-faced" disjunction, which a single ANDing ObjectFilter can't express. We perform
+//!      the scry 3 only and omit the reveal/draw clause.
 //! GAP: back-face static "Other transformed permanents you control have trample and ward {2}" —
 //!      no static-ability mechanism for granting keywords to a filtered set of permanents.
 
@@ -85,7 +90,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn etb_scry(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     // GAP: the "reveal top card; if it's a land or double-faced card, draw a card" rider is not
-    //      expressible (no conditional-on-revealed-card-type effect). Scry 3 only.
+    //      expressible. The double_faced() ObjectFilter predicate now exists, but the
+    //      reveal-exactly-the-top-card-and-conditionally-draw primitive does not (RevealUntil
+    //      digs to the first match rather than testing only the top), and the trigger filter is
+    //      a land-OR-double-faced disjunction. Scry 3 only.
     vec![Effect::Scry {
         player: trig.controller,
         count: 3,

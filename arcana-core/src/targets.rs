@@ -604,6 +604,13 @@ pub struct ObjectFilter {
     /// Compare the object's own power vs its own toughness (CR 208) —
     /// e.g. "creatures with toughness greater than power".
     pub pt_compare: Option<PtCompare>,
+    /// CR 712 — "a double-faced card" (a transforming DFC). Read from
+    /// the object's seeded `back_face_characteristics` (set at
+    /// instantiation for transform backs, preserved across re-ids), so
+    /// no registry lookup is needed. `Some(true)` = transforming DFC
+    /// only; `Some(false)` = single-faced only. MDFC/Adventure/Split
+    /// don't carry a transform back, so they read as not double-faced.
+    pub is_double_faced: Option<bool>,
     pub name: Option<SmallString>,
     pub is_token: Option<bool>,
     pub has_counter: Option<CounterKind>,
@@ -691,6 +698,11 @@ impl ObjectFilter {
     /// greater than power".
     pub fn with_pt_compare(mut self, cmp: PtCompare) -> Self {
         self.pt_compare = Some(cmp);
+        self
+    }
+    /// Builder: only transforming double-faced cards (CR 712).
+    pub fn double_faced(mut self) -> Self {
+        self.is_double_faced = Some(true);
         self
     }
     /// Builder: toughness ≤ `n`.
@@ -1061,6 +1073,14 @@ impl ObjectFilter {
         // `Effect::CreateToken` / `Effect::CopyPermanent`.
         if let Some(required) = self.is_token {
             if obj.is_token != required {
+                return false;
+            }
+        }
+
+        // --- is_double_faced: CR 712 — a transforming DFC, marked by a
+        // seeded back face (no registry lookup needed).
+        if let Some(required) = self.is_double_faced {
+            if obj.back_face_characteristics.is_some() != required {
                 return false;
             }
         }
@@ -1562,6 +1582,23 @@ mod tests {
         assert!( eq.matches(s.objects.get(sq).unwrap(), &s, 0));
         // Non-creatures (no power/toughness) never match a pt compare.
         assert!(!tough.matches(s.objects.get(sorc).unwrap(), &s, 0));
+    }
+
+    #[test]
+    fn object_filter_double_faced() {
+        let mut s = GameState::new(2, 0);
+        let dfc = put_creature(&mut s, 0, 0, Zone::Battlefield, 2, 2);
+        s.objects.get_mut(dfc).unwrap().back_face_characteristics =
+            Some(Characteristics::default());
+        let plain = put_creature(&mut s, 0, 0, Zone::Battlefield, 2, 2);
+
+        let f = ObjectFilter::creature().double_faced();
+        assert!( f.matches(s.objects.get(dfc).unwrap(), &s, 0));
+        assert!(!f.matches(s.objects.get(plain).unwrap(), &s, 0));
+        // Some(false) = single-faced only.
+        let single = ObjectFilter { is_double_faced: Some(false), ..Default::default() };
+        assert!(!single.matches(s.objects.get(dfc).unwrap(), &s, 0));
+        assert!( single.matches(s.objects.get(plain).unwrap(), &s, 0));
     }
 
     #[test]

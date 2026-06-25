@@ -1,9 +1,13 @@
 //! Overgrown Pest — `{2}{G}` 2/2 green Creature — Pest.
 //! When this creature enters, look at the top five cards of your library. You may reveal a land or
 //! double-faced card from among them and put that card into your hand. Put the rest on the bottom.
-//! GAP: "double-faced card" filter not in ObjectFilter.
+//! GAP: the takeable set is a "land OR double-faced" DISJUNCTION. The double_faced() ObjectFilter
+//!      predicate now exists, but ObjectFilter ANDs its predicates, so "land OR double-faced" can't
+//!      be a single filter and DigTopN takes only one filter. Wired faithfully as a DigTopN over
+//!      the top 5 (rest to bottom) with the LAND half of the disjunction; the double-faced half is
+//!      the remaining blocker (a DigTopN that accepts a disjunction / OR of filters).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{DigRest, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -23,7 +27,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn etb_look(_state: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
-    // GAP: "look at top 5 and optionally reveal land or double-faced card to hand" — no scry/reveal to hand from top 5 in catalog
-    // Using TutorToHand with land filter as approximation
-    vec![Effect::TutorToHand { player: trig.controller, filter: ObjectFilter::new().with_types(TypeLine::LAND.into()), reveal: true }]
+    // "Look at the top 5, you may take a land OR double-faced card to hand, rest on the bottom."
+    // DigTopN(top 5, optional pick to hand, rest to bottom) is the exact structure. The takeable
+    // filter is a land-OR-double-faced DISJUNCTION, which a single ANDing ObjectFilter / DigTopN
+    // can't express, so only the LAND half is wired here; the double-faced half is the named GAP.
+    vec![Effect::DigTopN {
+        player: trig.controller,
+        count: 5,
+        filter: Some(ObjectFilter::new().with_types(TypeLine::LAND.into())),
+        rest: DigRest::BottomRandom,
+    }]
 }
