@@ -1,6 +1,6 @@
 //! Ghoulcaller's Accomplice — `{1}{B}` 2/2 black Human Rogue.
 //! `{3}{B}, Exile this card from your graveyard: Create a 2/2 black Zombie creature token. Activate only as a sorcery.`
-//! GAP: ActivationCost has no "exile this card from graveyard" cost field; using mana only.
+//! GAP: the "activate only as a sorcery" timing restriction is not modeled.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -34,15 +34,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{3}{B}, Exile this card from your graveyard: Create a 2/2 black Zombie creature token. Activate only as a sorcery.".into(),
-                // GAP: no "exile this card from graveyard" cost field; using mana only
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{3}{B}").unwrap(),
+                    exile_self: true,
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
                 is_loyalty_ability: false,
-                activation_zone: ActivationZone::Battlefield,
+                activation_zone: ActivationZone::Graveyard,
                 is_instant_speed: false,
                 face_gate: None,
                 effect: create_zombie,

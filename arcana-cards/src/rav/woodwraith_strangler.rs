@@ -1,7 +1,5 @@
 //! Woodwraith Strangler — `{2}{B}{G}` 2/2 black/green Plant Zombie.
 //! "Exile a creature card from your graveyard: Regenerate this creature."
-//! GAP: The activation cost "exile a creature card from your graveyard" is not
-//! expressible as an ActivationCost field.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -11,6 +9,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -35,8 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Exile a creature card from your graveyard: Regenerate this creature.".into(),
                 cost: ActivationCost {
-                    // GAP: exile a creature card from your graveyard as activation cost
-                    // is not expressible in ActivationCost
+                    exile_graveyard_other: Some(ObjectFilter::creature()),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

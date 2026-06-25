@@ -8,10 +8,11 @@
 //!
 //! GAP: "Skip your draw step" — no replacement/static models a step
 //! skip.
-//! GAP: the {B},{T},Exile X cards activated ability — there is no
-//! "exile X cards from graveyard" activation cost field (only the
-//! Scavenge `exile_self` for the source), and the -X/-X amount depends
-//! on that uncomputable X; whole ability omitted.
+//! GAP: the {B},{T},Exile X cards activated ability — the exile-from-graveyard
+//! cost field (`exile_graveyard_other`) takes a FIXED count, but here the count
+//! is a player-chosen X and the -X/-X effect magnitude is that same X fed back
+//! into the resolver; the variable-X linkage between cost and effect is not
+//! expressible, so the whole ability is omitted.
 
 use arcana_core::effects::{DigRest, Effect};
 use arcana_core::mana::ManaCost;

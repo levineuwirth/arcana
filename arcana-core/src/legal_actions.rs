@@ -2193,6 +2193,10 @@ fn enumerate_activation_actions(
             let tap_choices = enumerate_cost_taps(
                 state, ability, player, id);
             if tap_choices.is_empty() { continue; }
+            // "Exile [filter] card(s) from your graveyard" cost.
+            let exile_gy_choices = enumerate_cost_exile_graveyard(
+                state, ability, player);
+            if exile_gy_choices.is_empty() { continue; }
             // "Discard N at random" gates on hand size but is NOT enumerated
             // (the cards are chosen by the engine RNG in apply, so no
             // per-card fan-out and no baked payment). Skip if too few cards.
@@ -2218,11 +2222,17 @@ fn enumerate_activation_actions(
                     for sac in &sac_choices {
                         for disc in &discard_choices {
                             for taps in &tap_choices {
+                                for eg in &exile_gy_choices {
                                 for x in &x_loyalties {
                                 let mut costs = additional.clone();
                                 if let Some(mx) = mana_x {
                                     costs.push(
                                         crate::actions::AdditionalCostPayment::ActivationX(*mx));
+                                }
+                                if !eg.is_empty() {
+                                    costs.push(
+                                        crate::actions::AdditionalCostPayment::ExileFromGraveyard(
+                                            eg.clone()));
                                 }
                                 if let Some(n) = x {
                                     costs.push(
@@ -2252,7 +2262,8 @@ fn enumerate_activation_actions(
                                     mana_payment: plan.clone(),
                                     additional_costs: costs,
                                 });
-                                }
+                                } // x_loyalties
+                                } // exile_gy_choices
                             }
                         }
                     }
@@ -2272,6 +2283,28 @@ fn enumerate_activation_actions(
 /// source object is always excluded. `sacrifice_other_count` (default 1)
 /// gives one payment per N-permanent combination — mirrors
 /// [`enumerate_cost_discards`].
+/// Candidate graveyard cards the activator can exile to pay an
+/// `exile_graveyard_other` cost (mirror of [`enumerate_cost_sacrifices`],
+/// but the activator's GRAVEYARD). `vec![vec![]]` = no such cost (loop runs
+/// once); empty outer Vec = cost exists but unpayable (ability not legal).
+fn enumerate_cost_exile_graveyard(
+    state: &GameState,
+    ability: &crate::registry::ActivatedAbilityDef,
+    player: crate::types::PlayerId,
+) -> Vec<Vec<ObjectId>> {
+    let Some(filter) = ability.cost.exile_graveyard_other.as_ref() else {
+        return vec![vec![]];
+    };
+    let candidates: Vec<ObjectId> = state.objects
+        .objects_in_zone(Zone::Graveyard(player))
+        .filter(|o| filter.matches(o, state, player))
+        .map(|o| o.id)
+        .collect();
+    let n = ability.cost.exile_graveyard_count.max(1) as usize;
+    if candidates.len() < n { return Vec::new(); }
+    combinations(&candidates, n)
+}
+
 fn enumerate_cost_sacrifices(
     state: &GameState,
     ability: &crate::registry::ActivatedAbilityDef,
@@ -3355,6 +3388,50 @@ mod tests {
             crate::actions::AdditionalCostPayment::RemoveCounters {
                 source: s, kind: CounterKind::PlusOnePlusOne, count: 1,
             } if *s == obj)));
+    }
+
+    #[test]
+    fn exile_from_graveyard_activation_cost() {
+        use crate::registry::{ActivatedAbilityDef, ActivationCost, CardDefinition};
+        let mut reg = CardRegistry::new();
+        let name = reg.interner_mut().intern("GY Exiler");
+        let chars = creature_chars(1, 1);
+        let cid = reg.register(
+            CardDefinition::new(name, chars)
+                .with_activated_ability(ActivatedAbilityDef {
+                    text: "Exile a creature card from your graveyard: draw.".into(),
+                    cost: ActivationCost {
+                        exile_graveyard_other: Some(crate::targets::ObjectFilter::creature()),
+                        ..ActivationCost::default()
+                    },
+                    target_requirements: vec![],
+                    is_mana_ability: false,
+                    is_loyalty_ability: false,
+                    activation_zone: crate::registry::ActivationZone::Battlefield,
+                    is_instant_speed: false,
+                    face_gate: None,
+                    effect: |_, _, _| Vec::new(),
+                }));
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let obj = state_put_with_card(&mut s, 0, Zone::Battlefield,
+            creature_chars(1, 1), cid);
+        s.objects.get_mut(obj).unwrap().status.summoning_sick = false;
+
+        // No creature in graveyard → ability unavailable.
+        assert!(!legal_actions(&s, &reg).iter().any(|a|
+            matches!(a, Action::ActivateAbility { source, .. } if *source == obj)));
+
+        // Put a creature card in the controller's graveyard → now payable.
+        let gy = state_put_with_card(&mut s, 0, Zone::Graveyard(0),
+            creature_chars(2, 2), cid);
+        let act = legal_actions(&s, &reg).into_iter().find(|a|
+            matches!(a, Action::ActivateAbility { source, .. } if *source == obj));
+        let Some(Action::ActivateAbility { additional_costs, .. }) = act
+            else { panic!("activation should be legal with a GY creature") };
+        assert!(additional_costs.iter().any(|c| matches!(c,
+            crate::actions::AdditionalCostPayment::ExileFromGraveyard(ids)
+                if ids == &vec![gy])));
     }
 
     #[test]

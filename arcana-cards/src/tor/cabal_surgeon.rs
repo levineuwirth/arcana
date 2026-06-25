@@ -1,7 +1,6 @@
 //! Cabal Surgeon — `{2}{B}{B}` 2/1 black Human Minion.
 //! "{2}{B}{B}, {T}, Exile two cards from your graveyard: Return target creature card
 //! from your graveyard to your hand."
-//! GAP: "exile two cards from your graveyard" as cost not in ActivationCost.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -39,7 +38,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{2}{B}{B}").unwrap(),
                     tap: true,
-                    // GAP: "exile two cards from graveyard" cost not modeled
+                    exile_graveyard_other: Some(arcana_core::targets::ObjectFilter::new()),
+                    exile_graveyard_count: 2,
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![TargetRequirement {

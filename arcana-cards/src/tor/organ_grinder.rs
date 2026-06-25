@@ -1,9 +1,6 @@
 //! Organ Grinder — `{2}{B}` 3/1 black Zombie.
 //! `{T}, Exile three cards from your graveyard: Target player loses
 //! 3 life.`
-//!
-//! GAP: "exile three cards from graveyard" as activation cost is not
-//! expressible in ActivationCost fields.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -13,7 +10,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::targets::{ObjectFilter, TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -35,8 +32,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}, Exile three cards from your graveyard: Target player loses 3 life.".into(),
-                // GAP: "exile three cards from graveyard" not in ActivationCost.
-                cost: ActivationCost::tap_only(),
+                cost: ActivationCost {
+                    tap: true,
+                    exile_graveyard_other: Some(ObjectFilter::new()),
+                    exile_graveyard_count: 3,
+                    ..ActivationCost::default()
+                },
                 target_requirements: vec![TargetRequirement::target_player()],
                 is_mana_ability: false,
                 is_loyalty_ability: false,

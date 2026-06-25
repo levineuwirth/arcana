@@ -1174,6 +1174,19 @@ pub struct ActivationCost {
     /// `apply_activate_ability` (like the tap / sacrifice-self / life
     /// costs, not via an `AdditionalCostPayment`). `0` = no such cost.
     pub discard_random: u32,
+    /// "Exile [filtered] card(s) from your graveyard: …" as an activation
+    /// cost (Skullclamp-style delve-adjacent, escape-on-an-ability,
+    /// Egon's "exile a creature card from your graveyard: draw"). Legal-
+    /// action enumeration offers one activation per
+    /// [`Self::exile_graveyard_count`]-card combination of matching cards
+    /// in the activator's graveyard, baking an
+    /// [`crate::actions::AdditionalCostPayment::ExileFromGraveyard`]
+    /// payment. Distinct from [`Self::exile_self`] (which exiles the
+    /// source). `None` = no such cost.
+    pub exile_graveyard_other: Option<crate::targets::ObjectFilter>,
+    /// Number of graveyard cards to exile for [`Self::exile_graveyard_other`];
+    /// `0`/`1` → one card. Ignored when `exile_graveyard_other` is `None`.
+    pub exile_graveyard_count: u32,
 }
 
 impl ActivationCost {

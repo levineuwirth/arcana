@@ -10,6 +10,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, ManaColor, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -45,10 +46,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: mill_one,
             })
             .with_activated_ability(ActivatedAbilityDef {
-                // GAP: cost "Exile a card from your graveyard" has no
-                // ActivationCost field; modeled as a plain {T} mana ability.
                 text: "{T}, Exile a card from your graveyard: Add one mana of any color.".into(),
-                cost: ActivationCost::tap_only(),
+                cost: ActivationCost {
+                    tap: true,
+                    exile_graveyard_other: Some(ObjectFilter::new()),
+                    ..ActivationCost::default()
+                },
                 target_requirements: Vec::new(),
                 is_mana_ability: true,
                 is_loyalty_ability: false,

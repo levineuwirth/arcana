@@ -1,9 +1,6 @@
 //! Graveyard Marshal — `{B}{B}` 3/2 black Zombie Soldier.
 //! "{2}{B}, Exile a creature card from your graveyard: Create a tapped 2/2
 //! black Zombie creature token."
-//!
-//! GAP: "exile a creature card from your graveyard" as activation cost —
-//! no ActivationCost field for exiling from graveyard as cost.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -13,6 +10,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -36,9 +34,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{2}{B}, Exile a creature card from your graveyard: Create a tapped 2/2 black Zombie token.".into(),
-                // GAP: "exile creature card from graveyard" cost not in ActivationCost.
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{2}{B}").unwrap(),
+                    exile_graveyard_other: Some(ObjectFilter::creature()),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

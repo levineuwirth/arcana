@@ -1,7 +1,5 @@
 //! Scarred Vinebreeder — `{1}{B}` 1/1 Elf Shaman.
 //! `{2}{B}, Exile an Elf card from your graveyard: This creature gets +3/+3 until end of turn.`
-//! GAP: "Exile an Elf card from your graveyard" activation cost — no exile-specific-card-
-//! from-graveyard cost in ActivationCost; using mana only.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -12,6 +10,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -37,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "{2}{B}, Exile an Elf card from your graveyard: This creature gets +3/+3 until end of turn.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{2}{B}").unwrap(),
-                    // GAP: "exile Elf card from graveyard" cost not in ActivationCost
+                    exile_graveyard_other: Some(ObjectFilter::new().with_subtype_sym(elf)),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),

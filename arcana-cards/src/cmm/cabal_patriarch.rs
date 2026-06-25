@@ -1,11 +1,7 @@
 //! Cabal Patriarch — `{3}{B}{B}{B}` 5/5 Legendary Human Wizard.
 //! "{2}{B}, Sacrifice a creature: Target creature gets -2/-2 until end of turn."
 //! "{2}{B}, Exile a creature card from your graveyard: Target creature gets
-//! -2/-2 until end of turn." (GAP — see below)
-//!
-//! GAP: the second ability's "Exile a creature card from your graveyard" cost
-//! is not an expressible ActivationCost field (only sacrifice/tap/discard/
-//! life/counter costs exist), so that whole ability is omitted.
+//! -2/-2 until end of turn."
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
@@ -49,6 +45,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                         types: Some(TypeLine::CREATURE.into()),
                         ..ObjectFilter::default()
                     }),
+                    ..ActivationCost::default()
+                },
+                target_requirements: vec![TargetRequirement::target_creature()],
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: false,
+                face_gate: None,
+                effect: minus_two_minus_two,
+            })
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "{2}{B}, Exile a creature card from your graveyard: Target creature gets -2/-2 until end of turn.".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{2}{B}").expect("valid cost"),
+                    exile_graveyard_other: Some(ObjectFilter::creature()),
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![TargetRequirement::target_creature()],

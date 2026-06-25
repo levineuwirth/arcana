@@ -7,15 +7,17 @@
 //! GAP: front-face upkeep trigger "exile two cards from your graveyard; if you can't,
 //! sacrifice Egon and draw" — the conditional graveyard-size check with self-sacrifice
 //! is not expressible with the current engine API surface.
-//! GAP: back-face activated ability ({2}{B},{T}, exile a creature card from your
-//! graveyard: draw) — the "exile a CHOSEN creature card from your graveyard" cost is
-//! not in the ActivationCost surface (exile_self exiles the source only; there is no
-//! exile-other-from-graveyard additional cost). Left GAP'd.
+//! The back-face activated ability ({2}{B},{T}, exile a creature card from your
+//! graveyard: draw) is wired via `exile_graveyard_other`, face-gated to the back.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
-use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::registry::{
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardFace, CardRegistry,
+};
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     ControllerConstraint, PendingTrigger, TriggerCondition, TriggerFrequency,
     TriggeredAbilityDef,
@@ -91,11 +93,37 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![],
             })
+            // Back face (Throne of Death): "{2}{B}, {T}, Exile a creature card
+            // from your graveyard: Draw a card." Face-gated to the back artifact.
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "{2}{B}, {T}, Exile a creature card from your graveyard: Draw a card.".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{2}{B}").expect("valid cost"),
+                    tap: true,
+                    exile_graveyard_other: Some(ObjectFilter::creature()),
+                    ..ActivationCost::default()
+                },
+                target_requirements: Vec::new(),
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: false,
+                face_gate: Some(1),
+                effect: throne_draw,
+            })
             // Trigger 1 is the front (creature) upkeep; trigger 2 the back
             // (artifact) upkeep mill.
             .with_trigger_face_gate(1, 0)
             .with_trigger_face_gate(2, 1),
     )
+}
+
+fn throne_draw(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::DrawCards { player: ctx.controller, count: 1 }]
 }
 
 fn throne_upkeep_mill(
