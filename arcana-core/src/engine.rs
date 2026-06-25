@@ -2239,7 +2239,12 @@ fn apply_bottom_cards(state: &mut GameState, ids: Vec<ObjectId>) {
 }
 
 fn apply_concede(state: &mut GameState) {
-    let player = state.priority_player();
+    // The conceding player is whoever the engine is currently awaiting — NOT
+    // necessarily the priority holder. During combat declarations and damage
+    // assignment the decision-maker is the defender / active player / a special
+    // chooser; conceding `priority_player()` there would eliminate the WRONG
+    // player (and make conceding a "win"). See [`current_decider`].
+    let player = current_decider(state);
     state.player_mut(player).has_lost = true;
     state.player_mut(player).has_conceded = true;
     state.emit(GameEvent::PlayerLoses {
@@ -4442,17 +4447,58 @@ pub fn new_game_from_characteristics(
 // =============================================================================
 
 /// Build the [`EngineYield`] appropriate for the current state.
+/// The player the engine is currently awaiting a decision from. This is the
+/// single source of truth for "whose decision is it" — both
+/// [`compute_next_decision`] (the yielded `player`) and decider-relative
+/// actions like [`Action::Concede`] route through it. During combat
+/// declarations and damage assignment the decision-maker is NOT the priority
+/// holder, so attributing those to `priority_player()` would target the wrong
+/// player. Registry-free and side-effect-free.
+///
+/// Assumes the state has been settled (no pending auto-advance) and is not
+/// game-over.
+fn current_decider(state: &GameState) -> PlayerId {
+    if let Some(pending) = state.pending_choice.as_ref() {
+        return pending.choosing_player;
+    }
+    if state.priority.special_action.is_some() {
+        return state.priority_player();
+    }
+    if let Some(combat) = state.combat.as_ref() {
+        // CR 510.1c — a pending distribution decision preempts the
+        // normal combat-phase decider.
+        if let Some(pass) = combat.pending_damage_assignment {
+            let attackers = state.attackers_needing_damage_assignment(pass);
+            // CR 702.22 — banding can redirect the assignment to the defender.
+            return state.damage_assignment_chooser(&attackers);
+        }
+        match combat.phase {
+            // Active player declares attackers and orders blockers (CR 509.2).
+            CombatPhase::DeclareAttackers | CombatPhase::OrderBlockers => {
+                return state.active_player();
+            }
+            // Defender declares blockers first (non-active player, 2-player).
+            CombatPhase::DeclareBlockers => {
+                return (state.active_player() + 1) % state.num_players();
+            }
+            _ => {}
+        }
+    }
+    state.priority_player()
+}
+
 /// Assumes the state has been settled (no pending auto-advance).
 fn compute_next_decision(state: &GameState, registry: &CardRegistry) -> EngineYield {
     if let Some(r) = state.result.clone() {
         return EngineYield::GameOver(r);
     }
+    let player = current_decider(state);
     // A mid-resolution PendingChoice preempts everything else: the
     // engine is mid-spell-resolution (or mid-SBA) and cannot make
     // further progress until the agent answers. Concede remains legal.
     if let Some(pending) = state.pending_choice.as_ref() {
         return EngineYield::PendingDecision {
-            player: pending.choosing_player,
+            player,
             legal_actions: legal_actions(state, registry),
             context: DecisionContext::ResolutionChoice {
                 stack_entry: match &pending.context {
@@ -4464,7 +4510,6 @@ fn compute_next_decision(state: &GameState, registry: &CardRegistry) -> EngineYi
         };
     }
     if let Some(ref special) = state.priority.special_action {
-        let player = state.priority_player();
         let context = mulligan_like_context(special);
         return EngineYield::PendingDecision {
             player,
@@ -4477,11 +4522,8 @@ fn compute_next_decision(state: &GameState, registry: &CardRegistry) -> EngineYi
         // normal combat-phase yield shape.
         if let Some(pass) = combat.pending_damage_assignment {
             let attackers = state.attackers_needing_damage_assignment(pass);
-            // CR 702.22 — banding redirects the assignment choice to
-            // the defending player when an attacker is band-blocked.
-            let chooser = state.damage_assignment_chooser(&attackers);
             return EngineYield::PendingDecision {
-                player: chooser,
+                player,
                 legal_actions: legal_actions(state, registry),
                 context: DecisionContext::DistributeDamage { attackers },
             };
@@ -4489,17 +4531,14 @@ fn compute_next_decision(state: &GameState, registry: &CardRegistry) -> EngineYi
         match combat.phase {
             CombatPhase::DeclareAttackers => {
                 return EngineYield::PendingDecision {
-                    player: state.active_player(),
+                    player,
                     legal_actions: legal_actions(state, registry),
                     context: DecisionContext::DeclareAttackers,
                 };
             }
             CombatPhase::DeclareBlockers => {
-                // Defender declares first. For 2-player games this is
-                // the non-active player.
-                let defender = (state.active_player() + 1) % state.num_players();
                 return EngineYield::PendingDecision {
-                    player: defender,
+                    player,
                     legal_actions: legal_actions(state, registry),
                     context: DecisionContext::DeclareBlockers,
                 };
@@ -4513,7 +4552,7 @@ fn compute_next_decision(state: &GameState, registry: &CardRegistry) -> EngineYi
                     .map(|a| a.object_id)
                     .collect();
                 return EngineYield::PendingDecision {
-                    player: state.active_player(),
+                    player,
                     legal_actions: legal_actions(state, registry),
                     context: DecisionContext::OrderBlockers { attackers: multi },
                 };
@@ -4523,7 +4562,7 @@ fn compute_next_decision(state: &GameState, registry: &CardRegistry) -> EngineYi
     }
     // Normal priority window.
     EngineYield::PendingDecision {
-        player: state.priority_player(),
+        player,
         legal_actions: legal_actions(state, registry),
         context: DecisionContext::Priority,
     }
@@ -8667,6 +8706,32 @@ mod tests {
         }
         assert!(state.player(0).has_lost);
         assert!(state.player(0).has_conceded);
+    }
+
+    /// Regression: a player who concedes while they are the DECIDER but not the
+    /// priority holder (the defender at declare-blockers) must LOSE. Before the
+    /// fix, `apply_concede` eliminated `priority_player()` (the active player),
+    /// so the conceder "won" — which a search policy promptly exploited.
+    #[test]
+    fn concede_during_declare_blockers_eliminates_the_decider() {
+        use crate::combat::CombatState;
+        let (state, _y) = start(1);
+        let (state, _y) = step(state, Action::MulliganKeep, &reg());
+        let (mut state, _y) = step(state, Action::MulliganKeep, &reg());
+
+        // Turn 1: P0 is active. Force a declare-blockers window so the decider
+        // is the defender (P1), distinct from the priority holder (P0).
+        assert_eq!(state.active_player(), 0);
+        state.combat = Some(CombatState {
+            phase: CombatPhase::DeclareBlockers,
+            ..CombatState::new()
+        });
+        assert_eq!(current_decider(&state), 1, "defender (P1) decides blocks");
+
+        apply_concede(&mut state);
+        assert!(state.player(1).has_lost, "the conceding decider (P1) loses");
+        assert!(state.player(1).has_conceded);
+        assert!(!state.player(0).has_lost, "the opponent (P0) must NOT lose");
     }
 
     // --- play land ----------------------------------------------------------
