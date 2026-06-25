@@ -1,23 +1,23 @@
 //! Draconic Disciple — `{1}{R}{G}` 2/2 red/green Human Shaman.
 //!
-//! * `{T}: Add one mana of any color.`  (GAP'd — see below.)
+//! * `{T}: Add one mana of any color.`
 //! * `{7}, {T}, Sacrifice this creature: Create a 5/5 red Dragon creature
 //!   token with flying.`
 //!
-//! The any-color mana ability is GAP'd: `Effect::AddMana` only mints a
-//! specific `ManaColor` pip (`ManaUnit::plain`); there is no any-color /
-//! player-chosen-color mana primitive in scope (matches Ceta Disciple). The
-//! sacrifice activation that mints the Dragon token is expressed faithfully.
+//! The any-color mana ability is modeled as five mana abilities, one per
+//! WUBRG color (command_tower idiom); the shared {T} cost means activating
+//! one taps the source, so only one fires. The sacrifice activation that
+//! mints the Dragon token is expressed faithfully.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
-use arcana_core::mana::ManaCost;
+use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, ManaColor, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Draconic Disciple");
@@ -40,10 +40,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    // GAP: "{T}: Add one mana of any color." No any-color mana primitive is in
-    // scope; AddMana mints only a specific ManaColor pip.
     reg.register(
         CardDefinition::new(name, chars)
+            .with_activated_ability(mana_ability("{T}: Add {W}.", add_white_mana))
+            .with_activated_ability(mana_ability("{T}: Add {U}.", add_blue_mana))
+            .with_activated_ability(mana_ability("{T}: Add {B}.", add_black_mana))
+            .with_activated_ability(mana_ability("{T}: Add {R}.", add_red_mana))
+            .with_activated_ability(mana_ability("{T}: Add {G}.", add_green_mana))
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{7}, {T}, Sacrifice this creature: Create a 5/5 red Dragon creature token with flying.".into(),
                 cost: ActivationCost {
@@ -61,6 +64,58 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: make_dragon,
             }),
     )
+}
+
+fn mana_ability(
+    text: &str,
+    effect: fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>,
+) -> ActivatedAbilityDef {
+    ActivatedAbilityDef {
+        text: text.into(),
+        cost: ActivationCost::tap_only(),
+        target_requirements: Vec::new(),
+        is_mana_ability: true,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Battlefield,
+        is_instant_speed: false,
+        face_gate: None,
+        effect,
+    }
+}
+
+fn add_white_mana(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::White, ctx.source)],
+    }]
+}
+
+fn add_blue_mana(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Blue, ctx.source)],
+    }]
+}
+
+fn add_black_mana(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Black, ctx.source)],
+    }]
+}
+
+fn add_red_mana(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Red, ctx.source)],
+    }]
+}
+
+fn add_green_mana(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Green, ctx.source)],
+    }]
 }
 
 fn make_dragon(

@@ -1,14 +1,12 @@
 //! Guy in the Chair — `{2}{G}` 2/3 Human Advisor.
-//! * "{T}: Add one mana of any color." (mana ability; GAP — any-color)
+//! * "{T}: Add one mana of any color." — modeled as five mana abilities, one
+//!   per WUBRG color (the player picks the color by choosing which ability to
+//!   activate; the shared {T} cost means only one fires).
 //! * "Web Support — {2}{G}, {T}: Put a +1/+1 counter on target Spider. Activate
 //!   only as a sorcery." (targeted activated, sorcery speed)
-//!
-//! GAP: the first ability ("Add one mana of any color") has no expressible
-//! primitive — `Effect::AddMana` only mints specific `ManaColor` pips, there is
-//! no any-color / player-chosen-color mana. The ability is omitted.
 
 use arcana_core::effects::Effect;
-use arcana_core::mana::ManaCost;
+use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
@@ -17,7 +15,7 @@ use arcana_core::registry::{
 use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, ManaColor, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Guy in the Chair");
@@ -44,6 +42,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
     reg.register(
         CardDefinition::new(name, chars)
+            .with_activated_ability(mana_ability("{T}: Add {W}.", add_white_mana))
+            .with_activated_ability(mana_ability("{T}: Add {U}.", add_blue_mana))
+            .with_activated_ability(mana_ability("{T}: Add {B}.", add_black_mana))
+            .with_activated_ability(mana_ability("{T}: Add {R}.", add_red_mana))
+            .with_activated_ability(mana_ability("{T}: Add {G}.", add_green_mana))
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Web Support — {2}{G}, {T}: Put a +1/+1 counter on target Spider. Activate only as a sorcery.".into(),
                 cost: ActivationCost {
@@ -64,6 +67,39 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: counter_on_spider,
             }),
     )
+}
+
+fn mana_ability(
+    text: &str,
+    effect: fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>,
+) -> ActivatedAbilityDef {
+    ActivatedAbilityDef {
+        text: text.into(),
+        cost: ActivationCost::tap_only(),
+        target_requirements: Vec::new(),
+        is_mana_ability: true,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Battlefield,
+        is_instant_speed: false,
+        face_gate: None,
+        effect,
+    }
+}
+
+fn add_white_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana { player: ctx.controller, mana: vec![ManaUnit::plain(ManaColor::White, ctx.source)] }]
+}
+fn add_blue_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana { player: ctx.controller, mana: vec![ManaUnit::plain(ManaColor::Blue, ctx.source)] }]
+}
+fn add_black_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana { player: ctx.controller, mana: vec![ManaUnit::plain(ManaColor::Black, ctx.source)] }]
+}
+fn add_red_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana { player: ctx.controller, mana: vec![ManaUnit::plain(ManaColor::Red, ctx.source)] }]
+}
+fn add_green_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana { player: ctx.controller, mana: vec![ManaUnit::plain(ManaColor::Green, ctx.source)] }]
 }
 
 fn counter_on_spider(

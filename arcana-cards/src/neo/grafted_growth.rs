@@ -6,9 +6,10 @@
 //!
 //! On ETB a +1/+1 counter goes on a target creature you control
 //! (creature-or-Vehicle widened to creature, you-controlled). The host
-//! land gains a {T} mana ability via attached_activated. NOTE: "two mana
-//! of any one color" is approximated as two colorless mana (no
-//! choose-a-color mana builder).
+//! land gains "{T}: Add two mana of any one color" via attached_activated,
+//! modeled as five granted mana abilities (one per WUBRG color, each adding
+//! two of that color; the player picks the color by choosing which to
+//! activate, and the shared {T} cost means only one fires).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -77,37 +78,57 @@ fn etb_install(
             count: 1,
         });
     }
-    effects.push(Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::attached_activated(
-            trig.source,
-            ActivatedAbilityDef {
-                text: "{T}: Add two mana of any one color.".into(),
-                cost: ActivationCost::tap_only(),
-                target_requirements: Vec::new(),
-                is_mana_ability: true,
-                is_loyalty_ability: false,
-                activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
-                face_gate: None,
-                effect: add_two_mana,
-            },
-            Duration::WhileSourceOnBattlefield,
-        ),
-    });
+    // Grant one mana ability per WUBRG color, each adding two of that color.
+    for (text, effect) in [
+        ("{T}: Add {W}{W}.", add_white_mana as fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>),
+        ("{T}: Add {U}{U}.", add_blue_mana),
+        ("{T}: Add {B}{B}.", add_black_mana),
+        ("{T}: Add {R}{R}.", add_red_mana),
+        ("{T}: Add {G}{G}.", add_green_mana),
+    ] {
+        effects.push(Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::attached_activated(
+                trig.source,
+                ActivatedAbilityDef {
+                    text: text.into(),
+                    cost: ActivationCost::tap_only(),
+                    target_requirements: Vec::new(),
+                    is_mana_ability: true,
+                    is_loyalty_ability: false,
+                    activation_zone: ActivationZone::Battlefield,
+                    is_instant_speed: false,
+                    face_gate: None,
+                    effect,
+                },
+                Duration::WhileSourceOnBattlefield,
+            ),
+        });
+    }
     effects
 }
 
-fn add_two_mana(
-    _state: &GameState,
-    ctx: &ActivationContext,
-    _: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "two mana of any one color" approximated as two colorless mana.
+fn two_mana(ctx: &ActivationContext, color: ManaColor) -> Vec<Effect> {
     vec![Effect::AddMana {
         player: ctx.controller,
         mana: vec![
-            ManaUnit::plain(ManaColor::Colorless, ctx.source),
-            ManaUnit::plain(ManaColor::Colorless, ctx.source),
+            ManaUnit::plain(color, ctx.source),
+            ManaUnit::plain(color, ctx.source),
         ],
     }]
+}
+
+fn add_white_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    two_mana(ctx, ManaColor::White)
+}
+fn add_blue_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    two_mana(ctx, ManaColor::Blue)
+}
+fn add_black_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    two_mana(ctx, ManaColor::Black)
+}
+fn add_red_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    two_mana(ctx, ManaColor::Red)
+}
+fn add_green_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    two_mana(ctx, ManaColor::Green)
 }

@@ -4,13 +4,13 @@
 //! Oracle:
 //! * "Grand Summon — {T}: Add one mana of any color. When you next cast a
 //!   creature spell this turn, that creature enters with two additional
-//!   +1/+1 counters on it." — a {T} mana ability. The mana production is
-//!   wired (FIDELITY GAP: the player's color choice is not modeled — adds
-//!   green as best-effort). The "when you next cast a creature spell" rider
-//!   is GAP'd: there is no next-cast-rider primitive in the demonstrated
-//!   effect surface (and the engine's single rider only adds ONE counter,
-//!   not "two additional"). Because of the non-mana rider clause this is
-//!   not flagged as a pure mana ability.
+//!   +1/+1 counters on it." — modeled as five {T} abilities, one per WUBRG
+//!   color (the player picks the color by choosing which ability to activate;
+//!   the shared {T} cost means only one fires). The "when you next cast a
+//!   creature spell" rider is GAP'd: there is no next-cast-rider primitive in
+//!   the demonstrated effect surface (and the engine's single rider only adds
+//!   ONE counter, not "two additional"). Because of the non-mana rider clause
+//!   these are not flagged as pure mana abilities.
 //! * "Whenever another permanent you control is put into a graveyard from
 //!   the battlefield, if it had one or more counters on it, you may put
 //!   that number of +1/+1 counters on target creature." — a battlefield ->
@@ -58,17 +58,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
     reg.register(
         CardDefinition::new(name, chars)
-            .with_activated_ability(ActivatedAbilityDef {
-                text: "Grand Summon — {T}: Add one mana of any color. When you next cast a creature spell this turn, that creature enters with two additional +1/+1 counters on it.".into(),
-                cost: ActivationCost::tap_only(),
-                target_requirements: Vec::new(),
-                is_mana_ability: false,
-                is_loyalty_ability: false,
-                activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
-                face_gate: None,
-                effect: grand_summon,
-            })
+            .with_activated_ability(grand_summon_ability(
+                "Grand Summon — {T}: Add {W}. When you next cast a creature spell this turn, that creature enters with two additional +1/+1 counters on it.",
+                grand_summon_white,
+            ))
+            .with_activated_ability(grand_summon_ability(
+                "Grand Summon — {T}: Add {U}. When you next cast a creature spell this turn, that creature enters with two additional +1/+1 counters on it.",
+                grand_summon_blue,
+            ))
+            .with_activated_ability(grand_summon_ability(
+                "Grand Summon — {T}: Add {B}. When you next cast a creature spell this turn, that creature enters with two additional +1/+1 counters on it.",
+                grand_summon_black,
+            ))
+            .with_activated_ability(grand_summon_ability(
+                "Grand Summon — {T}: Add {R}. When you next cast a creature spell this turn, that creature enters with two additional +1/+1 counters on it.",
+                grand_summon_red,
+            ))
+            .with_activated_ability(grand_summon_ability(
+                "Grand Summon — {T}: Add {G}. When you next cast a creature spell this turn, that creature enters with two additional +1/+1 counters on it.",
+                grand_summon_green,
+            ))
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::ZoneChange {
@@ -88,20 +97,42 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn grand_summon(
-    _state: &GameState,
-    ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP (fidelity): "one mana of any color" — player color choice not
-    // modeled; adds one green mana as best-effort.
+fn grand_summon_ability(
+    text: &str,
+    effect: fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>,
+) -> ActivatedAbilityDef {
     // GAP: "when you next cast a creature spell this turn, that creature
     // enters with two additional +1/+1 counters" — no next-cast-rider
-    // primitive in the demonstrated surface (and no two-counter rider).
-    vec![Effect::AddMana {
-        player: ctx.controller,
-        mana: vec![ManaUnit::plain(ManaColor::Green, ctx.source)],
-    }]
+    // primitive in the demonstrated surface (and no two-counter rider). Only
+    // the mana production is wired; the non-mana rider keeps this off the
+    // pure-mana-ability flag.
+    ActivatedAbilityDef {
+        text: text.into(),
+        cost: ActivationCost::tap_only(),
+        target_requirements: Vec::new(),
+        is_mana_ability: false,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Battlefield,
+        is_instant_speed: false,
+        face_gate: None,
+        effect,
+    }
+}
+
+fn grand_summon_white(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana { player: ctx.controller, mana: vec![ManaUnit::plain(ManaColor::White, ctx.source)] }]
+}
+fn grand_summon_blue(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana { player: ctx.controller, mana: vec![ManaUnit::plain(ManaColor::Blue, ctx.source)] }]
+}
+fn grand_summon_black(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana { player: ctx.controller, mana: vec![ManaUnit::plain(ManaColor::Black, ctx.source)] }]
+}
+fn grand_summon_red(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana { player: ctx.controller, mana: vec![ManaUnit::plain(ManaColor::Red, ctx.source)] }]
+}
+fn grand_summon_green(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana { player: ctx.controller, mana: vec![ManaUnit::plain(ManaColor::Green, ctx.source)] }]
 }
 
 fn counters_on_death(

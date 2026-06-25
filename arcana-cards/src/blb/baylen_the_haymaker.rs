@@ -6,12 +6,13 @@
 //! It gains trample until end of turn.
 //!
 //! The tap-N-tokens costs are modeled with `tap_other` + `tap_other_count`.
-//! The first ability's "add one mana of any color" payload is GAP'd (no
-//! any-color AddMana payload is expressible from the catalog).
+//! The first ability's "add one mana of any color" payload is modeled as five
+//! mana abilities, one per WUBRG color, each costing tap-two-tokens; the player
+//! picks the color by choosing which ability to activate (command_tower idiom).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
-use arcana_core::mana::ManaCost;
+use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
@@ -19,7 +20,9 @@ use arcana_core::registry::{
 };
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{
+    CardId, ColorSet, CounterKind, ManaColor, PtValue, SubtypeSet, SupertypeSet, TypeLine,
+};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Baylen, the Haymaker");
@@ -45,21 +48,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
     reg.register(
         CardDefinition::new(name, chars)
-            .with_activated_ability(ActivatedAbilityDef {
-                text: "Tap two untapped tokens you control: Add one mana of any color.".into(),
-                cost: ActivationCost {
-                    tap_other: Some(tokens()),
-                    tap_other_count: 2,
-                    ..ActivationCost::default()
-                },
-                target_requirements: Vec::new(),
-                is_mana_ability: false,
-                is_loyalty_ability: false,
-                activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
-                face_gate: None,
-                effect: add_any_color,
-            })
+            .with_activated_ability(tap_two_mana("Tap two untapped tokens you control: Add {W}.", tokens(), add_white))
+            .with_activated_ability(tap_two_mana("Tap two untapped tokens you control: Add {U}.", tokens(), add_blue))
+            .with_activated_ability(tap_two_mana("Tap two untapped tokens you control: Add {B}.", tokens(), add_black))
+            .with_activated_ability(tap_two_mana("Tap two untapped tokens you control: Add {R}.", tokens(), add_red))
+            .with_activated_ability(tap_two_mana("Tap two untapped tokens you control: Add {G}.", tokens(), add_green))
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Tap three untapped tokens you control: Draw a card.".into(),
                 cost: ActivationCost {
@@ -93,14 +86,63 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn add_any_color(
-    _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "add one mana of any color" — no any-color AddMana payload is
-    // expressible from the catalog.
-    Vec::new()
+/// One "Tap two untapped tokens you control: Add {C}." mana ability — the
+/// shared tap-two-tokens cost means only one of the five fires.
+fn tap_two_mana(
+    text: &str,
+    tokens: ObjectFilter,
+    effect: fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>,
+) -> ActivatedAbilityDef {
+    ActivatedAbilityDef {
+        text: text.into(),
+        cost: ActivationCost {
+            tap_other: Some(tokens),
+            tap_other_count: 2,
+            ..ActivationCost::default()
+        },
+        target_requirements: Vec::new(),
+        is_mana_ability: false,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Battlefield,
+        is_instant_speed: false,
+        face_gate: None,
+        effect,
+    }
+}
+
+fn add_white(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::White, ctx.source)],
+    }]
+}
+
+fn add_blue(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Blue, ctx.source)],
+    }]
+}
+
+fn add_black(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Black, ctx.source)],
+    }]
+}
+
+fn add_red(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Red, ctx.source)],
+    }]
+}
+
+fn add_green(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Green, ctx.source)],
+    }]
 }
 
 fn draw_one(

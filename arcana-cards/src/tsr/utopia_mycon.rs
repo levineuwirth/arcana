@@ -2,8 +2,9 @@
 //! "At the beginning of your upkeep, put a spore counter on this creature."
 //! "Remove three spore counters from this creature: Create a 1/1 green
 //! Saproling creature token."
-//! "Sacrifice a Saproling: Add one mana of any color." (The any-color choice
-//! is not modeled; one green mana is produced — see GAP.)
+//! "Sacrifice a Saproling: Add one mana of any color." "any color" is modeled
+//! as five Sacrifice-a-Saproling mana abilities, one per WUBRG color (the
+//! shared sacrifice cost means only one fires).
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaUnit;
@@ -76,21 +77,53 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 face_gate: None,
                 effect: make_saproling,
             })
-            .with_activated_ability(ActivatedAbilityDef {
-                text: "Sacrifice a Saproling: Add one mana of any color.".into(),
-                cost: ActivationCost {
-                    sacrifice_other: Some(saproling_filter),
-                    ..ActivationCost::default()
-                },
-                target_requirements: Vec::new(),
-                is_mana_ability: true,
-                is_loyalty_ability: false,
-                activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
-                face_gate: None,
-                effect: add_any_mana,
-            }),
+            .with_activated_ability(sac_mana_ability(
+                "Sacrifice a Saproling: Add {W}.",
+                saproling_filter.clone(),
+                um_add_white,
+            ))
+            .with_activated_ability(sac_mana_ability(
+                "Sacrifice a Saproling: Add {U}.",
+                saproling_filter.clone(),
+                um_add_blue,
+            ))
+            .with_activated_ability(sac_mana_ability(
+                "Sacrifice a Saproling: Add {B}.",
+                saproling_filter.clone(),
+                um_add_black,
+            ))
+            .with_activated_ability(sac_mana_ability(
+                "Sacrifice a Saproling: Add {R}.",
+                saproling_filter.clone(),
+                um_add_red,
+            ))
+            .with_activated_ability(sac_mana_ability(
+                "Sacrifice a Saproling: Add {G}.",
+                saproling_filter,
+                um_add_green,
+            )),
     )
+}
+
+fn sac_mana_ability(
+    text: &str,
+    saproling_filter: arcana_core::targets::ObjectFilter,
+    effect: fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>,
+) -> ActivatedAbilityDef {
+    ActivatedAbilityDef {
+        text: text.into(),
+        cost: ActivationCost {
+            sacrifice_other: Some(saproling_filter),
+            ..ActivationCost::default()
+        },
+        target_requirements: Vec::new(),
+        is_mana_ability: true,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Battlefield,
+        is_instant_speed: false,
+        face_gate: None,
+        effect,
+    }
 }
 
 fn add_spore(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
@@ -124,11 +157,25 @@ fn make_saproling(_state: &GameState, ctx: &ActivationContext, reg: &CardRegistr
     }]
 }
 
-fn add_any_mana(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "one mana of any color" — the player's color choice is not modeled;
-    // a single green mana is produced as a fixed stand-in.
+fn um_add_one(ctx: &ActivationContext, color: ManaColor) -> Vec<Effect> {
     vec![Effect::AddMana {
         player: ctx.controller,
-        mana: vec![ManaUnit::plain(ManaColor::Green, ctx.source)],
+        mana: vec![ManaUnit::plain(color, ctx.source)],
     }]
+}
+
+fn um_add_white(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    um_add_one(ctx, ManaColor::White)
+}
+fn um_add_blue(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    um_add_one(ctx, ManaColor::Blue)
+}
+fn um_add_black(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    um_add_one(ctx, ManaColor::Black)
+}
+fn um_add_red(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    um_add_one(ctx, ManaColor::Red)
+}
+fn um_add_green(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    um_add_one(ctx, ManaColor::Green)
 }

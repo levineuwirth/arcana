@@ -1,6 +1,7 @@
 //! Llanowar Loamspeaker — `{1}{G}` 1/3 Elf Druid.
-//! {T}: Add one mana of any color. (GAP on the color choice — AddMana
-//! mints a fixed ManaColor pip; emitting green as an approximation.)
+//! {T}: Add one mana of any color. (Modeled as five mana abilities, one
+//! per WUBRG color; the player picks the color by choosing which ability
+//! to activate — the shared {T} cost taps the source so only one fires.)
 //! {T}: Target land you control becomes a 3/3 Elemental creature with
 //! haste until end of turn. It's still a land. Activate only as a sorcery.
 //! (Animation via AddType + SetBasePT + GrantKeyword Haste; the Elemental
@@ -42,17 +43,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
     reg.register(
         CardDefinition::new(name, chars)
-            .with_activated_ability(ActivatedAbilityDef {
-                text: "{T}: Add one mana of any color.".into(),
-                cost: ActivationCost::tap_only(),
-                target_requirements: Vec::new(),
-                is_mana_ability: true,
-                is_loyalty_ability: false,
-                activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
-                face_gate: None,
-                effect: add_any_color,
-            })
+            .with_activated_ability(mana_ability("{T}: Add {W}.", add_white_mana))
+            .with_activated_ability(mana_ability("{T}: Add {U}.", add_blue_mana))
+            .with_activated_ability(mana_ability("{T}: Add {B}.", add_black_mana))
+            .with_activated_ability(mana_ability("{T}: Add {R}.", add_red_mana))
+            .with_activated_ability(mana_ability("{T}: Add {G}.", add_green_mana))
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Target land you control becomes a 3/3 Elemental \
                        creature with haste until end of turn. It's still a land. \
@@ -78,16 +73,45 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn add_any_color(
-    _state: &GameState,
-    ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "any color" — AddMana mints a fixed pip; emitting green.
+/// `{T}: Add one mana of any color` — one tap-only mana ability per color.
+fn mana_ability(
+    text: &str,
+    effect: fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>,
+) -> ActivatedAbilityDef {
+    ActivatedAbilityDef {
+        text: text.into(),
+        cost: ActivationCost::tap_only(),
+        target_requirements: Vec::new(),
+        is_mana_ability: true,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Battlefield,
+        is_instant_speed: false,
+        face_gate: None,
+        effect,
+    }
+}
+
+fn add_one(ctx: &ActivationContext, color: ManaColor) -> Vec<Effect> {
     vec![Effect::AddMana {
         player: ctx.controller,
-        mana: vec![ManaUnit::plain(ManaColor::Green, ctx.source)],
+        mana: vec![ManaUnit::plain(color, ctx.source)],
     }]
+}
+
+fn add_white_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_one(ctx, ManaColor::White)
+}
+fn add_blue_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_one(ctx, ManaColor::Blue)
+}
+fn add_black_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_one(ctx, ManaColor::Black)
+}
+fn add_red_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_one(ctx, ManaColor::Red)
+}
+fn add_green_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_one(ctx, ManaColor::Green)
 }
 
 fn animate_land(

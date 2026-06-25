@@ -5,7 +5,10 @@
 //! auto-expires when Lavaleaper leaves play.
 //! "Whenever a player taps a basic land for mana, that player adds one
 //!  mana of any type that land produced." (GAP — no "taps a land for
-//!  mana" TriggerCondition, and no helper to read what a land produced.)
+//!  mana" TriggerCondition, and no helper to read what a land produced.
+//!  This is not the "any color" per-color-ability case: the produced
+//!  type is dictated by the tapped land, not chosen by activating one of
+//!  several abilities, and the trigger itself is unmodeled.)
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};

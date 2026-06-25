@@ -1,7 +1,9 @@
 //! Quirion Sentinel — `{1}{G}` 2/1 green Elf Druid. "When this creature enters,
 //! add one mana of any color." ETB trigger; add one mana of any color.
-//! GAP: "any color" mana — no single ManaColor variant for any-color mana.
-//! Emit one green mana as best approximation.
+//! GAP: this is a triggered-ability (ETB) effect, so the per-color
+//! mana-ability idiom can't apply (the player doesn't pick the color by
+//! choosing which ability to activate), and there is no chosen-color-mana
+//! follow-up for a resolver. Emit one green mana as best approximation.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::{ManaCost, ManaUnit};

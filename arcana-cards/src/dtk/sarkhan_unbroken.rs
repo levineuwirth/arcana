@@ -2,9 +2,11 @@
 //! starting loyalty 5.
 //!
 //! * `+1`: Draw a card, then add one mana of any color. The draw is
-//!   expressed; the "add one mana of any color" rider is GAP'd (the
-//!   color choice is not expressible — `Effect::AddMana` takes fixed
-//!   `ManaUnit`s).
+//!   expressed; the "add one mana of any color" rider is GAP'd. The
+//!   per-color mana-ability idiom can't apply here — the mana is bundled
+//!   inside a single loyalty-ability resolver (alongside the draw), so the
+//!   player can't pick the color by choosing which ability to activate,
+//!   and there is no chosen-color-mana follow-up for an effect resolver.
 //! * `−2`: Create a 4/4 red Dragon creature token with flying.
 //!   `Effect::CreateToken`.
 //! * `−8`: Search your library for any number of Dragon creature cards,
@@ -96,8 +98,10 @@ fn plus_one_draw(
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "add one mana of any color" — the color choice is not
-    // expressible (Effect::AddMana takes fixed ManaUnits). Draw is emitted.
+    // GAP: "add one mana of any color" rider — the mana is bundled in this
+    // single resolver alongside the draw, so the per-color mana-ability
+    // idiom doesn't apply, and there is no chosen-color-mana follow-up.
+    // Draw is emitted.
     vec![Effect::DrawCards { player: ctx.controller, count: 1 }]
 }
 

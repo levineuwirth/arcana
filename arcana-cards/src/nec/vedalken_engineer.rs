@@ -1,9 +1,11 @@
 //! Vedalken Engineer — `{1}{U}` 1/1 blue Vedalken Artificer.
 //! "{T}: Add two mana of any one color. Spend this mana only to cast artifact spells or
 //! activate abilities of artifacts."
-//! GAP: "two mana of any one color" — player choice of color not in Effect::AddMana.
-//! GAP: "spend only on artifact spells" — mana restriction not modeled.
-//! Using two blue mana as placeholder.
+//! "Two mana of any one color" is modeled as five mana abilities, one per WUBRG
+//! color (command_tower idiom); each adds TWO mana of that color, and the shared
+//! {T} cost means activating one taps the source, so only one fires.
+//! GAP: the spend-restriction ("only to cast artifact spells or activate abilities
+//! of artifacts") is not modeled — ManaUnit carries no spend-restriction tag.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::{ManaCost, ManaUnit};
@@ -34,33 +36,77 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars)
-            .with_activated_ability(ActivatedAbilityDef {
-                text: "{T}: Add two mana of any one color. Spend this mana only to cast artifact spells or activate abilities of artifacts.".into(),
-                cost: ActivationCost::tap_only(),
-                target_requirements: Vec::new(),
-                // GAP: mana ability but has restriction; treating as mana ability
-                is_mana_ability: true,
-                is_loyalty_ability: false,
-                activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
-                face_gate: None,
-                effect: add_two_mana,
-            }),
+            .with_activated_ability(mana_ability("{T}: Add {W}{W}.", add_white_mana))
+            .with_activated_ability(mana_ability("{T}: Add {U}{U}.", add_blue_mana))
+            .with_activated_ability(mana_ability("{T}: Add {B}{B}.", add_black_mana))
+            .with_activated_ability(mana_ability("{T}: Add {R}{R}.", add_red_mana))
+            .with_activated_ability(mana_ability("{T}: Add {G}{G}.", add_green_mana)),
     )
 }
 
-fn add_two_mana(
-    _state: &GameState,
-    ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "two mana of any one color" — using two blue as placeholder.
-    // GAP: "spend only on artifact spells" — restriction not modeled.
+fn mana_ability(
+    text: &str,
+    effect: fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>,
+) -> ActivatedAbilityDef {
+    ActivatedAbilityDef {
+        text: text.into(),
+        cost: ActivationCost::tap_only(),
+        target_requirements: Vec::new(),
+        is_mana_ability: true,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Battlefield,
+        is_instant_speed: false,
+        face_gate: None,
+        effect,
+    }
+}
+
+fn add_white_mana(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![
+            ManaUnit::plain(ManaColor::White, ctx.source),
+            ManaUnit::plain(ManaColor::White, ctx.source),
+        ],
+    }]
+}
+
+fn add_blue_mana(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
     vec![Effect::AddMana {
         player: ctx.controller,
         mana: vec![
             ManaUnit::plain(ManaColor::Blue, ctx.source),
             ManaUnit::plain(ManaColor::Blue, ctx.source),
+        ],
+    }]
+}
+
+fn add_black_mana(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![
+            ManaUnit::plain(ManaColor::Black, ctx.source),
+            ManaUnit::plain(ManaColor::Black, ctx.source),
+        ],
+    }]
+}
+
+fn add_red_mana(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![
+            ManaUnit::plain(ManaColor::Red, ctx.source),
+            ManaUnit::plain(ManaColor::Red, ctx.source),
+        ],
+    }]
+}
+
+fn add_green_mana(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![
+            ManaUnit::plain(ManaColor::Green, ctx.source),
+            ManaUnit::plain(ManaColor::Green, ctx.source),
         ],
     }]
 }

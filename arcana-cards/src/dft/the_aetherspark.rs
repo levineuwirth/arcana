@@ -16,10 +16,10 @@
 //!   control. Put a +1/+1 counter on that creature. (Effect::Attach +
 //!   Effect::AddCounters; "up to one" → `TargetCount::UpTo(1)`.)
 //! * `−5`: Draw two cards. (Effect::DrawCards.)
-//! * `−10`: Add ten mana of any one color. GAP — a player color-choice
-//!   for the mana isn't expressible from the demonstrated surface
-//!   (cf. the Treasure colorless-placeholder note). Shell declared at
-//!   the correct −10 cost.
+//! * `−10`: Add ten mana of any one color. Modeled as five loyalty
+//!   abilities, one per WUBRG color, each at the −10 cost and each adding
+//!   ten mana of that one color; the player picks the color by choosing
+//!   which ability to activate (the shared −10 cost means only one fires).
 //!
 //! # Rules references
 //!
@@ -28,7 +28,7 @@
 //! * CR 704.5i — 0-loyalty state-based sacrifice.
 
 use arcana_core::effects::Effect;
-use arcana_core::mana::ManaCost;
+use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, CardDefinition,
@@ -40,7 +40,7 @@ use arcana_core::targets::{
     TargetRequirement,
 };
 use arcana_core::types::{
-    CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine,
+    CardId, ColorSet, CounterKind, ManaColor, SubtypeSet, SupertypeSet, TypeLine,
 };
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -96,21 +96,34 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 face_gate: None,
                 effect: minus_five_draw,
             })
-            .with_activated_ability(ActivatedAbilityDef {
-                text: "−10: Add ten mana of any one color.".into(),
-                cost: ActivationCost {
-                    remove_self_counter: Some((CounterKind::Loyalty, 10)),
-                    ..ActivationCost::default()
-                },
-                target_requirements: vec![],
-                is_mana_ability: false,
-                is_loyalty_ability: true,
-                activation_zone: arcana_core::registry::ActivationZone::Battlefield,
-                is_instant_speed: false,
-                face_gate: None,
-                effect: minus_ten_mana,
-            }),
+            .with_activated_ability(minus_ten_mana_ability("−10: Add ten {W}.", minus_ten_white))
+            .with_activated_ability(minus_ten_mana_ability("−10: Add ten {U}.", minus_ten_blue))
+            .with_activated_ability(minus_ten_mana_ability("−10: Add ten {B}.", minus_ten_black))
+            .with_activated_ability(minus_ten_mana_ability("−10: Add ten {R}.", minus_ten_red))
+            .with_activated_ability(minus_ten_mana_ability("−10: Add ten {G}.", minus_ten_green)),
     )
+}
+
+/// `−10: Add ten mana of any one color` — one loyalty ability per color,
+/// each at the −10 cost, each adding ten mana of that one color.
+fn minus_ten_mana_ability(
+    text: &str,
+    effect: fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>,
+) -> ActivatedAbilityDef {
+    ActivatedAbilityDef {
+        text: text.into(),
+        cost: ActivationCost {
+            remove_self_counter: Some((CounterKind::Loyalty, 10)),
+            ..ActivationCost::default()
+        },
+        target_requirements: vec![],
+        is_mana_ability: false,
+        is_loyalty_ability: true,
+        activation_zone: arcana_core::registry::ActivationZone::Battlefield,
+        is_instant_speed: false,
+        face_gate: None,
+        effect,
+    }
 }
 
 /// `+1: Attach The Aetherspark to up to one target creature you control.
@@ -150,13 +163,26 @@ fn minus_five_draw(
     }]
 }
 
-/// `−10: Add ten mana of any one color.`
-fn minus_ten_mana(
-    _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "add ten mana of any one color" requires a player color
-    // choice not expressible from the demonstrated surface.
-    Vec::new()
+/// `−10: Add ten mana of any one color.` — ten mana of one chosen color.
+fn minus_ten_of(ctx: &ActivationContext, color: ManaColor) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(color, ctx.source); 10],
+    }]
+}
+
+fn minus_ten_white(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    minus_ten_of(ctx, ManaColor::White)
+}
+fn minus_ten_blue(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    minus_ten_of(ctx, ManaColor::Blue)
+}
+fn minus_ten_black(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    minus_ten_of(ctx, ManaColor::Black)
+}
+fn minus_ten_red(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    minus_ten_of(ctx, ManaColor::Red)
+}
+fn minus_ten_green(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    minus_ten_of(ctx, ManaColor::Green)
 }

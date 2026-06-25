@@ -1,6 +1,7 @@
 //! Viridian Acolyte — `{G}` 1/1 green Elf Shaman.
 //! "{1}, {T}: Add one mana of any color."
-//! GAP: "one mana of any color" — player chooses the color; using colorless as placeholder.
+//! Modeled as five mana abilities, one per WUBRG color; the player picks
+//! the color by choosing which ability to activate (shared {1},{T} cost).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::{ManaCost, ManaUnit};
@@ -31,32 +32,55 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars)
-            .with_activated_ability(ActivatedAbilityDef {
-                text: "{1}, {T}: Add one mana of any color.".into(),
-                cost: ActivationCost {
-                    mana_cost: ManaCost::parse("{1}").unwrap(),
-                    tap: true,
-                    ..ActivationCost::default()
-                },
-                target_requirements: Vec::new(),
-                is_mana_ability: true,
-                is_loyalty_ability: false,
-                activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
-                face_gate: None,
-                effect: add_any_color_mana,
-            }),
+            .with_activated_ability(mana_ability("{1}, {T}: Add {W}.", add_white_mana))
+            .with_activated_ability(mana_ability("{1}, {T}: Add {U}.", add_blue_mana))
+            .with_activated_ability(mana_ability("{1}, {T}: Add {B}.", add_black_mana))
+            .with_activated_ability(mana_ability("{1}, {T}: Add {R}.", add_red_mana))
+            .with_activated_ability(mana_ability("{1}, {T}: Add {G}.", add_green_mana)),
     )
 }
 
-fn add_any_color_mana(
-    _state: &GameState,
-    ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "any color" — player chooses which color; emitting colorless as placeholder.
+/// `{1}, {T}: Add one mana of any color` — one mana ability per color.
+fn mana_ability(
+    text: &str,
+    effect: fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>,
+) -> ActivatedAbilityDef {
+    ActivatedAbilityDef {
+        text: text.into(),
+        cost: ActivationCost {
+            mana_cost: ManaCost::parse("{1}").unwrap(),
+            tap: true,
+            ..ActivationCost::default()
+        },
+        target_requirements: Vec::new(),
+        is_mana_ability: true,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Battlefield,
+        is_instant_speed: false,
+        face_gate: None,
+        effect,
+    }
+}
+
+fn add_one(ctx: &ActivationContext, color: ManaColor) -> Vec<Effect> {
     vec![Effect::AddMana {
         player: ctx.controller,
-        mana: vec![ManaUnit::plain(ManaColor::Colorless, ctx.source)],
+        mana: vec![ManaUnit::plain(color, ctx.source)],
     }]
+}
+
+fn add_white_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_one(ctx, ManaColor::White)
+}
+fn add_blue_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_one(ctx, ManaColor::Blue)
+}
+fn add_black_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_one(ctx, ManaColor::Black)
+}
+fn add_red_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_one(ctx, ManaColor::Red)
+}
+fn add_green_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_one(ctx, ManaColor::Green)
 }

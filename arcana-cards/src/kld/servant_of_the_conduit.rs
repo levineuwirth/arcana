@@ -1,8 +1,10 @@
 //! Servant of the Conduit — `{1}{G}` 2/2 Elf Druid.
 //! When this creature enters, you get {E}{E} (two energy counters).
-//! {T}, Pay {E}: Add one mana of any color (GAP: paying energy is not an
-//! expressible activation cost, and "any color" is not a choosable mana
-//! production — the whole activated mana ability is GAP'd).
+//! {T}, Pay {E}: Add one mana of any color.
+//! GAP: paying {E} (energy) is not an expressible activation cost —
+//! `ActivationCost` has no energy field — so the whole mana ability stays
+//! GAP'd. ("Any color" itself is expressible via the per-color idiom, but
+//! the unmodelable energy cost blocks the ability.)
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -24,7 +26,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     subtypes.0.insert(druid);
 
     // GAP: "{T}, Pay {E}: Add one mana of any color" — energy is not a cost
-    // field, and "any color" mana production is not expressible.
+    // field on ActivationCost, so the mana ability is omitted.
 
     let chars = Characteristics {
         name,

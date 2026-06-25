@@ -12,7 +12,10 @@
 //!
 //! GAP: back-face "transforms into Ashling, Rimebound [or first main phase], add two
 //!   mana" trigger not modeled — the mana effect itself is inexpressible (see below).
-//! GAP: "add two mana of any one color" — any-color choice not expressible (single color only).
+//! GAP: "add two mana of any one color" — this is a triggered-ability effect, so
+//!   the per-color mana-ability idiom can't apply (the player doesn't pick the color
+//!   by choosing an ability), and there is no chosen-color-mana follow-up for a
+//!   resolver. Left omitted.
 //! GAP: "spend this mana only to cast spells with mana value 4 or greater" restriction not modeled.
 //! GAP: Back-face triggered abilities not auto-installed on transform.
 //! The front-face "you may discard a card. If you do, draw a card" loot trigger is wired
@@ -163,7 +166,8 @@ fn back_main_phase_transform(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     // GAP: back-face-only. Also GAP: back face should add two mana of any color before the optional.
-    // GAP: "add two mana of any one color" — color choice not expressible; omitted.
+    // GAP: "add two mana of any one color" is a triggered-ability effect — the per-color
+    // mana-ability idiom can't apply and there is no chosen-color-mana follow-up; omitted.
     vec![Effect::OptionalPayment {
         chooser: trig.controller,
         cost: OptionalPaymentKind::Mana(ManaCost::parse("{R}").expect("valid cost")),

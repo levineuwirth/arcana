@@ -2,24 +2,24 @@
 //!
 //! Oracle:
 //! * Reach
-//! * `{T}`: Add one mana of any color.  (GAP — see below.)
+//! * `{T}`: Add one mana of any color.
 //! * `{2}`: This creature gains deathtouch until end of turn.
 //!
-//! GAP: "{T}: Add one mana of any color" — `Effect::AddMana` takes a
-//! fixed `ManaColor` per pip and there is no any-color choice primitive
-//! (Paradise Druid / Oasis Ritualist precedent). The deathtouch grant
-//! is wired faithfully.
+//! "Add one mana of any color" is modeled as five mana abilities, one per
+//! WUBRG color (command_tower idiom); the shared {T} cost means activating
+//! one taps the source, so only one fires. The deathtouch grant is wired
+//! faithfully.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
-use arcana_core::mana::ManaCost;
+use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, ManaColor, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Poison Dart Frog");
@@ -39,10 +39,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    // GAP: "{T}: Add one mana of any color" — no any-color mana primitive.
-
     reg.register(
         CardDefinition::new(name, chars)
+            .with_activated_ability(mana_ability("{T}: Add {W}.", add_white_mana))
+            .with_activated_ability(mana_ability("{T}: Add {U}.", add_blue_mana))
+            .with_activated_ability(mana_ability("{T}: Add {B}.", add_black_mana))
+            .with_activated_ability(mana_ability("{T}: Add {R}.", add_red_mana))
+            .with_activated_ability(mana_ability("{T}: Add {G}.", add_green_mana))
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{2}: This creature gains deathtouch until end of turn.".into(),
                 cost: ActivationCost {
@@ -58,6 +61,58 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: gain_deathtouch,
             }),
     )
+}
+
+fn mana_ability(
+    text: &str,
+    effect: fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>,
+) -> ActivatedAbilityDef {
+    ActivatedAbilityDef {
+        text: text.into(),
+        cost: ActivationCost::tap_only(),
+        target_requirements: Vec::new(),
+        is_mana_ability: true,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Battlefield,
+        is_instant_speed: false,
+        face_gate: None,
+        effect,
+    }
+}
+
+fn add_white_mana(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::White, ctx.source)],
+    }]
+}
+
+fn add_blue_mana(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Blue, ctx.source)],
+    }]
+}
+
+fn add_black_mana(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Black, ctx.source)],
+    }]
+}
+
+fn add_red_mana(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Red, ctx.source)],
+    }]
+}
+
+fn add_green_mana(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Green, ctx.source)],
+    }]
 }
 
 fn gain_deathtouch(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {

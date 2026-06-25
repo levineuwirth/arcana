@@ -2,10 +2,11 @@
 //! "Genomic Enhancement — {T}: Add one mana of any color. If this mana is spent to cast a creature
 //! spell, that creature enters with an additional +1/+1 counter on it."
 //!
+//! "Add one mana of any color" is modeled as five mana abilities, one per WUBRG
+//! color (the player picks the color by choosing which ability to activate; the
+//! shared {T} cost means only one fires).
 //! GAP: The "if this mana is spent to cast a creature spell, that creature enters with +1/+1 counter"
-//! rider is a replacement effect on mana spending — not expressible. Wiring the tap-for-any-color
-//! as a mana ability with a generic colorless approximation (no "any color" selection in ManaUnit).
-//! GAP: ManaUnit::plain requires a specific ManaColor; "any color" mana is not expressible.
+//! rider is a replacement effect on mana spending — not expressible.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::{ManaCost, ManaUnit};
@@ -38,29 +39,45 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars)
-            .with_activated_ability(ActivatedAbilityDef {
-                text: "{T}: Add one mana of any color.".into(),
-                cost: ActivationCost::tap_only(),
-                target_requirements: Vec::new(),
-                is_mana_ability: true,
-                is_loyalty_ability: false,
-                activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
-                face_gate: None,
-                effect: add_any_color_mana,
-            }),
+            .with_activated_ability(mana_ability("Genomic Enhancement — {T}: Add {W}.", add_white_mana))
+            .with_activated_ability(mana_ability("Genomic Enhancement — {T}: Add {U}.", add_blue_mana))
+            .with_activated_ability(mana_ability("Genomic Enhancement — {T}: Add {B}.", add_black_mana))
+            .with_activated_ability(mana_ability("Genomic Enhancement — {T}: Add {R}.", add_red_mana))
+            .with_activated_ability(mana_ability("Genomic Enhancement — {T}: Add {G}.", add_green_mana)),
     )
 }
 
-fn add_any_color_mana(
-    _state: &GameState,
-    ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "any color" mana not expressible — using colorless as placeholder.
-    // The +1/+1 counter rider on creature cast is also not expressible (replacement effect).
-    vec![Effect::AddMana {
-        player: ctx.controller,
-        mana: vec![ManaUnit::plain(ManaColor::Colorless, ctx.source)],
-    }]
+fn mana_ability(
+    text: &str,
+    effect: fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>,
+) -> ActivatedAbilityDef {
+    // The +1/+1 counter rider on creature cast is a replacement effect on mana
+    // spending — not expressible; only the mana production is wired.
+    ActivatedAbilityDef {
+        text: text.into(),
+        cost: ActivationCost::tap_only(),
+        target_requirements: Vec::new(),
+        is_mana_ability: true,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Battlefield,
+        is_instant_speed: false,
+        face_gate: None,
+        effect,
+    }
+}
+
+fn add_white_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana { player: ctx.controller, mana: vec![ManaUnit::plain(ManaColor::White, ctx.source)] }]
+}
+fn add_blue_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana { player: ctx.controller, mana: vec![ManaUnit::plain(ManaColor::Blue, ctx.source)] }]
+}
+fn add_black_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana { player: ctx.controller, mana: vec![ManaUnit::plain(ManaColor::Black, ctx.source)] }]
+}
+fn add_red_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana { player: ctx.controller, mana: vec![ManaUnit::plain(ManaColor::Red, ctx.source)] }]
+}
+fn add_green_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana { player: ctx.controller, mana: vec![ManaUnit::plain(ManaColor::Green, ctx.source)] }]
 }

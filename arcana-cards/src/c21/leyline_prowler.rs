@@ -12,6 +12,25 @@ use arcana_core::registry::{
 use arcana_core::state::GameState;
 use arcana_core::types::{CardId, ColorSet, ManaColor, PtValue, SubtypeSet, TypeLine};
 
+/// "{T}: Add one mana of any color" — modeled as five mana abilities, one per
+/// WUBRG color; the shared {T} cost means only one fires.
+fn mana_ability(
+    text: &str,
+    effect: fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>,
+) -> ActivatedAbilityDef {
+    ActivatedAbilityDef {
+        text: text.into(),
+        cost: ActivationCost::tap_only(),
+        target_requirements: Vec::new(),
+        is_mana_ability: true,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Battlefield,
+        is_instant_speed: false,
+        face_gate: None,
+        effect,
+    }
+}
+
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Leyline Prowler");
     let nightmare = reg.interner_mut().intern("Nightmare");
@@ -31,23 +50,44 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars).with_activated_ability(ActivatedAbilityDef {
-            text: "{T}: Add one mana of any color.".into(),
-            cost: ActivationCost::tap_only(),
-            target_requirements: Vec::new(),
-            is_mana_ability: true,
-            is_loyalty_ability: false,
-            activation_zone: ActivationZone::Battlefield,
-            is_instant_speed: false,
-            face_gate: None,
-            effect: add_any_color,
-        }),
+        CardDefinition::new(name, chars)
+            .with_activated_ability(mana_ability("{T}: Add {W}.", add_white))
+            .with_activated_ability(mana_ability("{T}: Add {U}.", add_blue))
+            .with_activated_ability(mana_ability("{T}: Add {B}.", add_black))
+            .with_activated_ability(mana_ability("{T}: Add {R}.", add_red))
+            .with_activated_ability(mana_ability("{T}: Add {G}.", add_green)),
     )
 }
 
-fn add_any_color(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP (fidelity): "one mana of any color" — the player's color choice is not
-    // modeled; adds one green mana as best-effort.
+fn add_white(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::White, ctx.source)],
+    }]
+}
+
+fn add_blue(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Blue, ctx.source)],
+    }]
+}
+
+fn add_black(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Black, ctx.source)],
+    }]
+}
+
+fn add_red(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Red, ctx.source)],
+    }]
+}
+
+fn add_green(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
     vec![Effect::AddMana {
         player: ctx.controller,
         mana: vec![ManaUnit::plain(ManaColor::Green, ctx.source)],

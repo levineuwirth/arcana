@@ -1,17 +1,19 @@
 //! Frog Butler — `{1}{G}` 1/1 Frog Spirit with Deathtouch.
-//! "{T}: Add one mana of any color. (any-color mana not expressible — GAP'd)
+//! "{T}: Add one mana of any color.
 //!  {2}: This creature gains reach until end of turn."
+//! "any color" is modeled as five {T} mana abilities, one per WUBRG color
+//! (the shared tap cost means only one fires).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
-use arcana_core::mana::ManaCost;
+use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, ManaColor, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Frog Butler");
@@ -33,12 +35,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    // GAP: "{T}: Add one mana of any color" — the catalog's AddMana only
-    // supports a concrete ManaColor; there is no any-color / choose-color
-    // mana-ability primitive, so this mana ability is omitted.
-
     reg.register(
         CardDefinition::new(name, chars)
+            // "{T}: Add one mana of any color" — five tap mana abilities, one per color.
+            .with_activated_ability(fb_mana_ability("{T}: Add {W}.", fb_add_white))
+            .with_activated_ability(fb_mana_ability("{T}: Add {U}.", fb_add_blue))
+            .with_activated_ability(fb_mana_ability("{T}: Add {B}.", fb_add_black))
+            .with_activated_ability(fb_mana_ability("{T}: Add {R}.", fb_add_red))
+            .with_activated_ability(fb_mana_ability("{T}: Add {G}.", fb_add_green))
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{2}: This creature gains reach until end of turn.".into(),
                 cost: ActivationCost {
@@ -62,4 +66,44 @@ fn gain_reach(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) 
         keyword: KeywordAbility::Reach,
         duration: Duration::EndOfTurn,
     }]
+}
+
+fn fb_mana_ability(
+    text: &str,
+    effect: fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>,
+) -> ActivatedAbilityDef {
+    ActivatedAbilityDef {
+        text: text.into(),
+        cost: ActivationCost::tap_only(),
+        target_requirements: Vec::new(),
+        is_mana_ability: true,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Battlefield,
+        is_instant_speed: false,
+        face_gate: None,
+        effect,
+    }
+}
+
+fn fb_add_one(ctx: &ActivationContext, color: ManaColor) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(color, ctx.source)],
+    }]
+}
+
+fn fb_add_white(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    fb_add_one(ctx, ManaColor::White)
+}
+fn fb_add_blue(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    fb_add_one(ctx, ManaColor::Blue)
+}
+fn fb_add_black(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    fb_add_one(ctx, ManaColor::Black)
+}
+fn fb_add_red(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    fb_add_one(ctx, ManaColor::Red)
+}
+fn fb_add_green(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    fb_add_one(ctx, ManaColor::Green)
 }

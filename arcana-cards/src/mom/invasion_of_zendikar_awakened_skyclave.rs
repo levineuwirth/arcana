@@ -14,21 +14,26 @@
 //!   best effort: the engine can't do "you may" on each individually.
 //! - Back-face "it's a land in addition to its other types" — baked directly into the
 //!   registered back-face type line (CREATURE | LAND).
-//! - Back-face activated "{T}: Add one mana of any color" — activated ability on back face
-//!   not separately modeled (see MDFC/Transform back-face activated ability note).
+//! - Back-face activated "{T}: Add one mana of any color" — modeled as five mana
+//!   abilities, one per WUBRG color (command_tower idiom), face-gated to the back
+//!   face (face 1); the shared {T} cost means activating one taps the source, so
+//!   only one fires.
 //! - defeat→cast-back-face not auto-wired (CR 310.11).
 
 use arcana_core::effects::{Effect, KeywordAbility};
-use arcana_core::mana::ManaCost;
+use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
-use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, EntersWithSpec};
+use arcana_core::registry::{
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone, CardDefinition,
+    CardFace, CardRegistry, EntersWithSpec,
+};
 use arcana_core::state::GameState;
 use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
 use arcana_core::types::{
-    CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine,
+    CardId, ColorSet, CounterKind, ManaColor, PtValue, SubtypeSet, SupertypeSet, TypeLine,
 };
 use arcana_core::zones::Zone;
 
@@ -74,7 +79,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         spell_ability: None,
     };
     // GAP: defeat→cast-back-face not auto-wired (CR 310.11).
-    // GAP: back face "{T}: Add one mana of any color" — mana activated ability on back face not modeled.
+    // Back face "{T}: Add one mana of any color" — five mana abilities, one per
+    // WUBRG color, face-gated to the back face (face 1).
 
     reg.register(
         CardDefinition::new(name, chars)
@@ -91,8 +97,65 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
-            }),
+            })
+            .with_activated_ability(back_mana_ability("{T}: Add {W}.", add_white_mana))
+            .with_activated_ability(back_mana_ability("{T}: Add {U}.", add_blue_mana))
+            .with_activated_ability(back_mana_ability("{T}: Add {B}.", add_black_mana))
+            .with_activated_ability(back_mana_ability("{T}: Add {R}.", add_red_mana))
+            .with_activated_ability(back_mana_ability("{T}: Add {G}.", add_green_mana)),
     )
+}
+
+fn back_mana_ability(
+    text: &str,
+    effect: fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>,
+) -> ActivatedAbilityDef {
+    ActivatedAbilityDef {
+        text: text.into(),
+        cost: ActivationCost::tap_only(),
+        target_requirements: Vec::new(),
+        is_mana_ability: true,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Battlefield,
+        is_instant_speed: false,
+        face_gate: Some(1),
+        effect,
+    }
+}
+
+fn add_white_mana(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::White, ctx.source)],
+    }]
+}
+
+fn add_blue_mana(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Blue, ctx.source)],
+    }]
+}
+
+fn add_black_mana(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Black, ctx.source)],
+    }]
+}
+
+fn add_red_mana(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Red, ctx.source)],
+    }]
+}
+
+fn add_green_mana(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Green, ctx.source)],
+    }]
 }
 
 fn etb_search(

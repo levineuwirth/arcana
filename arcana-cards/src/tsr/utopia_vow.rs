@@ -3,11 +3,10 @@
 //!  Enchanted creature has \"{T}: Add one mana of any color.\""
 //!
 //! Restriction + host-activated mana Aura. ETB installs
-//! `attached_cant_attack` + `attached_cant_block`, plus an
-//! `attached_activated` mana ability ({T}: add one mana). The cost and
-//! effect run against the HOST (`ctx.source`).
-//! GAP: "any color" — no any-color choice in AddMana; approximated as
-//! colorless.
+//! `attached_cant_attack` + `attached_cant_block`, plus five
+//! `attached_activated` mana abilities ({T}: add one mana of a fixed color,
+//! one per WUBRG color — the shared tap cost means only one fires, modeling
+//! "any color"). The cost and effect run against the HOST (`ctx.source`).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -71,37 +70,60 @@ fn etb_install(
                 Duration::WhileSourceOnBattlefield,
             ),
         },
-        Effect::InstallContinuousEffect {
-            effect: ContinuousEffect::attached_activated(
-                trig.source,
-                ActivatedAbilityDef {
-                    text: "{T}: Add one mana of any color.".into(),
-                    cost: ActivationCost {
-                        tap: true,
-                        ..Default::default()
-                    },
-                    target_requirements: Vec::new(),
-                    is_mana_ability: true,
-                    is_loyalty_ability: false,
-                    activation_zone: ActivationZone::Battlefield,
-                    is_instant_speed: false,
-                    face_gate: None,
-                    effect: host_add_mana,
-                },
-                Duration::WhileSourceOnBattlefield,
-            ),
-        },
+        host_mana_grant(trig.source, "{T}: Add {W}.", uv_add_white),
+        host_mana_grant(trig.source, "{T}: Add {U}.", uv_add_blue),
+        host_mana_grant(trig.source, "{T}: Add {B}.", uv_add_black),
+        host_mana_grant(trig.source, "{T}: Add {R}.", uv_add_red),
+        host_mana_grant(trig.source, "{T}: Add {G}.", uv_add_green),
     ]
 }
 
-fn host_add_mana(
-    _state: &GameState,
-    ctx: &ActivationContext,
-    _: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "any color" — approximated as colorless.
+fn host_mana_grant(
+    source: arcana_core::objects::ObjectId,
+    text: &str,
+    effect: fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>,
+) -> Effect {
+    Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::attached_activated(
+            source,
+            ActivatedAbilityDef {
+                text: text.into(),
+                cost: ActivationCost {
+                    tap: true,
+                    ..Default::default()
+                },
+                target_requirements: Vec::new(),
+                is_mana_ability: true,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: false,
+                face_gate: None,
+                effect,
+            },
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }
+}
+
+fn uv_add_one(ctx: &ActivationContext, color: ManaColor) -> Vec<Effect> {
     vec![Effect::AddMana {
         player: ctx.controller,
-        mana: vec![ManaUnit::plain(ManaColor::Colorless, ctx.source)],
+        mana: vec![ManaUnit::plain(color, ctx.source)],
     }]
+}
+
+fn uv_add_white(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    uv_add_one(ctx, ManaColor::White)
+}
+fn uv_add_blue(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    uv_add_one(ctx, ManaColor::Blue)
+}
+fn uv_add_black(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    uv_add_one(ctx, ManaColor::Black)
+}
+fn uv_add_red(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    uv_add_one(ctx, ManaColor::Red)
+}
+fn uv_add_green(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    uv_add_one(ctx, ManaColor::Green)
 }

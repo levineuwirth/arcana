@@ -14,13 +14,13 @@
 //!   transformed" is a delayed conditional trigger. The `DelayedAction` variant handles
 //!   `ReturnFromExileToBattlefield` but not "return transformed". Emitting only `Fight`;
 //!   the delayed transform-return is GAP'd.
-//! - Back face "{T}: Add two mana of any one color" — player color choice on mana add not
-//!   supported (engine's AddMana requires a fixed color per pip — the same documented
-//!   fidelity gap as Treasure's "any color"). GAP: mana ability not wired (would fabricate
-//!   the color choice).
+//! - Back face "{T}: Add two mana of any one color" — modeled as five mana abilities, one
+//!   per WUBRG color, each adding TWO mana of that color (the player picks the color by
+//!   choosing which ability to activate; the shared {T} cost means only one fires). Gated
+//!   to the back face (visible_face == 1).
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
-use arcana_core::mana::ManaCost;
+use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
@@ -28,7 +28,7 @@ use arcana_core::registry::{
 };
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, ManaColor, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Golden Guardian");
@@ -59,7 +59,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             name: back_name,
             colors: ColorSet::colorless(),
             types: TypeLine::LAND.into(),
-            // GAP: "{T}: Add two mana of any one color" — color-choice mana not expressible.
             ..Default::default()
         },
         spell_ability: None,
@@ -105,8 +104,78 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_instant_speed: false,
                 face_gate: Some(1), // back face only
                 effect: make_golem_token,
-            }),
+            })
+            // Back face (Gold-Forge Garrison): "{T}: Add two mana of any one color."
+            // One mana ability per WUBRG color, each adding two of that color.
+            .with_activated_ability(two_mana_ability("{T}: Add {W}{W}.", add_white_mana))
+            .with_activated_ability(two_mana_ability("{T}: Add {U}{U}.", add_blue_mana))
+            .with_activated_ability(two_mana_ability("{T}: Add {B}{B}.", add_black_mana))
+            .with_activated_ability(two_mana_ability("{T}: Add {R}{R}.", add_red_mana))
+            .with_activated_ability(two_mana_ability("{T}: Add {G}{G}.", add_green_mana)),
     )
+}
+
+fn two_mana_ability(
+    text: &str,
+    effect: fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>,
+) -> ActivatedAbilityDef {
+    ActivatedAbilityDef {
+        text: text.into(),
+        cost: ActivationCost::tap_only(),
+        target_requirements: Vec::new(),
+        is_mana_ability: true,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Battlefield,
+        is_instant_speed: false,
+        face_gate: Some(1), // back face only
+        effect,
+    }
+}
+
+fn add_white_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![
+            ManaUnit::plain(ManaColor::White, ctx.source),
+            ManaUnit::plain(ManaColor::White, ctx.source),
+        ],
+    }]
+}
+fn add_blue_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![
+            ManaUnit::plain(ManaColor::Blue, ctx.source),
+            ManaUnit::plain(ManaColor::Blue, ctx.source),
+        ],
+    }]
+}
+fn add_black_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![
+            ManaUnit::plain(ManaColor::Black, ctx.source),
+            ManaUnit::plain(ManaColor::Black, ctx.source),
+        ],
+    }]
+}
+fn add_red_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![
+            ManaUnit::plain(ManaColor::Red, ctx.source),
+            ManaUnit::plain(ManaColor::Red, ctx.source),
+        ],
+    }]
+}
+fn add_green_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![
+            ManaUnit::plain(ManaColor::Green, ctx.source),
+            ManaUnit::plain(ManaColor::Green, ctx.source),
+        ],
+    }]
 }
 
 /// Create a 4/4 colorless Golem artifact creature token.

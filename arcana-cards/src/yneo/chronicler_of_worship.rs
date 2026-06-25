@@ -6,10 +6,11 @@
 //!   "This spell costs {1} less to cast." Then shuffle. — GAP: random reveal
 //!   from a fixed depth + a perpetual cost-reduction grant are not
 //!   expressible (DigTopN is a may-pick, single-take, no perpetual rider).
-//! * {T}: Add one mana of any color. — GAP: no any-color AddMana primitive.
+//! * {T}: Add one mana of any color. — "any color" is modeled as five {T}
+//!   mana abilities, one per WUBRG color; the shared tap cost means only one fires.
 
 use arcana_core::effects::Effect;
-use arcana_core::mana::ManaCost;
+use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
@@ -19,7 +20,7 @@ use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, ManaColor, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -52,18 +53,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            .with_activated_ability(ActivatedAbilityDef {
-                text: "{T}: Add one mana of any color.".into(),
-                cost: ActivationCost::tap_only(),
-                target_requirements: Vec::new(),
-                is_mana_ability: false,
-                is_loyalty_ability: false,
-                activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
-                face_gate: None,
-                effect: add_any_color,
-            }),
+            .with_activated_ability(cw_mana_ability("{T}: Add {W}.", cw_white))
+            .with_activated_ability(cw_mana_ability("{T}: Add {U}.", cw_blue))
+            .with_activated_ability(cw_mana_ability("{T}: Add {B}.", cw_black))
+            .with_activated_ability(cw_mana_ability("{T}: Add {R}.", cw_red))
+            .with_activated_ability(cw_mana_ability("{T}: Add {G}.", cw_green)),
     )
+}
+
+fn cw_mana_ability(
+    text: &str,
+    effect: fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>,
+) -> ActivatedAbilityDef {
+    ActivatedAbilityDef {
+        text: text.into(),
+        cost: ActivationCost::tap_only(),
+        target_requirements: Vec::new(),
+        is_mana_ability: true,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Battlefield,
+        is_instant_speed: false,
+        face_gate: None,
+        effect,
+    }
 }
 
 fn etb_shrine(
@@ -75,11 +87,25 @@ fn etb_shrine(
     Vec::new()
 }
 
-fn add_any_color(
-    _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: no any-color AddMana primitive.
-    Vec::new()
+fn cw_add_one(ctx: &ActivationContext, color: ManaColor) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(color, ctx.source)],
+    }]
+}
+
+fn cw_white(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    cw_add_one(ctx, ManaColor::White)
+}
+fn cw_blue(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    cw_add_one(ctx, ManaColor::Blue)
+}
+fn cw_black(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    cw_add_one(ctx, ManaColor::Black)
+}
+fn cw_red(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    cw_add_one(ctx, ManaColor::Red)
+}
+fn cw_green(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    cw_add_one(ctx, ManaColor::Green)
 }

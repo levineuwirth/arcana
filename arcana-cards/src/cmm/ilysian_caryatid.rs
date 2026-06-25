@@ -1,10 +1,10 @@
 //! Ilysian Caryatid — `{1}{G}` 1/1 Plant.
 //! `{T}: Add one mana of any color. If you control a creature with power 4 or greater,
 //! add two mana of any one color instead.`
-//! GAP: The conditional "add two mana of any one color if you control a creature with power 4+"
-//! cannot be expressed — no Effect variant for "add mana of any color chosen by player", and
-//! no conditional branch based on a board state check in the effect catalog. We emit the basic
-//! add-one-colorless as a placeholder.
+//! Modeled as five mana abilities, one per WUBRG color; the shared {T} cost
+//! means only one fires (command_tower idiom). Each resolver checks the board
+//! at resolution: if you control a creature with power 4+, it adds TWO mana of
+//! that color, otherwise ONE.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::{ManaCost, ManaUnit};
@@ -15,6 +15,7 @@ use arcana_core::registry::{
 };
 use arcana_core::state::GameState;
 use arcana_core::types::{CardId, ColorSet, ManaColor, PtValue, SubtypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Ilysian Caryatid");
@@ -33,30 +34,85 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars)
-            .with_activated_ability(ActivatedAbilityDef {
-                text: "{T}: Add one mana of any color. If you control a creature with power 4 or greater, add two mana of any one color instead.".into(),
-                cost: ActivationCost::tap_only(),
-                target_requirements: Vec::new(),
-                is_mana_ability: true,
-                is_loyalty_ability: false,
-                activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
-                face_gate: None,
-                effect: add_mana,
-            }),
+            .with_activated_ability(mana_ability(
+                "{T}: Add {W}. If you control a creature with power 4 or greater, add {W}{W} instead.",
+                add_white,
+            ))
+            .with_activated_ability(mana_ability(
+                "{T}: Add {U}. If you control a creature with power 4 or greater, add {U}{U} instead.",
+                add_blue,
+            ))
+            .with_activated_ability(mana_ability(
+                "{T}: Add {B}. If you control a creature with power 4 or greater, add {B}{B} instead.",
+                add_black,
+            ))
+            .with_activated_ability(mana_ability(
+                "{T}: Add {R}. If you control a creature with power 4 or greater, add {R}{R} instead.",
+                add_red,
+            ))
+            .with_activated_ability(mana_ability(
+                "{T}: Add {G}. If you control a creature with power 4 or greater, add {G}{G} instead.",
+                add_green,
+            )),
     )
 }
 
-fn add_mana(
-    _state: &GameState,
-    ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "add one mana of any color" — no Effect::AddMana variant for player-chosen color;
-    // "if you control a creature with power 4+" — no conditional branch on board state in effect.
-    // Emitting a single green mana as a best-effort placeholder.
+fn mana_ability(
+    text: &str,
+    effect: fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>,
+) -> ActivatedAbilityDef {
+    ActivatedAbilityDef {
+        text: text.into(),
+        cost: ActivationCost::tap_only(),
+        target_requirements: Vec::new(),
+        is_mana_ability: true,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Battlefield,
+        is_instant_speed: false,
+        face_gate: None,
+        effect,
+    }
+}
+
+/// "If you control a creature with power 4 or greater" — true if the controller
+/// has any creature on the battlefield with computed power >= 4.
+fn controls_power_four(state: &GameState, who: arcana_core::types::PlayerId) -> bool {
+    state
+        .objects_in_zone(Zone::Battlefield)
+        .any(|o| {
+            o.controller == who
+                && o.characteristics.types.is_creature()
+                && arcana_core::script::power_of(state, o.id) >= 4
+        })
+}
+
+fn add_color(state: &GameState, ctx: &ActivationContext, color: ManaColor) -> Vec<Effect> {
+    let count = if controls_power_four(state, ctx.controller) { 2 } else { 1 };
+    let mana = (0..count)
+        .map(|_| ManaUnit::plain(color, ctx.source))
+        .collect();
     vec![Effect::AddMana {
         player: ctx.controller,
-        mana: vec![ManaUnit::plain(ManaColor::Green, ctx.source)],
+        mana,
     }]
+}
+
+fn add_white(state: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_color(state, ctx, ManaColor::White)
+}
+
+fn add_blue(state: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_color(state, ctx, ManaColor::Blue)
+}
+
+fn add_black(state: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_color(state, ctx, ManaColor::Black)
+}
+
+fn add_red(state: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_color(state, ctx, ManaColor::Red)
+}
+
+fn add_green(state: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_color(state, ctx, ManaColor::Green)
 }

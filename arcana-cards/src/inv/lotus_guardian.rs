@@ -1,16 +1,19 @@
 //! Lotus Guardian — `{7}` 4/4 Artifact Creature — Dragon with Flying.
 //! {T}: Add one mana of any color.
 //!
-//! "Add one mana of any color" requires a color-choice prompt that has no
-//! expressible primitive (AddMana needs explicit ManaUnits; there is no
-//! any-color / choose-a-color mana primitive in the usable surface). GAP'd;
-//! Flying retained.
+//! "{T}: Add one mana of any color" is modeled as five mana abilities, one
+//! per WUBRG color; the player picks the color by choosing which ability to
+//! activate — the shared {T} cost taps the source so only one fires.
 
-use arcana_core::effects::KeywordAbility;
-use arcana_core::mana::ManaCost;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
-use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::registry::{
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardRegistry,
+};
+use arcana_core::state::GameState;
+use arcana_core::types::{CardId, ColorSet, ManaColor, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Lotus Guardian");
@@ -30,6 +33,53 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    // GAP: "{T}: Add one mana of any color" — no any-color / color-choice mana primitive.
-    reg.register(CardDefinition::new(name, chars))
+    reg.register(
+        CardDefinition::new(name, chars)
+            .with_activated_ability(mana_ability("{T}: Add {W}.", add_white_mana))
+            .with_activated_ability(mana_ability("{T}: Add {U}.", add_blue_mana))
+            .with_activated_ability(mana_ability("{T}: Add {B}.", add_black_mana))
+            .with_activated_ability(mana_ability("{T}: Add {R}.", add_red_mana))
+            .with_activated_ability(mana_ability("{T}: Add {G}.", add_green_mana)),
+    )
+}
+
+/// `{T}: Add one mana of any color` — one tap-only mana ability per color.
+fn mana_ability(
+    text: &str,
+    effect: fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>,
+) -> ActivatedAbilityDef {
+    ActivatedAbilityDef {
+        text: text.into(),
+        cost: ActivationCost::tap_only(),
+        target_requirements: Vec::new(),
+        is_mana_ability: true,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Battlefield,
+        is_instant_speed: false,
+        face_gate: None,
+        effect,
+    }
+}
+
+fn add_one(ctx: &ActivationContext, color: ManaColor) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(color, ctx.source)],
+    }]
+}
+
+fn add_white_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_one(ctx, ManaColor::White)
+}
+fn add_blue_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_one(ctx, ManaColor::Blue)
+}
+fn add_black_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_one(ctx, ManaColor::Black)
+}
+fn add_red_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_one(ctx, ManaColor::Red)
+}
+fn add_green_mana(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_one(ctx, ManaColor::Green)
 }

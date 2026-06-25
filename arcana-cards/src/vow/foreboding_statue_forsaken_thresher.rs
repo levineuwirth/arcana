@@ -3,8 +3,9 @@
 //!
 //! Front face:
 //! {T}: Add one mana of any color. Put an omen counter on this creature.
-//! GAP: "add one mana of any color" — any-color mana choice not expressible
-//!   with a fixed ManaColor; modeled as colorless mana only.
+//! "any color" is modeled as five front-face {T} mana abilities, one per
+//!   WUBRG color (each also puts an omen counter); the shared tap cost means
+//!   only one fires.
 //!
 //! At the beginning of your end step, if there are three or more omen counters
 //! on this creature, untap it, then transform it.
@@ -78,20 +79,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_transform_back(back)
             // Front face: {T}: Add one mana of any color. Put an omen counter on this creature.
-            .with_activated_ability(ActivatedAbilityDef {
-                text: "{T}: Add one mana of any color. Put an omen counter on this creature.".into(),
-                cost: ActivationCost {
-                    tap: true,
-                    ..ActivationCost::default()
-                },
-                target_requirements: vec![],
-                is_mana_ability: true,
-                is_loyalty_ability: false,
-                activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: true,
-                face_gate: Some(0),
-                effect: tap_for_mana_and_omen,
-            })
+            // Five mana abilities, one per color (each also adds an omen counter).
+            .with_activated_ability(fs_mana_ability(
+                "{T}: Add {W}. Put an omen counter on this creature.",
+                fs_white,
+            ))
+            .with_activated_ability(fs_mana_ability(
+                "{T}: Add {U}. Put an omen counter on this creature.",
+                fs_blue,
+            ))
+            .with_activated_ability(fs_mana_ability(
+                "{T}: Add {B}. Put an omen counter on this creature.",
+                fs_black,
+            ))
+            .with_activated_ability(fs_mana_ability(
+                "{T}: Add {R}. Put an omen counter on this creature.",
+                fs_red,
+            ))
+            .with_activated_ability(fs_mana_ability(
+                "{T}: Add {G}. Put an omen counter on this creature.",
+                fs_green,
+            ))
             // Front face: At the beginning of your end step, if 3+ omen counters, untap then transform.
             // GAP: "if three or more omen counters" intervening-if not expressible;
             // fires unconditionally at end step.
@@ -112,24 +120,40 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn tap_for_mana_and_omen(
-    _state: &GameState,
+fn fs_mana_ability(
+    text: &str,
+    effect: fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>,
+) -> ActivatedAbilityDef {
+    ActivatedAbilityDef {
+        text: text.into(),
+        cost: ActivationCost {
+            tap: true,
+            ..ActivationCost::default()
+        },
+        target_requirements: vec![],
+        is_mana_ability: true,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Battlefield,
+        is_instant_speed: true,
+        face_gate: Some(0),
+        effect,
+    }
+}
+
+fn fs_mana_and_omen(
     ctx: &ActivationContext,
     reg: &CardRegistry,
+    color: ManaColor,
 ) -> Vec<Effect> {
-    // GAP: "one mana of any color" — modeling as colorless since any-color
-    // choice is not expressible with a fixed ManaColor.
-    let omen_name = reg.interner().lookup("omen");
-    let omen_kind = if let Some(s) = omen_name {
-        CounterKind::Named(s)
-    } else {
+    let omen_kind = match reg.interner().lookup("omen") {
+        Some(s) => CounterKind::Named(s),
         // Fallback: use Charge as a stand-in (should not happen after register)
-        CounterKind::Charge
+        None => CounterKind::Charge,
     };
     vec![
         Effect::AddMana {
             player: ctx.controller,
-            mana: vec![ManaUnit::plain(ManaColor::Colorless, ctx.source)],
+            mana: vec![ManaUnit::plain(color, ctx.source)],
         },
         Effect::AddCounters {
             target: ctx.source,
@@ -137,6 +161,22 @@ fn tap_for_mana_and_omen(
             count: 1,
         },
     ]
+}
+
+fn fs_white(_s: &GameState, ctx: &ActivationContext, reg: &CardRegistry) -> Vec<Effect> {
+    fs_mana_and_omen(ctx, reg, ManaColor::White)
+}
+fn fs_blue(_s: &GameState, ctx: &ActivationContext, reg: &CardRegistry) -> Vec<Effect> {
+    fs_mana_and_omen(ctx, reg, ManaColor::Blue)
+}
+fn fs_black(_s: &GameState, ctx: &ActivationContext, reg: &CardRegistry) -> Vec<Effect> {
+    fs_mana_and_omen(ctx, reg, ManaColor::Black)
+}
+fn fs_red(_s: &GameState, ctx: &ActivationContext, reg: &CardRegistry) -> Vec<Effect> {
+    fs_mana_and_omen(ctx, reg, ManaColor::Red)
+}
+fn fs_green(_s: &GameState, ctx: &ActivationContext, reg: &CardRegistry) -> Vec<Effect> {
+    fs_mana_and_omen(ctx, reg, ManaColor::Green)
 }
 
 fn end_step_check_transform(

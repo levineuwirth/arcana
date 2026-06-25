@@ -7,15 +7,16 @@
 //!   it's a nonland permanent card. Until end of turn, you may play the exiled
 //!   card. (GAP: no exile-from-library-top, no perpetual, no play-from-exile of
 //!   another player's card; trigger fires but body is GAP'd.)
-//! * {T}, Sacrifice an artifact: Add three mana of any one color. (GAP: no
-//!   any-one-color AddMana primitive; the cost shape is modeled.)
+//! * {T}, Sacrifice an artifact: Add three mana of any one color. "any one
+//!   color" is modeled as five tap/sac-artifact mana abilities, each producing
+//!   three mana of one WUBRG color; the shared cost means only one fires.
 //!
 //! Decomposition: Trample + Haste → `keywords`; the combat-damage trigger →
 //! one `TriggeredAbilityDef`; the tap/sac-artifact mana ability → one
 //! `ActivatedAbilityDef`.
 
 use arcana_core::effects::{Effect, KeywordAbility};
-use arcana_core::mana::ManaCost;
+use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
@@ -26,7 +27,7 @@ use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, ManaColor, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -66,25 +67,51 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            .with_activated_ability(ActivatedAbilityDef {
-                text: "{T}, Sacrifice an artifact: Add three mana of any one color.".into(),
-                cost: ActivationCost {
-                    tap: true,
-                    sacrifice_other: Some(ObjectFilter {
-                        types: Some(TypeLine::ARTIFACT.into()),
-                        ..ObjectFilter::default()
-                    }),
-                    ..ActivationCost::default()
-                },
-                target_requirements: Vec::new(),
-                is_mana_ability: false,
-                is_loyalty_ability: false,
-                activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
-                face_gate: None,
-                effect: add_any_one_color,
-            }),
+            .with_activated_ability(pep_mana_ability(
+                "{T}, Sacrifice an artifact: Add {W}{W}{W}.",
+                pep_white,
+            ))
+            .with_activated_ability(pep_mana_ability(
+                "{T}, Sacrifice an artifact: Add {U}{U}{U}.",
+                pep_blue,
+            ))
+            .with_activated_ability(pep_mana_ability(
+                "{T}, Sacrifice an artifact: Add {B}{B}{B}.",
+                pep_black,
+            ))
+            .with_activated_ability(pep_mana_ability(
+                "{T}, Sacrifice an artifact: Add {R}{R}{R}.",
+                pep_red,
+            ))
+            .with_activated_ability(pep_mana_ability(
+                "{T}, Sacrifice an artifact: Add {G}{G}{G}.",
+                pep_green,
+            )),
     )
+}
+
+fn pep_mana_ability(
+    text: &str,
+    effect: fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>,
+) -> ActivatedAbilityDef {
+    ActivatedAbilityDef {
+        text: text.into(),
+        cost: ActivationCost {
+            tap: true,
+            sacrifice_other: Some(ObjectFilter {
+                types: Some(TypeLine::ARTIFACT.into()),
+                ..ObjectFilter::default()
+            }),
+            ..ActivationCost::default()
+        },
+        target_requirements: Vec::new(),
+        is_mana_ability: true,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Battlefield,
+        is_instant_speed: false,
+        face_gate: None,
+        effect,
+    }
 }
 
 fn exile_top_perpetual(
@@ -98,12 +125,25 @@ fn exile_top_perpetual(
     Vec::new()
 }
 
-fn add_any_one_color(
-    _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "Add three mana of any one color" — no player-chosen-color AddMana
-    // primitive.
-    Vec::new()
+fn pep_add_three(ctx: &ActivationContext, color: ManaColor) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(color, ctx.source); 3],
+    }]
+}
+
+fn pep_white(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    pep_add_three(ctx, ManaColor::White)
+}
+fn pep_blue(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    pep_add_three(ctx, ManaColor::Blue)
+}
+fn pep_black(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    pep_add_three(ctx, ManaColor::Black)
+}
+fn pep_red(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    pep_add_three(ctx, ManaColor::Red)
+}
+fn pep_green(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    pep_add_three(ctx, ManaColor::Green)
 }

@@ -1,6 +1,8 @@
 //! Animal Attendant — `{1}{G}` 2/2 green Human Citizen.
 //! "{T}: Add one mana of any color. If that mana is spent to cast a non-Human creature
 //! spell, that creature enters with an additional +1/+1 counter on it."
+//! "any color" is modeled as five {T} mana abilities, one per WUBRG color
+//! (the shared tap cost means only one fires).
 //! GAP: "if that mana is spent to cast non-Human creature, it enters with +1/+1 counter"
 //! — conditional mana rider not expressible in Effect catalog.
 
@@ -33,29 +35,50 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars)
-            .with_activated_ability(ActivatedAbilityDef {
-                text: "{T}: Add one mana of any color.".into(),
-                cost: ActivationCost::tap_only(),
-                target_requirements: Vec::new(),
-                is_mana_ability: true,
-                is_loyalty_ability: false,
-                activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
-                face_gate: None,
-                effect: add_any_color_mana,
-            }),
+            .with_activated_ability(mana_ability("{T}: Add {W}.", aa_add_white))
+            .with_activated_ability(mana_ability("{T}: Add {U}.", aa_add_blue))
+            .with_activated_ability(mana_ability("{T}: Add {B}.", aa_add_black))
+            .with_activated_ability(mana_ability("{T}: Add {R}.", aa_add_red))
+            .with_activated_ability(mana_ability("{T}: Add {G}.", aa_add_green)),
     )
 }
 
-fn add_any_color_mana(
-    _state: &GameState,
-    ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "any color" and the mana-rider conditional are not expressible.
-    // Emitting colorless as placeholder.
+fn mana_ability(
+    text: &str,
+    effect: fn(&GameState, &ActivationContext, &CardRegistry) -> Vec<Effect>,
+) -> ActivatedAbilityDef {
+    ActivatedAbilityDef {
+        text: text.into(),
+        cost: ActivationCost::tap_only(),
+        target_requirements: Vec::new(),
+        is_mana_ability: true,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Battlefield,
+        is_instant_speed: false,
+        face_gate: None,
+        effect,
+    }
+}
+
+fn add_one(ctx: &ActivationContext, color: ManaColor) -> Vec<Effect> {
     vec![Effect::AddMana {
         player: ctx.controller,
-        mana: vec![ManaUnit::plain(ManaColor::Colorless, ctx.source)],
+        mana: vec![ManaUnit::plain(color, ctx.source)],
     }]
+}
+
+fn aa_add_white(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_one(ctx, ManaColor::White)
+}
+fn aa_add_blue(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_one(ctx, ManaColor::Blue)
+}
+fn aa_add_black(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_one(ctx, ManaColor::Black)
+}
+fn aa_add_red(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_one(ctx, ManaColor::Red)
+}
+fn aa_add_green(_s: &GameState, ctx: &ActivationContext, _r: &CardRegistry) -> Vec<Effect> {
+    add_one(ctx, ManaColor::Green)
 }

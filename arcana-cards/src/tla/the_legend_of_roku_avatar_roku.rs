@@ -146,8 +146,11 @@ fn chapter_i(_state: &GameState, _trig: &PendingTrigger, _reg: &CardRegistry) ->
 }
 
 fn chapter_ii(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
-    // II — Add one mana of any color. Modeled as one mana (color choice not modeled;
-    // using red as a placeholder for the any-color choice).
+    // II — Add one mana of any color.
+    // GAP: this is a one-shot Saga-chapter effect, not an activated ability, so
+    // the per-color "choose which ability to activate" idiom does not apply, and
+    // there is no chosen-color -> AddMana follow-up on Effect::ChooseColor.
+    // Emitting red as a best-effort placeholder for the any-color choice.
     vec![Effect::AddMana {
         player: trig.controller,
         mana: vec![ManaUnit::plain(ManaColor::Red, trig.source)],
