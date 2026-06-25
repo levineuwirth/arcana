@@ -560,83 +560,121 @@ fn permute_capped(
 /// eligible attacker targeting each possible defender. Multi-attacker
 /// combinations are deferred (see module docs).
 fn enumerate_attacker_declarations(state: &GameState, active: PlayerId) -> Vec<Action> {
-    let mut out = Vec::new();
-    out.push(Action::DeclareAttackers { attackers: Vec::new() });
+    // Declining to attack is always legal (CR 508.1 — declaring 0 attackers).
+    let mut out = vec![Action::DeclareAttackers { attackers: Vec::new() }];
 
     let opponents: Vec<PlayerId> = state.opponents_of(active).collect();
     if opponents.is_empty() { return out; }
 
-    let mut eligible: Vec<ObjectId> = state.objects
+    let mut eligible_ids: Vec<ObjectId> = state.objects
         .objects_in_zone(Zone::Battlefield)
         .filter(|o| o.controller == active && can_attack(state, o))
         .map(|o| o.id)
         .collect();
-    eligible.sort();
+    eligible_ids.sort();
+    if eligible_ids.is_empty() { return out; }
 
-    for atk in eligible {
-        // Bound the (linear) attacker×defender fan-out for uniformity with
-        // the other combat enumerators (see [`MAX_COMBAT_ENUM`]); the empty
-        // "no attack" declaration is already emitted first.
-        if out.len() >= MAX_COMBAT_ENUM { break; }
-        // CR 701.38a — a goaded creature can't attack any player who
-        // is goading it. Planeswalker defenders are still legal (Goad
-        // restricts only the "choose the defending *player*" branch).
+    // Planeswalker / battle defenders (shared across attackers; CR 508.4).
+    // The Siege protector-designation rule (CR 310.6) is not modeled — any
+    // opponent's battle is attackable, mirroring planeswalkers.
+    let mut extra_defenders: Vec<DefendingEntity> = Vec::new();
+    for &opp in &opponents {
+        let mut pws: Vec<ObjectId> = state.objects.objects_in_zone(Zone::Battlefield)
+            .filter(|o| o.controller == opp && o.is_planeswalker()).map(|o| o.id).collect();
+        pws.sort();
+        extra_defenders.extend(pws.into_iter().map(DefendingEntity::Planeswalker));
+        let mut battles: Vec<ObjectId> = state.objects.objects_in_zone(Zone::Battlefield)
+            .filter(|o| o.controller == opp && o.characteristics.types.is_battle())
+            .map(|o| o.id).collect();
+        battles.sort();
+        extra_defenders.extend(battles.into_iter().map(DefendingEntity::Battle));
+    }
+
+    // Each attacker's legal defenders: opponent players NOT goading it
+    // (CR 701.38a — Goad only restricts the choose-the-player branch) + every
+    // planeswalker/battle defender.
+    let slots: Vec<(ObjectId, Vec<DefendingEntity>)> = eligible_ids.iter().filter_map(|&atk| {
         let goaders = state.goaders_of(atk);
-        // Also enumerate planeswalker defenders currently on the
-        // battlefield (each could be attacked instead of its
-        // controller).
-        for &opp in &opponents {
-            // Attack tax (Ghostly Prison class): with a single-
-            // attacker declaration the whole tax must be coverable by
-            // the attacker's FLOATED pool, else the declaration is
-            // not legal (mirrors the apply-side gate).
-            let tax_ok = {
-                let tax = state.attack_tax_total(opp) as usize;
-                tax == 0 || state.player(active).mana_pool.total() >= tax
-            };
-            if !goaders.contains(&opp) && tax_ok {
-                out.push(Action::DeclareAttackers {
-                    attackers: vec![AttackerDeclaration {
-                        attacker: atk,
-                        defending: DefendingEntity::Player(opp),
-                    }],
+        let mut defs: Vec<DefendingEntity> = opponents.iter()
+            .filter(|opp| !goaders.contains(opp))
+            .map(|&opp| DefendingEntity::Player(opp))
+            .collect();
+        defs.extend(extra_defenders.iter().copied());
+        if defs.is_empty() { None } else { Some((atk, defs)) }
+    }).collect();
+    if slots.is_empty() { return out; }
+
+    // Attack tax (Ghostly Prison / Propaganda): a declaration is legal only if
+    // its TOTAL tax (summed over attackers attacking a taxed player) fits the
+    // active player's FLOATED mana pool (mirrors the apply-side gate).
+    let floated = state.player(active).mana_pool.total() as u32;
+    let tax_ok = |decl: &[AttackerDeclaration]| -> bool {
+        let total: u32 = decl.iter().map(|d| match d.defending {
+            DefendingEntity::Player(opp) => state.attack_tax_total(opp),
+            _ => 0,
+        }).sum();
+        total <= floated
+    };
+
+    // Size of the full cross product = ∏(1 + |defenders_i|) (the +1 is the
+    // "this attacker declines" option; the all-decline case = the empty
+    // declaration already emitted).
+    let mut total: u128 = 1;
+    for (_, defs) in &slots {
+        total = total.saturating_mul(1 + defs.len() as u128);
+        if total > MAX_COMBAT_ENUM as u128 { break; }
+    }
+
+    if total <= MAX_COMBAT_ENUM as u128 {
+        // FULL multi-attacker cross product via an odometer: each attacker
+        // independently declines (digit 0) or attacks one legal defender
+        // (digit 1..=len). Faithful — every legal declaration is emitted.
+        let radices: Vec<usize> = slots.iter().map(|(_, d)| 1 + d.len()).collect();
+        let mut idx = vec![0usize; slots.len()];
+        loop {
+            let mut decl = Vec::new();
+            for (i, &c) in idx.iter().enumerate() {
+                if c == 0 { continue; }
+                decl.push(AttackerDeclaration {
+                    attacker: slots[i].0, defending: slots[i].1[c - 1],
                 });
             }
-
-            let mut pw_defenders: Vec<ObjectId> = state.objects
-                .objects_in_zone(Zone::Battlefield)
-                .filter(|o| o.controller == opp && o.is_planeswalker())
-                .map(|o| o.id)
-                .collect();
-            pw_defenders.sort();
-            for pw in pw_defenders {
-                out.push(Action::DeclareAttackers {
-                    attackers: vec![AttackerDeclaration {
-                        attacker: atk,
-                        defending: DefendingEntity::Planeswalker(pw),
-                    }],
-                });
+            if !decl.is_empty() && tax_ok(&decl) {
+                out.push(Action::DeclareAttackers { attackers: decl });
             }
-
-            // CR 508.4 — Battles can be attacked. The engine's
-            // simplified model treats a battle controlled by an
-            // opponent as attackable (the battle's controller becomes
-            // the defending player, mirroring planeswalkers). The
-            // Siege protector-designation rule (CR 310.6) is not
-            // modeled — attackers just target any opponent's battle.
-            let mut battle_defenders: Vec<ObjectId> = state.objects
-                .objects_in_zone(Zone::Battlefield)
-                .filter(|o| o.controller == opp && o.characteristics.types.is_battle())
-                .map(|o| o.id)
+            // Odometer increment; stop once the most-significant digit rolls over.
+            let mut k = 0;
+            while k < idx.len() {
+                idx[k] += 1;
+                if idx[k] < radices[k] { break; }
+                idx[k] = 0;
+                k += 1;
+            }
+            if k == idx.len() { break; }
+        }
+    } else {
+        // DEGRADE (combinatorial blowup beyond the cap): emit a bounded but
+        // strategically meaningful subset — every singleton (attacker ×
+        // defender) plus the "all able attackers vs one defender" alpha-strike
+        // for each distinct defender. Mid-size subsets are omitted; declining
+        // and focused/all-in attacks stay available.
+        for (atk, defs) in &slots {
+            for &def in defs {
+                if out.len() >= MAX_COMBAT_ENUM { return out; }
+                let decl = vec![AttackerDeclaration { attacker: *atk, defending: def }];
+                if tax_ok(&decl) { out.push(Action::DeclareAttackers { attackers: decl }); }
+            }
+        }
+        let distinct: Vec<DefendingEntity> = opponents.iter().map(|&o| DefendingEntity::Player(o))
+            .chain(extra_defenders.iter().copied()).collect();
+        for def in distinct {
+            if out.len() >= MAX_COMBAT_ENUM { return out; }
+            let decl: Vec<AttackerDeclaration> = slots.iter()
+                .filter(|(_, defs)| defs.contains(&def))
+                .map(|(atk, _)| AttackerDeclaration { attacker: *atk, defending: def })
                 .collect();
-            battle_defenders.sort();
-            for battle in battle_defenders {
-                out.push(Action::DeclareAttackers {
-                    attackers: vec![AttackerDeclaration {
-                        attacker: atk,
-                        defending: DefendingEntity::Battle(battle),
-                    }],
-                });
+            if !decl.is_empty() && tax_ok(&decl) {
+                out.push(Action::DeclareAttackers { attackers: decl });
             }
         }
     }
@@ -3045,6 +3083,34 @@ mod tests {
                 if attackers.len() == 1
                 && attackers[0].attacker == atk
                 && matches!(attackers[0].defending, DefendingEntity::Player(1)))));
+    }
+
+    #[test]
+    fn declare_attackers_enumerates_multi_attacker_declarations() {
+        // Two eligible attackers, one opponent, no planeswalkers/battles → the
+        // full cross product is empty + {a} + {b} + {a,b} (4 declarations). The
+        // "attack with both" option was impossible under the old single-
+        // attacker enumerator.
+        let mut s = GameState::new(2, 0);
+        s.combat = Some(CombatState {
+            phase: CombatPhase::DeclareAttackers, ..CombatState::new() });
+        let a = put(&mut s, 0, Zone::Battlefield, creature_chars(2, 2));
+        let b = put(&mut s, 0, Zone::Battlefield, creature_chars(3, 3));
+        s.objects.get_mut(a).unwrap().status.summoning_sick = false;
+        s.objects.get_mut(b).unwrap().status.summoning_sick = false;
+
+        let actions = legal_actions(&s, &CardRegistry::new());
+        assert!(actions.iter().any(|act| matches!(act,
+            Action::DeclareAttackers { attackers }
+                if attackers.len() == 2
+                && attackers.iter().any(|d| d.attacker == a)
+                && attackers.iter().any(|d| d.attacker == b)
+                && attackers.iter().all(|d|
+                    matches!(d.defending, DefendingEntity::Player(1))))),
+            "multi-attacker (both) declaration is enumerated");
+        let decls = actions.iter()
+            .filter(|act| matches!(act, Action::DeclareAttackers { .. })).count();
+        assert_eq!(decls, 4, "empty + {{a}} + {{b}} + {{a,b}}");
     }
 
     #[test]

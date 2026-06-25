@@ -198,7 +198,7 @@ pub struct AttackerDeclaration {
     pub defending: DefendingEntity,
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DefendingEntity {
     Player(PlayerId),
     Planeswalker(ObjectId),
