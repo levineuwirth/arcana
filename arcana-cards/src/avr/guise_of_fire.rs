@@ -2,9 +2,9 @@
 //! "Enchant creature. Enchanted creature gets +1/-1 and attacks each
 //! combat if able."
 //!
-//! The +1/-1 is an ETB-installed `attached_pt`. The "attacks each
-//! combat if able" requirement has no `attached_*` builder — that
-//! clause is a GAP; the pump is wired.
+//! The +1/-1 is an ETB-installed `attached_pt`. "Attacks each combat if
+//! able" is wired as an ETB-installed `must_attack` on the enchanted
+//! creature (resolved from this Aura's `attached_to`; CR 508.1a).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -48,17 +48,28 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn etb_install_pump(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "attacks each combat if able" — no attack-requirement builder.
-    vec![Effect::InstallContinuousEffect {
+    let mut effects = vec![Effect::InstallContinuousEffect {
         effect: ContinuousEffect::attached_pt(
             trig.source,
             1,
             -1,
             Duration::WhileSourceOnBattlefield,
         ),
-    }]
+    }];
+    // "Enchanted creature ... attacks each combat if able." (CR 508.1a) —
+    // installed on the host resolved from this Aura's attachment.
+    if let Some(host) = state.object_or_lki(trig.source).and_then(|o| o.attached_to) {
+        effects.push(Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::must_attack(
+                trig.source,
+                host,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        });
+    }
+    effects
 }

@@ -3,8 +3,11 @@
 //! effect here; Partner/Partner-with not modeled.)
 //!
 //! +2: During target player's next turn, each creature that player controls
-//!   attacks if able. GAP: a "during a future turn, force-attack" rider has no
-//!   demonstrated surface. Ability shell declared with the +2 cost; effect GAP'd.
+//!   attacks if able. GAP: this is a board-wide must-attack, but scoped to the
+//!   target's NEXT turn. No "starts next turn" duration exists — EndOfTurn fires
+//!   this turn (wrong), WhileSourceOnBattlefield is permanent (wrong), and
+//!   UntilYourNextTurn EXPIRES at that turn's start (opposite). Effect GAP'd
+//!   pending a future-turn duration. Ability shell declared with the +2 cost.
 //! −2: Rowan Kenrith deals 3 damage to each tapped creature target player
 //!   controls (`ForEach` over the target player's tapped creatures → DealDamage 3).
 //! −8: Target player gets an emblem with an activated-ability copy rider. GAP:

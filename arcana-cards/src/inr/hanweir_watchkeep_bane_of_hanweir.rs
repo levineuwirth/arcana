@@ -7,12 +7,15 @@
 //!   At the beginning of each upkeep, if a player cast two or more spells last turn,
 //!   transform.
 //!
-//! GAPs:
-//! - Back face "attacks each combat if able": a "must attack" static restriction on the
-//!   creature itself is not expressible (no self-targeting attack-compulsion primitive);
-//!   not modeled.
+//! Back face "attacks each combat if able" is a SELF must-attack requirement
+//! (CR 508.1a), installed when the card transforms into Bane of Hanweir
+//! (`SelfTransforms { to_face: Some(1) }`). It is installed
+//! `WhileSourceOnBattlefield`; if the card transforms back to the front
+//! (Hanweir Watchkeep, which has Defender) the requirement persists but is
+//! vacuous, since a Defender is never "able" to attack.
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
@@ -62,8 +65,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             subtypes: back_subtypes,
             power: Some(PtValue::Fixed(1)),
             toughness: Some(PtValue::Fixed(5)),
-            // GAP: "This creature attacks each combat if able" — self attack-compulsion
-            //   static restriction; not expressible.
             ..Default::default()
         },
         spell_ability: None,
@@ -98,9 +99,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
+            // Back face "Bane of Hanweir attacks each combat if able": install a
+            // SELF must-attack requirement when transforming into the back face.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: install_must_attack,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
             .with_trigger_face_gate(1, 0)
             .with_trigger_face_gate(2, 1),
     )
+}
+
+fn install_must_attack(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(
+            trig.source,
+            trig.source,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn if_no_spells_last_turn(s: &GameState, _src: ObjectId, _you: PlayerId, _reg: &CardRegistry) -> bool {

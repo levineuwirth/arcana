@@ -5,9 +5,10 @@
 //!  Craving of Yeenoghu perpetually gains \"Enchanted creature gets -1/-1.\"
 //!  Activate only as a sorcery."
 //!
-//! ETB installs `attached_pt(+3, +2)` and `attached_keyword(Haste)`. The
-//! "attacks each combat if able" rider and the graveyard-return-with-perpetual
-//! activated ability have no expressible primitives here — both GAP'd.
+//! ETB installs `attached_pt(+3, +2)`, `attached_keyword(Haste)`, and a
+//! must-attack continuous effect on the enchanted creature (host captured at
+//! ETB). The graveyard-return-with-perpetual activated ability has no
+//! expressible primitive here — GAP'd.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -52,14 +53,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn etb_install(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "attacks each combat if able" — no attack-requirement primitive.
     // GAP: "{R}: Return from graveyard to battlefield attached … perpetually
     //      gains -1/-1; sorcery speed" — no graveyard-return/perpetual primitive.
-    vec![
+    let mut effects = vec![
         Effect::InstallContinuousEffect {
             effect: ContinuousEffect::attached_pt(
                 trig.source,
@@ -75,5 +75,17 @@ fn etb_install(
                 Duration::WhileSourceOnBattlefield,
             ),
         },
-    ]
+    ];
+    // "and attacks each combat if able" — must-attack on the enchanted
+    // creature for as long as this Aura stays attached (host captured at ETB).
+    if let Some(host) = state.objects.get(trig.source).and_then(|o| o.attached_to) {
+        effects.push(Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::must_attack(
+                trig.source,
+                host,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        });
+    }
+    effects
 }

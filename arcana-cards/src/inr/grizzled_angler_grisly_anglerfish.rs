@@ -11,14 +11,12 @@
 //!      no filtered-graveyard variant and `Condition::Custom(fn(&GameState)->bool)`
 //!      receives no controller, so "a colorless creature card in *your* graveyard"
 //!      cannot be expressed post-mill.
-//! GAP: the back-face activated ability "{6}: Creatures your opponents control
-//!      attack this turn if able" is unwired — there is no Effect variant for a
-//!      board-wide "must attack this turn if able" requirement (Effect::Goad is
-//!      targeted and adds a can't-attack-the-goader clause, which is the wrong
-//!      semantics). The activated ability is left off entirely rather than wired
-//!      to a no-op resolver.
+//! Back face "{6}: Creatures your opponents control attack this turn if able"
+//! installs a board-wide filtered must-attack (CR 508.1a) on opponents'
+//! creatures until end of turn (face-gated to the back).
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -26,6 +24,7 @@ use arcana_core::registry::{
     CardDefinition, CardFace, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -86,11 +85,39 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_instant_speed: false,
                 face_gate: Some(0),
                 effect: tap_mill_transform,
+            })
+            // Back (face 1): {6}: Creatures your opponents control attack
+            // this turn if able.
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "{6}: Creatures your opponents control attack this turn \
+                       if able.".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{6}").expect("valid cost"),
+                    ..ActivationCost::default()
+                },
+                target_requirements: vec![],
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: false,
+                face_gate: Some(1),
+                effect: opponents_creatures_must_attack,
             }),
-        // GAP (see module doc): the back-face "{6}: Creatures your opponents
-        //      control attack this turn if able" is left unwired — no board-wide
-        //      must-attack Effect variant exists.
     )
+}
+
+fn opponents_creatures_must_attack(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::filtered_must_attack(
+            ctx.source,
+            ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+            Duration::EndOfTurn,
+        ),
+    }]
 }
 
 fn tap_mill_transform(

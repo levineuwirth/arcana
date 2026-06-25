@@ -8,6 +8,7 @@
 //!   before attackers are declared.`
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -84,11 +85,19 @@ fn untap_blue(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) 
     vec![Effect::Untap { target: *id }]
 }
 
-fn forced_attack(_state: &GameState, _ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "must attack this turn if able, then destroy at the next end
-    // step if it didn't attack; continuous-control and before-attackers
-    // timing restrictions" — no "must attack this turn"/conditional-on-
-    // didn't-attack primitive, no continuous-control filter, and the
-    // activation timing window is not expressible.
-    Vec::new()
+fn forced_attack(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    // "That creature attacks this turn if able" — EndOfTurn must-attack on the
+    // chosen creature.
+    // GAP: "destroy it at the next end step if it didn't attack", the
+    // continuous-control / non-Wall target restrictions, and the
+    // before-attackers activation window are not expressible.
+    let Some(target) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(ctx.source, *id, Duration::EndOfTurn),
+    }]
 }

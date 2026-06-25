@@ -3,13 +3,12 @@
 //! able."
 //! "{1}{B}, {T}: Attacking creatures get -1/-1 until end of turn."
 //!
-//! "Attacks this turn if able" is approximated with Goad (the
-//! demonstrated forced-attack primitive); Goad additionally forbids
-//! attacking the goader, a minor fidelity difference.
+//! "Attacks this turn if able" is a must-attack requirement (CR 508.1a)
+//! installed on the target with EndOfTurn duration.
 
 use arcana_core::effects::Effect;
 use arcana_core::effects::KeywordAbility;
-use arcana_core::layers::Duration;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{
@@ -89,10 +88,8 @@ fn force_attack(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry
     let TargetChoice::Object(id) = target else {
         return Vec::new();
     };
-    vec![Effect::Goad {
-        target: *id,
-        goader: ctx.controller,
-        duration: Duration::EndOfTurn,
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(ctx.source, *id, Duration::EndOfTurn),
     }]
 }
 

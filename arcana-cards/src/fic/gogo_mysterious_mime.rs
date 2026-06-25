@@ -5,11 +5,11 @@
 //! attack this turn if able."
 //! GAP: "become a copy of another creature (name exception)" requires CopyPermanent-self
 //! variant not in catalog; effect returns Vec::new() for the copy step.
-//! Partial: Pump +2/+0 + Haste on both targets if copy were enacted;
-//! emitting GAP with partial pump on the target creature only.
+//! Partial: best-effort +2/+0, Haste, and an EndOfTurn must-attack on both
+//! Gogo and the target creature (the copy step itself remains GAP'd).
 
 use arcana_core::effects::{Effect, KeywordAbility};
-use arcana_core::layers::Duration;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -70,7 +70,8 @@ fn combat_copy_pump(
     let Some(target) = trig.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
     // GAP: "Gogo becomes a copy of target creature (except name)" not in engine catalog.
-    // Best-effort: pump both Gogo (trig.source) and the target creature +2/+0 + Haste.
+    // Best-effort: pump both Gogo (trig.source) and the target creature +2/+0 + Haste,
+    // and force both to attack this turn if able.
     vec![
         Effect::Pump {
             target: trig.source,
@@ -85,6 +86,12 @@ fn combat_copy_pump(
             toughness: 0,
             duration: Duration::EndOfTurn,
             keywords: vec![KeywordAbility::Haste],
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::must_attack(trig.source, trig.source, Duration::EndOfTurn),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::must_attack(trig.source, *id, Duration::EndOfTurn),
         },
     ]
 }

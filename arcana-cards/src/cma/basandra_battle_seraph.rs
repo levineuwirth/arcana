@@ -11,14 +11,11 @@
 //!
 //! GAP: "Players can't cast spells during combat" is a static
 //! game-rule-altering restriction with no representation — omitted.
-//! GAP: the {R} ability's effect is "target creature attacks this turn
-//! if able" — a must-attack requirement. The only force-attack
-//! primitive (`Effect::Goad`) additionally forbids attacking the
-//! activating player and persists each combat, which materially differs
-//! from "attacks this turn if able", so the resolver returns no effects
-//! rather than apply the wrong restriction.
+//! The {R} ability's "target creature attacks this turn if able" is wired
+//! as a must-attack requirement (CR 508.1a) with EndOfTurn duration.
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -26,7 +23,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::TargetRequirement;
+use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -64,8 +61,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn must_attack(_state: &GameState, _ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "attacks this turn if able" has no exact must-attack
-    // primitive (Goad adds the wrong can't-attack-you rider).
-    Vec::new()
+fn must_attack(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(ctx.source, *id, Duration::EndOfTurn),
+    }]
 }

@@ -3,12 +3,13 @@
 //! `{T}: Target creature blocks this turn if able.`
 //!
 //! Both abilities are tap activations targeting a creature with a
-//! must-attack / must-block combat requirement. There is no engine
-//! primitive that forces a creature to attack or block ("attacks/blocks
-//! this turn if able"), so each activated ability is emitted with its
-//! tap cost and target requirement but a GAP'd (empty) effect body.
+//! must-attack / must-block combat requirement. The must-attack ability
+//! installs a must-attack requirement (CR 508.1a) on the target this turn.
+//! There is no must-block primitive, so the second ability's effect body
+//! is GAP'd (empty).
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -16,7 +17,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::TargetRequirement;
+use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -65,11 +66,15 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn must_attack(_state: &GameState, _ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "target creature attacks this turn if able" — no force-attack /
-    // must-attack effect primitive (Goad/ForbidAttacking are the only combat
-    // requirements, neither expresses an unconditional must-attack).
-    Vec::new()
+fn must_attack(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    // "Target creature attacks this turn if able." — install a must-attack
+    // requirement on the target until end of turn.
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(ctx.source, *id, Duration::EndOfTurn),
+    }]
 }
 
 fn must_block(_state: &GameState, _ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {

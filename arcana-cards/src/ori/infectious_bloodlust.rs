@@ -4,10 +4,10 @@
 //!  library for a card named Infectious Bloodlust, reveal it, put it into your
 //!  hand, then shuffle."
 //!
-//! ETB installs +2/+1 (`attached_pt`) and haste (`attached_keyword`). "Attacks
-//! each combat if able" (no attached must-attack builder) and the host-dies
-//! tutor for a card by NAME (ObjectFilter has no name predicate here) are
-//! GAP'd.
+//! ETB installs +2/+1 (`attached_pt`), haste (`attached_keyword`), and a
+//! `must_attack` requirement on the enchanted creature (CR 508.1a — the host
+//! resolved from the Aura's `attached_to`). The host-dies tutor for a card by
+//! NAME (ObjectFilter has no name predicate here) is GAP'd.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -51,13 +51,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn etb_install(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "attacks each combat if able" (no attached must-attack) and the
-    // host-dies tutor for a card NAMED Infectious Bloodlust (no name filter).
-    vec![
+    // GAP: the host-dies tutor for a card NAMED Infectious Bloodlust (no name
+    // filter).
+    let mut effects = vec![
         Effect::InstallContinuousEffect {
             effect: ContinuousEffect::attached_pt(
                 trig.source,
@@ -73,5 +73,17 @@ fn etb_install(
                 Duration::WhileSourceOnBattlefield,
             ),
         },
-    ]
+    ];
+    // "Enchanted creature attacks each combat if able" — the Aura entered
+    // already attached, so the host is its current `attached_to`.
+    if let Some(host) = state.object_or_lki(trig.source).and_then(|o| o.attached_to) {
+        effects.push(Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::must_attack(
+                trig.source,
+                host,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        });
+    }
+    effects
 }

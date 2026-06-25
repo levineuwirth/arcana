@@ -9,16 +9,23 @@
 //! Wired as a triggered ability on PhaseBegins as a best-effort transform proxy.
 //! GAP: Back-face activated ability "{2}: +1/+0" is a cost-bearing activated ability
 //! on the back face — not modeled (ActivatedAbilityDef face-gate not in scope here).
-//! GAP: "This creature attacks each combat if able" (back face) is a back-face-only
-//! triggered ability not modeled.
+//! Back-face "This creature attacks each combat if able" installs a SELF must-attack
+//! requirement (CR 508.1a) when the card transforms into Incited Rabble
+//! (`SelfTransforms { to_face: Some(1) }`). The transform path itself is GAP'd
+//! (the "{T}, Tap a creature" cost is unmodeled), so this requirement only takes
+//! effect once the card is transformed by some other means.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::triggers::PendingTrigger;
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Town Gossipmonger");
@@ -60,13 +67,30 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             // GAP: The actual transform cost is "{T}, Tap an untapped creature you control"
             // which cannot be expressed as an ActivatedAbilityDef cost. No transform
             // trigger is wired here; the card bones are correct.
+            // Back-face "Incited Rabble attacks each combat if able": install a SELF
+            // must-attack requirement when the card transforms into the back face.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: install_must_attack,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            }),
     )
 }
 
-fn _transform_resolve(
+fn install_must_attack(
     _state: &GameState,
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::Transform { target: trig.source }]
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(
+            trig.source,
+            trig.source,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }

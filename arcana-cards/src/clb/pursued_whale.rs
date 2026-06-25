@@ -4,19 +4,23 @@
 //! * When this creature enters, each opponent creates a 1/1 red Pirate
 //!   creature token with "This token can't block" and "Creatures you
 //!   control attack each combat if able." — ETB trigger; one
-//!   `CreateToken` per opponent (a 1/1 red Pirate). The two token-borne
-//!   static/restriction abilities ("can't block", "attack each combat if
-//!   able") are GAP'd — they are not expressible token abilities.
+//!   `CreateToken` per opponent (a 1/1 red Pirate). The "attack each
+//!   combat if able" static is wired as a token-borne
+//!   SelfEntersBattlefield trigger installing a board-wide
+//!   `filtered_must_attack`. GAP: "This token can't block" has no
+//!   attached/static can't-block restriction primitive.
 //! * Spells your opponents cast that target this creature cost {3} more
 //!   to cast. — GAP: static cost-increase replacement effect, not a
 //!   triggered/activated ability and not in this surface.
 
 use arcana_core::effects::{Effect, TokenDefinition};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -65,8 +69,9 @@ fn each_opponent_makes_pirate(
     let pirate = reg.interner().lookup("Pirate").unwrap_or_default();
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(pirate);
-    // GAP: token abilities "This token can't block" and "Creatures you control
-    // attack each combat if able" are not expressible token-borne abilities.
+    // GAP: token's "This token can't block" — no attached/static can't-block
+    // restriction primitive. The "Creatures you control attack each combat if
+    // able" static is wired as the token-borne trigger below.
     let opponents = script::opponents(state, trig.controller);
     opponents
         .into_iter()
@@ -80,8 +85,33 @@ fn each_opponent_makes_pirate(
                 power: Some(PtValue::Fixed(1)),
                 toughness: Some(PtValue::Fixed(1)),
                 keywords: vec![],
-                abilities: vec![],
+                abilities: vec![TriggeredAbilityDef {
+                    id: 1,
+                    trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                    intervening_if: None,
+                    effect: token_install_must_attack,
+                    trigger_zones: vec![Zone::Battlefield],
+                    frequency: TriggerFrequency::EachTime,
+                    target_requirements: Vec::new(),
+                }],
             },
         })
         .collect()
+}
+
+fn token_install_must_attack(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // "Creatures you control attack each combat if able." The token is the
+    // source; FilteredMustAttack reads the source's controller, so
+    // controlled_by(You) = creatures the token's controller controls.
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::filtered_must_attack(
+            trig.source,
+            ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }

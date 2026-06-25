@@ -81,9 +81,11 @@ fn make_goblin(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) ->
     let goblin = reg.interner().lookup("Goblin").unwrap_or_default();
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(goblin);
-    // GAP: "That token attacks this combat if able" — a forced-attack rider on
-    // the newly created token is not expressible; the bare 1/1 red Goblin token
-    // is created.
+    // GAP: "That token attacks this combat if able" — the must_attack continuous
+    // effect needs the token's ObjectId as its target, but Effect::CreateToken
+    // allocates that id engine-side and does not expose it to the script (no
+    // create-token-with-rider continuation primitive). The bare 1/1 red Goblin
+    // token is created.
     vec![Effect::CreateToken {
         controller: trig.controller,
         token: TokenDefinition {

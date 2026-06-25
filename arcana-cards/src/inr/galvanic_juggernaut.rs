@@ -4,6 +4,7 @@
 //! Whenever another creature dies, untap this creature.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -32,25 +33,47 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    // GAP: "attacks each combat if able" is a static combat restriction with no
-    // expressible variant in the demonstrated API.
     // GAP: "doesn't untap during your untap step" is a static untap restriction
     // with no expressible variant.
     reg.register(
-        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
-            id: 1,
-            trigger_condition: TriggerCondition::ZoneChange {
-                filter: ObjectFilter::creature(),
-                from: Some(Zone::Battlefield),
-                to: Zone::Graveyard(0),
-            },
-            intervening_if: None,
-            effect: untap_self,
-            trigger_zones: vec![Zone::Battlefield],
-            frequency: TriggerFrequency::EachTime,
-            target_requirements: Vec::new(),
-        }),
+        CardDefinition::new(name, chars)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_must_attack,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::ZoneChange {
+                    filter: ObjectFilter::creature(),
+                    from: Some(Zone::Battlefield),
+                    to: Zone::Graveyard(0),
+                },
+                intervening_if: None,
+                effect: untap_self,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            }),
     )
+}
+
+fn install_must_attack(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(
+            trig.source,
+            trig.source,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn untap_self(

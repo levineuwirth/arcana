@@ -1,7 +1,9 @@
 //! Walking Desecration — `{2}{B}` 1/1 black Zombie.
 //! "{B}, {T}: Creatures of the creature type of your choice attack this turn if able."
-//! GAP: "creature type of your choice" runtime selection and "must attack" for a type —
-//! no Effect variant for type-based forced attack (Goad affects a single creature).
+//! GAP: the engine has `filtered_must_attack` for a FIXED filter, but there is
+//! no runtime "choose a creature type" selection to build that filter from at
+//! activation time — so the chosen-subtype board-wide must-attack can't be
+//! expressed faithfully.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -53,7 +55,8 @@ fn force_type_attack(
     _ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "creature type of your choice, all must attack" — runtime type selection and
-    // type-wide forced attack not in Effect catalog.
+    // GAP: the type-wide forced attack is expressible (filtered_must_attack),
+    // but choosing "a creature type" at activation time to build that filter
+    // is not — no runtime creature-type selection primitive.
     Vec::new()
 }

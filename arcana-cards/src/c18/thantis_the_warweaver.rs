@@ -6,8 +6,8 @@
 //!
 //! Decomposition:
 //! - Keyword line: Vigilance, Reach.
-//! - GAP: "All creatures attack each combat if able." is a static combat-
-//!   restriction continuous ability — no expressible Effect.
+//! - "All creatures attack each combat if able." → ETB-installed
+//!   `filtered_must_attack` over every creature (CR 508.1a).
 //! - "Whenever a creature attacks you or a planeswalker you control, …" → a
 //!   CreatureAttacks triggered ability putting a +1/+1 counter on Thantis.
 //!   GAP (approximation): the "attacks YOU or a planeswalker you control"
@@ -15,6 +15,7 @@
 //!   so the trigger watches any creature attacking.
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -46,18 +47,44 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
 
     reg.register(
-        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
-            id: 1,
-            trigger_condition: TriggerCondition::CreatureAttacks {
-                filter: ObjectFilter::creature(),
-            },
-            intervening_if: None,
-            effect: counter_on_self,
-            trigger_zones: vec![Zone::Battlefield],
-            frequency: TriggerFrequency::EachTime,
-            target_requirements: Vec::new(),
-        }),
+        CardDefinition::new(name, chars)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::CreatureAttacks {
+                    filter: ObjectFilter::creature(),
+                },
+                intervening_if: None,
+                effect: counter_on_self,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_must_attack_all,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            }),
     )
+}
+
+/// ETB: "All creatures attack each combat if able." (CR 508.1a) —
+/// board-wide must-attack over every creature.
+fn install_must_attack_all(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::filtered_must_attack(
+            trig.source,
+            ObjectFilter::creature(),
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn counter_on_self(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {

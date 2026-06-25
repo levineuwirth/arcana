@@ -8,8 +8,8 @@
 //!   Layer 7a via a `SelfEntersBattlefield` `self_pt_from_match`. Both `*` axes
 //!   resolve to the count of artifacts the controller has (this card itself is
 //!   an artifact, so it counts).
-//! * GAP: "This creature attacks each combat if able." — a static combat
-//!   requirement, not a triggered/activated ability and not expressible here.
+//! * "This creature attacks each combat if able." — ETB-installed
+//!   `must_attack` continuous effect (CR 508.1a).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -41,22 +41,41 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         power: Some(PtValue::Star),
         toughness: Some(PtValue::Star),
         keywords: vec![KeywordAbility::Indestructible],
-        // GAP: "This creature attacks each combat if able." — static combat
-        // requirement, not a triggered/activated ability.
         ..Default::default()
     };
 
     reg.register(
-        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
-            id: 1,
-            trigger_condition: TriggerCondition::SelfEntersBattlefield,
-            intervening_if: None,
-            effect: install_cda,
-            trigger_zones: vec![Zone::Battlefield],
-            frequency: TriggerFrequency::EachTime,
-            target_requirements: Vec::new(),
-        }),
+        CardDefinition::new(name, chars)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_cda,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_must_attack,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            }),
     )
+}
+
+/// ETB: "This creature attacks each combat if able." (CR 508.1a)
+fn install_must_attack(_s: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(
+            trig.source,
+            trig.source,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 /// Layer 7a self-CDA: P/T each equal to the number of artifacts you control.

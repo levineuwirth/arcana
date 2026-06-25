@@ -1,9 +1,10 @@
 //! Bloodcrazed Neonate — `{1}{R}` 2/1 Vampire.
-//! This creature attacks each combat if able. (static — GAP'd)
+//! This creature attacks each combat if able. (must-attack, wired on ETB)
 //! Whenever this creature deals combat damage to a player, put a +1/+1
 //! counter on it.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -30,10 +31,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
     };
-    // GAP: "This creature attacks each combat if able" — no attack-compulsion
-    // static is expressible.
     reg.register(
         CardDefinition::new(name, chars)
+            // "This creature attacks each combat if able." — install a SELF
+            // must-attack requirement (CR 508.1a) on ETB.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_must_attack,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
             // GAP: DamageDealt has no self-only source filter; restricted to a
             // creature you control as the closest approximation, and the
             // counter is placed on this creature (the source).
@@ -52,6 +62,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: Vec::new(),
             }),
     )
+}
+
+fn install_must_attack(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(
+            trig.source,
+            trig.source,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn add_counter_on_self(

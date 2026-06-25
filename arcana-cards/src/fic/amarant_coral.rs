@@ -5,6 +5,7 @@
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -36,10 +37,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         keywords: vec![KeywordAbility::Trample],
         ..Default::default()
     };
-    // GAP static: "Amarant Coral attacks each combat if able" — combat
-    // restriction static, not a triggered/activated ability.
+    // "Amarant Coral attacks each combat if able" — SELF must-attack
+    // installed on ETB.
     reg.register(
         CardDefinition::new(name, chars)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_must_attack,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 // NOTE: source_filter can't pin to "this creature" specifically;
@@ -58,6 +68,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: Vec::new(),
             }),
     )
+}
+
+fn install_must_attack(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(
+            trig.source,
+            trig.source,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn no_mercy(

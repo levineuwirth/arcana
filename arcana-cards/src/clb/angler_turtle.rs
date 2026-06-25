@@ -4,16 +4,22 @@
 //! * Hexproof.
 //! * Creatures your opponents control attack each combat if able.
 //!
-//! The Hexproof keyword is a base characteristic. The "attack each
-//! combat if able" static is a continuous combat-restriction that the
-//! demonstrated API cannot express (no Goad-all / forced-attack static),
-//! so it is GAP'd.
+//! The Hexproof keyword is a base characteristic. "Creatures your opponents
+//! control attack each combat if able" is wired as an ETB-installed
+//! `filtered_must_attack` over opponents' creatures (CR 508.1a).
 
-use arcana_core::effects::KeywordAbility;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::state::GameState;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Angler Turtle");
@@ -33,8 +39,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    // GAP: static "Creatures your opponents control attack each combat if
-    // able" — a board-wide forced-attack restriction with no demonstrated
-    // effect/static primitive.
-    reg.register(CardDefinition::new(name, chars))
+    reg.register(
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: install_opponents_must_attack,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
+    )
+}
+
+/// ETB: "Creatures your opponents control attack each combat if able."
+/// (CR 508.1a) — board-wide must-attack over opponents' creatures.
+fn install_opponents_must_attack(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::filtered_must_attack(
+            trig.source,
+            ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }

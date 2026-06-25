@@ -4,6 +4,7 @@
 //! card. Any player may activate this ability.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -11,7 +12,11 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Xantcha, Sleeper Agent");
@@ -35,12 +40,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
     // GAP: "enters under the control of an opponent of your choice" — no ETB
     // control-assignment effect/replacement.
-    // GAP: static — "attacks each combat if able and can't attack its owner or
-    // planeswalkers its owner controls" — no attack-requirement/restriction
-    // static primitive.
+    // "attacks each combat if able" is wired as the SELF must-attack below.
+    // GAP: "can't attack its owner or planeswalkers its owner controls" — no
+    // can't-attack-a-given-player restriction primitive.
 
     reg.register(
-        CardDefinition::new(name, chars).with_activated_ability(ActivatedAbilityDef {
+        CardDefinition::new(name, chars)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_must_attack,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_activated_ability(ActivatedAbilityDef {
             // GAP (partial): "Xantcha's controller loses 2 life" — no
             // source-controller accessor in the activated effect (ctx.controller
             // is the activator, not necessarily Xantcha's controller). The draw
@@ -61,6 +76,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             effect: draw_card,
         }),
     )
+}
+
+fn install_must_attack(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(
+            trig.source,
+            trig.source,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn draw_card(

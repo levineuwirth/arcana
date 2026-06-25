@@ -2,14 +2,16 @@
 //! (R) with Trample.
 //!
 //! * Trample
-//! * Alexios attacks each combat if able, can't be sacrificed, and
-//!   can't attack its owner. (Static combat restrictions — GAP.)
+//! * Alexios attacks each combat if able (ETB-installed `must_attack`,
+//!   CR 508.1a). "Can't be sacrificed" and "can't attack its owner"
+//!   remain GAPs — no can't-be-sacrificed or per-defender can't-attack
+//!   primitive.
 //! * At the beginning of each player's upkeep, that player gains
 //!   control of Alexios, untaps it, and puts a +1/+1 counter on it.
 //!   It gains haste until end of turn.
 
 use arcana_core::effects::{Effect, KeywordAbility};
-use arcana_core::layers::Duration;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -44,19 +46,40 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
 
     reg.register(
-        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
-            id: 1,
-            trigger_condition: TriggerCondition::StepBegins {
-                step: Step::Upkeep,
-                whose: ControllerConstraint::Any,
-            },
-            intervening_if: None,
-            effect: upkeep_change_control,
-            trigger_zones: vec![Zone::Battlefield],
-            frequency: TriggerFrequency::EachTime,
-            target_requirements: Vec::new(),
-        }),
+        CardDefinition::new(name, chars)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: None,
+                effect: upkeep_change_control,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_must_attack,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            }),
     )
+}
+
+/// ETB: "Alexios attacks each combat if able." (CR 508.1a)
+fn install_must_attack(_s: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(
+            trig.source,
+            trig.source,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn upkeep_change_control(state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {

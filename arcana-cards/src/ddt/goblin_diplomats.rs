@@ -1,9 +1,10 @@
 //! Goblin Diplomats — `{1}{R}` 2/1 Goblin.
 //! `{T}:` Each creature attacks this turn if able.
-//! GAP: "each creature attacks this turn if able" — no Effect variant for
-//! forcing all creatures to attack.
+//! Wired as a board-wide must-attack (CR 508.1a) over every creature with
+//! EndOfTurn duration.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -11,6 +12,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -46,10 +48,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn force_attack(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "each creature attacks this turn if able" — no Effect variant for
-    // forcing all creatures (or specific creatures) to attack.
-    Vec::new()
+    // "Each creature attacks this turn if able" — every creature, no controller
+    // constraint, for this turn only.
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::filtered_must_attack(
+            ctx.source,
+            ObjectFilter::creature(),
+            Duration::EndOfTurn,
+        ),
+    }]
 }

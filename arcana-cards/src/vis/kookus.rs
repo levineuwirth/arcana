@@ -7,7 +7,7 @@
 use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
-use arcana_core::layers::Duration;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
@@ -95,13 +95,22 @@ fn upkeep_damage_self(
     trig: &PendingTrigger,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "and attacks this turn if able" — a must-attack-this-turn rider is
-    // not expressible (no self-targeted forced-attack effect).
-    vec![Effect::DealDamage {
-        source: trig.source,
-        target: DamageTarget::Player(trig.controller),
-        amount: 3,
-    }]
+    // "... and attacks this turn if able" — a SELF must_attack requirement for
+    // this turn only (EndOfTurn), installed alongside the self-damage.
+    vec![
+        Effect::DealDamage {
+            source: trig.source,
+            target: DamageTarget::Player(trig.controller),
+            amount: 3,
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::must_attack(
+                trig.source,
+                trig.source,
+                Duration::EndOfTurn,
+            ),
+        },
+    ]
 }
 
 fn pump_self(

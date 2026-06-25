@@ -1,7 +1,11 @@
 //! Goblin Rabblemaster — `{2}{R}` 2/2 Goblin Warrior.
 //!
 //! 1. "Other Goblin creatures you control attack each combat if able."
-//!    — static combat-restriction; GAP (no expressible primitive).
+//!    — board-wide must-attack, but GAP: the "OTHER" self-exclusion has
+//!    no surface. `FilteredMustAttack`/`ObjectFilter` cannot exclude the
+//!    source (the `custom` predicate receives no source id), so a
+//!    Goblin-you-control filter would wrongly force Rabblemaster itself
+//!    to attack. Left honest pending an exclude-source predicate.
 //! 2. "At the beginning of combat on your turn, create a 1/1 red Goblin
 //!    creature token with haste."  — triggered, expressible.
 //! 3. "Whenever this creature attacks, it gets +1/+0 until end of turn

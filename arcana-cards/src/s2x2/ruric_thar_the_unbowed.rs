@@ -4,12 +4,12 @@
 //!  Whenever a player casts a noncreature spell, Ruric Thar deals 6 damage
 //!  to that player."
 //!
-//! Keyword line + the noncreature-spell-cast punisher are expressed.
-//! GAP: "Ruric Thar attacks each combat if able" is a static
-//!      must-attack restriction — no Effect / field expresses it.
+//! Keyword line, the self must-attack requirement (CR 508.1a, installed on
+//! ETB), and the noncreature-spell-cast punisher are all expressed.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -59,8 +59,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_must_attack,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
             }),
     )
+}
+
+fn install_must_attack(_s: &GameState, trig: &PendingTrigger, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(
+            trig.source,
+            trig.source,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn punish_noncreature_caster(

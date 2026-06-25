@@ -1,9 +1,10 @@
 //! Heckling Fiends — `{2}{R}` 2/2 red Devil.
 //! `{2}{R}: Target creature attacks this turn if able.`
-//! GAP: "must attack this turn if able" effect not modeled; using Goad as closest approximation (Goad requires attacking, can't attack controller).
+//! Wired as a must-attack requirement (CR 508.1a) installed on the target
+//! with EndOfTurn duration.
 
 use arcana_core::effects::Effect;
-use arcana_core::layers::Duration;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -55,10 +56,7 @@ fn must_attack(
 ) -> Vec<Effect> {
     let Some(target) = ctx.targets.targets.first() else { return Vec::new(); };
     let TargetChoice::Object(id) = target else { return Vec::new(); };
-    // Using Goad as closest approximation - forces attack, though it also restricts attack direction
-    vec![Effect::Goad {
-        target: *id,
-        goader: ctx.controller,
-        duration: Duration::EndOfTurn,
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(ctx.source, *id, Duration::EndOfTurn),
     }]
 }

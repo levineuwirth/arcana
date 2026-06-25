@@ -1,10 +1,12 @@
 //! Alpine Guide — `{2}{R}` 3/3 Snow Human Scout.
 //! When this creature enters, you may search your library for a Mountain
 //! card, put that card onto the battlefield tapped, then shuffle.
-//! This creature attacks each combat if able. (Static — GAP.)
+//! This creature attacks each combat if able. — a SELF must-attack
+//! requirement (CR 508.1a), installed on ETB.
 //! When this creature leaves the battlefield, sacrifice a Mountain.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -24,7 +26,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     subtypes.0.insert(human);
     subtypes.0.insert(scout);
 
-    // GAP: static "attacks each combat if able" — no expressible form.
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{2}{R}").expect("valid cost")),
@@ -56,8 +57,33 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
+            })
+            // "This creature attacks each combat if able." — install a SELF
+            // must-attack requirement on ETB.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_must_attack,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
             }),
     )
+}
+
+fn install_must_attack(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(
+            trig.source,
+            trig.source,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn etb_search_mountain(

@@ -1,11 +1,12 @@
 //! Emberwilde Caliph — `{2}{U}{R}` 4/4 Creature — Djinn. R/U.
 //! Flying, trample.
-//! "This creature attacks each combat if able." — static attack
-//! requirement, not a triggered/activated ability. GAP.
+//! "This creature attacks each combat if able." — a SELF must-attack
+//! requirement (CR 508.1a), installed on ETB.
 //! "Whenever this creature deals damage, you lose that much life." —
 //! DamageDealt (any target, all damage) → controller loses that much life.
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -35,11 +36,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    // GAP: "This creature attacks each combat if able." — static combat
-    // requirement; no Effect / keyword expresses a must-attack constraint.
-
     reg.register(
-        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+        CardDefinition::new(name, chars)
+            // "This creature attacks each combat if able." — install a SELF
+            // must-attack requirement on ETB.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_must_attack,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
             id: 1,
             // GAP (fidelity): source_filter approximates "this creature" as
             // "a creature you control" — no self-only DamageDealt filter.
@@ -55,6 +65,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             target_requirements: Vec::new(),
         }),
     )
+}
+
+fn install_must_attack(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(
+            trig.source,
+            trig.source,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn lose_that_much_life(

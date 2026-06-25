@@ -2,15 +2,18 @@
 //! Defender and Daybound. Transforms into a Werewolf (back) that attacks each combat if
 //! able and has Nightbound.
 //!
+//! The back face's "attacks each combat if able" is wired as a SELF must_attack
+//! requirement installed on ETB with `Duration::WhileSourceShowsFace(1)` —
+//! dormant on the front (Defender) face, live once transformed to the back.
+//!
 //! # GAPs
 //! - Daybound / Nightbound (the day/night cycle and "no spells cast last turn" werewolf
 //!   trigger conditions) are not modeled. The transform is wired to a begin-of-upkeep
 //!   triggered ability as a best-effort approximation.
-//! - Back-face-only triggered ability ("This creature attacks each combat if able") is not
-//!   modeled — triggers live on the CardDefinition, not on the face.
 
 use arcana_core::conditions;
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::objects::ObjectId;
@@ -55,7 +58,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             colors: ColorSet::red(),
             types: TypeLine::CREATURE.into(),
             subtypes: back_subtypes,
-            // GAP: back-face-only triggered ability "attacks each combat if able" not modeled
+            // Back-face "attacks each combat if able" is installed as a
+            // face-gated must_attack on ETB (see install_back_must_attack).
             power: Some(PtValue::Fixed(4)),
             toughness: Some(PtValue::Fixed(6)),
             ..Default::default()
@@ -80,8 +84,35 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
+            })
+            // Back-face "attacks each combat if able": install the SELF
+            // must_attack on ETB but gate it to the back face (index 1) so it
+            // is dormant on the front (Defender) face and lights up once
+            // transformed.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_back_must_attack,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
             }),
     )
+}
+
+fn install_back_must_attack(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(
+            trig.source,
+            trig.source,
+            Duration::WhileSourceShowsFace(1),
+        ),
+    }]
 }
 
 fn iif_no_spells(state: &GameState, _s: ObjectId, _y: PlayerId, _reg: &CardRegistry) -> bool {

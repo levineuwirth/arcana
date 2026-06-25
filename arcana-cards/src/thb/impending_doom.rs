@@ -3,11 +3,11 @@
 //!  combat if able. When enchanted creature dies, this Aura deals 3
 //!  damage to that creature's controller."
 //!
-//! Buff + host-death-trigger Aura. ETB installs `attached_pt(+3, +3)`.
-//! The "attacks each combat if able" forced-attack restriction has no
-//! attached builder — GAP. The death trigger
-//! (`AttachedCreatureDoes { SelfDies }`) deals 3 damage to the dying
-//! creature's controller (read via LKI on the dying object).
+//! Buff + host-death-trigger Aura. ETB installs `attached_pt(+3, +3)` and a
+//! `must_attack` requirement on the enchanted creature (the host id read from
+//! `source.attached_to` at resolution, since the engine has already attached
+//! the Aura). The death trigger (`AttachedCreatureDoes { SelfDies }`) deals 3
+//! damage to the dying creature's controller (read via LKI on the dying object).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -43,8 +43,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
-                // GAP: "attacks each combat if able" — no attached
-                // forced-attack restriction builder available.
                 effect: etb_install_pump,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
@@ -65,18 +63,31 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn etb_install_pump(
-    _state: &GameState,
+    state: &GameState,
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::InstallContinuousEffect {
+    let mut effects = vec![Effect::InstallContinuousEffect {
         effect: ContinuousEffect::attached_pt(
             trig.source,
             3,
             3,
             Duration::WhileSourceOnBattlefield,
         ),
-    }]
+    }];
+    // "Enchanted creature ... attacks each combat if able." The host is
+    // already attached by resolution; force it to attack while this Aura
+    // remains on the battlefield.
+    if let Some(host) = state.object_or_lki(trig.source).and_then(|o| o.attached_to) {
+        effects.push(Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::must_attack(
+                trig.source,
+                host,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        });
+    }
+    effects
 }
 
 fn on_host_dies(

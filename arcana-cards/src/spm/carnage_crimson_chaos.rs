@@ -8,11 +8,11 @@
 //!
 //! Trample is wired. The ETB reanimation is wired (target creature card,
 //! mv <= 3, in your graveyard -> battlefield) and the returned creature is
-//! granted the "deals combat damage to a player -> sacrifice it" triggered
-//! ability via `GrantTriggeredAbility`. Two parts are GAP'd: the gained
-//! "attacks each combat if able" static (no faithful must-attack primitive —
-//! Goad adds a can't-attack-goader rider) and Mayhem (not in the usable
-//! keyword surface; its graveyard-cast mechanic is not expressible).
+//! granted both gained abilities: "attacks each combat if able" (a
+//! `must_attack` continuous effect) and "deals combat damage to a player ->
+//! sacrifice it" (`GrantTriggeredAbility`), both tied to Carnage's presence.
+//! Mayhem is GAP'd (not in the usable keyword surface; its graveyard-cast
+//! mechanic is not expressible).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
@@ -95,14 +95,22 @@ fn etb_reanimate(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry)
         frequency: TriggerFrequency::EachTime,
         target_requirements: Vec::new(),
     };
-    // GAP: gained "This creature attacks each combat if able." — no faithful
-    // must-attack primitive (Goad carries a can't-attack-goader rider).
+    // It also gains "This creature attacks each combat if able" — a
+    // must_attack continuous effect on the returned creature, tied (like the
+    // granted trigger above) to Carnage's presence on the battlefield.
     vec![
         Effect::ReturnFromGraveyardToBattlefield { target: *id },
         Effect::GrantTriggeredAbility {
             target: *id,
             ability: Box::new(granted),
             duration: arcana_core::layers::Duration::WhileSourceOnBattlefield,
+        },
+        Effect::InstallContinuousEffect {
+            effect: arcana_core::layers::ContinuousEffect::must_attack(
+                trig.source,
+                *id,
+                arcana_core::layers::Duration::WhileSourceOnBattlefield,
+            ),
         },
     ]
 }

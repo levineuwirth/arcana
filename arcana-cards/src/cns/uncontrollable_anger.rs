@@ -3,8 +3,8 @@
 //!  combat if able."
 //!
 //! Flash is a keyword. The +2/+2 is an ETB-installed `attached_pt`. "Attacks
-//! each combat if able" (a combat requirement) has no attached continuous-
-//! effect builder — GAP that clause.
+//! each combat if able" is a must-attack requirement (CR 508.1a) installed on
+//! the enchanted creature (the Aura's host) — shed with the Aura.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -48,14 +48,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn etb_install(_state: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
-    // GAP: "attacks each combat if able" combat requirement has no attached builder.
-    vec![Effect::InstallContinuousEffect {
+fn etb_install(state: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
+    let mut effects = vec![Effect::InstallContinuousEffect {
         effect: ContinuousEffect::attached_pt(
             trig.source,
             2,
             2,
             Duration::WhileSourceOnBattlefield,
         ),
-    }]
+    }];
+    // "attacks each combat if able" — a must-attack on the enchanted creature.
+    // The Aura is already attached when this ETB trigger resolves (CR 303.4f),
+    // so its host is the must-attack target; shed with the Aura.
+    if let Some(host) = state.objects.get(trig.source).and_then(|o| o.attached_to) {
+        effects.push(Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::must_attack(
+                trig.source,
+                host,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        });
+    }
+    effects
 }

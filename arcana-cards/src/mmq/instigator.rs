@@ -1,9 +1,11 @@
 //! Instigator — `{1}{B}` 1/1 Human Spellshaper.
 //! `{1}{B}{B}, {T}, Discard a card: Creatures target player controls attack this turn if able.`
-//! GAP: ActivationCost has no "discard a card" field (non-self discard cost);
-//! also no Effect variant for "creatures must attack this turn".
+//! The "Discard a card" cost is the `discard_other` activation cost; the
+//! effect installs a board-wide filtered must-attack (CR 508.1a) on the
+//! creatures the targeted player controls, until end of turn.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -11,7 +13,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -38,6 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}{B}{B}").unwrap(),
                     tap: true,
+                    discard_other: Some(ObjectFilter::default()),
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![TargetRequirement::target_player()],
@@ -53,10 +56,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn must_attack(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: ActivationCost has no "discard a card" field (non-self discard cost).
-    // GAP: No Effect variant for "creatures must attack this turn if able".
-    Vec::new()
+    // "Creatures target player controls attack this turn if able." — install a
+    // board-wide filtered must-attack pinned to the chosen player's creatures.
+    let Some(TargetChoice::Player(p)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::filtered_must_attack(
+            ctx.source,
+            ObjectFilter::creature().controlled_by(ControllerConstraint::Player(*p)),
+            Duration::EndOfTurn,
+        ),
+    }]
 }

@@ -5,6 +5,7 @@
 //! Void attacks each combat if able.'"
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -26,10 +27,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     // Pre-intern the token's subtype symbols.
     let _horror = reg.interner_mut().intern("Horror");
     let _villain = reg.interner_mut().intern("Villain");
-    // PARTIAL: the created token's "legendary" supertype and its "The Void
-    // attacks each combat if able" ability are not expressible (TokenDefinition
-    // carries no supertypes, and there is no attacks-each-combat static here);
-    // the 5/5 black flying/indestructible Horror Villain body is created below.
+    // PARTIAL: the created token's "legendary" supertype is not expressible
+    // (TokenDefinition carries no supertypes). The 5/5 black flying/
+    // indestructible Horror Villain body and its "attacks each combat if
+    // able" self must-attack (a token ETB trigger, CR 508.1a) are created
+    // below.
     let chars = Characteristics {
         name,
         mana_cost: Some(ManaCost::parse("{3}{W}").expect("valid cost")),
@@ -81,7 +83,31 @@ fn create_the_void(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry
             power: Some(PtValue::Fixed(5)),
             toughness: Some(PtValue::Fixed(5)),
             keywords: vec![KeywordAbility::Flying, KeywordAbility::Indestructible],
-            abilities: vec![],
+            // "The Void attacks each combat if able." — the token's own ETB
+            // trigger installs a self must-attack requirement (CR 508.1a).
+            abilities: vec![TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_void_must_attack,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            }],
         },
+    }]
+}
+
+fn install_void_must_attack(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(
+            trig.source,
+            trig.source,
+            Duration::WhileSourceOnBattlefield,
+        ),
     }]
 }

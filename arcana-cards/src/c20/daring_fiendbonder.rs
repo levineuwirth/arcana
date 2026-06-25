@@ -2,18 +2,19 @@
 //!
 //! Oracle:
 //! * Haste.
-//! * This creature attacks each combat if able. (Pure static attack
-//!   restriction — no demonstrated API to express; GAP'd below.)
+//! * This creature attacks each combat if able. (ETB-installed
+//!   `must_attack` continuous effect, CR 508.1a.)
 //! * `{1}{B}, Exile this card from your graveyard: Put an
 //!   indestructible counter on target creature. Activate only as a
 //!   sorcery.` — a graveyard-activated ability (mana + exile-self
 //!   cost) that adds a named "indestructible" counter to a creature.
 //!
-//! Decomposition: Haste → `keywords`; the static attack requirement is
-//! GAP'd (no trigger/cost, unexpressible); the graveyard ability →
-//! one `ActivatedAbilityDef`.
+//! Decomposition: Haste → `keywords`; the attack requirement → an ETB
+//! `must_attack` continuous effect; the graveyard ability → one
+//! `ActivatedAbilityDef`.
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -22,7 +23,11 @@ use arcana_core::registry::{
 };
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetRequirement};
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Daring Fiendbonder");
@@ -47,12 +52,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    // GAP: static "This creature attacks each combat if able." — an
-    // attack-requirement continuous ability with no trigger word and no
-    // activation cost; not expressible with the demonstrated API.
-
     reg.register(
-        CardDefinition::new(name, chars).with_activated_ability(ActivatedAbilityDef {
+        CardDefinition::new(name, chars)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_must_attack,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_activated_ability(ActivatedAbilityDef {
             text: "{1}{B}, Exile this card from your graveyard: Put an indestructible \
                    counter on target creature. Activate only as a sorcery."
                 .into(),
@@ -90,5 +101,16 @@ fn put_indestructible_counter(
         target: *id,
         kind,
         count: 1,
+    }]
+}
+
+/// ETB: "This creature attacks each combat if able." (CR 508.1a)
+fn install_must_attack(_s: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(
+            trig.source,
+            trig.source,
+            Duration::WhileSourceOnBattlefield,
+        ),
     }]
 }

@@ -1,9 +1,10 @@
 //! Warmonger Hellkite — `{4}{R}{R}` 5/5 Dragon with Flying.
-//! "All creatures attack each combat if able." (static — GAP).
+//! "All creatures attack each combat if able." (board-wide must-attack,
+//! installed on ETB).
 //! `{1}{R}: Attacking creatures get +1/+0 until end of turn.`
 
 use arcana_core::effects::{Effect, KeywordAbility};
-use arcana_core::layers::Duration;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{
@@ -13,7 +14,11 @@ use arcana_core::registry::{
 use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::ObjectFilter;
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Warmonger Hellkite");
@@ -31,24 +36,50 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         keywords: vec![KeywordAbility::Flying],
         ..Default::default()
     };
-    // GAP: static "All creatures attack each combat if able" — no
-    // forced-attack static continuous effect is expressible.
+    // Static "All creatures attack each combat if able" — a board-wide
+    // must-attack over every creature, installed on ETB.
     reg.register(
-        CardDefinition::new(name, chars).with_activated_ability(ActivatedAbilityDef {
-            text: "{1}{R}: Attacking creatures get +1/+0 until end of turn.".into(),
-            cost: ActivationCost {
-                mana_cost: ManaCost::parse("{1}{R}").expect("valid cost"),
-                ..ActivationCost::default()
-            },
-            target_requirements: Vec::new(),
-            is_mana_ability: false,
-            is_loyalty_ability: false,
-            activation_zone: ActivationZone::Battlefield,
-            is_instant_speed: false,
-            face_gate: None,
-            effect: pump_attackers,
-        }),
+        CardDefinition::new(name, chars)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_must_attack,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "{1}{R}: Attacking creatures get +1/+0 until end of turn.".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{1}{R}").expect("valid cost"),
+                    ..ActivationCost::default()
+                },
+                target_requirements: Vec::new(),
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: false,
+                face_gate: None,
+                effect: pump_attackers,
+            }),
     )
+}
+
+fn install_must_attack(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    // "All creatures attack each combat if able" — no controller constraint, so
+    // the filter matches every creature on the battlefield.
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::filtered_must_attack(
+            trig.source,
+            ObjectFilter::creature(),
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn pump_attackers(

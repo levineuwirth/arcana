@@ -1,9 +1,12 @@
 //! Tormentor's Trident — `{2}` artifact — Equipment (Magic Origins,
 //! 2015). "Equipped creature gets +3/+0 and attacks each combat if
 //! able." and "Equip {3}".
-//! The +3/+0 static is installed as an attached-P/T continuous effect;
-//! the "attacks each combat if able" attack requirement is a
-//! documented GAP.
+//! The +3/+0 static is installed as an attached-P/T continuous effect.
+//! GAP: "equipped creature ... attacks each combat if able" needs an
+//! attachment-following `attached_must_attack` continuous effect — the
+//! `must_attack(target)` primitive takes a static ObjectId, and an
+//! Equipment enters unattached and can re-equip, so no fixed target is
+//! known at ETB.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -52,8 +55,9 @@ fn etb_install_attached_pump(
     trig: &PendingTrigger,
     _: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "equipped creature ... attacks each combat if able" —
-    // attached_pt covers P/T only (no attached attack-requirement grant).
+    // GAP: "equipped creature ... attacks each combat if able" — needs an
+    // attachment-following attached_must_attack (must_attack takes a static
+    // target id; an Equipment has no fixed equipped creature at ETB).
     vec![Effect::InstallContinuousEffect {
         effect: ContinuousEffect::attached_pt(
             trig.source,

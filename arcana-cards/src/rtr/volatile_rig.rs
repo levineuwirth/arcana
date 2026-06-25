@@ -1,5 +1,5 @@
 //! Volatile Rig — `{4}` 4/4 Artifact Creature — Construct with Trample.
-//! Attacks each combat if able (GAP — static combat requirement).
+//! Attacks each combat if able (WIRED — self must-attack, CR 508.1a).
 //! When dealt damage, flip a coin; if you lose, sacrifice this (GAP — no
 //!   immediate self-sacrifice primitive; the coin flip is retained).
 //! When this dies, flip a coin; if you lose, deal 4 damage to each creature
@@ -7,6 +7,7 @@
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -39,7 +40,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
     reg.register(
         CardDefinition::new(name, chars)
-            // GAP: static "This creature attacks each combat if able".
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfIsDealtDamage {
@@ -59,8 +59,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_must_attack,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
             }),
     )
+}
+
+fn install_must_attack(_s: &GameState, trig: &PendingTrigger, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(
+            trig.source,
+            trig.source,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn dealt_damage_coin(

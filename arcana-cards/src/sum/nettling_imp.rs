@@ -5,11 +5,14 @@
 //! the next end step if it didn't attack this turn. Activate only
 //! during an opponent's turn, before attackers are declared.`
 //!
-//! GAP: "must attack if able", "destroy if didn't attack", and
-//! "activate only during opponent's turn before attackers declared"
-//! are all not expressible with the current Effect/ActivationCost API.
+//! The "attacks this turn if able" clause is wired (a must_attack requirement
+//! on the chosen creature, EndOfTurn). GAP: "destroy it if it didn't attack",
+//! "activate only during an opponent's turn before attackers are declared",
+//! and the non-Wall / active-player-controlled-continuously target restriction
+//! are not expressible with the current Effect/ActivationCost API.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -17,7 +20,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -53,11 +56,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn force_attack(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "must attack if able this turn", "destroy if didn't attack",
-    // and "opponent's turn before attackers" restrictions are all
-    // not in the Effect catalog.
-    Vec::new()
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    // "That creature attacks this turn if able." GAP: "destroy it if it
+    // didn't attack", the opponent's-turn-before-attackers timing, and the
+    // non-Wall / active-player-controlled-continuously target restriction are
+    // not in the Effect/ActivationCost catalog.
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(ctx.source, *id, Duration::EndOfTurn),
+    }]
 }

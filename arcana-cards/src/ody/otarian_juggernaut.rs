@@ -33,8 +33,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
     // GAP: "can't be blocked by Walls" — static, subtype-scoped block
     // restriction with no triggered/activated form.
-    // GAP: Threshold static "+3/+0 and attacks each combat if able"
-    // while 7+ cards in graveyard — pure conditional continuous effect.
+    // GAP: Threshold static "+3/+0 and attacks each combat if able" while 7+
+    // cards in graveyard. The must-attack primitive (`must_attack`) is
+    // unconditional/duration-gated only — there is no CONDITIONAL continuous
+    // effect to gate it (and the bundled +3/+0) on "7+ cards in graveyard",
+    // so the whole Threshold clause is GAP'd.
 
     reg.register(CardDefinition::new(name, chars))
 }

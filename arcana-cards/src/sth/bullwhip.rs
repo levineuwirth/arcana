@@ -4,6 +4,7 @@
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -54,12 +55,16 @@ fn ping_and_provoke(
     let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
         return Vec::new();
     };
-    // GAP: 'That creature attacks this turn if able' — no must-attack
-    // effect (Goad would also forbid attacking you, which is materially
-    // different); only the damage half is wired.
-    vec![Effect::DealDamage {
-        target: DamageTarget::Object(*id),
-        amount: 1,
-        source: ctx.source,
-    }]
+    // "That creature attacks this turn if able" — a must_attack requirement
+    // on the pinged creature for this turn only (EndOfTurn).
+    vec![
+        Effect::DealDamage {
+            target: DamageTarget::Object(*id),
+            amount: 1,
+            source: ctx.source,
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::must_attack(ctx.source, *id, Duration::EndOfTurn),
+        },
+    ]
 }

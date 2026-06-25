@@ -7,8 +7,8 @@
 //!
 //! Loyalty abilities (CR 606):
 //! * `+1`: Until your next turn, up to one target creature attacks a player
-//!   each combat if able. — GAP'd (a "must attack" duration effect is not
-//!   in the demonstrated surface).
+//!   each combat if able. — EXPRESSED (a `must_attack` requirement with
+//!   `Duration::UntilYourNextTurn`, CR 508.1a).
 //! * `+1`: Discard a card, then draw a card. — EXPRESSED.
 //! * `0`: Exile target creature or Equipment card with mana value less than
 //!   Nahiri's loyalty from your graveyard. Create a token that's a copy of
@@ -17,6 +17,7 @@
 //!   demonstrated surface).
 
 use arcana_core::effects::{DiscardChoice, Effect};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -93,10 +94,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 /// `+1` (first)
-fn plus_one_lure(_state: &GameState, _ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "until your next turn, attacks each combat if able" is a
-    // forced-attack duration effect, not in the demonstrated surface.
-    Vec::new()
+fn plus_one_lure(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    // "Up to one target creature attacks each combat if able" until the
+    // controller's next turn (CR 508.1a). Zero targets chosen ("up to one") =
+    // no effect.
+    let Some(target) = ctx.targets.targets.first().and_then(|t| t.object_id()) else {
+        return Vec::new();
+    };
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(
+            ctx.source,
+            target,
+            Duration::UntilYourNextTurn(ctx.controller),
+        ),
+    }]
 }
 
 /// `+1: Discard a card, then draw a card.`

@@ -1,9 +1,10 @@
 //! Toski, Bearer of Secrets — `{3}{G}` 1/1 Legendary Squirrel with Indestructible.
 //! "This spell can't be countered." (static, GAP). "Toski attacks each combat if
-//! able." (static, GAP). "Whenever a creature you control deals combat damage to a
-//! player, draw a card."
+//! able." — a SELF must-attack requirement (CR 508.1a), installed on ETB.
+//! "Whenever a creature you control deals combat damage to a player, draw a card."
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -35,9 +36,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
 
     // GAP: static "This spell can't be countered." — no expressible primitive.
-    // GAP: static "Toski attacks each combat if able." — no expressible primitive.
     reg.register(
-        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+        CardDefinition::new(name, chars)
+            // "Toski attacks each combat if able." — install a SELF must-attack
+            // requirement on ETB.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_must_attack,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_triggered_ability(TriggeredAbilityDef {
             id: 1,
             trigger_condition: TriggerCondition::DamageDealt {
                 source_filter: ObjectFilter::creature()
@@ -56,4 +68,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
 fn draw_a_card(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     vec![Effect::DrawCards { player: trig.controller, count: 1 }]
+}
+
+fn install_must_attack(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(
+            trig.source,
+            trig.source,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }

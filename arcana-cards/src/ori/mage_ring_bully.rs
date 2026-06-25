@@ -1,11 +1,20 @@
 //! Mage-Ring Bully — `{1}{R}` 2/2 Human Warrior.
-//! "Prowess. This creature attacks each combat if able." Neither clause is
-//! expressible with the demonstrated API, so only the bones are emitted.
+//! "Prowess. This creature attacks each combat if able."
+//!
+//! The self must-attack requirement (CR 508.1a) is installed on ETB.
+//! Prowess is GAP'd (not in the supported KeywordAbility surface).
 
+use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::state::GameState;
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Mage-Ring Bully");
@@ -27,8 +36,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    // GAP: "This creature attacks each combat if able" is a static
-    // attack-requirement on itself — no Effect/keyword expresses a
-    // must-attack self-static.
-    reg.register(CardDefinition::new(name, chars))
+    reg.register(
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: install_must_attack,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
+    )
+}
+
+fn install_must_attack(_s: &GameState, trig: &PendingTrigger, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(
+            trig.source,
+            trig.source,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }

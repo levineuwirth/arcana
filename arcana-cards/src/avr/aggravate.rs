@@ -1,11 +1,11 @@
 //! Aggravate — `{3}{R}{R}` instant. "Aggravate deals 1 damage to each
 //! creature target player controls. Each creature dealt damage this
-//! way attacks this turn if able." The 'attacks-this-turn-if-able'
-//! combat compulsion isn't a catalog grant; emit the damage and GAP
-//! the must-attack rider.
+//! way attacks this turn if able." Emits the damage and installs an
+//! end-of-turn `must_attack` on each damaged creature (CR 508.1a).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
@@ -44,13 +44,20 @@ fn resolve(
     let TargetChoice::Player(p) = target else { return Vec::new(); };
     let p = *p;
     let ids = script::ids_matching(state, &ObjectFilter::creature(), p);
-    // GAP: 'attacks this turn if able' must-attack rider on each
-    // damaged creature.
-    ids.into_iter()
-        .map(|id| Effect::DealDamage {
+    // Deal 1 to each, then force each damaged creature to attack this turn
+    // (CR 508.1a) via an end-of-turn must_attack continuous effect.
+    let mut effects = Vec::with_capacity(ids.len() * 2);
+    for &id in &ids {
+        effects.push(Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Object(id),
             amount: 1,
-        })
-        .collect()
+        });
+    }
+    for &id in &ids {
+        effects.push(Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::must_attack(entry.source, id, Duration::EndOfTurn),
+        });
+    }
+    effects
 }

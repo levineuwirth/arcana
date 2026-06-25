@@ -1,9 +1,10 @@
 //! Rage Nimbus — `{2}{R}` 5/3 Elemental with Defender and Flying.
 //! `{1}{R}: Target creature attacks this turn if able.`
-//! GAP: "must attack this turn if able" — no plain must-attack effect
-//! (Goad would add the can't-attack-you constraint, so it is not faithful).
+//! The "attacks this turn if able" clause installs a `must_attack`
+//! requirement on the target for the turn (CR 508.1a, `Duration::EndOfTurn`).
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -51,7 +52,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn must_attack(_state: &GameState, _ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "target creature attacks this turn if able" — no must-attack effect.
-    Vec::new()
+fn must_attack(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(target) = ctx.targets.targets.first().and_then(|t| t.object_id()) else {
+        return Vec::new();
+    };
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(ctx.source, target, Duration::EndOfTurn),
+    }]
 }

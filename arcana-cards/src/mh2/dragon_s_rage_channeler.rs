@@ -41,7 +41,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     // GAP: Delirium static — "As long as there are four or more card
     // types among cards in your graveyard, this creature gets +2/+2,
     // has flying, and attacks each combat if able." A graveyard-gated
-    // continuous self-buff; no triggered/activated hook to express it.
+    // continuous self-buff with no triggered/activated hook. The
+    // must-attack clause cannot be split off either: the self-MustAttack
+    // requirement is not is_live-gated, so a delirium-conditional duration
+    // would be silently ignored, and installing it unconditionally would
+    // force attacks even without delirium.
     reg.register(
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {

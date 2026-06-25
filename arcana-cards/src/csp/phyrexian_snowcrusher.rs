@@ -1,15 +1,12 @@
 //! Phyrexian Snowcrusher — `{6}` 6/5 Snow Artifact Creature — Phyrexian Juggernaut.
 //!
 //! Oracle:
-//! * This creature attacks each combat if able.  (static attack
-//!   requirement — see GAP below)
+//! * This creature attacks each combat if able.  (SELF must-attack —
+//!   CR 508.1a, installed on ETB)
 //! * `{1}{S}`: This creature gets +1/+0 until end of turn.
-//!
-//! The pump activation is wired faithfully; the "attacks each combat if
-//! able" static has no demonstrated primitive.
 
 use arcana_core::effects::Effect;
-use arcana_core::layers::Duration;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -17,7 +14,11 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Phyrexian Snowcrusher");
@@ -39,11 +40,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    // GAP: static "This creature attacks each combat if able" — no
-    // attack-requirement primitive in the demonstrated surface.
+    // "This creature attacks each combat if able" — SELF must-attack,
+    // installed on ETB.
 
     reg.register(
         CardDefinition::new(name, chars)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_must_attack,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{1}{S}: This creature gets +1/+0 until end of turn.".into(),
                 cost: ActivationCost {
@@ -59,6 +69,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: pump_self,
             }),
     )
+}
+
+fn install_must_attack(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(
+            trig.source,
+            trig.source,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn pump_self(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {

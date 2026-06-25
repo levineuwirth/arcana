@@ -2,15 +2,20 @@
 //!
 //! Oracle:
 //! * Flying, haste  (keyword line)
-//! * This creature attacks each combat if able.  (GAP — a static
-//!   attack-requirement continuous ability with no trigger word and no
-//!   activation cost; not expressible with the demonstrated API.)
+//! * This creature attacks each combat if able.  (ETB-installed
+//!   `must_attack` continuous effect, CR 508.1a.)
 
-use arcana_core::effects::KeywordAbility;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::state::GameState;
+use arcana_core::triggers::{
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Impetuous Sunchaser");
@@ -32,8 +37,26 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    // GAP: "This creature attacks each combat if able." — a static attack
-    // requirement; no demonstrated API to express a must-attack restriction.
+    reg.register(
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: install_must_attack,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
+    )
+}
 
-    reg.register(CardDefinition::new(name, chars))
+/// ETB: "This creature attacks each combat if able." (CR 508.1a)
+fn install_must_attack(_s: &GameState, trig: &PendingTrigger, _r: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::must_attack(
+            trig.source,
+            trig.source,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
