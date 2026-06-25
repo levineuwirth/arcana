@@ -7,9 +7,10 @@
 //!   When this Siege enters, you gain 4 life and draw a card.
 //!
 //! Back face (Serra Faithkeeper):
-//!   Flying, vigilance.
+//!   Flying, vigilance — both are intrinsic keywords on the back-face
+//!   characteristics, so they are live the moment the defeat-transform
+//!   (auto-wired by the engine SBA, CR 310.11) flips to the creature face.
 //!
-//! GAP: defeat→cast-back-face not auto-wired (CR 310.11 deferred).
 //! GAP: Siege protector-designation rule simplified (any opponent's battle
 //!   is attackable).
 

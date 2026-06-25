@@ -7,7 +7,9 @@
 //! Whenever a creature an opponent controls dies, put a +1/+1 counter on
 //! Grandmother Ravi Sengir and you gain 1 life.
 //!
-//! GAP: defeat→cast-back-face not auto-wired (CR 310.11 deferred).
+//! Back face: "Whenever a creature an opponent controls dies, put a +1/+1 counter on
+//! Grandmother Ravi Sengir and you gain 1 life." Face-gated to the back face (face 1).
+//!
 //! GAP: "any other target" for the ETB damage — engine uses AnyTarget which
 //!      may include the battle itself; fidelity gap vs. printed "other".
 
@@ -84,8 +86,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::any_target()],
             })
-            // Back-face trigger: whenever opponent creature dies
-            // GAP: back-face-only triggered ability not isolated by face gate
+            // Back-face trigger: whenever a creature an opponent controls dies, put a
+            // +1/+1 counter on this and gain 1 life. Face-gated to the back face (face 1).
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::ZoneChange {
@@ -100,6 +102,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
+            .with_trigger_face_gate(2, 1)
     )
 }
 

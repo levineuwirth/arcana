@@ -7,11 +7,18 @@
 //!  graveyard, except it's a 4/4 black Zombie in addition to its other colors
 //!  and types."
 //!
+//! Defeat-transform to the 4/4 Zombie back face is auto-wired by the engine SBA
+//! (CR 310.11); the back face's printed 4/4 black Zombie body is its modeled form.
+//!
 //! # GAP notes
-//! - GAP: defeat→cast-back-face not auto-wired (CR 310.11).
-//! - GAP: back face ETB "enter as a copy of any creature card in a graveyard"
-//!   is a replacement/choose effect not expressible in the engine; back face is
-//!   modeled as a plain 4/4 black Zombie.
+//! - GAP: back face ETB "you may have this creature enter as a copy of any
+//!   creature card in a graveyard (except it's a 4/4 black Zombie too)" is a
+//!   copy/replacement effect with a choose-from-graveyard selection; no Effect
+//!   variant copies an arbitrary graveyard card with stat/type overrides onto an
+//!   already-on-battlefield permanent. The back face stays a plain 4/4 Zombie.
+//!   (Note: on defeat the creature is already on the battlefield, so the
+//!   enters-as-a-copy replacement would not even apply — it only matters when the
+//!   card is cast as the creature, which the engine does not do for Sieges.)
 
 use arcana_core::effects::{DiscardChoice, Effect};
 use arcana_core::mana::ManaCost;

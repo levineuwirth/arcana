@@ -8,15 +8,17 @@
 //! Back face: Creature — Dinosaur, Trample.
 //! Whenever you cast a spell, this creature gains indestructible until end of turn.
 //!
-//! GAP: defeat→cast-back-face not auto-wired (CR 310.11).
-//! GAP: Back-face-only triggered ability (gains indestructible when you cast a spell) not modeled.
+//! Front ETB (dig top 5) is face-gated to the battle face (0). The back-face
+//! "whenever you cast a spell, gains indestructible until EOT" is face-gated to
+//! the creature face (1). Defeat→back-face is auto-wired by the engine SBA.
 
 use arcana_core::effects::{DigRest, Effect, KeywordAbility};
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, EntersWithSpec};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -75,9 +77,36 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
-            }),
-        // GAP: Back-face-only triggered ability (gains Indestructible when you cast a spell) not modeled.
+            })
+            // Back (Belligerent Regisaur): whenever you cast a spell, this
+            // creature gains indestructible until end of turn. Face-gated to 1.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SpellCast {
+                    filter: None,
+                    caster: ControllerConstraint::You,
+                },
+                intervening_if: None,
+                effect: back_gain_indestructible,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1),
     )
+}
+
+fn back_gain_indestructible(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::GrantKeyword {
+        target: trig.source,
+        keyword: KeywordAbility::Indestructible,
+        duration: Duration::EndOfTurn,
+    }]
 }
 
 fn etb_dig(

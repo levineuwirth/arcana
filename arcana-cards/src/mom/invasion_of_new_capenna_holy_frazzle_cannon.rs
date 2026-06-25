@@ -23,8 +23,10 @@
 //!   shared-subtype filter); back-face-only triggered ability not modeled (GAP).
 //! - Back face Equip {1}: wired via `with_equip_face_gated({1}, 1)` (face-gated
 //!   to the back/Equipment face; the Equip keyword is recorded on that face).
-//! - Defeat → cast back face is not auto-wired (GAP: defeat→cast-back-face
-//!   not auto-wired).
+//!
+//! Defeat→back-face is auto-wired by the engine SBA. Front ETB (the simplified
+//! exile) is face-gated to the battle face (0). The back-face equipped-creature-
+//! attacks trigger remains GAP'd (host-relative shared-subtype board sweep).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -107,8 +109,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![etb_req],
-            }),
-        // GAP: defeat→cast-back-face not auto-wired
+            })
+            .with_trigger_face_gate(1, 0),
         // GAP: back-face-only triggered ability (equipped creature attacks →
         //      +1/+1 counter on it and each shared-creature-type creature) not
         //      modeled — host-relative shared-subtype board sweep not expressible

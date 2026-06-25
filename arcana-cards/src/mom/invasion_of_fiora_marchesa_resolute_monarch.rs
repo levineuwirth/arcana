@@ -10,10 +10,19 @@
 //! At the beginning of your upkeep, if you haven't been dealt combat damage since
 //! your last turn, you draw a card and you lose 1 life.
 //!
-//! GAP: defeat→cast-back-face not auto-wired (CR 310.11).
-//! GAP: back-face-only triggered abilities (attack trigger + upkeep conditional draw) not modeled.
-//! GAP: "remove all counters" — no Effect::RemoveAllCounters variant; back-face attack trigger omitted.
-//! GAP: upkeep "if you haven't been dealt combat damage since your last turn" condition not tracked.
+//! Defeat-transform to the Marchesa creature back face is auto-wired by the
+//! engine SBA (CR 310.11); Menace + Deathtouch are intrinsic on the back-face
+//! characteristics. Both back-face triggered abilities hit genuine engine
+//! blockers and stay GAP'd (the exact missing primitives are named below).
+//!
+//! GAP: back-face "Whenever Marchesa attacks, remove all counters from up to one
+//!      target permanent" — no Effect::RemoveAllCounters variant (only
+//!      Effect::RemoveCounters{kind,count} removes a specific counter kind/amount);
+//!      "all counters of every kind" is inexpressible. Attack trigger omitted.
+//! GAP: back-face "At the beginning of your upkeep, if you haven't been dealt
+//!      combat damage since your last turn, draw a card and lose 1 life" — no
+//!      per-window "combat damage dealt to you since your last turn" tracker
+//!      exists. Upkeep trigger omitted.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
@@ -82,8 +91,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            // GAP: back-face-only triggered abilities (Marchesa attacks → remove counters,
-            // upkeep → draw/lose 1) not modeled (back-face-only ability engine debt).
+            // GAP: back-face attack trigger (remove ALL counters) inexpressible — no
+            //      Effect::RemoveAllCounters. Back-face upkeep trigger inexpressible —
+            //      no "dealt combat damage since your last turn" tracker. See module doc.
     )
 }
 

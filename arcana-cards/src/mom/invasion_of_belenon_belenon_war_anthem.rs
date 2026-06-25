@@ -5,17 +5,19 @@
 //!
 //! Back face (Enchantment): Creatures you control get +1/+1.
 //!
-//! GAP: defeat→cast-back-face not auto-wired (CR 310.11).
+//! Defeat-transform to the enchantment back face is auto-wired by the engine SBA
+//! (CR 310.11). The back face's "Creatures you control get +1/+1" anthem is
+//! installed on the defeat-transform via a Layer-7c controller anthem that is live
+//! only while the source shows face 1 (Duration::WhileSourceShowsFace(1)).
+//!
 //! GAP: Siege protector-designation simplified — any opponent's battle is attackable.
-//! GAP: +1/+1 anthem on back face is a static layer; no continuous Effect API.
-//!      Omitting back-face ability.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, EntersWithSpec};
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -64,21 +66,46 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 count: 4,
             })
             .with_transform_back(back)
+            // Front ETB: "When this Siege enters, create a 2/2 W/U Knight with vigilance."
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::new()
-                        .controlled_by(ControllerConstraint::You),
-                    from: None,
-                    to: Zone::Battlefield,
-                },
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
                 intervening_if: None,
                 effect: etb_trigger,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
+            })
+            // Back face (enchantment): "Creatures you control get +1/+1." Installed
+            // on the defeat-transform; live only while showing the back face.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: install_back_anthem,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
             }),
     )
+}
+
+/// Back-face anthem: creatures the controller controls get +1/+1, live only
+/// while the source shows the enchantment (back) face.
+fn install_back_anthem(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::anthem(
+            trig.source,
+            trig.controller,
+            1,
+            1,
+            Duration::WhileSourceShowsFace(1),
+        ),
+    }]
 }
 
 fn etb_trigger(

@@ -4,15 +4,20 @@
 //! Back face: Primordial Plasm, Creature — Ooze. At the beginning of combat on your turn,
 //! another target creature gets +2/+2 and loses all abilities until end of turn.
 //!
+//! Defeat→back-face is auto-wired by the engine SBA. Front ETB (counter + fight)
+//! is face-gated to the battle face (0); the back-face beginning-of-combat
+//! ability is face-gated to the creature face (1).
+//!
 //! # GAPs
 //! - "fights up to one target creature you don't control" — modeled as a fixed-1 fight when a
 //!   second target is chosen; if none chosen the fight is skipped (counter still applied).
-//! - Back-face "at the beginning of combat on your turn, another target creature gets +2/+2 and
-//!   loses all abilities" — back-face triggered abilities are not wired through CardFace; omitted.
-//! - defeat→cast-back-face not auto-wired (CR 310.11).
+//! - Back-face "another target creature" — the engine has no exclude-source
+//!   target restriction, so the trigger targets any creature (the "another"
+//!   clause is not strictly enforced; the back face is a 0/0 creature itself).
 //! - Siege protector-designation simplified (any opponent may attack it).
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, EntersWithSpec};
@@ -23,6 +28,7 @@ use arcana_core::targets::{
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
+use arcana_core::turn::Step;
 use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -93,8 +99,49 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                         controller: None,
                     },
                 ],
-            }),
+            })
+            // Back (Primordial Plasm): at the beginning of combat on your turn,
+            // another target creature gets +2/+2 and loses all abilities until
+            // end of turn. Face-gated to the creature face (1).
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::BeginCombat,
+                    whose: ControllerConstraint::You,
+                },
+                intervening_if: None,
+                effect: back_combat_buff,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+            })
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1),
     )
+}
+
+fn back_combat_buff(_state: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    let id = *id;
+    vec![
+        Effect::Pump {
+            target: id,
+            power: 2,
+            toughness: 2,
+            duration: Duration::EndOfTurn,
+            keywords: vec![],
+        },
+        Effect::LoseAllAbilities {
+            target: id,
+            duration: Duration::EndOfTurn,
+        },
+    ]
 }
 
 fn etb_counter_fight(_state: &GameState, trig: &PendingTrigger, _: &CardRegistry) -> Vec<Effect> {

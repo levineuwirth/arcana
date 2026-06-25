@@ -9,10 +9,12 @@
 //! ETB "you may discard a card. If you do, draw two cards." is wired via
 //! Effect::OptionalPayment { Discard(1) → draw 2 }.
 //!
+//! Defeat→back-face is auto-wired by the engine SBA. Front ETB (may discard,
+//! then draw two) is face-gated to the battle face (0); the back-face activated
+//! ability is already face-gated to the creature face (1). The back face has no
+//! "when it enters" ability, so nothing else needs a SelfTransforms trigger.
+//!
 //! GAPs:
-//! - When defeated, exile and cast the back face transformed (CR 310.11) is not
-//!   auto-wired; the battle just goes to the graveyard. The back face is authored
-//!   via with_transform_back so it is at least defined.
 //! - Back face has no printed P/T in the spec; modeled as a 1/1 placeholder.
 
 use arcana_core::actions::OptionalPaymentKind;

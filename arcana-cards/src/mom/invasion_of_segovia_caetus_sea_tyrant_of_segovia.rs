@@ -3,18 +3,23 @@
 //! Front face: Battle — Siege, {2}{U}, enters with 3 defense counters.
 //! When this Siege enters, create two 1/1 blue Kraken creature tokens with trample.
 //! Back face: Legendary Creature — Serpent, 4/4.
-//! GAP: Convoke keyword (noncreature spells you cast have convoke) not in engine keyword surface.
-//! GAP: Back-face-only triggered ability (untap up to 4 creatures at end step) not modeled.
-//! GAP: defeat→cast-back-face not auto-wired (CR 310.11).
+//! Back-face triggered ability: at the beginning of each end step, untap up to four target
+//! creatures (face-gated to the back face, face 1).
+//! GAP: "Noncreature spells you cast have convoke" — a static modifying how YOUR spells are
+//!      cast, not a keyword on this creature; no spell-granting-convoke static primitive.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, EntersWithSpec};
 use arcana_core::state::GameState;
+use arcana_core::targets::{
+    ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
+use arcana_core::turn::Step;
 use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -70,8 +75,45 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
-            }),
+            })
+            // Back face: "At the beginning of each end step, untap up to four target
+            // creatures." Face-gated to the back face (face 1).
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::End,
+                    whose: ControllerConstraint::Any,
+                },
+                intervening_if: None,
+                effect: end_step_untap,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::UpTo(4),
+                    controller: None,
+                }],
+            })
+            .with_trigger_face_gate(2, 1),
     )
+}
+
+fn end_step_untap(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    trig.targets
+        .targets
+        .iter()
+        .filter_map(|t| {
+            if let TargetChoice::Object(id) = t {
+                Some(Effect::Untap { target: *id })
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 fn etb_create_tokens(

@@ -4,16 +4,15 @@
 //! Back face: Defiant Thundermaw — Creature — Dragon with Flying, Trample.
 //!   Whenever a Dragon you control attacks, it deals 2 damage to any target.
 //!
+//! Back face triggered ability "whenever a Dragon you control attacks, it deals 2 damage to
+//!   any target" is wired and face-gated to the back face (face 1), filtered to Dragons you
+//!   control.
+//!
 //! # GAP
-//! "Reveal any number of Dragon cards from your hand" — choosing cards from hand
-//!   to reveal is not expressible; X is the count of revealed cards which requires
-//!   player choice. The ETB damage trigger is GAP'd (Vec::new()) since the reveal
-//!   count cannot be computed.
-//! Back face triggered ability "whenever a Dragon you control attacks" is a
-//!   back-face-only triggered ability; emitted here but will always be active
-//!   (engine doesn't gate by face). // GAP: back-face-only triggered ability not modeled.
-//! Scryfall keyword Transform: the defeat→cast-back-face is not auto-wired.
-//!   // GAP: defeat→cast-back-face not auto-wired.
+//! Front battle ETB "Reveal any number of Dragon cards from your hand; deal X+2 damage where
+//!   X = cards revealed" — choosing cards from hand to reveal is not expressible; X is the
+//!   count of revealed cards which requires player choice. The damage trigger is left unwired
+//!   (the reveal count cannot be computed).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
@@ -63,8 +62,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         spell_ability: None,
     };
 
-    // Pre-intern Dragon for the attack trigger filter
-    let _dragon_sub2 = reg.interner_mut().intern("Dragon");
+    // Intern Dragon for the attack trigger filter.
+    let dragon_for_filter = reg.interner_mut().intern("Dragon");
 
     reg.register(
         CardDefinition::new(name, chars)
@@ -73,22 +72,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 kind: CounterKind::Defense,
                 count: 6,
             })
-            // GAP: ETB "reveal Dragon cards, deal X+2 damage" — reveal count not expressible.
-            // GAP: back-face-only triggered ability not modeled (always active here).
+            // GAP: front battle ETB "reveal Dragon cards, deal X+2 damage" — reveal count
+            //      not expressible (player choice over hand).
+            // Back face: "Whenever a Dragon you control attacks, it deals 2 damage to any
+            // target." Face-gated to the back face (face 1).
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // Whenever a Dragon you control attacks — back-face-only in rules, but active always here.
-                // GAP: back-face-only triggered ability not modeled.
                 trigger_condition: TriggerCondition::CreatureAttacks {
                     filter: ObjectFilter::creature()
-                        .controlled_by(arcana_core::targets::ControllerConstraint::You),
+                        .controlled_by(arcana_core::targets::ControllerConstraint::You)
+                        .with_subtype_sym(dragon_for_filter),
                 },
                 intervening_if: None,
                 effect: dragon_attacks_trigger,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement::any_target()],
-            }),
+            })
+            .with_trigger_face_gate(1, 1),
     )
 }
 

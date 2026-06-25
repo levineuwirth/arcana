@@ -18,7 +18,6 @@
 //!   abilities, one per WUBRG color (command_tower idiom), face-gated to the back
 //!   face (face 1); the shared {T} cost means activating one taps the source, so
 //!   only one fires.
-//! - defeat→cast-back-face not auto-wired (CR 310.11).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::{ManaCost, ManaUnit};
@@ -78,7 +77,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         },
         spell_ability: None,
     };
-    // GAP: defeat→cast-back-face not auto-wired (CR 310.11).
     // Back face "{T}: Add one mana of any color" — five mana abilities, one per
     // WUBRG color, face-gated to the back face (face 1).
 

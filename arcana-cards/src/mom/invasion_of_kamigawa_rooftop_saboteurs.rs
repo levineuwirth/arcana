@@ -7,9 +7,15 @@
 //! Back face: Creature — Moonfolk Ninja, Flying.
 //! Whenever this creature deals combat damage to a player or battle, draw a card.
 //!
-//! GAP: defeat→cast-back-face not auto-wired (CR 310.11 deferred).
+//! Defeat→back-face is auto-wired by the engine SBA. Front ETB (tap + stun) is
+//! face-gated to the battle face (0); the back-face combat-damage draw is
+//! face-gated to the creature face (1), restricted to this permanent via a
+//! source-name filter.
+//!
 //! GAP: Ninja keyword (Ninjutsu) not in KeywordAbility enum.
-//! GAP: Back-face-only triggered ability (combat damage draw) not modeled.
+//! GAP: the "or battle" half of the combat-damage trigger — combat damage to a
+//!      defending battle is an object-target shape; only the player half is
+//!      wired (TargetFilter::Player).
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
@@ -87,10 +93,40 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
-            }),
-        // GAP: back-face-only triggered ability not modeled —
-        //      "Whenever this creature deals combat damage to a player or battle, draw a card"
+            })
+            // Back (Rooftop Saboteurs): whenever this creature deals combat
+            // damage to a player, draw a card. Source restricted to this
+            // permanent by name; face-gated to the creature face (1).
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::DamageDealt {
+                    source_filter: ObjectFilter {
+                        name: Some(back_name),
+                        ..ObjectFilter::default()
+                    },
+                    target_filter: TargetFilter::Player,
+                    combat_only: true,
+                },
+                intervening_if: None,
+                effect: back_draw,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1),
     )
+}
+
+fn back_draw(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::DrawCards {
+        player: trig.controller,
+        count: 1,
+    }]
 }
 
 fn etb_tap_stun(

@@ -10,27 +10,32 @@
 //! Sacrifice this enchantment: Creatures you control gain hexproof and
 //! indestructible until end of turn.
 //!
+//! Defeat-transform to the enchantment back face is auto-wired by the engine SBA
+//! (CR 310.11). The back face's end-step counter trigger and sacrifice activated
+//! ability are wired (the latter face-gated to face 1).
+//!
 //! GAPs:
 //! - ETB "look at hand / exile nonland / owner may play it for {2} more":
 //!   the hand-look, optional exile-from-hand, and cost-rider are not expressible
 //!   with any catalog Effect variant. Emitting Vec::new() for the ETB resolver.
-//! - "Each creature that attacked this turn" trigger: no script API for
-//!   'attacked this turn' set. Emitting Vec::new() for that trigger.
-//! - "Sacrifice this enchantment: creatures gain hexproof + indestructible" —
-//!   activated ability on transform-back face not wired by current engine.
-//! - GAP: defeat→cast-back-face not auto-wired (CR 310.11).
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
-use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, EntersWithSpec};
+use arcana_core::registry::{
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardFace, CardRegistry, EntersWithSpec,
+};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, TargetCount, TargetFilter, TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetCount, TargetFilter, TargetRequirement,
 };
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
+use arcana_core::turn::Step;
 use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -84,6 +89,37 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![etb_target],
             })
+            // Back face: "At the beginning of your end step, put a +1/+1 counter
+            // on each creature that attacked this turn." Face-gated to face 1.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::End,
+                    whose: ControllerConstraint::You,
+                },
+                intervening_if: None,
+                effect: back_counter_attackers,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(2, 1)
+            // Back face: "Sacrifice this enchantment: Creatures you control gain
+            // hexproof and indestructible until end of turn." Face-gated to face 1.
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "Sacrifice this enchantment: Creatures you control gain hexproof and indestructible until end of turn.".into(),
+                cost: ActivationCost {
+                    sacrifice: true,
+                    ..ActivationCost::default()
+                },
+                target_requirements: Vec::new(),
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: true,
+                face_gate: Some(1), // back (enchantment) face only
+                effect: back_protect_creatures,
+            })
             .with_transform_back(back_face),
     )
 }
@@ -98,4 +134,50 @@ fn etb_resolve(
     // costs {2} more" — no catalog Effect for hand-look, exile-from-hand, or
     // play-permission with cost modification.
     Vec::new()
+}
+
+/// "Put a +1/+1 counter on each creature that attacked this turn." Enumerate
+/// battlefield creatures and keep those that were declared as attackers.
+fn back_counter_attackers(
+    state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    script::ids_matching(state, &ObjectFilter::creature(), trig.controller)
+        .into_iter()
+        .filter(|&id| script::creature_attacked_this_turn(state, id))
+        .map(|id| Effect::AddCounters {
+            target: id,
+            kind: CounterKind::PlusOnePlusOne,
+            count: 1,
+        })
+        .collect()
+}
+
+/// "Creatures you control gain hexproof and indestructible until end of turn."
+/// Two filtered keyword grants over creatures the controller controls.
+fn back_protect_creatures(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mine = ObjectFilter::creature().controlled_by(ControllerConstraint::You);
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::filtered_keyword(
+                ctx.source,
+                mine.clone(),
+                KeywordAbility::Hexproof,
+                Duration::EndOfTurn,
+            ),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::filtered_keyword(
+                ctx.source,
+                mine,
+                KeywordAbility::Indestructible,
+                Duration::EndOfTurn,
+            ),
+        },
+    ]
 }

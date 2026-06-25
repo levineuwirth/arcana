@@ -4,7 +4,6 @@
 //! Back face (Leyline Surge): Enchantment — "At the beginning of your upkeep, you may put a
 //! permanent card from your hand onto the battlefield."
 //!
-//! GAP: defeat→cast-back-face not auto-wired (CR 310.11).
 //! GAP: "up to three targets" multi-target return-from-graveyard — each target is returned
 //!      individually via the targets vec.
 
@@ -93,7 +92,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: Vec::new(),
             })
             .with_trigger_face_gate(2, 1),
-        // GAP: defeat→cast-back-face not auto-wired (CR 310.11).
     )
 }
 

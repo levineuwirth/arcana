@@ -12,9 +12,6 @@
 //! - ETB target restriction "that isn't exactly two colors": there is no
 //!   color-count filter primitive, so the restriction is dropped — the target
 //!   is any nonland permanent an opponent controls. The exile itself is modeled.
-//! - Defeat -> exile and cast transformed (CR 310.11) is not auto-wired; the
-//!   battle just goes to the graveyard. Back face declared via
-//!   with_transform_back so the transform machinery has a target.
 //! - Back face "Whenever you cast a spell that's exactly two colors, look at
 //!   the top six..., reveal a two-color card, put it into hand": the
 //!   exactly-two-colors gate has no filter primitive and the look-reveal-pick
@@ -98,7 +95,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     controller: None,
                 }],
             }),
-        // GAP: defeat -> cast back face transformed not auto-wired.
+        // GAP: back-face cast-trigger ("Whenever you cast a spell that's exactly two
+        //      colors, dig 6, reveal a two-color card to hand") — the exactly-two-colors
+        //      gate has no color-count filter primitive, so neither the SpellCast trigger
+        //      filter nor the DigTopN reveal filter can express it. Left unwired.
     )
 }
 

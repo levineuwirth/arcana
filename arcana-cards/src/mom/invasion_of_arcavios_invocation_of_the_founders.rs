@@ -4,12 +4,16 @@
 //! Defeated → Invocation of the Founders
 //! Back: Enchantment. Whenever you cast an instant or sorcery spell from your hand, you may copy
 //!       that spell. You may choose new targets for the copy.
+//! Defeat-transform to the enchantment back face is auto-wired by the engine SBA
+//! (CR 310.11). The back face's only ability is a copy-on-cast trigger, GAP'd below.
+//!
 //! GAP: "search outside the game" not expressible.
 //! GAP: "search library and/or graveyard" combined — using TutorToHand (library search only;
 //!      graveyard portion not expressible via engine API).
-//! GAP: Back face "whenever you cast an instant or sorcery from your hand, copy it" triggered
-//!      ability not modeled (back-face-only triggered abilities not auto-installed on transform).
-//! GAP: defeat→cast-back-face not auto-wired (CR 310.11 deferred).
+//! GAP: Back face "whenever you cast an instant or sorcery spell from your hand, you may copy
+//!      that spell" — Effect::CopySpell needs the just-cast spell's stack object id, which a
+//!      TriggerCondition::SpellCast resolver has no accessor for (same blocker as Verazol /
+//!      Pyromancer's Goggles). The copy half is genuinely inexpressible; left unwired.
 //! Defense counter count not stated in oracle; defaulting to 4 (typical Siege value).
 
 use arcana_core::effects::Effect;
@@ -70,8 +74,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),
-        // GAP: back-face triggered ability (copy instant/sorcery you cast from hand) not modeled.
-        // GAP: defeat→cast-back-face not auto-wired.
+        // GAP: back-face copy-on-cast trigger inexpressible (CopySpell needs the
+        //      just-cast spell's stack id — no accessor from a SpellCast trigger).
     )
 }
 

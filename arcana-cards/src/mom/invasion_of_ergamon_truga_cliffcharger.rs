@@ -12,10 +12,11 @@
 //! Front ETB "Then you may discard a card. If you do, draw a card." is wired
 //! via Effect::OptionalPayment { Discard(1) → draw 1 }.
 //!
-//! GAP: defeat→cast-back-face not auto-wired (CR 310.11).
-//! GAP: back-face-only triggered ability (back ETB "you may discard a card. If
-//!      you do, search your library for a land or battle card") not auto-installed
-//!      on transform — the back-face trigger has no face-gated home here.
+//! Defeat-transform to the Rhino back face is auto-wired by the engine SBA
+//! (CR 310.11). The back face's "when this creature enters, you may discard a
+//! card; if you do, search your library for a land or battle card" fires on the
+//! SelfTransforms{to_face:Some(1)} trigger via OptionalPayment { Discard(1) →
+//! TutorToHand(land or battle) }. Trample is intrinsic on the back-face chars.
 //!
 //! Defense counter count: 4 (as printed on Invasion of Ergamon).
 //! Back face P/T: 4/4 (as printed on Truga Cliffcharger).
@@ -26,6 +27,7 @@ use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, EntersWithSpec};
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -74,7 +76,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 count: 4,
             })
             .with_transform_back(back)
-            // ETB trigger: create Treasure, then may discard → draw.
+            // Front ETB: create Treasure, then may discard → draw.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
@@ -83,11 +85,39 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![],
+            })
+            // Back-face ETB (fires on the defeat-transform): you may discard a
+            // card; if you do, search your library for a land or battle card,
+            // reveal it, put it into your hand, then shuffle.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: back_discard_tutor,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![],
             }),
-        // GAP: defeat→cast-back-face not auto-wired (CR 310.11).
-        // GAP: back-face-only ETB trigger (discard → search for land/battle card)
-        //      not auto-installed on transform.
     )
+}
+
+fn back_discard_tutor(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let filter = ObjectFilter::new()
+        .with_types_any(TypeLine(TypeLine::LAND | TypeLine::BATTLE));
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Discard(1),
+        then: Box::new(Effect::TutorToHand {
+            player: trig.controller,
+            filter,
+            reveal: true,
+        }),
+        else_effect: None,
+    }]
 }
 
 fn etb_treasure_loot(

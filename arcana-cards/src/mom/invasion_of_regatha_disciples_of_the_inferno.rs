@@ -2,18 +2,14 @@
 //! counters. ETB: deals 4 damage to another target battle or opponent and 1 damage to up to
 //! one target creature.
 //!
-//! Back face: Disciples of the Inferno — 5/4 Creature — Human Monk.
-//! Prowess: GAP — Prowess not in engine keyword surface.
-//! Back-face static "noncreature source you control deals +2 damage": GAP — replacement
-//! effect static not modeled by engine.
+//! Back face: Disciples of the Inferno — 5/4 Creature — Human Monk with Prowess.
 //!
 //! # GAPs
-//! - Prowess not in engine keyword surface (back face).
-//! - "noncreature source deals +2 damage" is a replacement effect, not modeled.
-//! - defeat→cast-back-face not auto-wired (engine sends defeated Battle to graveyard).
-//! - GAP: back-face-only triggered ability not modeled.
+//! - "Whenever you cast a noncreature spell, noncreature sources you control deal +2 damage
+//!   this turn" is a replacement-modifying static rider, not modeled (no damage-boost
+//!   replacement effect). The Prowess keyword itself is on the back face.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -59,8 +55,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             subtypes: back_subtypes,
             power: Some(PtValue::Fixed(5)),
             toughness: Some(PtValue::Fixed(4)),
-            // GAP: Prowess not in engine keyword surface
-            // GAP: "noncreature source deals +2 damage" replacement effect not modeled
+            keywords: vec![KeywordAbility::Prowess],
+            // GAP: "noncreature source deals +2 damage this turn" replacement-modifying
+            //      rider not modeled (no damage-boost replacement effect primitive).
             ..Default::default()
         },
         spell_ability: None,
@@ -73,7 +70,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 count: 6,
             })
             .with_transform_back(back)
-            // GAP: defeat->cast-back-face not auto-wired
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,

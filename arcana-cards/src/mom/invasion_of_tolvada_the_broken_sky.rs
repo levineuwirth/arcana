@@ -5,14 +5,16 @@
 //! lifelink. At the beginning of your end step, create a 1/1 white and
 //! black Spirit creature token with flying.
 //!
-//! GAP: defeat→cast-back-face not auto-wired (CR 310.11 deferred).
-//! GAP: back-face static "+1/+0 and lifelink for creature tokens you
-//!   control" is a continuous anthem — the ETB-install pattern works but
-//!   the back face's ETB trigger isn't auto-fired on transform. The
-//!   end-step spirit-creation trigger is authored but fires on both faces
-//!   (no face_gate on TriggeredAbilityDef).
+//! Back face (The Broken Sky — Enchantment):
+//! - Static "Creature tokens you control get +1/+0 and have lifelink" — installed as a
+//!   filtered_pump + filtered_keyword (tokens_only creatures you control) on the
+//!   SelfTransforms{to_face:1} trigger with Duration::WhileSourceShowsFace(1) (dormant on
+//!   the battle face, live on the back face).
+//! - "At the beginning of your end step, create a 1/1 W/B Spirit with flying" — face-gated
+//!   to the back face (face 1).
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, EntersWithSpec};
@@ -85,7 +87,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 }],
             })
             // Back-face ability: at the beginning of your end step, create a Spirit token.
-            // GAP: fires on both faces (no face_gate on TriggeredAbilityDef).
+            // Face-gated to the back face (face 1).
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::StepBegins {
@@ -97,8 +99,49 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(2, 1)
+            // Back-face static: "Creature tokens you control get +1/+0 and have lifelink."
+            // Installed on the defeat→back-face transform, live only while showing face 1.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 3,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: install_token_anthem,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
             }),
     )
+}
+
+fn install_token_anthem(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let filter = ObjectFilter::creature()
+        .controlled_by(ControllerConstraint::You)
+        .tokens_only();
+    vec![
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::filtered_pump(
+                trig.source,
+                filter.clone(),
+                1,
+                0,
+                Duration::WhileSourceShowsFace(1),
+            ),
+        },
+        Effect::InstallContinuousEffect {
+            effect: ContinuousEffect::filtered_keyword(
+                trig.source,
+                filter,
+                KeywordAbility::Lifelink,
+                Duration::WhileSourceShowsFace(1),
+            ),
+        },
+    ]
 }
 
 fn etb_reanimate(

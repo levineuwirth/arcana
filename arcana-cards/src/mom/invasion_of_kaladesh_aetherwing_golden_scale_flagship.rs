@@ -12,7 +12,10 @@
 //!   dynamic characteristic-setting layer effect, not a static P/T. Not expressible;
 //!   emitting 0/0 as a placeholder.
 //! - Crew keyword is not in the engine keyword surface; not emitted.
-//! - GAP: defeat→cast-back-face not auto-wired (CR 310.11 deferred).
+//! Defeat→back-face is auto-wired by the engine SBA. The back-face Vehicle has
+//! no "when it enters" ability; its only printed abilities (dynamic power, Crew)
+//! remain GAP'd above. Front ETB (create a Thopter) is face-gated to the battle
+//! face (0).
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -82,6 +85,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
+            .with_trigger_face_gate(1, 0)
     )
 }
 

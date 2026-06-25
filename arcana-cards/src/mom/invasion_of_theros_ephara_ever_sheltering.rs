@@ -7,19 +7,20 @@
 //! Back face: Ephara, Ever-Sheltering — Legendary Enchantment Creature — God (5/7).
 //! Ephara has lifelink and indestructible as long as you control at least three
 //! other enchantments. (GAP: conditional keyword grant — continuous-effect engine debt.)
-//! Whenever another enchantment you control enters, draw a card. (GAP: back-face
-//! triggered ability not modeled — back-face triggers only fire while transformed.)
+//! "Whenever another enchantment you control enters, draw a card" — wired as a face-gated
+//! (face 1) ZoneChange→Battlefield trigger filtered to enchantments you control.
 //!
-//! GAP: defeat→cast-back-face not auto-wired (CR 310.11).
-//! GAP: Ephara's lifelink + indestructible conditional static — continuous-effect engine subsystem.
-//! GAP: "whenever another enchantment you control enters, draw a card" — back-face trigger deferred.
+//! GAP: Ephara's lifelink + indestructible conditional static — no conditional-keyword-grant
+//!      continuous-effect primitive (the grant is gated on "you control 3+ other enchantments").
+//! GAP: the draw trigger's "another" self-exclusion isn't expressible as a filter predicate;
+//!      it can also fire on Ephara's own enter (matches the binding_mummy precedent).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, EntersWithSpec};
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -83,8 +84,37 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
-            }),
+            })
+            // Back face: "Whenever another enchantment you control enters, draw a card."
+            // Face-gated to the back face (face 1). See header for the "another" GAP.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::ZoneChange {
+                    filter: ObjectFilter::new()
+                        .with_types(TypeLine::ENCHANTMENT.into())
+                        .controlled_by(ControllerConstraint::You),
+                    from: None,
+                    to: Zone::Battlefield,
+                },
+                intervening_if: None,
+                effect: draw_on_enchantment_enter,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(2, 1),
     )
+}
+
+fn draw_on_enchantment_enter(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::DrawCards {
+        player: trig.controller,
+        count: 1,
+    }]
 }
 
 fn etb_tutor(

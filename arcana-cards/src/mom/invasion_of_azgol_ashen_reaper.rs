@@ -6,15 +6,19 @@
 //!   At the beginning of your end step, put a +1/+1 counter on this creature if
 //!   a permanent was put into a graveyard from the battlefield this turn.
 //!
+//! Defeat-transform to the 2/2 Menace Zombie Elemental back face is auto-wired by
+//! the engine SBA (CR 310.11). The back face's end-step +1/+1 trigger is wired and
+//! face-gated to face 1.
+//!
 //! GAP: Front ETB "target player sacrifices a creature or planeswalker of THEIR
 //!      choice" — Effect::Sacrifice has the player pick; filter includes creatures
 //!      and planeswalkers (best-effort). "of their choice" is modeled by Effect::Sacrifice
 //!      which lets the player choose.
-//! GAP: Back trigger condition "if a permanent was put into a graveyard from the
-//!      battlefield this turn" — no per-turn zone-change counting in the engine;
-//!      trigger fires unconditionally at end step.
-//! GAP: defeat→cast-back-face not auto-wired (CR 310.11).
-//! GAP: back-face-only triggered ability not auto-installed on transform.
+//! GAP: Back trigger condition "if a PERMANENT was put into a graveyard from the
+//!      battlefield this turn" — no any-permanent-to-graveyard accessor exists; the
+//!      intervening-if uses `a_creature_died_this_turn` (creatures + planeswalkers),
+//!      which UNDER-fires for noncreature permanents but is strictly better than the
+//!      prior unconditional firing.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
@@ -87,23 +91,35 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     controller: None,
                 }],
             })
-            // Back face: at beginning of your end step, put a +1/+1 counter.
-            // GAP: condition "if a permanent was put into a graveyard this turn" not modeled;
-            //      fires unconditionally.
-            // GAP: back-face-only triggered ability not auto-installed on transform.
+            // Back face: at beginning of your end step, put a +1/+1 counter on
+            // this creature if a permanent went to a graveyard from the battlefield
+            // this turn. Face-gated to the creature (back) face; intervening-if
+            // approximated by `a_creature_died_this_turn` (see module GAP).
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
                 trigger_condition: TriggerCondition::StepBegins {
                     step: Step::End,
                     whose: ControllerConstraint::You,
                 },
-                intervening_if: None,
+                intervening_if: Some(permanent_hit_graveyard),
                 effect: back_end_step_counter,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
+            .with_trigger_face_gate(2, 1)
     )
+}
+
+/// Intervening-if: "if a permanent was put into a graveyard from the battlefield
+/// this turn." Approximated by creatures/planeswalkers that died (see module GAP).
+fn permanent_hit_graveyard(
+    state: &GameState,
+    _source: arcana_core::objects::ObjectId,
+    _controller: arcana_core::types::PlayerId,
+    _reg: &CardRegistry,
+) -> bool {
+    arcana_core::conditions::a_creature_died_this_turn(state)
 }
 
 fn etb_trigger(

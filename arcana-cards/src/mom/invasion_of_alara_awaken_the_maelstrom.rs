@@ -11,7 +11,11 @@
 //! Distribute three +1/+1 counters among one, two, or three creatures you control.
 //! Destroy target permanent an opponent controls.
 //!
-//! GAP: defeat→cast-back-face not auto-wired (CR 310.11 deferred).
+//! The back-face sorcery's effects fire on the defeat-transform via the
+//! `SelfTransforms{to_face:Some(1)}` trigger. The two target-bearing clauses
+//! ("target player draws two cards" + "destroy target permanent an opponent
+//! controls") are wired; the three choice-heavy riders remain GAP'd below.
+//!
 //! GAP: ETB "exile until two nonland ≤ mv4, cast one free, put one in hand" —
 //!   RevealUntil finds the first matching card only (not two); no free-cast variant.
 //!   Approximated as DigTopN with max_reveal-bounded filter (poor approximation);
@@ -21,15 +25,17 @@
 //! GAP: back-face "create a token copy of a permanent you control (with choice)" —
 //!   CopyPermanent requires a specific target id; no "you choose which" selection.
 //! GAP: back-face "distribute three +1/+1 counters among creatures" — multi-target
-//!   distribution not expressible; effect omitted.
-//! GAP: back-face "destroy target permanent an opponent controls" modeled faithfully.
+//!   distribution (one/two/three creatures) not expressible; effect omitted.
 
 use arcana_core::effects::{DigRest, Effect, RevealDest};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, EntersWithSpec};
 use arcana_core::state::GameState;
-use arcana_core::targets::ObjectFilter;
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -89,8 +95,53 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
+            })
+            // Back-face sorcery resolves on the defeat-transform: target player
+            // draws two cards; destroy target permanent an opponent controls.
+            // (The three choice-heavy riders are GAP'd — see module doc.)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfTransforms { to_face: Some(1) },
+                intervening_if: None,
+                effect: back_draw_and_destroy,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![
+                    // Target player draws two cards.
+                    TargetRequirement {
+                        filter: TargetFilter::Player,
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                    // Destroy target permanent an opponent controls.
+                    TargetRequirement {
+                        filter: TargetFilter::Permanent(
+                            ObjectFilter::new()
+                                .controlled_by(ControllerConstraint::Opponent),
+                        ),
+                        count: TargetCount::Exactly(1),
+                        controller: None,
+                    },
+                ],
             }),
     )
+}
+
+fn back_draw_and_destroy(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let mut effects = Vec::new();
+    // First target: a player draws two cards.
+    if let Some(TargetChoice::Player(p)) = trig.targets.targets.first() {
+        effects.push(Effect::DrawCards { player: *p, count: 2 });
+    }
+    // Second target: destroy a permanent an opponent controls.
+    if let Some(TargetChoice::Object(id)) = trig.targets.targets.get(1) {
+        effects.push(Effect::DestroyPermanent { target: *id });
+    }
+    effects
 }
 
 fn etb_dig(

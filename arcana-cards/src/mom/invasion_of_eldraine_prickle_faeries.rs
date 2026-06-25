@@ -8,19 +8,25 @@
 //!   At the beginning of each opponent's upkeep, if that player has two or fewer cards in hand,
 //!   this creature deals 2 damage to them.
 //!
-//! GAP: defeat→cast-back-face not auto-wired (CR 310.11); back face goes to graveyard on defeat.
-//! GAP: Back-face-only triggered ability (beginning of each opponent's upkeep conditional damage)
-//!      not modeled — back-face-only triggered abilities are not auto-installed on transform.
+//! Defeat-transform to the Faerie back face is auto-wired by the engine SBA
+//! (CR 310.11). The back face's "at the beginning of each opponent's upkeep, if
+//! that player has two or fewer cards in hand, deal 2 damage to them" is wired as
+//! a StepBegins{Upkeep, Opponent} trigger face-gated to face 1, with an
+//! intervening-if on the active player's hand size; Flying is intrinsic on the
+//! back-face characteristics.
+//!
 //! Note: defense counter count = 6 per the card's printed defense.
 
 use arcana_core::effects::{DiscardChoice, Effect, KeywordAbility};
+use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, EntersWithSpec};
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef};
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
+use arcana_core::turn::Step;
+use arcana_core::types::{CardId, ColorSet, CounterKind, PlayerId, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -65,6 +71,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 count: 6,
             })
             .with_transform_back(back)
+            // Front ETB: target opponent discards two cards.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
@@ -80,7 +87,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     },
                 ],
             })
-        // GAP: back-face-only triggered ability not modeled
+            // Back face: at the beginning of each opponent's upkeep, if that
+            // player has two or fewer cards in hand, deal 2 damage to them.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::Upkeep,
+                    whose: ControllerConstraint::Opponent,
+                },
+                intervening_if: Some(active_opponent_low_hand),
+                effect: back_ping_active_opponent,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(2, 1)
     )
 }
 
@@ -94,4 +115,30 @@ fn etb_discard(
     vec![
         Effect::Discard { player: *p, count: 2, choice: DiscardChoice::ControllerChooses },
     ]
+}
+
+/// Intervening-if: the opponent whose upkeep this is (= the active player) has
+/// two or fewer cards in hand.
+fn active_opponent_low_hand(
+    state: &GameState,
+    _source: ObjectId,
+    _controller: PlayerId,
+    _reg: &CardRegistry,
+) -> bool {
+    arcana_core::script::hand_size(state, state.active_player()) <= 2
+}
+
+/// "deals 2 damage to them" — the opponent whose upkeep it is (= the active
+/// player; the StepBegins{whose: Opponent} gate guarantees it isn't us).
+fn back_ping_active_opponent(
+    state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let them = state.active_player();
+    vec![Effect::DealDamage {
+        source: trig.source,
+        target: DamageTarget::Player(them),
+        amount: 2,
+    }]
 }

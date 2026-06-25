@@ -10,7 +10,6 @@
 //!   returns, so the CDA lights up the moment it flips to the creature face.
 //!   Back-face bones are `PtValue::Star`.
 //!
-//! GAP: defeat→cast-back-face not auto-wired (CR 310.11).
 //! GAP: Transform keyword not in implemented keyword set.
 
 use arcana_core::effects::{Effect, KeywordAbility};

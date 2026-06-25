@@ -9,14 +9,18 @@
 //! For each non-Human creature you control, you may have that creature assign its
 //! combat damage as though it weren't blocked.
 //!
+//! Defeat-transform to the Zilortha creature back face is auto-wired by the engine
+//! SBA (CR 310.11); Reach is intrinsic on the back-face characteristics.
+//!
 //! # GAPs
 //! - "non-Human" ETB tutor filter wired via `ObjectFilter::without_subtype_sym`.
 //! - "mana value X or less" — X is the variable cost paid at cast time; X is not
 //!   accessible in the effect resolver. Searching for any creature (no CMC cap).
 //! - "Search your library and/or graveyard" — only library tutor is available.
-//! - Back face "for each non-Human creature, may assign combat damage as though
-//!   unblocked" — replacement effect not in catalog; not modeled.
-//! - GAP: defeat→cast-back-face not auto-wired (CR 310.11 deferred).
+//! - Back face "for each non-Human creature you control, you may have that creature
+//!   assign its combat damage as though it weren't blocked" — no combat-damage-
+//!   assignment replacement (assign-as-though-unblocked) primitive exists in the
+//!   engine; the static is genuinely inexpressible and left unwired.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;

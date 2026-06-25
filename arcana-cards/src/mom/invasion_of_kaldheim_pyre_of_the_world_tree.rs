@@ -7,21 +7,29 @@
 //!   Whenever you discard a land card, exile the top card of your library.
 //!   You may play that card this turn.
 //!
+//! Defeat→back-face is auto-wired by the engine SBA. The back-face activated
+//! ability ("Discard a land card: deal 2 damage to any target") is wired,
+//! face-gated to the enchantment face (1), with the discard-cost restricted to a
+//! land card. The front ETB and the back-face discard-a-land trigger are GAP'd
+//! below.
+//!
 //! # GAPs
 //! - ETB "exile all cards from your hand, then draw that many": no Effect for
 //!   exile-hand-and-draw-same-count; the whole ETB effect is GAP'd.
 //! - ETB "until end of your next turn, you may play exiled cards": permission
 //!   replacement effect not expressible.
-//! - defeat→cast-back-face not auto-wired (engine sends defeated Battle to GY).
-//! - Back-face activated ability "Discard a land card: deal 2 damage to any target":
-//!   back-face-only activated ability not modeled (face_gate mechanism deferred for
-//!   transform-back; GAP per prompt).
-//! - Back-face triggered ability "whenever you discard a land card, exile top card":
-//!   back-face-only triggered ability not auto-installed (engine debt per prompt).
+//! - Back-face triggered ability "whenever you discard a land card, exile top
+//!   card; you may play it this turn": `TriggerCondition::CardDiscarded` has no
+//!   discarded-card filter, so it can't be restricted to land cards; not wired.
 
+use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
-use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, EntersWithSpec};
+use arcana_core::registry::{
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardFace, CardRegistry, EntersWithSpec,
+};
+use arcana_core::targets::{ObjectFilter, ObjectOrPlayer, TargetChoice, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -65,7 +73,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 characteristics: back_chars,
                 spell_ability: None,
             })
-            // GAP: defeat->cast-back-face not auto-wired
+            // Front (Siege) ETB — GAP'd (see module docs), face-gated to 0.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
@@ -74,6 +82,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(1, 0)
+            // Back (Pyre of the World Tree): "Discard a land card: ~ deals 2
+            // damage to any target." Discard cost restricted to a land card;
+            // face-gated to the enchantment face (1).
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "Discard a land card: This enchantment deals 2 damage to any target.".into(),
+                cost: ActivationCost {
+                    discard_other: Some(ObjectFilter::new().with_types(TypeLine::LAND.into())),
+                    discard_other_count: 1,
+                    ..ActivationCost::default()
+                },
+                target_requirements: vec![TargetRequirement::any_target()],
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: false,
+                face_gate: Some(1),
+                effect: back_deal_two,
             }),
     )
 }
@@ -86,4 +113,27 @@ fn etb_effect(
     // GAP: "Exile all cards from your hand, then draw that many cards" —
     // no Effect for exile-own-hand-and-draw-equal-count; not expressible
     Vec::new()
+}
+
+fn back_deal_two(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(target) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    let dt = match target {
+        TargetChoice::Object(id) => DamageTarget::Object(*id),
+        TargetChoice::Player(p) => DamageTarget::Player(*p),
+        TargetChoice::ObjectOrPlayer(o) => match o {
+            ObjectOrPlayer::Object(id) => DamageTarget::Object(*id),
+            ObjectOrPlayer::Player(p) => DamageTarget::Player(*p),
+        },
+    };
+    vec![Effect::DealDamage {
+        source: ctx.source,
+        target: dt,
+        amount: 2,
+    }]
 }

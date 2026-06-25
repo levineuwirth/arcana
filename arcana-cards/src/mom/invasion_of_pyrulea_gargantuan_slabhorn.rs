@@ -5,7 +5,6 @@
 //! Back face (Gargantuan Slabhorn): Creature — Beast with Trample, ward {2}, and
 //! "Other transformed permanents you control have trample and ward {2}."
 //!
-//! GAP: defeat→cast-back-face not auto-wired (CR 310.11).
 //! GAP: ETB reveal "if it's a land or double-faced card, draw a card" — the double-faced flag
 //!      now EXISTS in ObjectFilter (double_faced()), but the REVEAL-BRANCH primitive is missing:
 //!      there is no effect that reveals exactly the top card of the library and conditionally
@@ -83,8 +82,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             }),
-        // GAP: defeat→cast-back-face not auto-wired (CR 310.11).
-        // GAP: back-face static granting trample + ward {2} to other transformed permanents.
+        // GAP: back-face static "Other transformed permanents you control have trample and
+        //      ward {2}" — there is no "currently showing the back face / transformed"
+        //      ObjectFilter predicate (double_faced() matches all DFCs regardless of which
+        //      face is up), so the filtered_keyword grant cannot be scoped correctly. Left
+        //      unwired rather than over-granting to every DFC.
     )
 }
 

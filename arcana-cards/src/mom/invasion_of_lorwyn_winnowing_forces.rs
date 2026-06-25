@@ -7,15 +7,17 @@
 //! Back face (Winnowing Forces): Creature — Elf Warrior.
 //! Power and toughness are each equal to the number of lands you control.
 //!
-//! GAPs:
-//! - "power X or less, where X = lands you control" power cap is also applied
-//!   at resolution via script::power_of + script::count_matching.
-//! - GAP: defeat→cast-back-face not auto-wired (CR 310.11).
+//! Defeat→back-face is auto-wired by the engine SBA. Front ETB (the targeted
+//! destroy) is face-gated to the battle face (0).
 //!
-//! Back-face P/T "each equal to the number of lands you control" is a Layer 7a
-//! self-CDA (`ContinuousEffect::self_pt_from_match` over lands you control),
-//! installed on ETB and gated to the back face via
-//! `Duration::WhileSourceShowsFace(1)`; the back bones carry PtValue::Star.
+//! Notes:
+//! - "power X or less, where X = lands you control" power cap is applied at
+//!   resolution via script::power_of + script::count_matching.
+//! - Back-face P/T "each equal to the number of lands you control" is a Layer 7a
+//!   self-CDA (`ContinuousEffect::self_pt_from_match` over lands you control),
+//!   installed on ETB and gated to the back face via
+//!   `Duration::WhileSourceShowsFace(1)` (dormant on the battle face, live once
+//!   the defeat transform flips it); the back bones carry PtValue::Star.
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -108,6 +110,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
+            // Front targeted-destroy fires only on the battle face; the CDA
+            // installer (id 2) runs on ETB so the back-face P/T is ready when
+            // the defeat transform flips the face.
+            .with_trigger_face_gate(1, 0)
             .with_transform_back(back_face),
     )
 }

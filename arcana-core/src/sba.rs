@@ -651,11 +651,15 @@ fn pending_saga_sacrifice(state: &GameState) -> bool {
 /// handled in `combat::deal_damage`), so this is how a battle leaves
 /// the battlefield once defeated.
 ///
-/// Scope: the "after it's defeated, its protector/owner may cast the
-/// back face transformed" sequence (CR 310.11) is NOT modeled — the
-/// battle simply goes to the graveyard. The pending-trigger / stack
-/// guard mirrors [`check_saga_sacrifice`] so a battle's own ETB or
-/// attack-trigger isn't skipped by an early defeat.
+/// CR 310.11 — a defeated battle is cast transformed (its back face). This
+/// is modeled as an in-place transform (see the loop below): the back-face
+/// permanent stays on the battlefield under its controller and its
+/// face-gated abilities + SelfTransforms{to_face:1} triggers fire. (The
+/// "may cast / from exile / fresh ETB" timing nuance is simplified to a
+/// mandatory transform; battles without a back face still go to the
+/// graveyard.) The pending-trigger / stack guard mirrors
+/// [`check_saga_sacrifice`] so a battle's own ETB or attack-trigger isn't
+/// skipped by an early defeat.
 fn check_battle_defeat(state: &mut GameState) -> bool {
     use crate::types::CounterKind;
     let to_defeat: Vec<(ObjectId, PlayerId)> = state.objects
@@ -670,8 +674,19 @@ fn check_battle_defeat(state: &mut GameState) -> bool {
         .collect();
     if to_defeat.is_empty() { return false; }
     for (id, owner) in to_defeat {
-        state.move_object_to_zone(
-            id, Zone::Graveyard(owner), MoveCause::StateBasedAction);
+        // CR 310.11 — a defeated Siege is cast transformed (its back face).
+        // Modeled as an in-place transform: the back-face permanent stays on
+        // the battlefield under its controller, firing SelfTransforms{to_face:1}
+        // (the back-face's abilities are face-gated to face 1). Battles with no
+        // seeded back face fall back to the graveyard (CR 704.5x).
+        let has_back = state.objects.get(id)
+            .is_some_and(|o| o.back_face_characteristics.is_some());
+        if has_back {
+            crate::effects::Effect::Transform { target: id }.execute(state);
+        } else {
+            state.move_object_to_zone(
+                id, Zone::Graveyard(owner), MoveCause::StateBasedAction);
+        }
     }
     true
 }
@@ -1201,6 +1216,45 @@ mod tests {
         assert_eq!(s.zone_count(Zone::Battlefield), 0);
         // Original id is LKI; the graveyard object has a fresh id.
         let _ = aura;
+    }
+
+    #[test]
+    fn defeated_battle_with_back_face_transforms() {
+        use crate::objects::{Characteristics, GameObject};
+        use crate::types::TypeLine;
+        let mut s = GameState::new(2, 0);
+        let id = s.allocate_object_id();
+        let chars = Characteristics { types: TypeLine::BATTLE.into(), ..Default::default() };
+        let mut obj = GameObject::new(id, 0, Zone::Battlefield, 1, chars);
+        obj.controller = 0;
+        obj.back_face_characteristics = Some(Characteristics {
+            types: TypeLine::ENCHANTMENT.into(), ..Default::default() });
+        // No defense counters → defeated (CR 310.11).
+        s.objects.insert(obj);
+
+        apply_state_based_actions(&mut s);
+
+        let o = s.objects.get(id).expect("defeated battle stays (transformed in place)");
+        assert_eq!(o.visible_face, 1, "transformed to its back face");
+        assert!(o.characteristics.types.is_enchantment(), "now the back-face permanent");
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 0, "not sent to graveyard");
+    }
+
+    #[test]
+    fn defeated_battle_without_back_face_goes_to_graveyard() {
+        use crate::objects::{Characteristics, GameObject};
+        use crate::types::TypeLine;
+        let mut s = GameState::new(2, 0);
+        let id = s.allocate_object_id();
+        let chars = Characteristics { types: TypeLine::BATTLE.into(), ..Default::default() };
+        let mut obj = GameObject::new(id, 0, Zone::Battlefield, 1, chars);
+        obj.controller = 0;
+        s.objects.insert(obj);
+
+        apply_state_based_actions(&mut s);
+
+        assert_eq!(s.zone_count(Zone::Graveyard(0)), 1, "no back face → graveyard");
+        assert_eq!(s.zone_count(Zone::Battlefield), 0);
     }
 
     #[test]

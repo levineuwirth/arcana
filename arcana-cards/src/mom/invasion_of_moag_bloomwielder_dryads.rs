@@ -8,8 +8,10 @@
 //! Ward {2}
 //! At the beginning of your end step, put a +1/+1 counter on target creature you control.
 //!
-//! GAP: defeat→cast-back-face not auto-wired (engine routes defeated battle to graveyard).
-//! GAP: Back-face-only triggered ability (end-step +1/+1 counter on target creature) not modeled.
+//! Defeat→back-face is auto-wired by the engine SBA. Front ETB (+1/+1 on each
+//! creature you control) is face-gated to the battle face (0); the back-face
+//! end-step ability is face-gated to the creature face (1). Ward {2} rides on the
+//! back-face keywords.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
@@ -17,10 +19,13 @@ use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry, EntersWithSpec};
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{ControllerConstraint, ObjectFilter};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
+use arcana_core::turn::Step;
 use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
@@ -77,10 +82,44 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            // GAP: Back-face-only triggered ability (beginning of your end step, +1/+1 counter
-            //      on target creature you control) not modeled.
-            // GAP: defeat→cast-back-face not auto-wired.
+            // Back (Bloomwielder Dryads): at the beginning of your end step, put
+            // a +1/+1 counter on target creature you control. Face-gated to 1.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::StepBegins {
+                    step: Step::End,
+                    whose: ControllerConstraint::You,
+                },
+                intervening_if: None,
+                effect: back_end_step_counter,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    ),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+            })
+            .with_trigger_face_gate(1, 0)
+            .with_trigger_face_gate(2, 1),
     )
+}
+
+fn back_end_step_counter(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    vec![Effect::AddCounters {
+        target: *id,
+        kind: CounterKind::PlusOnePlusOne,
+        count: 1,
+    }]
 }
 
 fn etb_counters(

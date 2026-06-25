@@ -7,8 +7,10 @@
 //!
 //! GAP: Ward—Pay 2 life is a non-mana ward cost; not expressible as
 //! KeywordAbility::Ward (which takes a ManaCost) — keywords left empty on the back.
-//! GAP: defeat→cast-back-face transform (CR 310.11) is not auto-wired; the back
-//! face is authored via with_transform_back but the on-defeat cast is engine debt.
+//!
+//! Defeat→back-face is auto-wired by the engine SBA. Front ETB (damage sweep) is
+//! face-gated to the battle face (0); the back-face "whenever you cast a spell,
+//! deal 2 to each opponent" is face-gated to the creature face (1).
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
