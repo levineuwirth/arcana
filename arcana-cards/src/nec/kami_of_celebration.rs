@@ -51,11 +51,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             })
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
-                // GAP: "from exile" qualifier — SpellCast has no cast-zone
-                //      filter; firing on any spell you cast over-fires.
-                trigger_condition: TriggerCondition::SpellCast {
+                // "Whenever you cast a spell from exile" (foretell / impulse /
+                // adventure / suspend).
+                trigger_condition: TriggerCondition::SpellCastFromZone {
                     filter: None,
                     caster: ControllerConstraint::You,
+                    from_zone: Zone::Exile,
                 },
                 intervening_if: None,
                 effect: counter_on_target,

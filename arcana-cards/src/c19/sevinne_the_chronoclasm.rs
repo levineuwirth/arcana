@@ -2,6 +2,10 @@
 //! Prevent all damage that would be dealt to Sevinne.
 //! Whenever you cast your first instant or sorcery spell from your graveyard
 //! each turn, copy that spell.
+//!
+//! The from-graveyard trigger is wired via SpellCastFromZone (OncePerTurn
+//! approximates "first each turn"). GAP: copy_that_spell — no accessor for
+//! the triggering spell's stack object id.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -53,18 +57,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             })
             // "Whenever you cast your first instant or sorcery spell from your
             // graveyard each turn, copy that spell." OncePerTurn approximates
-            // "first each turn"; the "from your graveyard" restriction is not
-            // expressible on SpellCast.
-            // GAP: cannot restrict SpellCast to spells cast from graveyard.
+            // "first each turn"; the "from your graveyard" restriction is wired
+            // via SpellCastFromZone.
+            // GAP: copy_that_spell — no accessor for the triggering spell's
+            // stack object id; CopySpell needs the spell's id.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
-                trigger_condition: TriggerCondition::SpellCast {
+                trigger_condition: TriggerCondition::SpellCastFromZone {
                     filter: Some(
                         arcana_core::targets::ObjectFilter::new().with_types_any(TypeLine(
                             TypeLine::INSTANT | TypeLine::SORCERY,
                         )),
                     ),
                     caster: ControllerConstraint::You,
+                    from_zone: Zone::Graveyard(0),
                 },
                 intervening_if: None,
                 effect: copy_that_spell,

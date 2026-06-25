@@ -15,10 +15,12 @@
 //!      exile-with-play-permission tracking deferred.
 //! Transform activation {2}{U}{R}{W} (sorcery speed) is wired as a front-face activated
 //!      ability; card colors stay R per spec.
-//! GAP: back-face triggered ability ("Whenever you play a land from exile or cast a spell
-//!      from exile, put a +1/+1 counter") not expressible — neither TriggerCondition::SpellCast
-//!      nor GameEvent::SpellCast carries a from-zone, and ZoneChange can't distinguish a
-//!      play/cast-from-exile from any other exile→stack move. No cast-from-exile trigger primitive.
+//! Back-face triggered ability ("Whenever you ... cast a spell from exile, put a +1/+1
+//!      counter on Ghost-Spider") is wired via SpellCastFromZone { from_zone: Exile },
+//!      gated to face 1 with with_trigger_face_gate.
+//! GAP: the "play a LAND from exile" half of that same trigger is a separate event
+//!      (playing a land is not casting a spell — no SpellCast/SpellCastFromZone event
+//!      fires); left unwired.
 //! Back-face activated ability (remove two +1/+1 counters → exile top card, may play this turn)
 //!      is wired via remove_self_counter + Effect::ImpulseExile, gated to face 1.
 
@@ -30,6 +32,7 @@ use arcana_core::registry::{
     CardDefinition, CardFace, CardRegistry,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ControllerConstraint;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -132,9 +135,25 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_instant_speed: true,
                 face_gate: Some(1),
                 effect: ghost_spider_impulse,
-            }),
-            // GAP: back-face triggered ability (play land / cast spell from exile →
-            // +1/+1 counter) not expressible — no cast-from-exile trigger primitive.
+            })
+            // Back-face: "Whenever you ... cast a spell from exile, put a +1/+1
+            // counter on Ghost-Spider." Gated to face 1.
+            // GAP: the "play a land from exile" half is a separate event
+            // (playing a land is not casting a spell); left unwired.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SpellCastFromZone {
+                    filter: None,
+                    caster: ControllerConstraint::You,
+                    from_zone: Zone::Exile,
+                },
+                intervening_if: None,
+                effect: ghost_spider_counter,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(2, 1), // back face only
     )
 }
 
@@ -144,6 +163,18 @@ fn ghost_spider_impulse(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::ImpulseExile { player: ctx.controller, count: 1 }]
+}
+
+fn ghost_spider_counter(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::AddCounters {
+        target: trig.source,
+        kind: CounterKind::PlusOnePlusOne,
+        count: 1,
+    }]
 }
 
 fn etb_exile_top(

@@ -2,10 +2,9 @@
 //! "Whenever you cast a spell from your graveyard, this enchantment
 //! deals 2 damage to any target."
 //!
-//! Wired on `SpellCast { caster: You }` with a GAP: the FROM YOUR
-//! GRAVEYARD restriction (flashback casts) is not expressible —
-//! SpellCast carries no cast-from zone, so this over-fires on every
-//! spell you cast. The 2-damage any-target payoff is wired faithfully.
+//! Wired on `SpellCastFromZone { caster: You, from_zone: Graveyard(0) }`
+//! (CR 601.2a) — fires on flashback / escape / jump-start casts from your
+//! graveyard. The 2-damage any-target payoff is wired faithfully.
 
 use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
@@ -35,12 +34,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_triggered_ability(
             TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "Whenever you cast a spell FROM YOUR
-                // GRAVEYARD" — SpellCast has no cast-from-zone field; the
-                // closest condition fires on every spell you cast.
-                trigger_condition: TriggerCondition::SpellCast {
+                // "Whenever you cast a spell from your graveyard."
+                trigger_condition: TriggerCondition::SpellCastFromZone {
                     filter: None,
                     caster: ControllerConstraint::You,
+                    from_zone: Zone::Graveyard(0),
                 },
                 intervening_if: None,
                 effect: vengeance_bolt,

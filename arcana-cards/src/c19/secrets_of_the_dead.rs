@@ -1,10 +1,9 @@
 //! Secrets of the Dead — `{2}{U}` enchantment.
 //! "Whenever you cast a spell from your graveyard, draw a card."
 //!
-//! The cast-from-graveyard zone restriction is a documented GAP:
-//! `TriggerCondition::SpellCast` carries no cast-from zone, so the wired
-//! condition over-matches (fires on every spell you cast, regardless of
-//! the zone it was cast from).
+//! Wired on `SpellCastFromZone { caster: You, from_zone: Graveyard(0) }`
+//! (CR 601.2a) — fires on flashback / escape / jump-start casts from your
+//! graveyard.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -31,12 +30,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_triggered_ability(
             TriggeredAbilityDef {
                 id: 1,
-                // GAP: trigger — "cast a spell FROM YOUR GRAVEYARD" is not
-                // expressible (SpellCast has no cast-from zone field);
-                // closest pick fires on every spell you cast.
-                trigger_condition: TriggerCondition::SpellCast {
+                // "Whenever you cast a spell from your graveyard."
+                trigger_condition: TriggerCondition::SpellCastFromZone {
                     filter: None,
                     caster: ControllerConstraint::You,
+                    from_zone: Zone::Graveyard(0),
                 },
                 intervening_if: None,
                 effect: draw_one,

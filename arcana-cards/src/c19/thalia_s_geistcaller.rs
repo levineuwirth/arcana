@@ -5,11 +5,10 @@
 //!  Sacrifice a Spirit: This creature gains indestructible until end of
 //!  turn."
 //!
-//! Lifelink is a keyword. The spell-cast trigger fires on casts you make;
-//! the "from your graveyard" zone restriction has no demonstrated SpellCast
-//! refinement, so it is GAP-noted (the trigger over-fires on any spell you
-//! cast). The Sacrifice-a-Spirit activation grants this creature
-//! indestructible until end of turn.
+//! Lifelink is a keyword. The "from your graveyard" cast trigger is wired
+//! via SpellCastFromZone (CR 601.2a) — fires on flashback / escape casts
+//! from your graveyard. The Sacrifice-a-Spirit activation grants this
+//! creature indestructible until end of turn.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::layers::Duration;
@@ -57,11 +56,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: "from your graveyard" zone restriction — no SpellCast
-                // cast-zone refinement; fires on any spell you cast.
-                trigger_condition: TriggerCondition::SpellCast {
+                // "Whenever you cast a spell from your graveyard."
+                trigger_condition: TriggerCondition::SpellCastFromZone {
                     filter: None,
                     caster: ControllerConstraint::You,
+                    from_zone: Zone::Graveyard(0),
                 },
                 intervening_if: None,
                 effect: make_spirit,

@@ -17,8 +17,7 @@
 //!   expressible with the current Effect API.
 //! - Back "If ... would be put into a graveyard ... exile it instead" — replacement effect
 //!   not modeled.
-//! - "Whenever you cast a spell from your graveyard" — no graveyard-cast trigger condition;
-//!   wired as a general cast trigger (approximation).
+//! - "Whenever you cast a spell from your graveyard" — wired via SpellCastFromZone.
 //! - Back-face-only triggered abilities not auto-installed on transform.
 
 use arcana_core::effects::{Effect, KeywordAbility};
@@ -93,15 +92,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             })
             // Whenever you cast a spell from your graveyard, tap target creature you don't
             // control.
-            // GAP: no "cast from graveyard" trigger condition in the API. Wired via
-            // ZoneChange from graveyard to stack (approximate — fires on any card moving
-            // from your graveyard to the stack, not strictly spells cast).
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
-                trigger_condition: TriggerCondition::ZoneChange {
-                    filter: ObjectFilter::new().controlled_by(ControllerConstraint::You),
-                    from: Some(Zone::Graveyard(0)),
-                    to: Zone::Stack,
+                trigger_condition: TriggerCondition::SpellCastFromZone {
+                    filter: None,
+                    caster: ControllerConstraint::You,
+                    from_zone: Zone::Graveyard(0),
                 },
                 intervening_if: None,
                 effect: tap_target_opponent_creature,

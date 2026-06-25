@@ -5,9 +5,10 @@
 //!
 //! Modeled as two triggered abilities (one per OR-clause), both feeding
 //! the same token-mint effect. GAP on both conditions: "from anywhere
-//! OTHER THAN YOUR HAND" is not expressible (`ZoneChange.from` is a
-//! single `Option<Zone>`, no negation; `SpellCast` has no cast-from
-//! zone), so both wired conditions over-match.
+//! OTHER THAN YOUR HAND" is not expressible — `ZoneChange.from` is a
+//! single `Option<Zone>` (no negation), and `SpellCastFromZone` matches a
+//! single zone kind, not "any zone except hand" (graveyard / exile /
+//! library / command), so both wired conditions over-match.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaCost;

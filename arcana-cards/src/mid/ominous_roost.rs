@@ -5,9 +5,8 @@
 //!
 //! The ETB half mints the Bird faithfully (the block-restriction
 //! printed ability is a GAP — tokens carry no authored abilities). The
-//! "cast a spell FROM YOUR GRAVEYARD" half has no zone-qualified
-//! SpellCast condition; the closest variant is wired with the effect
-//! stubbed so every ordinary cast doesn't wrongly mint a Bird.
+//! "cast a spell from your graveyard" half is wired via SpellCastFromZone
+//! (CR 601.2a), minting a Bird on each flashback / escape cast.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -44,16 +43,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             })
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
-                // GAP: trigger — "whenever you cast a spell FROM YOUR
-                // GRAVEYARD": SpellCast has no cast-from-zone qualifier;
-                // closest variant wired, effect stubbed to avoid minting a
-                // Bird on every ordinary cast.
-                trigger_condition: TriggerCondition::SpellCast {
+                // "Whenever you cast a spell from your graveyard."
+                trigger_condition: TriggerCondition::SpellCastFromZone {
                     filter: None,
                     caster: ControllerConstraint::You,
+                    from_zone: Zone::Graveyard(0),
                 },
                 intervening_if: None,
-                effect: graveyard_cast_stub,
+                effect: mint_bird,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
@@ -85,15 +82,4 @@ fn mint_bird(
             abilities: vec![],
         },
     }]
-}
-
-/// Stub for the cast-from-graveyard half (condition inexpressible).
-fn graveyard_cast_stub(
-    _state: &GameState,
-    _trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: cannot check that the spell was cast from the graveyard, so
-    // minting here would over-fire on every spell. Stubbed.
-    Vec::new()
 }

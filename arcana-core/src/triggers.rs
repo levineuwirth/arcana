@@ -337,6 +337,15 @@ pub enum TriggerCondition {
     ZoneChange { filter: ObjectFilter, from: Option<Zone>, to: Zone },
     /// "Whenever you cast a spell" (optionally filtered).
     SpellCast { filter: Option<ObjectFilter>, caster: ControllerConstraint },
+    /// "Whenever you cast a spell from [zone]" (CR 601.2a) — flashback /
+    /// foretell / impulse / escape / Disturb / commander payoffs. Reads the
+    /// cast spell's `StackEntry::cast_from_zone`. New variant (not a field on
+    /// `SpellCast`) so the 100+ existing SpellCast triggers stay stable.
+    SpellCastFromZone {
+        filter: Option<ObjectFilter>,
+        caster: ControllerConstraint,
+        from_zone: Zone,
+    },
     /// "Whenever a creature deals combat damage to a player".
     DamageDealt {
         source_filter: ObjectFilter,
@@ -494,6 +503,22 @@ impl TriggerCondition {
                 let GameEvent::SpellCast { object_id, controller, .. } = event
                     else { return false; };
                 if !caster.matches(*controller, source_controller) { return false; }
+                match filter {
+                    None => true,
+                    Some(f) => match_filter_on(state, *object_id, f, source_controller),
+                }
+            }
+
+            SpellCastFromZone { filter, caster, from_zone } => {
+                let GameEvent::SpellCast { object_id, controller, .. } = event
+                    else { return false; };
+                if !caster.matches(*controller, source_controller) { return false; }
+                // The spell is still on the stack when SpellCast fires; read the
+                // zone it was cast from off its entry.
+                match state.find_stack_entry(*object_id).map(|e| e.cast_from_zone) {
+                    Some(z) if z.same_kind(*from_zone) => {}
+                    _ => return false,
+                }
                 match filter {
                     None => true,
                     Some(f) => match_filter_on(state, *object_id, f, source_controller),
@@ -1546,6 +1571,32 @@ mod tests {
             to: Zone::Graveyard(0),   // player id doesn't matter post same_kind
         };
         assert!(cond.matches(&event, 999, 0, &s));
+    }
+
+    #[test]
+    fn spell_cast_from_zone_matches_origin() {
+        use crate::targets::ControllerConstraint;
+        let mut s = GameState::new(2, 0);
+        // A spell on the stack, cast from exile (foretell / impulse).
+        let mut entry = crate::stack::StackEntry::new_spell(
+            5, 0, 0, crate::objects::Characteristics::default(),
+            crate::targets::TargetSelection::new(), vec![], None);
+        entry.cast_from_zone = Zone::Exile;
+        s.push_stack_entry(entry);
+        let event = GameEvent::SpellCast {
+            object_id: 5, card_id: 0, controller: 0,
+            targets: crate::targets::TargetSelection::new(), mana_spent: 0 };
+
+        let from_exile = TriggerCondition::SpellCastFromZone {
+            filter: None, caster: ControllerConstraint::You, from_zone: Zone::Exile };
+        let from_gy = TriggerCondition::SpellCastFromZone {
+            filter: None, caster: ControllerConstraint::You,
+            from_zone: Zone::Graveyard(0) };
+        // source_controller 0 = "you"; the spell's controller is 0.
+        assert!( from_exile.matches(&event, 999, 0, &s), "cast from exile matches");
+        assert!(!from_gy.matches(&event, 999, 0, &s), "exile != graveyard");
+        // Opponent-cast: caster constraint You fails for source_controller 1.
+        assert!(!from_exile.matches(&event, 999, 1, &s), "opponent's cast, You-gated");
     }
 
     #[test]

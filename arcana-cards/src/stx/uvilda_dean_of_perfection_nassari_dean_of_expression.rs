@@ -5,10 +5,15 @@
 //! Back: Legendary Creature — Efreet Shaman
 //!   At the beginning of your upkeep, exile the top card of each opponent's library. Until end of turn, you may cast those cards.
 //!   Whenever you cast a spell from exile, put a +1/+1 counter on Nassari.
-//! GAP: MDFC back face not modeled (mechanic deferred)
+//! GAP: MDFC back face not modeled (mechanic deferred) — no back-face-only
+//!      triggered-ability gating, so the back's abilities aren't installed.
 //! GAP: Hone counter activated ability not modeled
 //! GAP: "Exile top card of each opponent's library, may cast them" not in Effect catalog
-//! GAP: "Cast from exile" trigger not modeled
+//! GAP: "Whenever you cast a spell from exile, +1/+1 on Nassari" — the
+//!      SpellCastFromZone condition is now expressible, but it is a BACK-FACE-
+//!      ONLY trigger and there is no face-gate on TriggeredAbilityDef; wiring
+//!      it unconditionally would over-fire on the front face. Deferred with the
+//!      rest of the back-face mechanic.
 
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

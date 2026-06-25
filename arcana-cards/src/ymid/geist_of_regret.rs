@@ -50,11 +50,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             })
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
-                trigger_condition: TriggerCondition::SpellCast {
+                // "Whenever you cast an instant or sorcery spell from your
+                // graveyard." (flashback / escape / jump-start)
+                trigger_condition: TriggerCondition::SpellCastFromZone {
                     filter: Some(ObjectFilter::new().with_types_any(TypeLine(
                         TypeLine::INSTANT | TypeLine::SORCERY,
                     ))),
                     caster: ControllerConstraint::You,
+                    from_zone: Zone::Graveyard(0),
                 },
                 intervening_if: None,
                 effect: copy_that_spell,
@@ -74,7 +77,7 @@ fn etb_mill_random(_state: &GameState, _trig: &PendingTrigger, _reg: &CardRegist
 
 fn copy_that_spell(_state: &GameState, _trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     // GAP: "copy that spell" — no PendingTrigger accessor exposes the cast
-    // spell's stack object id, and the SpellCast filter cannot restrict to
-    // "cast from your graveyard"; CopySpell needs the spell's id.
+    // spell's stack object id; CopySpell needs the spell's id. (The
+    // from-graveyard trigger condition is now wired.)
     Vec::new()
 }

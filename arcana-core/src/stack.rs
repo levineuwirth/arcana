@@ -202,7 +202,16 @@ pub struct StackEntry {
     /// [`crate::triggers::PendingTrigger::mana_spent`].
     #[serde(default)]
     pub mana_spent: u32,
+    /// The zone this spell was cast FROM (CR 601.2a) — Hand normally, but
+    /// Exile (foretell / impulse / adventure), Graveyard (flashback /
+    /// escape / disturb), or Command. Set by `announce_spell_on_stack`;
+    /// read at SpellCast-trigger time by `TriggerCondition::SpellCastFromZone`.
+    /// Defaults to Stack (the sentinel "not a cast-from-zone").
+    #[serde(default = "default_cast_from_zone")]
+    pub cast_from_zone: crate::zones::Zone,
 }
+
+fn default_cast_from_zone() -> crate::zones::Zone { crate::zones::Zone::Stack }
 
 impl StackEntry {
     /// Construct a new spell stack entry.
@@ -242,6 +251,7 @@ impl StackEntry {
             // Caller (apply_cast_spell) stamps from the spent pool units.
             colors_spent: crate::types::ColorSet::new(),
             mana_spent: 0,
+            cast_from_zone: crate::zones::Zone::Stack,
         }
     }
 
@@ -281,6 +291,7 @@ impl StackEntry {
             pre_split_characteristics: None,
             colors_spent: crate::types::ColorSet::new(),
             mana_spent: 0,
+            cast_from_zone: crate::zones::Zone::Stack,
         }
     }
 
@@ -349,6 +360,7 @@ impl StackEntry {
             pre_split_characteristics: None,
             colors_spent: crate::types::ColorSet::new(),
             mana_spent: 0,
+            cast_from_zone: crate::zones::Zone::Stack,
         }
     }
 
@@ -594,6 +606,9 @@ impl GameState {
             new_id, controller, card_id, characteristics,
             targets, modes, x_value,
         );
+        // CR 601.2a — record the zone the spell was cast from (Hand / Exile /
+        // Graveyard / Command) for "whenever you cast a spell from ~" triggers.
+        entry.cast_from_zone = from;
         // CR 702.40a: snapshot BEFORE incrementing — N copies for storm
         // = "spells cast before this one this turn".
         entry.storm_count_at_cast = self.storm_count;
