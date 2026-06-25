@@ -375,7 +375,7 @@ fn synth_event(
         TC::Sacrificed { .. } => GE::Sacrifice { player: controller, object_id: other },
         TC::SpellCast { caster, .. } => GE::SpellCast {
             object_id: stack_spell, card_id: 0, controller: who(caster),
-            targets: crate::targets::TargetSelection::new() },
+            targets: crate::targets::TargetSelection::new(), mana_spent: 0 },
         TC::DamageDealt { combat_only, .. } => GE::DamageDealt {
             source, target: DamageTarget::Object(other), amount: 1, is_combat: *combat_only },
         TC::ZoneChange { to, from, .. } => GE::ZoneChange {

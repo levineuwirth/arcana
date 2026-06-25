@@ -7546,6 +7546,7 @@ mod tests {
         let ev = GameEvent::SpellCast {
             object_id: theirs, card_id: 0, controller: 1,
             targets: TargetSelection::new(),
+            mana_spent: 0,
         };
         assert!(s.take_matching_delayed_triggers(&ev, &reg).is_empty());
 
@@ -7554,6 +7555,7 @@ mod tests {
         let ev = GameEvent::SpellCast {
             object_id: instant, card_id: 0, controller: 0,
             targets: TargetSelection::new(),
+            mana_spent: 0,
         };
         assert!(s.take_matching_delayed_triggers(&ev, &reg).is_empty());
 
@@ -7562,6 +7564,7 @@ mod tests {
         let ev = GameEvent::SpellCast {
             object_id: spell, card_id: 0, controller: 0,
             targets: TargetSelection::new(),
+            mana_spent: 0,
         };
         let fired = s.take_matching_delayed_triggers(&ev, &reg);
         assert_eq!(fired.len(), 1);
@@ -7679,6 +7682,7 @@ mod tests {
             let ev = GameEvent::SpellCast {
                 object_id: spell, card_id: 0, controller: 0,
                 targets: TargetSelection::new(),
+                mana_spent: 0,
             };
             let fired = s.take_matching_delayed_triggers(&ev, &reg);
             assert_eq!(fired.len(), 1);
@@ -7715,6 +7719,7 @@ mod tests {
         let ev = GameEvent::SpellCast {
             object_id: stack_id, card_id: 0, controller: 0,
             targets: TargetSelection::new(),
+            mana_spent: 0,
         };
         let fired = s.take_matching_delayed_triggers(&ev, &reg);
         assert_eq!(fired.len(), 1);

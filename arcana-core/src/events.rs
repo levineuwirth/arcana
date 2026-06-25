@@ -62,6 +62,10 @@ pub enum GameEvent {
         card_id: CardId,
         controller: PlayerId,
         targets: TargetSelection,
+        /// Total mana spent to cast (CR 107.3 amount-of-mana); 0 for free
+        /// casts. Read by [`crate::triggers::PendingTrigger::mana_spent`].
+        #[serde(default)]
+        mana_spent: u32,
     },
     AbilityActivated {
         source: ObjectId,
@@ -503,6 +507,7 @@ mod tests {
             card_id: 42,
             controller: 0,
             targets: TargetSelection { targets: vec![] },
+            mana_spent: 0,
         };
         assert_eq!(ev.kind(), EventKind::SpellOrAbility);
 
@@ -617,6 +622,7 @@ mod tests {
             card_id: 42,
             controller: 1,
             targets: TargetSelection { targets: vec![] },
+            mana_spent: 0,
         };
         assert_eq!(ev.affected_player(), Some(1));
     }

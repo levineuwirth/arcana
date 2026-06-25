@@ -195,6 +195,13 @@ pub struct StackEntry {
     /// color count as the permanent enters.
     #[serde(default)]
     pub colors_spent: crate::types::ColorSet,
+    /// Total mana spent to cast this spell (the payment plan's unit count;
+    /// 0 for free casts / abilities). Surfaced on [`crate::events::GameEvent::
+    /// SpellCast`] so "ember counters equal to mana spent" triggers
+    /// (Smoldering Egg) and similar can read it via
+    /// [`crate::triggers::PendingTrigger::mana_spent`].
+    #[serde(default)]
+    pub mana_spent: u32,
 }
 
 impl StackEntry {
@@ -234,6 +241,7 @@ impl StackEntry {
             pre_split_characteristics: None,
             // Caller (apply_cast_spell) stamps from the spent pool units.
             colors_spent: crate::types::ColorSet::new(),
+            mana_spent: 0,
         }
     }
 
@@ -272,6 +280,7 @@ impl StackEntry {
             pre_adventure_characteristics: None,
             pre_split_characteristics: None,
             colors_spent: crate::types::ColorSet::new(),
+            mana_spent: 0,
         }
     }
 
@@ -339,6 +348,7 @@ impl StackEntry {
             pre_adventure_characteristics: None,
             pre_split_characteristics: None,
             colors_spent: crate::types::ColorSet::new(),
+            mana_spent: 0,
         }
     }
 
@@ -609,18 +619,19 @@ impl GameState {
     /// completes (costs paid, all choices made). Trigger matching
     /// picks it up from the event log.
     pub fn emit_spell_cast(&mut self, stack_entry_id: ObjectId) {
-        let (card_id, controller, targets) = {
+        let (card_id, controller, targets, mana_spent) = {
             let entry = self.find_stack_entry(stack_entry_id).unwrap_or_else(||
                 panic!("emit_spell_cast: no stack entry {stack_entry_id}"));
             let card_id = entry.card_id().unwrap_or_else(||
                 panic!("emit_spell_cast: stack entry {stack_entry_id} is not a spell"));
-            (card_id, entry.controller, entry.targets.clone())
+            (card_id, entry.controller, entry.targets.clone(), entry.mana_spent)
         };
         self.emit(GameEvent::SpellCast {
             object_id: stack_entry_id,
             card_id,
             controller,
             targets,
+            mana_spent,
         });
     }
 
@@ -1271,13 +1282,16 @@ mod tests {
         let card = put_object(&mut s, 0, Zone::Hand(0), instant_chars());
         let stack_id = s.announce_spell_on_stack(
             card, 0, TargetSelection::new(), vec![], None, vec![]);
+        // Stamp the mana paid (apply_cast_spell does this from the plan).
+        s.find_stack_entry_mut(stack_id).unwrap().mana_spent = 4;
 
         let before = s.event_log.len();
         s.emit_spell_cast(stack_id);
         assert_eq!(s.event_log.len(), before + 1);
         assert!(matches!(
             s.event_log.last().unwrap(),
-            GameEvent::SpellCast { object_id, .. } if *object_id == stack_id
+            GameEvent::SpellCast { object_id, mana_spent, .. }
+                if *object_id == stack_id && *mana_spent == 4
         ));
     }
 

@@ -721,6 +721,16 @@ impl PendingTrigger {
         }
     }
 
+    /// The total mana spent to cast the spell, if this trigger fired on a
+    /// [`GameEvent::SpellCast`] (CR 107.3 — Smoldering Egg's ember counters).
+    /// 0 for free casts.
+    pub fn mana_spent(&self) -> Option<u32> {
+        match &self.trigger_event {
+            GameEvent::SpellCast { mana_spent, .. } => Some(*mana_spent),
+            _ => None,
+        }
+    }
+
     /// The player who was dealt damage, if this trigger fired on a
     /// [`GameEvent::DamageDealt`] whose target is a player.
     pub fn damaged_player(&self) -> Option<PlayerId> {
@@ -1546,6 +1556,7 @@ mod tests {
             card_id: 10,
             controller: 1,
             targets: crate::targets::TargetSelection::new(),
+            mana_spent: 0,
         };
         // "Whenever your opponent casts a spell" — source_controller = 0
         let cond = TriggerCondition::SpellCast {
@@ -1963,6 +1974,16 @@ mod tests {
     }
 
     #[test]
+    fn pending_trigger_reads_mana_spent() {
+        let pt = pending(GameEvent::SpellCast {
+            object_id: 1, card_id: 0, controller: 0,
+            targets: crate::targets::TargetSelection::new(), mana_spent: 5 });
+        assert_eq!(pt.mana_spent(), Some(5));
+        // Non-SpellCast event → None.
+        assert_eq!(pending(GameEvent::Dies { object_id: 1 }).mana_spent(), None);
+    }
+
+    #[test]
     fn pending_dying_object_from_dies_or_zone_change() {
         let t = pending(GameEvent::Dies { object_id: 7 });
         assert_eq!(t.dying_object(), Some(7));
@@ -2029,6 +2050,7 @@ mod tests {
             card_id: 10,
             controller: 1,
             targets: crate::targets::TargetSelection::new(),
+            mana_spent: 0,
         });
         assert_eq!(t.triggering_caster(), Some(1));
         let t = pending(GameEvent::Dies { object_id: 1 });

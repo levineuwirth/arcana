@@ -775,6 +775,9 @@ fn apply_cast_spell(
         entry.pre_adventure_characteristics = pre_adventure_chars;
         entry.pre_split_characteristics = pre_split_chars;
         entry.colors_spent = colors_spent;
+        // Mana spent = assigned mana units (convoke/delve/phyrexian pay
+        // without mana and are tracked separately, correctly excluded).
+        entry.mana_spent = mana_payment.assignments.len() as u32;
     }
 
     // 4. Emit SpellCast (CR 601.2e) — triggers pick this up.
@@ -6025,6 +6028,7 @@ mod prowess_tests {
             card_id: 1,
             controller: 0,
             targets: crate::targets::TargetSelection::new(),
+            mana_spent: 0,
         };
         apply_prowess_on_cast(&mut s, &event);
 
@@ -6056,6 +6060,7 @@ mod prowess_tests {
             card_id: 1,
             controller: 0,
             targets: crate::targets::TargetSelection::new(),
+            mana_spent: 0,
         };
         apply_prowess_on_cast(&mut s, &event);
 
@@ -6079,6 +6084,7 @@ mod prowess_tests {
             object_id: spell_id, card_id: 1,
             controller: 1,  // opponent
             targets: crate::targets::TargetSelection::new(),
+            mana_spent: 0,
         };
         apply_prowess_on_cast(&mut s, &event);
 

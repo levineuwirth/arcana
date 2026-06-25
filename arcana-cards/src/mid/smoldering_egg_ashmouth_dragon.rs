@@ -29,11 +29,13 @@ use arcana_core::targets::{
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Smoldering Egg");
+    // Intern the ember counter symbol so the cast resolver can look it up.
+    reg.interner_mut().intern("ember");
     let dragon_sub = reg.interner_mut().intern("Dragon");
     let egg_sub = reg.interner_mut().intern("Egg");
     let mut subtypes = SubtypeSet::default();
@@ -119,17 +121,27 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn on_instant_sorcery_cast(
-    _state: &GameState,
-    _trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    state: &GameState,
+    trig: &PendingTrigger,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "put a number of ember counters equal to the amount of mana spent"
-    // — mana spent to cast the triggering spell is not recorded in the engine
-    // (no mana_spent on the cast event / no PendingTrigger accessor). The ember
-    // counter primitive exists (Effect::AddCounters + CounterKind::Named("ember")),
-    // but the count and the 7-counter threshold-transform both need the unavailable
-    // amount, so the front mechanic is left unwired.
-    Vec::new()
+    // "Put a number of ember counters equal to the amount of mana spent to cast
+    // that spell. Then if it has 7+ ember counters, transform it." The mana spent
+    // now rides on the SpellCast event via PendingTrigger::mana_spent.
+    let spent = trig.mana_spent().unwrap_or(0);
+    if spent == 0 { return Vec::new(); }
+    let Some(ember) = reg.interner().lookup("ember").map(CounterKind::Named)
+        else { return Vec::new(); };
+    let mut effects = vec![Effect::AddCounters {
+        target: trig.source, kind: ember, count: spent,
+    }];
+    // Threshold check against the pre-resolution count + what we're about to add.
+    let current = state.objects.get(trig.source)
+        .map(|o| o.count_counters(ember)).unwrap_or(0);
+    if current + spent >= 7 {
+        effects.push(Effect::Transform { target: trig.source });
+    }
+    effects
 }
 
 fn back_deal_two_damage(

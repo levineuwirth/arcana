@@ -486,6 +486,7 @@ mod tests {
         let mut s = GameState::new(2, 0);
         let cast = |c: PlayerId| GameEvent::SpellCast {
             object_id: 1, card_id: 1, controller: c, targets: TargetSelection::new(),
+            mana_spent: 0,
         };
         // Last turn: player 0 cast two spells.
         s.prev_turn_event_log_start = s.event_log.len();
@@ -692,6 +693,7 @@ mod tests {
         s.event_log.push(GameEvent::SpellCast {
             object_id: spell_id, card_id: 9, controller: 0,
             targets: crate::targets::TargetSelection::new(),
+            mana_spent: 0,
         });
         assert!(you_cast_matching_this_turn(&s, 0, &noncreature));
         assert!(!you_cast_matching_this_turn(&s, 1, &noncreature));
