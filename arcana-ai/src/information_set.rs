@@ -54,19 +54,28 @@
 //!
 //! # Determinization
 //!
-//! [`determinize`] is stubbed. Determinization — sampling a
-//! concrete `GameState` consistent with an `ObservableState` — is
-//! IS-MCTS's table-stakes operation but it needs a deck multiset
-//! to draw from, and Phase 2's deck-list shape isn't settled yet.
-//! See the function's doc comment for the (provisional) signature
-//! caveats.
+//! [`determinize`] samples a concrete `GameState` consistent with an
+//! `ObservableState` — IS-MCTS's table-stakes operation. It takes the
+//! per-player starting [`DeckList`]s as the universe of hidden cards,
+//! shuffles each player's unseen residual multiset across their anonymous
+//! slots, and re-instantiates real card identities. See its doc comment.
 
 use std::collections::HashSet;
 
+use arcana_core::engine::instantiate_card_object;
 use arcana_core::objects::{Characteristics, GameObject, ObjectId};
+use arcana_core::registry::CardRegistry;
 use arcana_core::state::GameState;
-use arcana_core::types::{PermanentStatus, PlayerId};
+use arcana_core::types::{CardId, PermanentStatus, PlayerId};
 use arcana_core::zones::Zone;
+use rand::seq::SliceRandom;
+use rand::SeedableRng;
+use rand_chacha::ChaCha8Rng;
+
+/// A starting deck: the multiset of [`CardId`]s a player began with (order
+/// irrelevant). Same shape `new_game` / [`crate::search`] / `GameRecord` use.
+/// Determinization needs it to know the universe of hidden cards to sample.
+pub type DeckList = Vec<CardId>;
 
 // =============================================================================
 // ObservableState
@@ -192,39 +201,100 @@ fn anonymize_object_in_place(obj: &mut GameObject) {
 // determinize (provisional stub)
 // =============================================================================
 
-/// Sample a concrete [`GameState`] consistent with `observable`.
-/// Used by IS-MCTS rollouts to materialize a "world" that respects
-/// the perspective player's information set.
+/// Sample a concrete [`GameState`] consistent with `observable`: every
+/// anonymized (hidden) object is filled in with a real card sampled from the
+/// universe of cards that could be there. Used by IS-MCTS to materialize a
+/// "world" that respects the perspective player's information set so rollouts
+/// can run on the true engine.
 ///
-/// # ⚠ PROVISIONAL SIGNATURE
+/// `decks[p]` is player `p`'s starting deck multiset — the universe of cards
+/// that could be in `p`'s hidden zones.
 ///
-/// The real implementation will likely need parameters not present
-/// here:
+/// # Model
+/// For each player `p`, the **hidden** (anonymous) objects owned by `p` are
+/// exactly their cards whose identity the perspective can't see:
+/// * the opponent's hand AND library, and
+/// * the perspective player's own library (face-down deck — the multiset is
+///   known, the order isn't).
 ///
-/// * **A deck multiset** — the cards that started in each library,
-///   so the sampler knows the universe of possibilities to draw
-///   from. Phase 2's deck-list shape isn't settled yet.
-/// * **Possibly `Option<GameState>` return** — some observed states
-///   are inconsistent with any concrete world (the engine should
-///   never produce one, but defensive coding is cheap).
-/// * **Possibly batched `Vec<GameState>` return** — IS-MCTS
-///   typically wants N independent samples per node; pulling them
-///   one at a time wastes a bunch of setup.
+/// The set of cards that fill them = `decks[p]` minus the card identities the
+/// perspective can already see among `p`'s objects (hand-if-own, battlefield,
+/// graveyard, exile, stack, and any `known_cards`). That residual multiset is
+/// shuffled and dealt across `p`'s anonymous slots — which automatically
+/// respects cross-zone correlation (a card dealt to the opponent's hand can't
+/// also be in their library) and the public hand SIZE (the number of anonymous
+/// hand slots is fixed). Cards visible via `known_cards` keep their real
+/// identity and library position; only the genuinely-unknown remainder moves.
 ///
-/// Determinization also needs to respect cross-zone correlation:
-/// the same N "unknown" cards are split between opponent's hand and
-/// their library, so a sampler that draws each zone independently
-/// would over- or under-count. The real implementation samples a
-/// coherent assignment of the unknown multiset to the unknown
-/// zones.
+/// Tokens and copies (card ids not present in the deck) are skipped by the
+/// subtraction, so they don't perturb the count. The sampler is total and
+/// panic-free: if the residual ever mismatches the slot count (e.g. a card
+/// changed its `card_id` via transform), leftover slots are filled cyclically
+/// from the deck rather than left blank or panicking mid-search.
 ///
-/// This signature **will change** when the implementation lands.
-/// Don't write call sites against it yet.
-pub fn determinize(_observable: &ObservableState, _seed: u64) -> GameState {
-    unimplemented!(
-        "determinization needs a deck multiset and a consistency-respecting \
-         sampler. Phase 2 hasn't shaped the deck-list type yet; revisit when it does."
-    )
+/// The result has NO anonymous objects — it is a full state the engine can
+/// `step`. `seed` makes the sample reproducible.
+pub fn determinize(
+    observable: &ObservableState,
+    decks: &[DeckList],
+    registry: &CardRegistry,
+    seed: u64,
+) -> GameState {
+    let mut state = observable.state.clone();
+    let mut rng = ChaCha8Rng::seed_from_u64(seed);
+
+    for p in 0..state.num_players() {
+        // Hidden slots owned by p (sorted → deterministic given the seed).
+        let mut anon: Vec<ObjectId> = state
+            .objects
+            .iter()
+            .filter(|o| o.owner == p && observable.anonymous_ids.contains(&o.id))
+            .map(|o| o.id)
+            .collect();
+        if anon.is_empty() {
+            continue;
+        }
+        anon.sort_unstable();
+
+        // Residual = deck minus the card identities already visible for p.
+        let deck: &[CardId] = decks.get(p as usize).map(Vec::as_slice).unwrap_or(&[]);
+        let mut residual: Vec<CardId> = deck.to_vec();
+        for o in state.objects.iter() {
+            if o.owner == p && !observable.anonymous_ids.contains(&o.id) {
+                if let Some(pos) = residual.iter().position(|&c| c == o.card_id) {
+                    residual.swap_remove(pos);
+                }
+            }
+        }
+        residual.shuffle(&mut rng);
+        debug_assert_eq!(
+            anon.len(), residual.len(),
+            "determinize: player {p} has {} hidden slots but {} residual cards",
+            anon.len(), residual.len()
+        );
+
+        // Deal residual cards into the hidden slots, re-instantiating each
+        // object's identity exactly as game setup does.
+        for (i, &id) in anon.iter().enumerate() {
+            let card_id = match residual.get(i) {
+                Some(&c) => c,
+                // Defensive fallback (should not happen for vanilla decks):
+                // cycle through the deck so no slot is left blank.
+                None if !deck.is_empty() => deck[i % deck.len()],
+                None => continue,
+            };
+            let (owner, zone) = {
+                let o = state.objects.get(id).expect("anon id exists");
+                (o.owner, o.zone)
+            };
+            state.objects.remove(id);
+            state
+                .objects
+                .insert(instantiate_card_object(registry, id, owner, zone, card_id));
+        }
+    }
+
+    state
 }
 
 // =============================================================================
@@ -554,17 +624,148 @@ mod tests {
         }
     }
 
-    // -- determinize stub --------------------------------------------
+    // -- determinize -------------------------------------------------
 
+    /// A real 2-player game projected to a perspective and then determinized
+    /// should: (a) leave NO object with default/blank identity in the hidden
+    /// zones, (b) preserve every player's per-zone object COUNT, and (c) keep
+    /// the perspective's own visible cards (hand) exactly as-is.
     #[test]
-    #[should_panic(expected = "determinization")]
-    fn determinize_panics_until_implemented() {
-        // Smoke test that the stub fires its informative message.
-        // When the real implementation lands and the stub goes
-        // away, this test goes with it.
-        let (state, _ids) = fixture_state();
+    fn determinize_fills_hidden_zones_consistently() {
+        use arcana_core::engine::new_game;
+        let reg = arcana_cards::build_catalog();
+        let decks = vec![
+            arcana_cards::sample_deck(&reg, 4),
+            arcana_cards::sample_deck(&reg, 9),
+        ];
+        // Advance past mulligans so hands/libraries are populated.
+        let (mut state, _y) = new_game(decks.clone(), &reg, 21);
+        for a in [arcana_core::actions::Action::MulliganKeep,
+                  arcana_core::actions::Action::MulliganKeep] {
+            let (s, _y) = arcana_core::engine::step(state, a, &reg);
+            state = s;
+        }
+
         let view = project(&state, 0);
-        let _ = determinize(&view, 0);
+        let world = determinize(&view, &decks, &reg, 1234);
+
+        // (b) Per-player per-zone counts are unchanged by determinization.
+        for p in 0..state.num_players() {
+            for zone in [Zone::Hand(p), Zone::Library(p), Zone::Graveyard(p)] {
+                let before = state.objects.objects_in_zone(zone).count();
+                let after = world.objects.objects_in_zone(zone).count();
+                assert_eq!(before, after, "zone {zone:?} count changed");
+            }
+        }
+
+        // (a) No anonymous object survives in the determinized world: each
+        // formerly-hidden object now has a real card_id present in its owner's
+        // deck.
+        for id in &view.anonymous_ids {
+            let o = world.objects.get(*id).expect("filled object exists");
+            assert!(
+                decks[o.owner as usize].contains(&o.card_id),
+                "hidden object {id} got card {} not in owner {}'s deck",
+                o.card_id, o.owner
+            );
+        }
+
+        // (c) The perspective's own hand cards are untouched (still their real
+        // identities — they were never anonymous).
+        for o in state.objects.objects_in_zone(Zone::Hand(0)) {
+            let w = world.objects.get(o.id).unwrap();
+            assert_eq!(w.card_id, o.card_id, "own hand card {} changed", o.id);
+        }
+    }
+
+    /// The perspective player's own library is hidden (face-down deck), so
+    /// determinization must reshuffle it from the KNOWN multiset: the set of
+    /// card ids must match the real library exactly (as a multiset), even
+    /// though the order may differ.
+    #[test]
+    fn determinize_preserves_own_library_multiset() {
+        use arcana_core::engine::new_game;
+        use std::collections::BTreeMap;
+        let reg = arcana_cards::build_catalog();
+        let decks = vec![
+            arcana_cards::sample_deck(&reg, 4),
+            arcana_cards::sample_deck(&reg, 9),
+        ];
+        let (mut state, _y) = new_game(decks.clone(), &reg, 21);
+        for a in [arcana_core::actions::Action::MulliganKeep,
+                  arcana_core::actions::Action::MulliganKeep] {
+            let (s, _y) = arcana_core::engine::step(state, a, &reg);
+            state = s;
+        }
+
+        let view = project(&state, 0);
+        let world = determinize(&view, &decks, &reg, 77);
+
+        let multiset = |st: &GameState, zone: Zone| -> BTreeMap<CardId, u32> {
+            let mut m = BTreeMap::new();
+            for o in st.objects.objects_in_zone(zone) {
+                *m.entry(o.card_id).or_default() += 1;
+            }
+            m
+        };
+        assert_eq!(
+            multiset(&state, Zone::Library(0)),
+            multiset(&world, Zone::Library(0)),
+            "own library multiset must be preserved by determinization"
+        );
+    }
+
+    /// A determinized world is a fully-valid `GameState`: the engine can `step`
+    /// it for many turns without panicking (no leftover anonymous/blank cards,
+    /// zone indices intact). This is the property IS-MCTS rollouts rely on.
+    #[test]
+    fn determinized_world_is_playable() {
+        use arcana_core::engine::{new_game, step};
+        use arcana_core::legal_actions::legal_actions;
+        let reg = arcana_cards::build_catalog();
+        let decks = vec![
+            arcana_cards::sample_deck(&reg, 4),
+            arcana_cards::sample_deck(&reg, 9),
+        ];
+        let (state, _y) = new_game(decks.clone(), &reg, 21);
+        let view = project(&state, 0);
+        let mut s = determinize(&view, &decks, &reg, 2024);
+
+        let mut steps = 0;
+        while steps < 200 && !s.is_game_over() {
+            let legal = legal_actions(&s, &reg);
+            // Prefer a non-concede action so the smoke test actually advances.
+            let act = legal.iter()
+                .find(|a| !matches!(a, arcana_core::actions::Action::Concede))
+                .or_else(|| legal.first());
+            let Some(act) = act.cloned() else { break };
+            let (ns, _y) = step(s, act, &reg);
+            s = ns;
+            steps += 1;
+        }
+        assert!(steps > 0, "determinized world should be steppable");
+    }
+
+    /// Determinization is reproducible: same seed → identical world.
+    #[test]
+    fn determinize_is_deterministic_given_seed() {
+        use arcana_core::engine::new_game;
+        let reg = arcana_cards::build_catalog();
+        let decks = vec![
+            arcana_cards::sample_deck(&reg, 4),
+            arcana_cards::sample_deck(&reg, 9),
+        ];
+        let (state, _y) = new_game(decks.clone(), &reg, 21);
+        let view = project(&state, 1);
+        let w1 = determinize(&view, &decks, &reg, 555);
+        let w2 = determinize(&view, &decks, &reg, 555);
+        for id in &view.anonymous_ids {
+            assert_eq!(
+                w1.objects.get(*id).unwrap().card_id,
+                w2.objects.get(*id).unwrap().card_id,
+                "same seed must produce the same determinization"
+            );
+        }
     }
 
     // -- API ergonomics ----------------------------------------------

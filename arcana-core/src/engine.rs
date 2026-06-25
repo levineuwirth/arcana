@@ -4343,6 +4343,38 @@ pub fn new_game(
         decks, crate::format::FormatConfig::standard_2026(), registry, seed)
 }
 
+/// Build a fresh [`GameObject`] for `card_id` owned by `owner` in `zone`,
+/// instantiating intrinsic card data (characteristics + transform back face)
+/// from `registry` exactly as game setup does. The single source of truth for
+/// "turn a CardId into a hand/library object", shared by [`new_game`] and
+/// information-set determinization so they can't drift.
+///
+/// Produces a pristine object: no counters/attachments/damage/status, abilities
+/// empty (cards in hand/library carry none until they enter the battlefield),
+/// `controller == owner`. Suitable for hidden-zone cards; battlefield objects
+/// acquire the rest of their state through normal zone-entry.
+///
+/// # Panics
+/// Panics if `card_id` is not in `registry`.
+pub fn instantiate_card_object(
+    registry: &CardRegistry,
+    id: ObjectId,
+    owner: PlayerId,
+    zone: Zone,
+    card_id: crate::types::CardId,
+) -> GameObject {
+    let def = registry.get(card_id).unwrap_or_else(||
+        panic!("instantiate_card_object: card_id {card_id} not in registry"));
+    let mut obj = GameObject::new(
+        id, owner, zone, card_id, def.initial_characteristics().clone());
+    // CR 712 — seed the transform back face so `Effect::Transform` can swap
+    // without a registry lookup at resolution time (mirrors new_game).
+    if let Some(back) = def.alternate_face.as_ref().and_then(|af| af.as_transform()) {
+        obj.back_face_characteristics = Some(back.characteristics.clone());
+    }
+    obj
+}
+
 /// Like [`new_game`] but with an explicit [`FormatConfig`]. The
 /// format drives starting life, opening hand size, max hand size,
 /// and mulligan rule. Deck validation is *not* run here — call
@@ -4366,19 +4398,9 @@ pub fn new_game_with_format(
     for (pid, deck) in decks.into_iter().enumerate() {
         let player = pid as PlayerId;
         for card_id in deck {
-            let def = registry.get(card_id).unwrap_or_else(||
-                panic!("new_game: card_id {card_id} not in registry"));
             let id = state.allocate_object_id();
-            let mut obj = GameObject::new(
-                id, player, Zone::Library(player),
-                card_id, def.initial_characteristics().clone());
-            // CR 712 — seed the transform back face so
-            // `Effect::Transform` can swap without a registry lookup at
-            // resolution time. Intrinsic to the card; preserved across
-            // re-ids.
-            if let Some(back) = def.alternate_face.as_ref().and_then(|af| af.as_transform()) {
-                obj.back_face_characteristics = Some(back.characteristics.clone());
-            }
+            let obj = instantiate_card_object(
+                registry, id, player, Zone::Library(player), card_id);
             state.objects.insert(obj);
             state.player_mut(player).library_top_to_bottom.push(id);
         }
