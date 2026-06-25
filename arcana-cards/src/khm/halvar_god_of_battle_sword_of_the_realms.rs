@@ -14,7 +14,9 @@
 //!      no reroute-attach effect).
 //! GAP: "whenever equipped creature dies, return it to its owner's hand" —
 //!      back-face-only triggered ability; triggers live on CardDefinition not on face.
-//! Back-face pump (+2/+0, vigilance) installed as attached_pt + attached_keyword
+//! Back-face Equip {1}{W} wired via `with_equip_face_gated({1}{W}, 1)` (face-gated
+//! to the back/Equipment face; MDFC back-cast sets visible_face=1). The back-face
+//! pump (+2/+0, vigilance) is installed as attached_pt + attached_keyword
 //! continuous effects from an ETB trigger; both are inert while unattached, so the
 //! trigger also firing for the front-face creature (definition-level triggers are
 //! shared across faces) is a functional no-op — creatures can't be equipped to.
@@ -66,6 +68,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             types: TypeLine(TypeLine::ARTIFACT),
             subtypes: back_subs,
             supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
+            // MDFC back: `with_equip_face_gated` only records the Equip keyword onto
+            // a Transform back face, so record it here on the MDFC back manually.
+            keywords: vec![KeywordAbility::Equip(ManaCost::parse("{1}{W}").expect("valid cost"))],
             ..Default::default()
         },
         spell_ability: None,
@@ -78,10 +83,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             // — continuous effect conditioned on enchanted/equipped status not expressible.
             // GAP: "At the beginning of each combat, you may attach target Aura or Equipment
             // to target creature" — attach-reroute trigger not expressible.
-            // Back face equip {1}{W}: the equip activated ability for the back face.
-            // Note: activated abilities here are shared and apply when the object on the
-            // battlefield has the back-face Equipment characteristics.
-            .with_equip(ManaCost::parse("{1}{W}").expect("valid equip cost"))
+            // Back face "Sword of the Realms": Equip {1}{W} (face-gated to the
+            // back/Equipment face; MDFC back-cast sets visible_face=1 so face 1 gates).
+            .with_equip_face_gated(ManaCost::parse("{1}{W}").expect("valid equip cost"), 1)
             // Back-face static "Equipped creature gets +2/+0 and has vigilance":
             // installed on ETB; inert unless this object is attached to a creature.
             .with_triggered_ability(TriggeredAbilityDef {

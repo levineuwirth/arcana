@@ -369,6 +369,47 @@ impl CardDefinition {
         self
     }
 
+    /// Face-gated [`Self::with_equip`] (CR 712 / 702.6) — for a transforming
+    /// DFC whose EQUIPMENT side is the back face (Toralf's Hammer, Harvest
+    /// Hand // Scrounged Scythe). The equip activated ability is gated to
+    /// `face` so it's only offered while that face is shown, and the Equip
+    /// keyword is recorded on that face's characteristics (the back face for
+    /// `face == 1`, when an `AlternateFace::Transform` is present). Call AFTER
+    /// `with_transform_back`.
+    pub fn with_equip_face_gated(mut self, cost: crate::mana::ManaCost, face: u8) -> Self {
+        use crate::effects::KeywordAbility;
+        let kw = KeywordAbility::Equip(cost.clone());
+        // Record the Equip keyword on the relevant face's characteristics.
+        let chars = if face == 1 {
+            match self.alternate_face.as_mut() {
+                Some(AlternateFace::Transform(f))
+                | Some(AlternateFace::Mdfc(f)) => &mut f.characteristics,
+                _ => &mut self.base_characteristics,
+            }
+        } else {
+            &mut self.base_characteristics
+        };
+        if !chars.keywords.iter().any(|k| matches!(k, KeywordAbility::Equip(_))) {
+            chars.keywords.push(kw);
+        }
+        self.activated_abilities.push(ActivatedAbilityDef {
+            text: format!("Equip {cost}"),
+            cost: ActivationCost { mana_cost: cost, ..ActivationCost::default() },
+            target_requirements: vec![TargetRequirement {
+                filter: crate::targets::TargetFilter::Creature,
+                count: crate::targets::TargetCount::Exactly(1),
+                controller: Some(crate::targets::ControllerConstraint::You),
+            }],
+            is_mana_ability: false,
+            is_loyalty_ability: false,
+            activation_zone: ActivationZone::Battlefield,
+            is_instant_speed: false,
+            face_gate: Some(face),
+            effect: equip_attach,
+        });
+        self
+    }
+
     /// Declare this enchantment as an Aura that enchants a permanent
     /// matching `filter`. CR 303.4 — an Aura is cast targeting the
     /// permanent it will enchant; the target is chosen as the spell is
@@ -1468,6 +1509,42 @@ mod tests {
     use crate::types::{ColorSet, PtValue, TypeLine};
     use crate::events::DamageTarget;
     use crate::targets::TargetChoice;
+
+    #[test]
+    fn with_equip_face_gated_gates_ability_and_marks_back_face() {
+        use crate::effects::KeywordAbility;
+        let mut reg = CardRegistry::new();
+        let name = reg.interner_mut().intern("Toralf, God of Fury");
+        let back_name = reg.interner_mut().intern("Toralf's Hammer");
+        let front = Characteristics {
+            name, types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(5)), toughness: Some(PtValue::Fixed(4)),
+            ..Default::default()
+        };
+        let back = CardFace {
+            name: back_name,
+            characteristics: Characteristics {
+                name: back_name, types: TypeLine::ARTIFACT.into(), ..Default::default()
+            },
+            spell_ability: None,
+        };
+        let def = CardDefinition::new(name, front)
+            .with_transform_back(back)
+            .with_equip_face_gated(ManaCost::parse("{1}{R}").unwrap(), 1);
+        // The equip ability is gated to the back face.
+        let eq = def.activated_abilities.iter()
+            .find(|a| a.text.starts_with("Equip")).expect("equip ability present");
+        assert_eq!(eq.face_gate, Some(1));
+        // The Equip keyword is on the BACK face, not the front.
+        let back_has_equip = match def.alternate_face.as_ref() {
+            Some(AlternateFace::Transform(f)) =>
+                f.characteristics.keywords.iter().any(|k| matches!(k, KeywordAbility::Equip(_))),
+            _ => false,
+        };
+        assert!(back_has_equip, "back face carries the Equip keyword");
+        assert!(!def.base_characteristics.keywords.iter()
+            .any(|k| matches!(k, KeywordAbility::Equip(_))), "front face does NOT");
+    }
 
     fn vanilla(name: &str, registry: &mut CardRegistry, p: i32, t: i32) -> CardId {
         let interned = registry.interner_mut().intern(name);

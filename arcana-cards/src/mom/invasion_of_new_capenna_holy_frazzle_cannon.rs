@@ -18,8 +18,11 @@
 //!   (without the sacrifice cost gate). GAP: sacrifice cost gate not modeled.
 //! - Back face "whenever equipped creature attacks, put +1/+1 counter on it
 //!   and each other creature you control that shares a creature type with it"
-//!   — back-face-only triggered ability not modeled (GAP).
-//! - Equip keyword not in keyword list (GAP).
+//!   — equipped-creature-attacks trigger with a dynamic "shares a creature type
+//!   with the equipped creature" board sweep is not expressible (no host-relative
+//!   shared-subtype filter); back-face-only triggered ability not modeled (GAP).
+//! - Back face Equip {1}: wired via `with_equip_face_gated({1}, 1)` (face-gated
+//!   to the back/Equipment face; the Equip keyword is recorded on that face).
 //! - Defeat → cast back face is not auto-wired (GAP: defeat→cast-back-face
 //!   not auto-wired).
 
@@ -93,6 +96,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 count: 3,
             })
             .with_transform_back(back)
+            // Back face "Holy Frazzle-Cannon": Equip {1} (face-gated to the
+            // back/Equipment face).
+            .with_equip_face_gated(ManaCost::parse("{1}").expect("valid equip cost"), 1)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
                 trigger_condition: TriggerCondition::SelfEntersBattlefield,
@@ -103,9 +109,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![etb_req],
             }),
         // GAP: defeat→cast-back-face not auto-wired
-        // GAP: back-face-only triggered ability (equipped creature attacks)
-        //      not modeled
-        // GAP: Equip keyword not in keyword list
+        // GAP: back-face-only triggered ability (equipped creature attacks →
+        //      +1/+1 counter on it and each shared-creature-type creature) not
+        //      modeled — host-relative shared-subtype board sweep not expressible
     )
 }
 

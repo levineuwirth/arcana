@@ -17,21 +17,17 @@
 //! GAP: Back-face granted ability "Equipped creature has '{1}{R},{T}, Unattach Toralf's
 //!      Hammer: It deals 3 damage to any target. Return Toralf's Hammer to its owner's
 //!      hand.'" — "Unattach (the source equipment)" is not an expressible ActivationCost,
-//!      so the granted activated ability is omitted. The Equip ability and the +3/+0
-//!      legendary buff ARE wired below.
+//!      so the granted activated ability is omitted. The Equip ability (via
+//!      `with_equip_face_gated({1}{R}, 1)`) and the +3/+0 legendary buff ARE wired below.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, ObjectId};
-use arcana_core::registry::{
-    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone, CardDefinition,
-    CardFace, CardRegistry,
-};
+use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
-    TargetRequirement,
+    ControllerConstraint, ObjectFilter, TargetFilter, TargetRequirement,
 };
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
@@ -73,7 +69,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             types: TypeLine::ARTIFACT.into(),
             supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
             subtypes: back_subtypes,
-            keywords: vec![],
+            // MDFC back: `with_equip_face_gated` only records the Equip keyword onto
+            // a Transform back face, so record it here on the MDFC back manually.
+            keywords: vec![KeywordAbility::Equip(ManaCost::parse("{1}{R}").expect("valid cost"))],
             ..Default::default()
         },
         spell_ability: None,
@@ -82,6 +80,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_mdfc_back(back)
+            // Back face "Toralf's Hammer": Equip {1}{R} (face-gated to the back/Equipment
+            // face; MDFC back-cast sets visible_face=1 so face 1 gates correctly).
+            .with_equip_face_gated(ManaCost::parse("{1}{R}").expect("valid equip cost"), 1)
             // Triggered: whenever a creature or planeswalker an opponent controls is dealt
             // excess noncombat damage, Toralf deals damage equal to the excess to any target.
             // GAP: excess noncombat damage amount not accessible via script; effect is empty.
@@ -117,47 +118,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: Vec::new(),
             })
-            .with_trigger_face_gate(2, 1)
-            // Back face: "Equip {1}{R}" — attach this Equipment to a creature you
-            // control (sorcery speed). Offered only while the artifact back face shows.
-            .with_activated_ability(ActivatedAbilityDef {
-                text: "Equip {1}{R}".into(),
-                cost: ActivationCost {
-                    mana_cost: ManaCost::parse("{1}{R}").expect("valid cost"),
-                    ..ActivationCost::default()
-                },
-                target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
-                    count: TargetCount::Exactly(1),
-                    controller: Some(ControllerConstraint::You),
-                }],
-                is_mana_ability: false,
-                is_loyalty_ability: false,
-                activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
-                face_gate: Some(1),
-                effect: equip_attach,
-            }),
+            .with_trigger_face_gate(2, 1),
         // GAP: granted activated ability "Equipped creature has '{1}{R},{T}, Unattach
         //      Toralf's Hammer: deal 3 damage to any target. Return Toralf's Hammer to
         //      its owner's hand.'" — "Unattach (the source equipment)" is not an
         //      expressible ActivationCost; the granted ability is omitted.
     )
-}
-
-/// Equip {1}{R}: attach this Equipment (the source) to the targeted creature.
-fn equip_attach(
-    _state: &GameState,
-    ctx: &ActivationContext,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
-        return Vec::new();
-    };
-    vec![Effect::Attach {
-        equipment_or_aura: ctx.source,
-        target: *id,
-    }]
 }
 
 /// Install the "+3/+0 as long as the equipped creature is legendary" dynamic pump,

@@ -5,21 +5,17 @@
 //! As long as equipped creature is a Human, it has menace.
 //! Equip {2}.
 //!
-//! GAP: the entire back-face Equipment (Scrounged Scythe) is unwired. The
-//! `CardDefinition::with_equip` builder is the only way to install an Equip
-//! ability + the canonical attach resolver, but it hard-codes `face_gate: None`
-//! and writes the Equip keyword/ability onto the *front* (base) characteristics —
-//! there is no back-face-gated equip entry point, and the attach resolver
-//! (`registry::equip_attach`) is private, so a hand-rolled face-gated Equip
-//! activated ability cannot reuse it. Wiring this needs an engine change
-//! (a face-gate parameter on `with_equip`, or a public attach resolver). The
-//! attached statics ("+1/+1 to equipped creature", "menace while equipped
-//! creature is a Human") would then install via a transform-trigger that adds
-//! `ContinuousEffect::attached_pt` / `attached_keyword`, but are moot until the
-//! Equip attach itself is expressible on the back face. The front-face
-//! "dies → return transformed" trigger is wired (gated to face 0).
+//! Back-face Equip {2} wired via `with_equip_face_gated({2}, 1)` (face-gated to
+//! the back/Equipment face). The "+1/+1 to equipped creature" static installs
+//! from a back-face ETB trigger via `ContinuousEffect::attached_pt`, inert while
+//! unattached. The front-face "dies → return transformed" trigger is wired
+//! (gated to face 0).
+//! GAP: "as long as equipped creature is a Human, it has menace" — a conditional
+//! attached keyword (keyword only while the host is a Human) has no continuous-
+//! effect constructor; left unwired.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
@@ -62,7 +58,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             colors: ColorSet::colorless(),
             types: TypeLine::ARTIFACT.into(),
             subtypes: back_subtypes,
-            // GAP: "+1/+1 to equipped creature" and "menace if Human" static effects not modeled
             ..Default::default()
         },
         spell_ability: None,
@@ -71,6 +66,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_transform_back(back)
+            // Back face "Scrounged Scythe": Equip {2} (face-gated to the back/Equipment face).
+            .with_equip_face_gated(ManaCost::parse("{2}").expect("valid equip cost"), 1)
             // When this creature dies, return it to the battlefield transformed.
             // Front-face ability only (the back face is a noncreature Equipment).
             .with_triggered_ability(TriggeredAbilityDef {
@@ -82,8 +79,38 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![],
             })
-            .with_trigger_face_gate(1, 0),
+            .with_trigger_face_gate(1, 0)
+            // Back face: install "equipped creature gets +1/+1" on ETB; inert while
+            // unattached (incl. while the front-face creature is the battlefield object).
+            // GAP: "as long as equipped creature is a Human, it has menace" — a
+            // host-type-conditional attached keyword has no continuous-effect
+            // constructor; left unwired.
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 2,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: install_equip_bonus,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: Vec::new(),
+            })
+            .with_trigger_face_gate(2, 1),
     )
+}
+
+fn install_equip_bonus(
+    _state: &GameState,
+    trig: &PendingTrigger,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::attached_pt(
+            trig.source,
+            1,
+            1,
+            Duration::WhileSourceOnBattlefield,
+        ),
+    }]
 }
 
 fn harvest_hand_dies(
