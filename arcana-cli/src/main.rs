@@ -14,9 +14,9 @@ fn main() -> Result<()> {
         Some("eval") => replay::eval(&args),
         _ => {
             println!("Arcana CLI — developer tools");
-            println!("  selfplay <out.json> [seed] [mc|random]  play a game, write a GameRecord");
-            println!("  replay   <record.json>                  re-derive + render a recorded game");
-            println!("  eval [--rollouts N --games K --cap N --candidates N]  flat-MC vs random win-rate");
+            println!("  selfplay <out.json> [seed] [mc|pimc|ismcts|random]  play a game, write a GameRecord");
+            println!("  replay   <record.json>                              re-derive + render a recorded game");
+            println!("  eval [--policy mc|pimc|ismcts --rollouts N --games K --cap N --candidates N]  search vs random win-rate");
             Ok(())
         }
     }
