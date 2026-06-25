@@ -678,6 +678,26 @@ fn enumerate_attacker_declarations(state: &GameState, active: PlayerId) -> Vec<A
             }
         }
     }
+
+    // CR 508.1a — must-attack enforcement. A creature with a "must attack if
+    // able" requirement (Goad, Juggernaut-style self, board-wide) that is ABLE
+    // (it's a slot → has ≥1 legal defender) must be declared as an attacker.
+    // Filter to declarations satisfying every such requirement; if NONE are
+    // affordable (e.g. attack tax can't be paid), fall back to the unfiltered
+    // set so a legal declaration always exists (the requirement is then
+    // treated as un-meetable, CR 508.1a "as many as possible").
+    let required: Vec<ObjectId> = slots.iter()
+        .map(|(atk, _)| *atk)
+        .filter(|&atk| state.must_attack(atk))
+        .collect();
+    if !required.is_empty() {
+        let satisfying: Vec<Action> = out.iter().filter(|a| match a {
+            Action::DeclareAttackers { attackers } =>
+                required.iter().all(|r| attackers.iter().any(|d| d.attacker == *r)),
+            _ => true,
+        }).cloned().collect();
+        if !satisfying.is_empty() { return satisfying; }
+    }
     out
 }
 
@@ -3111,6 +3131,57 @@ mod tests {
         let decls = actions.iter()
             .filter(|act| matches!(act, Action::DeclareAttackers { .. })).count();
         assert_eq!(decls, 4, "empty + {{a}} + {{b}} + {{a,b}}");
+    }
+
+    #[test]
+    fn must_attack_creature_forces_declaration() {
+        use crate::layers::{ContinuousEffect, Duration};
+        // CR 508.1a — a creature that "attacks each combat if able" must be in
+        // every legal declaration; declining (empty) becomes illegal.
+        let mut s = GameState::new(2, 0);
+        s.combat = Some(CombatState {
+            phase: CombatPhase::DeclareAttackers, ..CombatState::new() });
+        let a = put(&mut s, 0, Zone::Battlefield, creature_chars(2, 2));
+        let b = put(&mut s, 0, Zone::Battlefield, creature_chars(2, 2));
+        s.objects.get_mut(a).unwrap().status.summoning_sick = false;
+        s.objects.get_mut(b).unwrap().status.summoning_sick = false;
+        s.add_continuous_effect(ContinuousEffect::must_attack(a, a, Duration::EndOfTurn));
+
+        let actions = legal_actions(&s, &CardRegistry::new());
+        let decls: Vec<_> = actions.iter()
+            .filter(|act| matches!(act, Action::DeclareAttackers { .. })).collect();
+        assert!(!decls.is_empty());
+        assert!(decls.iter().all(|act| matches!(act,
+            Action::DeclareAttackers { attackers }
+                if attackers.iter().any(|d| d.attacker == a))),
+            "every declaration includes the must-attack creature");
+        assert!(!actions.iter().any(|act| matches!(act,
+            Action::DeclareAttackers { attackers } if attackers.is_empty())),
+            "declining is illegal when a creature must attack");
+    }
+
+    #[test]
+    fn goaded_creature_must_attack_if_able() {
+        use crate::layers::{ContinuousEffect, Duration};
+        // CR 701.38a — Goad both forbids attacking the goader AND requires the
+        // creature to attack if able. 3 players so a non-goader defender exists.
+        let mut s = GameState::new(3, 0);
+        s.combat = Some(CombatState {
+            phase: CombatPhase::DeclareAttackers, ..CombatState::new() });
+        let atk = put(&mut s, 0, Zone::Battlefield, creature_chars(2, 2));
+        s.objects.get_mut(atk).unwrap().status.summoning_sick = false;
+        s.add_continuous_effect(ContinuousEffect::goad(
+            atk, atk, /*goader=*/ 1, Duration::UntilYourNextTurn(1)));
+
+        let actions = legal_actions(&s, &CardRegistry::new());
+        assert!(!actions.iter().any(|act| matches!(act,
+            Action::DeclareAttackers { attackers } if attackers.is_empty())),
+            "a goaded creature must attack (it can attack the non-goader)");
+        // And it still can't attack the goader (player 1).
+        assert!(!actions.iter().any(|act| matches!(act,
+            Action::DeclareAttackers { attackers }
+                if attackers.iter().any(|d|
+                    matches!(d.defending, DefendingEntity::Player(1))))));
     }
 
     #[test]

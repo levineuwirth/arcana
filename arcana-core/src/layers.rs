@@ -881,6 +881,28 @@ impl ContinuousEffect {
         }
     }
 
+    /// "Target attacks each combat if able" (CR 508.1a). Mirror of
+    /// [`Self::cant_attack`]; consumed by `legal_actions` attacker enumeration.
+    pub fn must_attack(source: ObjectId, target: ObjectId,
+                       duration: Duration) -> Self {
+        Self {
+            source, layer: Layer::L6Ability, timestamp: 0, duration,
+            dependency: None,
+            kind: ContinuousEffectKind::MustAttack { target },
+        }
+    }
+
+    /// "[filter] creatures attack each combat if able" — board-wide must-attack.
+    pub fn filtered_must_attack(source: ObjectId,
+                                filter: crate::targets::ObjectFilter,
+                                duration: Duration) -> Self {
+        Self {
+            source, layer: Layer::L6Ability, timestamp: 0, duration,
+            dependency: None,
+            kind: ContinuousEffectKind::FilteredMustAttack { filter },
+        }
+    }
+
     /// Build a "target can't be blocked" effect. Mirror of
     /// [`Self::cant_attack`]; consumed by `combat::block_constraints`
     /// (sets the attacker's max blockers to 0). Typically installed
@@ -995,6 +1017,16 @@ pub enum ContinuousEffectKind {
     /// "Target creature can't attack" (Pacifism-style). Doesn't
     /// modify characteristics; consumed by [`crate::legal_actions`].
     CantAttack { target: ObjectId },
+    /// "Target creature attacks each combat if able" (CR 508.1a — Juggernaut /
+    /// Ulamog's Crusher self-must-attack). A combat REQUIREMENT, not a
+    /// characteristic change; consumed by [`crate::legal_actions`] (the
+    /// attacker enumerator filters to declarations that include every able
+    /// must-attack creature). Mirror of [`Self::CantAttack`].
+    MustAttack { target: ObjectId },
+    /// "[filter] creatures attack each combat if able" (board-wide must-attack —
+    /// Grizzled Anglerfish "{6}: opponents' creatures attack", Instigator).
+    /// Filtered sibling of [`Self::MustAttack`].
+    FilteredMustAttack { filter: crate::targets::ObjectFilter },
     /// "Target creature can't be blocked [this turn]." Doesn't modify
     /// characteristics; consumed by [`crate::combat`]'s
     /// `block_constraints` (caps the attacker's blockers at 0).
@@ -1339,6 +1371,7 @@ impl ContinuousEffectKind {
             | Self::GrantKeywordTarget { target, .. }
             | Self::Goaded { target, .. }
             | Self::CantAttack { target }
+            | Self::MustAttack { target }
             | Self::CantBeBlocked { target }
             | Self::CantBlock { target }
             | Self::LoseAllAbilities { target }
@@ -1391,6 +1424,7 @@ impl ContinuousEffectKind {
             // Markers: consumed by their scanners, never applied to
             // characteristics.
             Self::FilteredCantAttack { .. }
+            | Self::FilteredMustAttack { .. }
             | Self::FilteredCantBlock { .. }
             | Self::AttachedCreatureCantAttack
             | Self::AttachedCreatureCantBlock
@@ -1514,6 +1548,7 @@ impl ContinuousEffectKind {
                 chars.keywords.retain(|k| k != keyword);
             }
             Self::FilteredCantAttack { .. }
+            | Self::FilteredMustAttack { .. }
             | Self::FilteredCantBlock { .. }
             | Self::AttachedCreatureCantAttack
             | Self::AttachedCreatureCantBlock
@@ -1545,6 +1580,7 @@ impl ContinuousEffectKind {
             }
             Self::Goaded { .. }
             | Self::CantAttack { .. }
+            | Self::MustAttack { .. }
             | Self::CantBeBlocked { .. }
             | Self::CantBlock { .. } => {
                 // No characteristic modification — these are
@@ -1795,6 +1831,28 @@ impl GameState {
                     && self.objects.get(e.source)
                         .and_then(|s| s.attached_to) == Some(object_id),
             ContinuousEffectKind::FilteredCantAttack { filter } => {
+                e.is_live(self)
+                    && self.objects.get(e.source)
+                        .map(|s| s.controller)
+                        .zip(self.objects.get(object_id))
+                        .is_some_and(|(ctrl, o)|
+                            filter.matches_base(o, self, ctrl))
+            }
+            _ => false,
+        })
+    }
+
+    /// CR 508.1a — does `object_id` have a "must attack if able" requirement?
+    /// Sources: [`ContinuousEffectKind::MustAttack`] (self, Juggernaut-style),
+    /// [`ContinuousEffectKind::FilteredMustAttack`] (board-wide), and Goad
+    /// (CR 701.38a — a goaded creature attacks if able). Consumed by the
+    /// attacker enumerator. Whether the requirement can actually be met is the
+    /// enumerator's concern ("able" = has a legal defender).
+    pub fn must_attack(&self, object_id: ObjectId) -> bool {
+        if !self.goaders_of(object_id).is_empty() { return true; }
+        self.continuous_effects.iter().any(|e| match &e.kind {
+            ContinuousEffectKind::MustAttack { target } => *target == object_id,
+            ContinuousEffectKind::FilteredMustAttack { filter } => {
                 e.is_live(self)
                     && self.objects.get(e.source)
                         .map(|s| s.controller)
