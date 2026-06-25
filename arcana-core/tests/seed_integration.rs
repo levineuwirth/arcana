@@ -795,6 +795,7 @@ fn walking_ballista_x3_with_doubling_season_enters_with_6_counters() {
         kind: ReplacementKind::MultiplyCounters(2),
         is_self_replacement: false,
         duration: ReplacementDuration::Permanent,
+        state_gate: None,
     });
 
     priority_to_main(&mut s, 0);
