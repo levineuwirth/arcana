@@ -1263,31 +1263,44 @@ function bfDecor(c, isYou, cm) {
   const combat = combatDecor(c, isYou, cm);
   const inCombat = cm && cm.mode;
   if (!inCombat && isYou) {
-    const acts = activateActionsFor(c.id);
-    if (acts.length) {
-      // Subtle ring for the common single-ability case (lands tapping for mana,
-      // etc.); only badge when there's a real choice of abilities.
-      const deco = { classes: ["selectable"], onClick: (ev) => onPermanentClick(acts, ev) };
-      if (acts.length > 1) deco.badge = acts.length + " abilities";
+    // Clickable if an ability is affordable now OR is potentially activatable
+    // after auto-tapping (c.activatable — e.g. Codie's {4},{T} with mana untapped).
+    const now = activateActionsFor(c.id);
+    if (now.length || c.activatable) {
+      const deco = { classes: ["selectable"], onClick: (ev) => playPermanent(c, ev) };
+      if (now.length > 1) deco.badge = now.length + " abilities";
       return Object.assign(combat, deco);
     }
   }
   return combat;
 }
 
-// Legal "Activate …" actions that act FROM this permanent (via ActionView.source).
+// Legal actions that act FROM this permanent (ActionView.source). For a
+// battlefield permanent these are its activations (you can't cast/play-land a
+// permanent already on the battlefield), so source identity is enough — no label
+// sniffing (ability labels now read "<name> — <text>", not "Activate …").
 function activateActionsFor(id) {
   if (!G.resp) return [];
-  return G.resp.view.legal.filter(
-    (a) => a.source === id && /^Activate /.test(a.label)
-  );
+  return G.resp.view.legal.filter((a) => a.source === id);
 }
 
-// Click a permanent: one ability → activate it; several → a small chooser popup.
+// Click a permanent to use an ability. Affordable now → activate (one) or choose
+// (several). Otherwise auto-tap mana for it (Codie) then activate / choose.
+async function playPermanent(c, ev) {
+  const now = activateActionsFor(c.id);
+  if (now.length) { onPermanentClick(now, ev); return; }
+  if (!c.activatable) return;
+  const ok = await guarded(() => Arcana.Api.activate(c.id));
+  if (!ok) return;
+  const after = activateActionsFor(c.id); // remaining ability/target choices, if any
+  if (after.length) onPermanentClick(after, ev);
+}
+
+// One ability → activate it; several → a small chooser popup.
 function onPermanentClick(acts, ev) {
   if (G.busy) return;
   if (acts.length === 1) { sendAction(acts[0].index, acts[0].label); return; }
-  showActionMenu(ev, acts);
+  showActionMenu(ev, acts, "Choose an ability");
 }
 
 // A small floating menu of action buttons, anchored at the pointer (for a

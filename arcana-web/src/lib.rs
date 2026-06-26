@@ -580,6 +580,20 @@ impl GameCore {
         Ok(self.snapshot())
     }
 
+    /// Auto-tap mana for a permanent's (non-mana) activated ability, then activate
+    /// it — or, if the ability needs a target/mode choice, just float the mana so
+    /// the per-choice activations become legal (the frontend then surfaces them).
+    /// See [`arcana_core::legal_actions::auto_tap_activate_sequence`].
+    pub fn auto_tap_and_activate(&mut self, source: ObjectId) -> Result<StateResponse, ApplyError> {
+        let seq = arcana_core::legal_actions::auto_tap_activate_sequence(
+            self.session.state(), self.reg, HUMAN, source)
+            .ok_or(ApplyError::NotPlayable { id: source })?;
+        for action in seq {
+            self.session.apply(action);
+        }
+        Ok(self.snapshot())
+    }
+
     /// Apply a London-mulligan bottoming: put the chosen `ids` on the bottom of
     /// the human's library (the rest is their opening hand). Validated against the
     /// owed count and the human's hand — `apply_bottom_cards` panics on a bad

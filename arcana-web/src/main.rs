@@ -73,6 +73,7 @@ enum Command {
     Action { index: usize, reply: oneshot::Sender<Result<StateResponse, String>> },
     Combat { sub: CombatSubmission, reply: oneshot::Sender<Result<StateResponse, String>> },
     AutoTap { target: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
+    Activate { source: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
     Bottom { ids: Vec<ObjectId>, reply: oneshot::Sender<Result<StateResponse, String>> },
     Search { query: CardQuery, reply: oneshot::Sender<Vec<CardInfo>> },
     Import { text: String, reply: oneshot::Sender<ImportedDeck> },
@@ -191,6 +192,10 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>) {
             }
             Command::AutoTap { target, reply } => {
                 let res = core.auto_tap_and_cast(target).map_err(|e| e.to_string());
+                let _ = reply.send(res);
+            }
+            Command::Activate { source, reply } => {
+                let res = core.auto_tap_and_activate(source).map_err(|e| e.to_string());
                 let _ = reply.send(res);
             }
             Command::Bottom { ids, reply } => {
@@ -390,6 +395,24 @@ async fn post_autotap(State(app): State<AppState>, body: String) -> Response {
     }
 }
 
+async fn post_activate(State(app): State<AppState>, body: String) -> Response {
+    let req: AutoTapRequest = match serde_json::from_str(&body) {
+        Ok(r) => r,
+        Err(e) => {
+            return (StatusCode::BAD_REQUEST, err(format!("invalid /activate body: {e}"))).into_response()
+        }
+    };
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::Activate { source: req.object_id, reply }).is_err() {
+        return worker_gone();
+    }
+    match rx.await {
+        Ok(Ok(resp)) => Json(resp).into_response(),
+        Ok(Err(msg)) => (StatusCode::BAD_REQUEST, err(msg)).into_response(),
+        Err(_) => worker_gone(),
+    }
+}
+
 async fn post_bottom(State(app): State<AppState>, body: String) -> Response {
     let req: BottomRequest = match serde_json::from_str(&body) {
         Ok(r) => r,
@@ -477,6 +500,7 @@ async fn main() {
         .route("/action", post(post_action))
         .route("/combat", post(post_combat))
         .route("/autotap", post(post_autotap))
+        .route("/activate", post(post_activate))
         .route("/bottom", post(post_bottom))
         .route("/search", post(post_search))
         .route("/new", post(post_new))

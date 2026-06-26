@@ -2720,6 +2720,36 @@ pub fn auto_tap_sequence(
 ) -> Option<Vec<Action>> {
     let cost = state.objects.get(target)
         .and_then(|o| o.characteristics.mana_cost.clone());
+    auto_tap_for(state, registry, player, cost.as_ref(),
+        |a| action_plays_card(a, target))
+}
+
+/// Like [`auto_tap_sequence`] but the "play" is ACTIVATING a (non-mana) ability of
+/// `source` — e.g. Codie's `{4},{T}: …`. Taps mana until the activation is legal,
+/// then appends it (single ability/target) or leaves the taps so the caller
+/// surfaces the ability/target choice. Mana abilities of `source` itself are NOT
+/// the target (they're the tap sources); only mana-COSTING abilities are auto-paid.
+pub fn auto_tap_activate_sequence(
+    state: &GameState, registry: &CardRegistry, player: PlayerId, source: ObjectId,
+) -> Option<Vec<Action>> {
+    auto_tap_for(state, registry, player, None, |a| {
+        matches!(a, Action::ActivateAbility { source: s, ability_index, .. }
+            if *s == source
+                && state.objects.get(source)
+                    .and_then(|o| lookup_activated_ability(o, registry, state, *ability_index))
+                    .is_some_and(|ab| !ab.is_mana_ability))
+    })
+}
+
+/// Shared driver for [`auto_tap_sequence`] / [`auto_tap_activate_sequence`]: float
+/// mana (tapping mana abilities, color-aware via `cost`) until some action passes
+/// `is_play`, then return the taps plus that action when it's unambiguous (else
+/// just the taps, for the caller to surface the remaining choice). `None` if mana
+/// can't be produced and no play ever becomes legal.
+fn auto_tap_for(
+    state: &GameState, registry: &CardRegistry, player: PlayerId,
+    cost: Option<&crate::mana::ManaCost>, is_play: impl Fn(&Action) -> bool,
+) -> Option<Vec<Action>> {
     let mut sim = state.clone();
     sim.priority.give_to(player);
     let mut seq: Vec<Action> = Vec::new();
@@ -2727,11 +2757,8 @@ pub fn auto_tap_sequence(
 
     for _ in 0..guard {
         let legal = legal_actions(&sim, registry);
-        let plays: Vec<Action> =
-            legal.iter().filter(|a| action_plays_card(a, target)).cloned().collect();
+        let plays: Vec<Action> = legal.iter().filter(|a| is_play(a)).cloned().collect();
         if !plays.is_empty() {
-            // Unambiguous (a single cast/play) → finish it; otherwise leave the
-            // taps so the caller surfaces the target/mode/X choice.
             if plays.len() == 1 {
                 seq.push(plays.into_iter().next().unwrap());
             }
@@ -2740,9 +2767,9 @@ pub fn auto_tap_sequence(
         let candidates: Vec<Action> = legal.into_iter()
             .filter(|a| is_mana_activation(&sim, a, registry)).collect();
         if candidates.is_empty() {
-            return None; // can't produce more mana, and target isn't castable
+            return None; // can't produce more mana, and the play isn't legal
         }
-        let pick = choose_mana_source(&sim, player, &candidates, cost.as_ref(), registry);
+        let pick = choose_mana_source(&sim, player, &candidates, cost, registry);
         seq.push(pick.clone());
         let (next, _yld) = crate::engine::step(sim, pick, registry);
         sim = next;
@@ -4015,6 +4042,52 @@ mod tests {
         assert!(matches!(seq.as_slice(),
             [Action::PlayLand { object_id, .. }] if *object_id == land),
             "a land's plan is a single PlayLand, no taps");
+    }
+
+    /// A non-mana activated ability with a mana cost ({4},{T} — Codie's shape) is
+    /// not legal until mana is floated; auto_tap_activate_sequence taps lands for
+    /// the cost and appends the activation.
+    #[test]
+    fn auto_tap_activate_sequence_taps_then_activates() {
+        use crate::registry::{ActivatedAbilityDef, ActivationZone, CardDefinition};
+        let mut reg = CardRegistry::new();
+        let forest = register_mana_source(
+            &mut reg, "Test Forest", land_chars(), ActivationCost::tap_only(), add_one_green);
+        let dev_chars = Characteristics { types: TypeLine::ARTIFACT.into(), ..Default::default() };
+        let dnm = reg.interner_mut().intern("Test Device");
+        let dev = reg.register(CardDefinition::new(dnm, dev_chars.clone()).with_activated_ability(
+            ActivatedAbilityDef {
+                text: "{4}, {T}: do a thing".into(),
+                cost: ActivationCost {
+                    mana_cost: ManaCost::parse("{4}").unwrap(), tap: true,
+                    ..ActivationCost::default()
+                },
+                target_requirements: vec![],
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: false,
+                face_gate: None,
+                effect: add_one_green,
+            }));
+
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let device = state_put_with_card(&mut s, 0, Zone::Battlefield, dev_chars, dev);
+        for _ in 0..4 { state_put_with_card(&mut s, 0, Zone::Battlefield, land_chars(), forest); }
+
+        // Not legal with an empty pool.
+        assert!(!legal_actions(&s, &reg).iter().any(|a|
+            matches!(a, Action::ActivateAbility { source, .. } if *source == device)));
+
+        let seq = auto_tap_activate_sequence(&s, &reg, 0, device)
+            .expect("activatable after tapping out");
+        let taps = seq.iter().filter(|a|
+            matches!(a, Action::ActivateAbility { source, .. } if *source != device)).count();
+        assert_eq!(taps, 4, "4 lands tapped for {{4}}");
+        assert!(seq.iter().any(|a|
+            matches!(a, Action::ActivateAbility { source, .. } if *source == device)),
+            "the device activation is appended (unambiguous)");
     }
 
     #[test]

@@ -46,6 +46,13 @@ pub struct CardView {
     /// [`crate::legal_actions::playable_cards`]). Always false for opponents'
     /// objects, the battlefield, and the stack.
     pub playable: bool,
+    /// For the perspective player's BATTLEFIELD permanents only: true if it has an
+    /// activated ability the player could activate this turn assuming they tap out
+    /// for mana (potential, mana-floated). Lets a card-driven UI offer activation
+    /// (auto-tapping the cost) even when the mana isn't floated yet. False
+    /// elsewhere.
+    #[serde(default)]
+    pub activatable: bool,
     /// Printed keyword abilities by stable glossary key ("Flying", "Ward", …),
     /// deduped + sorted. A frontend pairs these with
     /// [`crate::glossary::keyword_glossary`] for reminder text.
@@ -154,7 +161,7 @@ fn card_view(state: &GameState, registry: &CardRegistry, id: ObjectId) -> CardVi
     let Some(o) = state.objects.get(id) else {
         return CardView {
             id, name: String::new(), mana_cost: None, mana_value: 0,
-            type_line: String::new(), is_land: false, playable: false,
+            type_line: String::new(), is_land: false, playable: false, activatable: false,
             keywords: Vec::new(), power: None, toughness: None, tapped: false,
         };
     };
@@ -179,7 +186,7 @@ fn card_view(state: &GameState, registry: &CardRegistry, id: ObjectId) -> CardVi
     keywords.dedup();
     CardView {
         id, name, mana_cost, mana_value, type_line, is_land,
-        playable: false, keywords, power, toughness, tapped,
+        playable: false, activatable: false, keywords, power, toughness, tapped,
     }
 }
 
@@ -202,6 +209,18 @@ pub fn view_state(
         crate::legal_actions::playable_cards(state, perspective, registry)
             .into_iter().collect();
 
+    // Permanents the perspective player could ACTIVATE this turn if they tapped
+    // out (potential, mana-floated) — sources of activate actions in the
+    // mana-floated enumeration. Lets the UI offer auto-tap activation (Codie).
+    let activatable: std::collections::HashSet<ObjectId> =
+        crate::legal_actions::potential_actions(state, perspective, registry)
+            .into_iter()
+            .filter_map(|a| match a {
+                Action::ActivateAbility { source, .. } => Some(source),
+                _ => None,
+            })
+            .collect();
+
     let players = (0..state.num_players()).map(|p| {
         PlayerView {
             id: p,
@@ -221,7 +240,11 @@ pub fn view_state(
             battlefield: {
                 let ids: Vec<ObjectId> = state.objects.objects_in_zone(Zone::Battlefield)
                     .filter(|o| o.controller == p).map(|o| o.id).collect();
-                ids.into_iter().map(|id| card_view(state, registry, id)).collect()
+                ids.into_iter().map(|id| {
+                    let mut c = card_view(state, registry, id);
+                    if p == perspective { c.activatable = activatable.contains(&id); }
+                    c
+                }).collect()
             },
         }
     }).collect();
