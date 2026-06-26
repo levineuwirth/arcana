@@ -10,3 +10,4 @@ pub mod search;
 pub mod learn;
 pub mod mlp;
 pub mod session;
+pub mod deckeval;
