@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Arcana — Web Play (MVP)</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: system-ui, sans-serif; background: #14161b; color: #e7e9ee;
+    padding: 12px;
+  }
+  h1 { font-size: 18px; margin: 0 0 8px; }
+  .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  button {
+    background: #2a2f3a; color: #e7e9ee; border: 1px solid #3a4150; border-radius: 6px;
+    padding: 6px 10px; cursor: pointer; font-size: 13px;
+  }
+  button:hover { background: #353c4a; }
+  button.action { background: #2d4263; border-color: #3f5d8a; }
+  button.action:hover { background: #375079; }
+  .meta { font-size: 13px; opacity: .85; }
+  .player {
+    border: 1px solid #2a2f3a; border-radius: 8px; padding: 8px; margin-bottom: 10px;
+    background: #1a1d24;
+  }
+  .player.you { border-color: #3f5d8a; }
+  .ptitle { display: flex; gap: 12px; align-items: baseline; margin-bottom: 6px; }
+  .ptitle .name { font-weight: 600; }
+  .ptitle .life { font-size: 18px; font-weight: 700; }
+  .zone-label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; opacity: .6; margin: 6px 0 4px; }
+  .cards { display: flex; gap: 6px; flex-wrap: wrap; }
+  .card {
+    width: 96px; border-radius: 6px; overflow: hidden; background: #20242d;
+    border: 1px solid #333a47; font-size: 11px; position: relative;
+  }
+  .card.tapped { transform: rotate(8deg); opacity: .85; }
+  .card img { width: 100%; display: block; aspect-ratio: 488/680; object-fit: cover; background: #0c0d11; }
+  .card .nm { padding: 3px 4px; line-height: 1.2; }
+  .card .pt {
+    position: absolute; right: 3px; bottom: 22px; background: rgba(0,0,0,.75);
+    padding: 1px 5px; border-radius: 4px; font-weight: 700; font-size: 12px;
+  }
+  .card.fallback { padding: 6px 4px; min-height: 120px; display: flex; align-items: center; justify-content: center; text-align: center; }
+  #actions { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 12px; }
+  #log { font-size: 13px; min-height: 20px; color: #c6b27a; margin-bottom: 8px; }
+  #banner {
+    display: none; padding: 10px; border-radius: 8px; background: #3a2d2d; border: 1px solid #6b4a4a;
+    font-weight: 700; margin-bottom: 10px;
+  }
+  .stack { border: 1px dashed #4a4150; }
+  .empty { opacity: .4; font-size: 12px; padding: 4px; }
+</style>
+</head>
+<body>
+  <h1>Arcana — Web Play <span style="opacity:.5;font-weight:400">(MVP)</span></h1>
+  <div class="bar">
+    <button id="new">New game</button>
+    <button id="refresh">Refresh</button>
+    <span class="meta" id="meta"></span>
+  </div>
+
+  <div id="banner"></div>
+  <div id="log"></div>
+
+  <div id="opponent" class="player"></div>
+
+  <div class="zone-label">Stack</div>
+  <div id="stack" class="cards stack"></div>
+
+  <div id="you" class="player you"></div>
+
+  <div class="zone-label">Your legal actions</div>
+  <div id="actions"></div>
+
+<script>
+"use strict";
+
+// Card art via Scryfall's "named" image endpoint. The browser caches the
+// redirect/image, which is enough politeness for an MVP. Falls back to a text
+// tile (handled by the <img> onerror) if the name doesn't resolve.
+function artUrl(name) {
+  return "https://api.scryfall.com/cards/named?format=image&exact=" + encodeURIComponent(name);
+}
+
+function cardEl(c) {
+  const div = document.createElement("div");
+  div.className = "card" + (c.tapped ? " tapped" : "");
+  const name = c.name && c.name.length ? c.name : "(hidden)";
+  if (c.name && c.name.length) {
+    const img = document.createElement("img");
+    img.alt = name;
+    img.loading = "lazy";
+    img.src = artUrl(name);
+    // On any image error, swap the whole tile to a readable text fallback.
+    img.onerror = () => {
+      div.classList.add("fallback");
+      div.innerHTML = "";
+      const nm = document.createElement("div");
+      nm.className = "nm";
+      nm.textContent = name;
+      div.appendChild(nm);
+    };
+    div.appendChild(img);
+  } else {
+    div.classList.add("fallback");
+  }
+  const nm = document.createElement("div");
+  nm.className = "nm";
+  nm.textContent = name;
+  div.appendChild(nm);
+  if (c.power !== null && c.power !== undefined) {
+    const pt = document.createElement("div");
+    pt.className = "pt";
+    pt.textContent = c.power + "/" + c.toughness;
+    div.appendChild(pt);
+  }
+  return div;
+}
+
+function renderCards(container, cards, emptyMsg) {
+  container.innerHTML = "";
+  if (!cards || cards.length === 0) {
+    const e = document.createElement("div");
+    e.className = "empty";
+    e.textContent = emptyMsg || "(empty)";
+    container.appendChild(e);
+    return;
+  }
+  for (const c of cards) container.appendChild(cardEl(c));
+}
+
+function renderPlayer(container, p, isYou) {
+  container.innerHTML = "";
+  const title = document.createElement("div");
+  title.className = "ptitle";
+  title.innerHTML =
+    '<span class="name">' + (isYou ? "You" : "Opponent") + " (P" + p.id + ')</span>' +
+    '<span class="life">&hearts; ' + p.life + "</span>" +
+    '<span class="meta">hand ' + p.hand_count + " · library " + p.library_count +
+      " · graveyard " + p.graveyard_count + "</span>";
+  container.appendChild(title);
+
+  const blab = document.createElement("div");
+  blab.className = "zone-label";
+  blab.textContent = "Battlefield";
+  container.appendChild(blab);
+  const bf = document.createElement("div");
+  bf.className = "cards";
+  renderCards(bf, p.battlefield, "no permanents");
+  container.appendChild(bf);
+
+  if (isYou) {
+    const hlab = document.createElement("div");
+    hlab.className = "zone-label";
+    hlab.textContent = "Your hand";
+    container.appendChild(hlab);
+    const hand = document.createElement("div");
+    hand.className = "cards";
+    renderCards(hand, p.hand, "empty hand");
+    container.appendChild(hand);
+  }
+}
+
+function render(resp) {
+  const view = resp.view;
+  const me = view.perspective;
+  const you = view.players.find(p => p.id === me);
+  const opp = view.players.find(p => p.id !== me);
+
+  document.getElementById("meta").textContent =
+    "Turn " + view.turn + " · " + view.phase +
+    " · active P" + view.active_player + " · priority P" + view.priority_player;
+
+  // Opponent action log.
+  const log = document.getElementById("log");
+  if (resp.recent && resp.recent.length) {
+    log.textContent = resp.recent.map(r => "Opponent: " + r.description).join("   |   ");
+  } else {
+    log.textContent = "";
+  }
+
+  // Game-over banner.
+  const banner = document.getElementById("banner");
+  if (view.game_over) {
+    banner.style.display = "block";
+    banner.textContent = "Game over — " + view.game_over;
+  } else {
+    banner.style.display = "none";
+  }
+
+  renderPlayer(document.getElementById("opponent"), opp, false);
+  renderPlayer(document.getElementById("you"), you, true);
+  renderCards(document.getElementById("stack"), view.stack, "(stack empty)");
+
+  // Legal-action buttons.
+  const actions = document.getElementById("actions");
+  actions.innerHTML = "";
+  if (view.game_over) {
+    const e = document.createElement("div");
+    e.className = "empty";
+    e.textContent = "No actions — start a new game.";
+    actions.appendChild(e);
+    return;
+  }
+  for (const a of view.legal) {
+    const btn = document.createElement("button");
+    btn.className = "action";
+    btn.textContent = a.label;
+    btn.onclick = () => sendAction(a.index);
+    actions.appendChild(btn);
+  }
+}
+
+function setBusy(busy) {
+  for (const b of document.querySelectorAll("#actions button")) b.disabled = busy;
+}
+
+async function getState() {
+  const r = await fetch("/state");
+  render(await r.json());
+}
+
+async function sendAction(index) {
+  setBusy(true);
+  try {
+    const r = await fetch("/action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ index }),
+    });
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({ error: r.statusText }));
+      alert("Action rejected: " + (e.error || r.status));
+      await getState();
+      return;
+    }
+    render(await r.json());
+  } catch (e) {
+    alert("Request failed: " + e);
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function newGame() {
+  const r = await fetch("/new", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  });
+  render(await r.json());
+}
+
+document.getElementById("new").onclick = newGame;
+document.getElementById("refresh").onclick = getState;
+getState();
+</script>
+</body>
+</html>
