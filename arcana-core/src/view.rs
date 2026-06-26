@@ -46,6 +46,10 @@ pub struct CardView {
     /// [`crate::legal_actions::playable_cards`]). Always false for opponents'
     /// objects, the battlefield, and the stack.
     pub playable: bool,
+    /// Printed keyword abilities by stable glossary key ("Flying", "Ward", …),
+    /// deduped + sorted. A frontend pairs these with
+    /// [`crate::glossary::keyword_glossary`] for reminder text.
+    pub keywords: Vec<String>,
     /// Computed power/toughness; `None` for non-creatures.
     pub power: Option<i32>,
     pub toughness: Option<i32>,
@@ -165,7 +169,7 @@ fn card_view(state: &GameState, registry: &CardRegistry, id: ObjectId) -> CardVi
         return CardView {
             id, name: String::new(), mana_cost: None, mana_value: 0,
             type_line: String::new(), is_land: false, playable: false,
-            power: None, toughness: None, tapped: false,
+            keywords: Vec::new(), power: None, toughness: None, tapped: false,
         };
     };
     let c = &o.characteristics;
@@ -183,9 +187,13 @@ fn card_view(state: &GameState, registry: &CardRegistry, id: ObjectId) -> CardVi
         (None, None)
     };
     let tapped = o.is_tapped();
+    let mut keywords: Vec<String> = c.keywords.iter()
+        .map(crate::glossary::keyword_key).collect();
+    keywords.sort_unstable();
+    keywords.dedup();
     CardView {
         id, name, mana_cost, mana_value, type_line, is_land,
-        playable: false, power, toughness, tapped,
+        playable: false, keywords, power, toughness, tapped,
     }
 }
 

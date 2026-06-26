@@ -141,8 +141,15 @@
     flex-direction: column; gap: 12px;
   }
   #zoom.show { display: flex; }
-  #zoom img { max-height: 84vh; max-width: 92vw; border-radius: 14px; box-shadow: 0 10px 44px #000; }
+  #zoom img { max-height: 76vh; max-width: 92vw; border-radius: 14px; box-shadow: 0 10px 44px #000; }
   #zoominfo { font-size: 14px; color: #e7e9ee; max-width: 90vw; text-align: center; }
+  #zoomkw { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 80vw; }
+  #zoomkw .kw {
+    background: #2d4263; border: 1px solid #3f5d8a; border-radius: 999px;
+    padding: 3px 11px; font-size: 12px; cursor: help; color: #e7e9ee;
+  }
+  #zoomkw .kw:hover { background: #4a6aa0; }
+  #zoomreminder { font-size: 13px; color: #c9d4e6; max-width: 68ch; text-align: center; min-height: 18px; }
 </style>
 </head>
 <body>
@@ -171,7 +178,12 @@
   <div id="actions"></div>
 
   <!-- right-click any card to zoom (dismiss: click / Esc / right-click) -->
-  <div id="zoom"><img id="zoomimg" alt="card" /><div id="zoominfo"></div></div>
+  <div id="zoom">
+    <img id="zoomimg" alt="card" />
+    <div id="zoominfo"></div>
+    <div id="zoomkw"></div>
+    <div id="zoomreminder"></div>
+  </div>
 
 <script>
 "use strict";
@@ -189,6 +201,7 @@ const G = {
   order: new Map(),   // attackerId -> [blockerId,...] in chosen damage order
   damage: new Map(),  // attackerId -> Map(blockerId -> amount)
   bottomSel: new Set(),// mulligan: hand card ids selected to put on the bottom
+  glossary: {},       // keyword base-name -> reminder text (fetched once)
   busy: false,
 };
 
@@ -335,9 +348,32 @@ function showZoom(c) {
   if (c.type_line) parts.push(c.type_line);
   if (c.power !== null && c.power !== undefined) parts.push(c.power + "/" + c.toughness);
   info.textContent = parts.join("  ·  ");
+
+  // keyword chips + reminder text (hover or tap a chip to explain it)
+  const kwbox = document.getElementById("zoomkw");
+  const reminder = document.getElementById("zoomreminder");
+  kwbox.innerHTML = ""; reminder.textContent = "";
+  const kws = c.keywords || [];
+  const explain = (kw) => { reminder.textContent = kw + " — " + (G.glossary[kw] || "(no reminder text)"); };
+  kws.forEach((kw, i) => {
+    const chip = document.createElement("span");
+    chip.className = "kw"; chip.textContent = kw;
+    chip.title = G.glossary[kw] || "";
+    chip.onmouseenter = () => explain(kw);
+    chip.onclick = (e) => { e.stopPropagation(); explain(kw); }; // don't close the overlay
+    kwbox.appendChild(chip);
+    if (i === 0) explain(kw); // show the first keyword's reminder by default
+  });
   z.classList.add("show");
 }
 function hideZoom() { document.getElementById("zoom").classList.remove("show"); }
+
+async function loadGlossary() {
+  try {
+    const r = await fetch("/glossary");
+    if (r.ok) G.glossary = await r.json();
+  } catch (e) { /* chips still show, just without reminders */ }
+}
 
 function renderCards(container, cards, emptyMsg, decorate) {
   container.innerHTML = "";
@@ -1025,6 +1061,7 @@ document.getElementById("refresh").onclick = getState;
 document.getElementById("zoom").onclick = hideZoom;
 document.getElementById("zoom").oncontextmenu = (e) => { e.preventDefault(); hideZoom(); };
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") hideZoom(); });
+loadGlossary();
 getState();
 </script>
 </body>

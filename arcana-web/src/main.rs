@@ -5,6 +5,7 @@
 //! just the axum/tokio HTTP shell around it:
 //!
 //! * `GET  /`       → the single-page UI (`static/index.html`, embedded).
+//! * `GET  /glossary`→ keyword reminder text (base name → reminder), static.
 //! * `GET  /state`  → advance through bot/trivial decisions, return the human's
 //!   [`ViewState`](arcana_core::view::ViewState) + the opponent action log.
 //! * `POST /action` → body `{ "index": N }`, apply `legal[N]`, advance, return
@@ -145,6 +146,17 @@ async fn index() -> Html<&'static str> {
     Html(INDEX_HTML)
 }
 
+/// The keyword glossary (base name -> reminder text). Static — no game state, so
+/// the frontend fetches it once and caches it for the card-zoom chips.
+async fn get_glossary() -> Json<std::collections::BTreeMap<String, String>> {
+    Json(
+        arcana_core::glossary::keyword_glossary()
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect(),
+    )
+}
+
 async fn get_state(State(app): State<AppState>) -> Response {
     let (reply, rx) = oneshot::channel();
     if app.tx.send(Command::State(reply)).is_err() {
@@ -254,6 +266,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(index))
+        .route("/glossary", get(get_glossary))
         .route("/state", get(get_state))
         .route("/action", post(post_action))
         .route("/combat", post(post_combat))
