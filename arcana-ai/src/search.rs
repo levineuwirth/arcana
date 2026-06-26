@@ -179,16 +179,7 @@ impl ValueMcPolicy {
                rollouts, rollout_step_cap: cap, max_candidates }
     }
     fn candidate_indices(&mut self, legal: &[Action]) -> Vec<usize> {
-        if legal.len() <= self.max_candidates {
-            return (0..legal.len()).collect();
-        }
-        let mut idxs: Vec<usize> = (0..legal.len()).collect();
-        idxs.shuffle(&mut self.rng);
-        idxs.truncate(self.max_candidates);
-        if let Some(p) = legal.iter().position(|a| matches!(a, Action::PassPriority)) {
-            if !idxs.contains(&p) { idxs[0] = p; }
-        }
-        idxs
+        select_candidates(legal, self.max_candidates, &mut self.rng)
     }
 }
 impl StatePolicy for ValueMcPolicy {
@@ -199,17 +190,89 @@ impl StatePolicy for ValueMcPolicy {
         let mut best_idx = cands[0];
         let mut best_avg = f32::NEG_INFINITY;
         for ci in cands {
-            let mut sum = 0.0f32;
-            for _ in 0..self.rollouts {
-                let (s, y) = step(state.clone(), legal[ci].clone(), registry);
-                let leaf = play_out(s, y, registry, self.rollout_step_cap, &mut self.rng);
-                sum += self.value.value(&leaf, decider);
-            }
-            let avg = sum / self.rollouts.max(1) as f32;
+            let avg = score_candidate(state, registry, decider, &legal[ci],
+                self.value.as_ref(), self.rollouts, self.rollout_step_cap, &mut self.rng);
             if avg > best_avg { best_avg = avg; best_idx = ci; }
         }
         legal[best_idx].clone()
     }
+}
+
+/// Sub-sample candidate action indices for a value-MC decision: if `legal` fits
+/// in `max_candidates` take all of it, else a random subset that ALWAYS retains
+/// `PassPriority` (the do-nothing baseline every suggestion is measured against).
+/// Shared by [`ValueMcPolicy`] and [`rank_actions`] so the bot and the analysis
+/// panel select from the same pool.
+fn select_candidates(legal: &[Action], max_candidates: usize, rng: &mut ChaCha8Rng) -> Vec<usize> {
+    if legal.len() <= max_candidates {
+        return (0..legal.len()).collect();
+    }
+    let mut idxs: Vec<usize> = (0..legal.len()).collect();
+    idxs.shuffle(rng);
+    idxs.truncate(max_candidates);
+    if let Some(p) = legal.iter().position(|a| matches!(a, Action::PassPriority)) {
+        if !idxs.contains(&p) { idxs[0] = p; }
+    }
+    idxs
+}
+
+/// Mean value (from `decider`'s perspective) of taking `action` then playing
+/// `rollouts` short [`play_out`]s of at most `cap` steps each. The single
+/// per-candidate scoring kernel shared by [`ValueMcPolicy::choose`] and
+/// [`rank_actions`], so the bot's pick is exactly the analysis panel's top line.
+fn score_candidate(
+    state: &GameState, registry: &CardRegistry, decider: PlayerId, action: &Action,
+    value_fn: &dyn ValueFn, rollouts: u32, cap: u32, rng: &mut ChaCha8Rng,
+) -> f32 {
+    let mut sum = 0.0f32;
+    for _ in 0..rollouts {
+        let (s, y) = step(state.clone(), action.clone(), registry);
+        let leaf = play_out(s, y, registry, cap, rng);
+        sum += value_fn.value(&leaf, decider);
+    }
+    sum / rollouts.max(1) as f32
+}
+
+/// One ranked candidate action: its `index` into the `legal` slice (the same
+/// index the frontend sends back to apply it), its mean rollout `value` from the
+/// decider's perspective, and the calibrated `win_pct` of that value.
+#[derive(Clone, Debug)]
+pub struct ScoredAction {
+    pub index: usize,
+    pub value: f32,
+    pub win_pct: f32,
+}
+
+/// Rank `legal` actions for `decider` by value-MC lookahead — the "suggested
+/// lines" backend. For each (sub-sampled, `PassPriority`-retaining) candidate,
+/// run `rollouts` short playouts capped at `cap` steps, score the leaf with
+/// `value_fn`, and convert the mean to a calibrated win% ([`crate::calibrate::
+/// win_probability`]). Returns every scored candidate sorted by value
+/// descending. This is [`ValueMcPolicy::choose`] turned inside-out: same
+/// candidate pool, same [`score_candidate`] kernel, but it returns the whole
+/// ranked list instead of just the argmax, so the panel's top line IS the bot's
+/// pick. Perfect-information (rolls from the true state); `seed` makes it
+/// reproducible.
+#[allow(clippy::too_many_arguments)]
+pub fn rank_actions(
+    state: &GameState, registry: &CardRegistry, decider: PlayerId, legal: &[Action],
+    value_fn: &dyn ValueFn, rollouts: u32, cap: u32, max_candidates: usize, seed: u64,
+) -> Vec<ScoredAction> {
+    if legal.is_empty() {
+        return Vec::new();
+    }
+    let mut rng = ChaCha8Rng::seed_from_u64(seed);
+    let cands = select_candidates(legal, max_candidates, &mut rng);
+    let mut scored: Vec<ScoredAction> = cands
+        .into_iter()
+        .map(|ci| {
+            let v = score_candidate(state, registry, decider, &legal[ci],
+                value_fn, rollouts, cap, &mut rng);
+            ScoredAction { index: ci, value: v, win_pct: 100.0 * crate::calibrate::win_probability(v) }
+        })
+        .collect();
+    scored.sort_by(|a, b| b.value.partial_cmp(&a.value).unwrap_or(std::cmp::Ordering::Equal));
+    scored
 }
 
 /// Pick a "make progress" action index, mirroring the random-game harness /
@@ -870,6 +933,45 @@ mod tests {
             let mut p = FlatMonteCarloPolicy::with_budget(1, 2, 30, 4);
             let a = p.choose(&state, &reg, player, &legal_actions);
             assert!(legal_actions.contains(&a));
+        }
+    }
+
+    /// [`rank_actions`] (the suggested-lines backend) returns every candidate
+    /// scored, sorted by value descending, with valid distinct indices, calibrated
+    /// win%, and is deterministic for a fixed seed.
+    #[test]
+    fn rank_actions_ranks_legal_candidates() {
+        let reg = arcana_cards::build_catalog();
+        let deck = arcana_cards::sample_deck(&reg, 3);
+        let (state, yld) = new_game(vec![deck.clone(), deck], &reg, 5);
+        if let EngineYield::PendingDecision { player, legal_actions, .. } = yld {
+            let ranked =
+                rank_actions(&state, &reg, player, &legal_actions, &MaterialValue, 2, 30, 8, 7);
+            assert!(!ranked.is_empty());
+            // Sorted by value descending.
+            for w in ranked.windows(2) {
+                assert!(w[0].value >= w[1].value, "not sorted descending");
+            }
+            for s in &ranked {
+                assert!(s.index < legal_actions.len()); // valid index into legal
+                assert!((0.0..=100.0).contains(&s.win_pct));
+                // win_pct is exactly the calibrated map of the value.
+                let expect = 100.0 * crate::calibrate::win_probability(s.value);
+                assert!((s.win_pct - expect).abs() < 1e-3);
+            }
+            // Indices are distinct.
+            let mut idxs: Vec<usize> = ranked.iter().map(|s| s.index).collect();
+            idxs.sort_unstable();
+            idxs.dedup();
+            assert_eq!(idxs.len(), ranked.len());
+            // Deterministic for a fixed seed.
+            let again =
+                rank_actions(&state, &reg, player, &legal_actions, &MaterialValue, 2, 30, 8, 7);
+            assert_eq!(ranked.len(), again.len());
+            for (a, b) in ranked.iter().zip(&again) {
+                assert_eq!(a.index, b.index);
+                assert!((a.value - b.value).abs() < 1e-6);
+            }
         }
     }
 
