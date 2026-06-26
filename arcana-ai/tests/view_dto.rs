@@ -52,9 +52,12 @@ fn session_view_serializes_and_carries_the_perspective_hand() {
             assert!(cost.starts_with('{'), "rendered cost is pip-formatted: {cost}");
         }
     }
-    // Floating mana pools start empty.
+    // Floating mana pools start empty, and with no permanents in play there is
+    // no available mana yet (the gauge reads zero across the board).
     assert_eq!(view.players[0].mana_pool, 0);
     assert_eq!(view.players[1].mana_pool, 0);
+    assert_eq!(view.players[0].available_mana.total, 0);
+    assert_eq!(view.players[1].available_mana.total, 0);
 
     // Round-trips through JSON unchanged — the web transport contract.
     let json = serde_json::to_string(&view).expect("serialize");

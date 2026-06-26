@@ -169,7 +169,12 @@ fn detect_and_mark_loop_draw(state: &mut GameState) {
 
 /// Dispatch on the incoming [`Action`] and mutate state accordingly.
 /// Runs no follow-up — the caller invokes [`settle`] afterward.
-fn apply_action(state: &mut GameState, action: Action, registry: &CardRegistry) {
+///
+/// `pub(crate)` so mana-availability analysis
+/// ([`crate::legal_actions::available_mana`]) can replay mana-ability
+/// activations on a cloned state: CR 605 mana abilities resolve entirely within
+/// this call (pay cost + execute the effect directly), needing no `settle`.
+pub(crate) fn apply_action(state: &mut GameState, action: Action, registry: &CardRegistry) {
     match action {
         Action::PassPriority => apply_pass_priority(state, registry),
 

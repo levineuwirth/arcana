@@ -44,7 +44,7 @@
   .ptitle { display: flex; gap: 14px; align-items: baseline; margin-bottom: 4px; }
   .ptitle .name { font-weight: 700; }
   .ptitle .life { font-size: 20px; font-weight: 800; color: #ff8d8d; }
-  .ptitle .mana { font-size: 12px; color: #8fd0a0; }
+  .ptitle .mana { font-size: 12px; color: #9aa4b2; }
   .ptitle .counts { font-size: 12px; opacity: .7; }
 
   .zone-label { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; opacity: .55; margin: 7px 0 3px; }
@@ -184,13 +184,28 @@ function categoryClass(c) {
   return "";
 }
 
-// summarize a player's mana picture from their public battlefield
+// colored mana symbols for the gauge
+const MANA_COL = {
+  white: ["W", "#e9e3c8"], blue: ["U", "#a9c9e8"], black: ["B", "#b7a9c0"],
+  red: ["R", "#e69a8a"], green: ["G", "#9ccb9c"], colorless: ["C", "#c8ccd4"],
+};
+
+// summarize a player's mana picture: the colored mana they could produce right
+// now (engine-computed, includes floating), plus an untapped-land tally.
 function manaGauge(p) {
+  const a = p.available_mana || { total: 0 };
+  const pips = [];
+  for (const k of ["white", "blue", "black", "red", "green", "colorless"]) {
+    if (a[k]) {
+      const [sym, col] = MANA_COL[k];
+      pips.push('<span style="color:' + col + '">' + a[k] + sym + "</span>");
+    }
+  }
+  let s = a.total ? ("avail " + pips.join(" ")) : "";
+  if (p.mana_pool) s += (s ? " " : "") + '<span style="opacity:.65">(' + p.mana_pool + " floating)</span>";
   const lands = p.battlefield.filter(c => c.is_land);
   const untapped = lands.filter(c => !c.tapped).length;
-  let s = "";
-  if (lands.length) s += untapped + "/" + lands.length + " lands untapped";
-  if (p.mana_pool) s += (s ? " · " : "") + "+" + p.mana_pool + " floating";
+  if (lands.length) s += (s ? " · " : "") + '<span style="opacity:.7">' + untapped + "/" + lands.length + " lands</span>";
   return s;
 }
 

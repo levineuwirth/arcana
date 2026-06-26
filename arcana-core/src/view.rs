@@ -47,6 +47,36 @@ pub struct CardView {
     pub tapped: bool,
 }
 
+/// A mana amount broken down by color — used for the "available mana" gauge.
+/// `total == white + blue + black + red + green + colorless`.
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ManaCounts {
+    pub white: usize,
+    pub blue: usize,
+    pub black: usize,
+    pub red: usize,
+    pub green: usize,
+    pub colorless: usize,
+    pub total: usize,
+}
+
+fn mana_counts(pool: &crate::mana::ManaPool) -> ManaCounts {
+    use crate::types::ManaColor;
+    let mut c = ManaCounts::default();
+    for u in pool.iter() {
+        match u.color {
+            ManaColor::White => c.white += 1,
+            ManaColor::Blue => c.blue += 1,
+            ManaColor::Black => c.black += 1,
+            ManaColor::Red => c.red += 1,
+            ManaColor::Green => c.green += 1,
+            ManaColor::Colorless => c.colorless += 1,
+        }
+        c.total += 1;
+    }
+    c
+}
+
 /// One player's public state plus (for the perspective player) their hand.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct PlayerView {
@@ -58,6 +88,11 @@ pub struct PlayerView {
     /// Floating (unspent) mana in this player's pool — usually 0 between
     /// decisions, non-zero mid-cast.
     pub mana_pool: usize,
+    /// Mana this player could produce right now (floating pool + everything
+    /// their untapped mana abilities can still make), by color. Drives the
+    /// "available mana" gauge. See [`crate::legal_actions::available_mana`] for
+    /// the flexible-source caveat.
+    pub available_mana: ManaCounts,
     /// Filled only for the perspective player (hidden information).
     pub hand: Vec<CardView>,
     pub battlefield: Vec<CardView>,
@@ -167,6 +202,7 @@ pub fn view_state(
             library_count: state.objects.objects_in_zone(Zone::Library(p)).count(),
             graveyard_count: state.objects.objects_in_zone(Zone::Graveyard(p)).count(),
             mana_pool: state.player(p).mana_pool.total(),
+            available_mana: mana_counts(&crate::legal_actions::available_mana(state, p, registry)),
             hand: if p == perspective { cards_in(Zone::Hand(p)) } else { Vec::new() },
             battlefield: {
                 let ids: Vec<ObjectId> = state.objects.objects_in_zone(Zone::Battlefield)

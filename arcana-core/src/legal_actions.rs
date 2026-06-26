@@ -2477,6 +2477,64 @@ fn combinations(items: &[ObjectId], k: usize) -> Vec<Vec<ObjectId>> {
     out
 }
 
+/// The mana `player` could produce **right now** — their current floating pool
+/// plus everything their mana abilities can still make — as a concrete
+/// [`crate::mana::ManaPool`]. The engine primitive behind a UI "available mana"
+/// gauge and "can I afford it if I tap out" checks (compose with
+/// [`crate::mana::can_afford`] over the returned pool).
+///
+/// Computed by simulating activations on a clone: CR 605 mana abilities resolve
+/// immediately, so the loop re-enumerates the player's activatable abilities
+/// against the *growing* pool and applies one mana ability per pass until none
+/// remain. Re-enumerating each pass is what makes chained sources correct — a
+/// filter land ("{U}, {T}: Add {G}{G}") only becomes activatable once a basic
+/// has been tapped for its {U} input. It reuses the real cost-gated enumeration
+/// and activation path, so every cost (tap / mana / sacrifice / counters / …) is
+/// honored; this never mutates the caller's `state`.
+///
+/// LIMITATION: a flexible "any color" source resolves its color via the engine's
+/// deterministic fallback (mana abilities can't post a player choice, CR 605.3),
+/// so it contributes its *default* color rather than every option. Fixed sources
+/// (basic lands, mono-color producers, filter chains) are exact.
+pub fn available_mana(
+    state: &GameState,
+    player: PlayerId,
+    registry: &CardRegistry,
+) -> crate::mana::ManaPool {
+    let mut sim = state.clone();
+    // Each pass activates one distinct (source, ability) and a source either
+    // taps or is consumed, so progress is bounded by the permanent count; `+ 8`
+    // covers the rarer hand/graveyard mana activations.
+    let guard = sim.objects.objects_in_zone(Zone::Battlefield).count() + 8;
+    let mut done: std::collections::HashSet<(ObjectId, usize)> =
+        std::collections::HashSet::new();
+
+    for _ in 0..guard {
+        // `apply_activate_ability` pays/produces as the priority player; retarget
+        // priority so we measure `player` (its board is public, so either seat is
+        // fair game). Re-asserted each pass for robustness.
+        sim.priority.give_to(player);
+        let next = enumerate_activation_actions(&sim, player, registry)
+            .into_iter()
+            .find(|a| match a {
+                Action::ActivateAbility { source, ability_index, .. } => {
+                    !done.contains(&(*source, *ability_index))
+                        && sim.objects.get(*source)
+                            .and_then(|o| lookup_activated_ability(
+                                o, registry, &sim, *ability_index))
+                            .map_or(false, |ab| ab.is_mana_ability)
+                }
+                _ => false,
+            });
+        let Some(action) = next else { break };
+        if let Action::ActivateAbility { source, ability_index, .. } = &action {
+            done.insert((*source, *ability_index));
+        }
+        crate::engine::apply_action(&mut sim, action, registry);
+    }
+    sim.player(player).mana_pool.clone()
+}
+
 /// Look up an activated ability by flat index — registry abilities
 /// first, then [`crate::objects::GameObject::intrinsic_activated_abilities`].
 /// Returns the ability and a tag identifying which list it came from
@@ -3495,6 +3553,105 @@ mod tests {
                     effect: |_, _, _| Vec::new(),
                 })
         )
+    }
+
+    // --- available_mana -----------------------------------------------------
+
+    fn register_mana_source(
+        reg: &mut CardRegistry, name: &str, chars: Characteristics,
+        cost: ActivationCost, effect: crate::registry::ActivatedEffectFn,
+    ) -> CardId {
+        use crate::registry::{ActivatedAbilityDef, CardDefinition};
+        let nm = reg.interner_mut().intern(name);
+        reg.register(CardDefinition::new(nm, chars).with_activated_ability(
+            ActivatedAbilityDef {
+                text: "test mana ability".into(),
+                cost,
+                target_requirements: vec![],
+                is_mana_ability: true,
+                is_loyalty_ability: false,
+                activation_zone: crate::registry::ActivationZone::Battlefield,
+                is_instant_speed: false,
+                face_gate: None,
+                effect,
+            }))
+    }
+    fn add_one_green(
+        _: &GameState, ctx: &crate::registry::ActivationContext, _: &CardRegistry,
+    ) -> Vec<crate::effects::Effect> {
+        vec![crate::effects::Effect::AddMana {
+            player: ctx.controller,
+            mana: vec![ManaUnit::plain(ManaColor::Green, ctx.source)],
+        }]
+    }
+    // a filter land: "{G}, {T}: Add {R}{R}"
+    fn add_two_red(
+        _: &GameState, ctx: &crate::registry::ActivationContext, _: &CardRegistry,
+    ) -> Vec<crate::effects::Effect> {
+        vec![crate::effects::Effect::AddMana {
+            player: ctx.controller,
+            mana: vec![
+                ManaUnit::plain(ManaColor::Red, ctx.source),
+                ManaUnit::plain(ManaColor::Red, ctx.source),
+            ],
+        }]
+    }
+
+    #[test]
+    fn available_mana_sums_untapped_sources_and_pool() {
+        let mut reg = CardRegistry::new();
+        let forest = register_mana_source(
+            &mut reg, "Test Forest", land_chars(), ActivationCost::tap_only(), add_one_green);
+        let mut s = GameState::new(2, 0);
+        let a = state_put_with_card(&mut s, 0, Zone::Battlefield, land_chars(), forest);
+        let _b = state_put_with_card(&mut s, 0, Zone::Battlefield, land_chars(), forest);
+
+        let pool = available_mana(&s, 0, &reg);
+        assert_eq!(pool.total(), 2, "two untapped green sources -> 2 mana");
+        assert!(pool.iter().all(|u| u.color == ManaColor::Green));
+
+        // the opponent controls no sources
+        assert_eq!(available_mana(&s, 1, &reg).total(), 0);
+
+        // tapping a source drops availability by one
+        s.objects.get_mut(a).unwrap().tap();
+        assert_eq!(available_mana(&s, 0, &reg).total(), 1);
+
+        // current floating mana is counted on top of producible mana
+        add_mana(&mut s, 0, ManaColor::Red, 1);
+        let pool = available_mana(&s, 0, &reg);
+        assert_eq!(pool.total(), 2, "1 producible green + 1 floating red");
+        assert_eq!(pool.iter().filter(|u| u.color == ManaColor::Red).count(), 1);
+        assert_eq!(pool.iter().filter(|u| u.color == ManaColor::Green).count(), 1);
+
+        // the probe never mutates the caller's state
+        assert_eq!(s.player(0).mana_pool.total(), 1, "caller pool unchanged");
+        assert!(s.objects.get(_b).unwrap().is_tapped() == false, "caller's land untouched");
+    }
+
+    #[test]
+    fn available_mana_chains_filter_through_growing_pool() {
+        // A filter ("{G},{T}: Add {R}{R}") is only affordable once the basic has
+        // been tapped for its {G} — the fixpoint must re-enumerate to find it.
+        let mut reg = CardRegistry::new();
+        let forest = register_mana_source(
+            &mut reg, "Test Forest", land_chars(), ActivationCost::tap_only(), add_one_green);
+        let filter_cost = ActivationCost {
+            mana_cost: ManaCost::parse("{G}").unwrap(),
+            tap: true,
+            ..ActivationCost::default()
+        };
+        let filter = register_mana_source(
+            &mut reg, "Test Filter", land_chars(), filter_cost, add_two_red);
+        let mut s = GameState::new(2, 0);
+        state_put_with_card(&mut s, 0, Zone::Battlefield, land_chars(), forest);
+        state_put_with_card(&mut s, 0, Zone::Battlefield, land_chars(), filter);
+
+        // green is spent into the filter, netting {R}{R}.
+        let pool = available_mana(&s, 0, &reg);
+        assert_eq!(pool.total(), 2, "filter chain nets two mana");
+        assert!(pool.iter().all(|u| u.color == ManaColor::Red),
+            "the green was consumed paying the filter's input");
     }
 
     #[test]
