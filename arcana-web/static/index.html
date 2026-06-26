@@ -97,7 +97,16 @@
   #combat.show { display: block; }
   #combat .ctitle { font-weight: 700; margin-bottom: 4px; color: #e0c080; }
   #combat .hint { font-size: 12px; opacity: .8; margin-bottom: 8px; }
-  #combat .ctrls { display: flex; gap: 8px; flex-wrap: wrap; }
+  #combat .ctrls { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  #combat .csec { border-top: 1px solid #3a3220; padding: 6px 0; }
+  #combat .csec-h { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  #combat .ord-row, #combat .dmg-row { display: flex; gap: 8px; align-items: center; margin: 3px 0; font-size: 13px; }
+  #combat .ord-num { width: 18px; opacity: .7; }
+  #combat .ord-nm, #combat .dmg-nm { flex: 1; }
+  #combat .dmg-amt { min-width: 18px; text-align: center; font-weight: 700; }
+  #combat button { padding: 2px 9px; }
+  #combat .dmg-status { font-size: 12px; opacity: .8; margin-top: 2px; }
+  #combat .dmg-status.bad { color: #e69a8a; opacity: 1; }
 
   /* action groups */
   #actions { margin: 8px 0; }
@@ -161,6 +170,8 @@ const G = {
   atk: new Map(),     // attackerId -> defending entity object
   blk: new Map(),     // blockerId  -> attackerId
   pendingBlocker: null,
+  order: new Map(),   // attackerId -> [blockerId,...] in chosen damage order
+  damage: new Map(),  // attackerId -> Map(blockerId -> amount)
   busy: false,
 };
 
@@ -292,24 +303,34 @@ function renderCards(container, cards, emptyMsg, decorate) {
 
 // ----- combat helpers ------------------------------------------------------
 function combatMaps() {
-  // returns {mode, atkOpts: Map<id, defenders[]>, blkOpts: Map<id, canBlock[]>, incoming: Set}
+  // {mode, atkOpts, blkOpts, incoming, hiAtk, hiBlk} — the last two are
+  // board-highlight sets for the order/damage steps (attackers + their blockers).
   const cb = G.resp && G.resp.combat;
   if (!cb) return null;
+  const base = { mode: cb.kind, atkOpts: new Map(), blkOpts: new Map(),
+                 incoming: new Set(), hiAtk: new Set(), hiBlk: new Set() };
   if (cb.kind === "attackers") {
-    const m = new Map();
-    for (const o of cb.attackers) m.set(o.id, o.defenders);
-    return { mode: "attackers", atkOpts: m, blkOpts: new Map(), incoming: new Set() };
+    for (const o of cb.attackers) base.atkOpts.set(o.id, o.defenders);
+  } else if (cb.kind === "blockers") {
+    for (const o of cb.blockers) base.blkOpts.set(o.id, o.can_block);
+    base.incoming = new Set(cb.incoming);
   } else {
-    const m = new Map();
-    for (const o of cb.blockers) m.set(o.id, o.can_block);
-    return { mode: "blockers", atkOpts: new Map(), blkOpts: m, incoming: new Set(cb.incoming) };
+    const groups = cb.kind === "orderblockers" ? cb.orderings : cb.damage;
+    for (const g of groups) {
+      base.hiAtk.add(g.attacker);
+      for (const b of (g.blockers || g.targets)) base.hiBlk.add(b);
+    }
   }
+  return base;
 }
 
 function combatTokenOf(cb) {
   if (!cb) return null;
-  const ids = cb.kind === "attackers"
-    ? cb.attackers.map(o => o.id) : cb.blockers.map(o => o.id);
+  let ids;
+  if (cb.kind === "attackers") ids = cb.attackers.map(o => o.id);
+  else if (cb.kind === "blockers") ids = cb.blockers.map(o => o.id);
+  else if (cb.kind === "orderblockers") ids = cb.orderings.map(o => o.attacker);
+  else ids = cb.damage.map(o => o.attacker);
   return cb.kind + ":" + ids.slice().sort((a, b) => a - b).join(",");
 }
 
@@ -442,6 +463,12 @@ function combatDecor(c, isYou, cm) {
       };
     }
   }
+  // order / damage steps: highlight the attackers and their blockers (no clicks;
+  // the controls live in the combat panel).
+  if (cm.mode === "orderblockers" || cm.mode === "assigndamage") {
+    if (cm.hiAtk.has(c.id)) return { cls: ["attacking"], badge: "attacking", badgeCls: "atk" };
+    if (cm.hiBlk.has(c.id)) return { cls: ["incoming"], badge: "blocking", badgeCls: "blk" };
+  }
   return {};
 }
 
@@ -513,7 +540,29 @@ function renderActions(view) {
   if (pass || concede) root.appendChild(ctrl);
 }
 
-function renderCombatPanel(view) {
+function cardLabel(id) {
+  const c = G.cardById.get(id);
+  if (!c) return "#" + id;
+  const pt = (c.power !== null && c.power !== undefined) ? " " + c.power + "/" + c.toughness : "";
+  return c.name + pt;
+}
+function cardToughness(id) {
+  const c = G.cardById.get(id);
+  return (c && c.toughness !== null && c.toughness !== undefined) ? c.toughness : 1;
+}
+
+const COMBAT_HINTS = {
+  attackers: "Click your creatures (highlighted green) to send them in, then confirm.",
+  blockers: "Click a creature to block with (green), then click the red attacker it should block. Click again to clear.",
+  orderblockers: "Each attacker is blocked by several creatures — set the order damage is assigned in (first takes lethal first).",
+  assigndamage: "Distribute each attacker's combat damage. 'Auto' assigns lethal-first; for tramplers the unassigned remainder hits the opponent.",
+};
+const COMBAT_TITLES = {
+  attackers: "Declare attackers", blockers: "Declare blockers",
+  orderblockers: "Order blockers", assigndamage: "Assign combat damage",
+};
+
+function renderCombatPanel() {
   const panel = document.getElementById("combat");
   const cb = G.resp.combat;
   if (!cb) { panel.className = ""; panel.innerHTML = ""; return; }
@@ -521,43 +570,158 @@ function renderCombatPanel(view) {
   panel.innerHTML = "";
 
   const title = document.createElement("div");
-  title.className = "ctitle";
-  title.textContent = cb.kind === "attackers" ? "Declare attackers" : "Declare blockers";
+  title.className = "ctitle"; title.textContent = COMBAT_TITLES[cb.kind] || "Combat";
   panel.appendChild(title);
-
   const hint = document.createElement("div");
-  hint.className = "hint";
-  hint.textContent = cb.kind === "attackers"
-    ? "Click your creatures (highlighted green) to send them in, then confirm."
-    : "Click a creature to block with (green), then click the red attacker it should block. Click again to clear.";
+  hint.className = "hint"; hint.textContent = COMBAT_HINTS[cb.kind] || "";
   panel.appendChild(hint);
 
+  if (cb.kind === "attackers") buildDeclarePanel(panel, "attacker");
+  else if (cb.kind === "blockers") buildDeclarePanel(panel, "block");
+  else if (cb.kind === "orderblockers") buildOrderPanel(panel, cb);
+  else if (cb.kind === "assigndamage") buildDamagePanel(panel, cb);
+}
+
+function buildDeclarePanel(panel, word) {
   const ctrls = document.createElement("div");
   ctrls.className = "ctrls";
-  if (cb.kind === "attackers") {
-    const n = G.atk.size;
-    const go = document.createElement("button");
-    go.className = "action";
-    go.textContent = n ? ("Confirm " + n + " attacker" + (n > 1 ? "s" : "")) : "Confirm attackers";
-    go.onclick = confirmAttackers;
-    ctrls.appendChild(go);
-    const none = document.createElement("button");
-    none.className = "pass"; none.textContent = "No attacks";
-    none.onclick = () => { G.atk.clear(); confirmAttackers(); };
-    ctrls.appendChild(none);
-  } else {
-    const n = G.blk.size;
-    const go = document.createElement("button");
-    go.className = "action";
-    go.textContent = n ? ("Confirm " + n + " block" + (n > 1 ? "s" : "")) : "Confirm blocks";
-    go.onclick = confirmBlockers;
-    ctrls.appendChild(go);
-    const none = document.createElement("button");
-    none.className = "pass"; none.textContent = "No blocks";
-    none.onclick = () => { G.blk.clear(); G.pendingBlocker = null; confirmBlockers(); };
-    ctrls.appendChild(none);
-  }
+  const isAtk = word === "attacker";
+  const n = isAtk ? G.atk.size : G.blk.size;
+  const go = document.createElement("button");
+  go.className = "action";
+  go.textContent = n ? ("Confirm " + n + " " + word + (n > 1 ? "s" : ""))
+                     : ("Confirm " + word + "s");
+  go.onclick = isAtk ? confirmAttackers : confirmBlockers;
+  const none = document.createElement("button");
+  none.className = "pass";
+  none.textContent = isAtk ? "No attacks" : "No blocks";
+  none.onclick = isAtk
+    ? () => { G.atk.clear(); confirmAttackers(); }
+    : () => { G.blk.clear(); G.pendingBlocker = null; confirmBlockers(); };
+  ctrls.append(go, none);
   panel.appendChild(ctrls);
+}
+
+function buildOrderPanel(panel, cb) {
+  for (const g of cb.orderings) {
+    if (!G.order.has(g.attacker)) G.order.set(g.attacker, g.blockers.slice());
+  }
+  for (const g of cb.orderings) {
+    const ord = G.order.get(g.attacker);
+    const sec = document.createElement("div"); sec.className = "csec";
+    const h = document.createElement("div"); h.className = "csec-h";
+    h.textContent = cardLabel(g.attacker) + " blocked by " + ord.length + ":";
+    sec.appendChild(h);
+    ord.forEach((bid, i) => {
+      const row = document.createElement("div"); row.className = "ord-row";
+      const num = document.createElement("span"); num.className = "ord-num"; num.textContent = (i + 1) + ".";
+      const nm = document.createElement("span"); nm.className = "ord-nm"; nm.textContent = cardLabel(bid);
+      const up = document.createElement("button"); up.textContent = "▲"; up.disabled = i === 0;
+      up.onclick = () => moveOrder(g.attacker, i, -1);
+      const dn = document.createElement("button"); dn.textContent = "▼"; dn.disabled = i === ord.length - 1;
+      dn.onclick = () => moveOrder(g.attacker, i, 1);
+      row.append(num, nm, up, dn);
+      sec.appendChild(row);
+    });
+    panel.appendChild(sec);
+  }
+  const ctrls = document.createElement("div"); ctrls.className = "ctrls";
+  const go = document.createElement("button"); go.className = "action"; go.textContent = "Confirm order";
+  go.onclick = confirmOrder;
+  ctrls.appendChild(go);
+  panel.appendChild(ctrls);
+}
+
+function moveOrder(atk, i, d) {
+  const ord = G.order.get(atk);
+  const j = i + d;
+  if (j < 0 || j >= ord.length) return;
+  [ord[i], ord[j]] = [ord[j], ord[i]];
+  renderAll();
+}
+
+async function confirmOrder() {
+  const orderings = [];
+  for (const [atk, ord] of G.order) orderings.push([atk, ord]);
+  logLine("you", "Order blockers");
+  await postCombat({ kind: "order", orderings });
+}
+
+// lethal-first auto-assignment: each target gets its lethal (toughness) in order,
+// capped by remaining power; non-tramplers dump any remainder on the last target.
+function autoLethal(g) {
+  const m = new Map();
+  let rem = g.power;
+  for (const tid of g.targets) {
+    const give = Math.min(rem, Math.max(1, cardToughness(tid)));
+    m.set(tid, give); rem -= give;
+  }
+  if (!g.trample && rem > 0 && g.targets.length) {
+    const last = g.targets[g.targets.length - 1];
+    m.set(last, (m.get(last) || 0) + rem);
+  }
+  return m;
+}
+
+function setDmg(atk, tid, val, power) {
+  const m = G.damage.get(atk);
+  m.set(tid, Math.max(0, Math.min(val, power)));
+  renderAll();
+}
+
+function buildDamagePanel(panel, cb) {
+  for (const g of cb.damage) {
+    if (!G.damage.has(g.attacker)) G.damage.set(g.attacker, autoLethal(g));
+  }
+  for (const g of cb.damage) {
+    const m = G.damage.get(g.attacker);
+    const sum = [...m.values()].reduce((a, b) => a + b, 0);
+    const sec = document.createElement("div"); sec.className = "csec";
+    const h = document.createElement("div"); h.className = "csec-h";
+    h.textContent = cardLabel(g.attacker) + " — assign " + g.power + " damage:";
+    sec.appendChild(h);
+    for (const tid of g.targets) {
+      const row = document.createElement("div"); row.className = "dmg-row";
+      const nm = document.createElement("span"); nm.className = "dmg-nm"; nm.textContent = cardLabel(tid);
+      const minus = document.createElement("button"); minus.textContent = "−";
+      minus.onclick = () => setDmg(g.attacker, tid, (m.get(tid) || 0) - 1, g.power);
+      const amt = document.createElement("span"); amt.className = "dmg-amt"; amt.textContent = m.get(tid) || 0;
+      const plus = document.createElement("button"); plus.textContent = "+";
+      plus.onclick = () => setDmg(g.attacker, tid, (m.get(tid) || 0) + 1, g.power);
+      row.append(nm, minus, amt, plus);
+      sec.appendChild(row);
+    }
+    const status = document.createElement("div"); status.className = "dmg-status";
+    let txt = "assigned " + sum + " / " + g.power;
+    if (sum > g.power) txt += " — too much!";
+    else if (g.trample && sum < g.power) txt += " · " + (g.power - sum) + " tramples over";
+    else if (sum < g.power) txt += " — assign all " + g.power;
+    status.textContent = txt;
+    status.classList.toggle("bad", sum > g.power || (!g.trample && sum !== g.power));
+    sec.appendChild(status);
+    panel.appendChild(sec);
+  }
+  const ctrls = document.createElement("div"); ctrls.className = "ctrls";
+  const auto = document.createElement("button"); auto.className = "pass"; auto.textContent = "Auto (lethal-first)";
+  auto.onclick = () => { for (const g of cb.damage) G.damage.set(g.attacker, autoLethal(g)); renderAll(); };
+  const go = document.createElement("button"); go.className = "action"; go.textContent = "Confirm damage";
+  go.onclick = confirmDamage;
+  ctrls.append(auto, go);
+  panel.appendChild(ctrls);
+}
+
+async function confirmDamage() {
+  const cb = G.resp.combat;
+  const distributions = cb.damage.map(g => {
+    const m = G.damage.get(g.attacker);
+    // engine distributions list only blockers that took damage, in order
+    const distribution = g.targets
+      .map(tid => [tid, m.get(tid) || 0])
+      .filter(([, amt]) => amt > 0);
+    return { attacker: g.attacker, distribution };
+  });
+  logLine("you", "Assign combat damage");
+  await postCombat({ kind: "damage", distributions });
 }
 
 function renderLog() {
@@ -607,7 +771,7 @@ function renderAll() {
   renderPlayer(document.getElementById("opponent"), opp, false, cm);
   renderPlayer(document.getElementById("you"), you, true, cm);
   renderCards(document.getElementById("stack"), view.stack, "(stack empty)");
-  renderCombatPanel(view);
+  renderCombatPanel();
   renderActions(view);
   setBusy(G.busy);
 }
@@ -625,6 +789,7 @@ function adopt(resp, isAdvance) {
   if (newToken !== G.combatToken) {
     G.combatToken = newToken;
     G.atk.clear(); G.blk.clear(); G.pendingBlocker = null;
+    G.order.clear(); G.damage.clear();
   }
   if (isAdvance && resp.recent && resp.recent.length) {
     for (const r of resp.recent) logLine("opp", "Opponent: " + r.description);

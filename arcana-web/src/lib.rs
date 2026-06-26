@@ -21,10 +21,13 @@ use arcana_ai::search::{MaterialValue, ValueMcPolicy};
 use arcana_ai::session::{Seat, Session, Turn};
 use arcana_core::actions::Action;
 use arcana_core::combat::{
-    attacker_options, blocker_options, match_attack, match_block, AttackerDeclaration,
-    BlockerDeclaration, DefendingEntity,
+    attacker_options, blocker_options, damage_targets, match_attack, match_block, match_damage,
+    match_ordering, ordering_targets, AttackerDeclaration, BlockerDeclaration, DamageAssignment,
+    DefendingEntity,
 };
+use arcana_core::effects::KeywordAbility;
 use arcana_core::objects::ObjectId;
+use arcana_core::state::GameState;
 use arcana_core::registry::CardRegistry;
 use arcana_core::state::GameResult;
 use arcana_core::types::PlayerId;
@@ -43,12 +46,36 @@ pub struct RecentAction {
     pub description: String,
 }
 
-/// Which kind of combat declaration the human is being asked for.
+/// Which kind of combat decision the human is being asked for.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum CombatKind {
     Attackers,
     Blockers,
+    /// Order the blockers of each multi-blocked attacker (damage-assignment order).
+    OrderBlockers,
+    /// Distribute each attacker's combat damage across its ordered blockers.
+    AssignDamage,
+}
+
+/// An attacker blocked by ≥2 creatures whose blockers must be put in
+/// damage-assignment order.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct OrderingGroup {
+    pub attacker: ObjectId,
+    pub blockers: Vec<ObjectId>,
+}
+
+/// An attacker that must distribute its combat damage. `power` is the total to
+/// assign; `targets` are its blockers already in damage-assignment order;
+/// `trample` allows the sum to be less than `power` (the remainder tramples over
+/// to the defending player).
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct DamageGroup {
+    pub attacker: ObjectId,
+    pub power: u32,
+    pub trample: bool,
+    pub targets: Vec<ObjectId>,
 }
 
 /// One of the human's creatures that may attack, plus the entities it could
@@ -82,6 +109,10 @@ pub struct CombatPrompt {
     /// The attacking creatures the human is defending against (for display /
     /// highlight). Populated when `kind == Blockers`.
     pub incoming: Vec<ObjectId>,
+    /// Populated when `kind == OrderBlockers`.
+    pub orderings: Vec<OrderingGroup>,
+    /// Populated when `kind == AssignDamage`.
+    pub damage: Vec<DamageGroup>,
 }
 
 /// The human's incremental combat declaration, sent back to `/combat`. The set
@@ -92,6 +123,10 @@ pub struct CombatPrompt {
 pub enum CombatSubmission {
     Attackers { attackers: Vec<AttackerDeclaration> },
     Blockers { blockers: Vec<BlockerDeclaration> },
+    /// Per attacker: its blockers in the chosen damage-assignment order.
+    Order { orderings: Vec<(ObjectId, Vec<ObjectId>)> },
+    /// Per attacker: its (blocker, amount) distribution.
+    Damage { distributions: Vec<DamageAssignment> },
 }
 
 /// The JSON payload `/state`, `/action`, and `/combat` return: the human's view
@@ -106,20 +141,27 @@ pub struct StateResponse {
     pub combat: Option<CombatPrompt>,
 }
 
-/// Build a [`CombatPrompt`] from a legal-action list, or `None` if the pending
-/// decision is not a combat declaration. Attackers take precedence (the two are
-/// never enumerated together).
-fn combat_prompt(legal: &[Action]) -> Option<CombatPrompt> {
+/// Build a [`CombatPrompt`] from the pending decision, or `None` if it isn't a
+/// combat decision. The four combat decisions are mutually exclusive (the
+/// helpers each return empty unless that decision is pending), so the first
+/// non-empty one wins. `state` is needed for attacker power / trample on the
+/// damage-assignment prompt.
+fn combat_prompt(state: &GameState, legal: &[Action]) -> Option<CombatPrompt> {
+    let empty = || CombatPrompt {
+        kind: CombatKind::Attackers,
+        attackers: Vec::new(),
+        blockers: Vec::new(),
+        incoming: Vec::new(),
+        orderings: Vec::new(),
+        damage: Vec::new(),
+    };
+
     let atk = attacker_options(legal);
     if !atk.is_empty() {
         return Some(CombatPrompt {
-            kind: CombatKind::Attackers,
-            attackers: atk
-                .into_iter()
-                .map(|(id, defenders)| AttackerOption { id, defenders })
-                .collect(),
-            blockers: Vec::new(),
-            incoming: Vec::new(),
+            attackers: atk.into_iter()
+                .map(|(id, defenders)| AttackerOption { id, defenders }).collect(),
+            ..empty()
         });
     }
     let blk = blocker_options(legal);
@@ -130,12 +172,32 @@ fn combat_prompt(legal: &[Action]) -> Option<CombatPrompt> {
         incoming.dedup();
         return Some(CombatPrompt {
             kind: CombatKind::Blockers,
-            attackers: Vec::new(),
-            blockers: blk
-                .into_iter()
-                .map(|(id, can_block)| BlockerOption { id, can_block })
-                .collect(),
+            blockers: blk.into_iter()
+                .map(|(id, can_block)| BlockerOption { id, can_block }).collect(),
             incoming,
+            ..empty()
+        });
+    }
+    let ord = ordering_targets(legal);
+    if !ord.is_empty() {
+        return Some(CombatPrompt {
+            kind: CombatKind::OrderBlockers,
+            orderings: ord.into_iter()
+                .map(|(attacker, blockers)| OrderingGroup { attacker, blockers }).collect(),
+            ..empty()
+        });
+    }
+    let dmg = damage_targets(legal);
+    if !dmg.is_empty() {
+        return Some(CombatPrompt {
+            kind: CombatKind::AssignDamage,
+            damage: dmg.into_iter().map(|(attacker, targets)| DamageGroup {
+                attacker,
+                power: state.computed_power(attacker).unwrap_or(0).max(0) as u32,
+                trample: state.has_keyword(attacker, &KeywordAbility::Trample),
+                targets,
+            }).collect(),
+            ..empty()
         });
     }
     None
@@ -254,7 +316,7 @@ impl GameCore {
             .iter()
             .map(|(p, d)| RecentAction { player: *p, description: d.clone() })
             .collect();
-        let combat = combat_prompt(&self.legal);
+        let combat = combat_prompt(self.session.state(), &self.legal);
         StateResponse { view, recent, combat }
     }
 
@@ -288,6 +350,8 @@ impl GameCore {
         let action = match sub {
             CombatSubmission::Attackers { attackers } => match_attack(&self.legal, &attackers),
             CombatSubmission::Blockers { blockers } => match_block(&self.legal, &blockers),
+            CombatSubmission::Order { orderings } => match_ordering(&self.legal, &orderings),
+            CombatSubmission::Damage { distributions } => match_damage(&self.legal, &distributions),
         };
         let action = action.ok_or(ApplyError::IllegalCombat)?;
         self.session.apply(action);
@@ -386,15 +450,16 @@ mod tests {
     /// list yields no prompt. Pure (no session) so it's deterministic.
     #[test]
     fn combat_prompt_and_matcher_are_consistent() {
+        let st = GameState::new(2, 0); // state unused by attacker detection
         // No legal actions / non-combat decisions produce no prompt.
-        assert!(combat_prompt(&[]).is_none());
+        assert!(combat_prompt(&st, &[]).is_none());
 
         let mk = || AttackerDeclaration { attacker: 5, defending: DefendingEntity::Player(1) };
         let legal = vec![
             Action::DeclareAttackers { attackers: vec![] }, // the always-legal "no attacks"
             Action::DeclareAttackers { attackers: vec![mk()] },
         ];
-        let prompt = combat_prompt(&legal).expect("an attacker prompt");
+        let prompt = combat_prompt(&st, &legal).expect("an attacker prompt");
         assert_eq!(prompt.kind, CombatKind::Attackers);
         assert_eq!(prompt.attackers.len(), 1);
         assert_eq!(prompt.attackers[0].id, 5);
@@ -447,6 +512,29 @@ mod tests {
                             })
                             .expect("a DeclareBlockers is enumerated for a blocker prompt");
                         CombatSubmission::Blockers { blockers }
+                    }
+                    CombatKind::OrderBlockers => {
+                        let orderings = core
+                            .legal
+                            .iter()
+                            .find_map(|a| match a {
+                                Action::OrderBlockers { orderings } => Some(orderings.clone()),
+                                _ => None,
+                            })
+                            .expect("an OrderBlockers is enumerated for an ordering prompt");
+                        CombatSubmission::Order { orderings }
+                    }
+                    CombatKind::AssignDamage => {
+                        let distributions = core
+                            .legal
+                            .iter()
+                            .find_map(|a| match a {
+                                Action::AssignCombatDamage { distributions } =>
+                                    Some(distributions.clone()),
+                                _ => None,
+                            })
+                            .expect("an AssignCombatDamage is enumerated for a damage prompt");
+                        CombatSubmission::Damage { distributions }
                     }
                 };
                 cur = core.apply_combat(sub).expect("a real legal declaration applies");
