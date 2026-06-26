@@ -63,12 +63,14 @@ pub fn play(args: &[String]) -> Result<()> {
     loop {
         match session.advance() {
             Turn::GameOver(result) => {
+                print_recent(session.recent_actions());
                 println!("\n{}", render(session.state(), &reg));
                 println!("\n=== GAME OVER: {result:?} ===");
                 return Ok(());
             }
             Turn::AwaitingHuman { player, view, legal, context } => {
                 let _ = context;
+                print_recent(session.recent_actions());
                 println!("\n{}", render_for(&view.state, &reg, view.perspective));
                 println!("── P{player} to act ──");
                 let Some(action) = prompt_action(&view.state, &reg, &legal)? else {
@@ -78,6 +80,16 @@ pub fn play(args: &[String]) -> Result<()> {
                 session.apply(action);
             }
         }
+    }
+}
+
+/// Print what the opponent(s) did since the human last acted (pre-rendered
+/// notable bot actions from the last `advance`).
+fn print_recent(recent: &[(arcana_core::types::PlayerId, String)]) {
+    if recent.is_empty() { return; }
+    println!("\nOpponent:");
+    for (p, desc) in recent {
+        println!("  P{p} {desc}");
     }
 }
 

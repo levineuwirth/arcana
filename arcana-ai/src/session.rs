@@ -23,6 +23,7 @@ use arcana_core::actions::{Action, DecisionContext};
 use arcana_core::engine::{new_game, step, EngineYield};
 use arcana_core::record::GameRecord;
 use arcana_core::registry::CardRegistry;
+use arcana_core::render::render_action;
 use arcana_core::state::{GameResult, GameState};
 use arcana_core::types::{CardId, PlayerId};
 
@@ -57,6 +58,23 @@ pub struct Session<'a> {
     registry: &'a CardRegistry,
     seats: Vec<Seat>,
     record: GameRecord,
+    /// What the opponent(s) did since the human last acted: notable bot actions
+    /// from the most recent [`Self::advance`], each as `(player, description)`.
+    /// Descriptions are rendered AT APPLY TIME (the engine re-ids objects on zone
+    /// change, so the id is stale by the time the frontend would render it) from
+    /// the full state — correct since a played/cast/attacking card is public.
+    /// Cleared each `advance`; passes and empty declarations are not recorded.
+    log: Vec<(PlayerId, String)>,
+}
+
+/// Worth showing in the opponent log: not a pass, not an empty attack/block.
+fn is_notable(a: &Action) -> bool {
+    match a {
+        Action::PassPriority => false,
+        Action::DeclareAttackers { attackers } => !attackers.is_empty(),
+        Action::DeclareBlockers { blockers } => !blockers.is_empty(),
+        _ => true,
+    }
 }
 
 /// A decision the engine can resolve without prompting: a single legal action,
@@ -84,17 +102,22 @@ impl<'a> Session<'a> {
         assert_eq!(decks.len(), seats.len(), "one seat per deck");
         let record = GameRecord::new(decks.clone(), seed);
         let (state, yld) = new_game(decks, registry, seed);
-        Self { state, yld, registry, seats, record }
+        Self { state, yld, registry, seats, record, log: Vec::new() }
     }
 
     /// The current (full, un-projected) game state — for spectator rendering.
     pub fn state(&self) -> &GameState { &self.state }
     /// The action transcript so far (replayable via `arcana_core::record`).
     pub fn record(&self) -> &GameRecord { &self.record }
+    /// What the opponent(s) did during the most recent [`Self::advance`]:
+    /// `(player, human-readable description)` for each notable bot action, in
+    /// order — for showing the human what just happened.
+    pub fn recent_actions(&self) -> &[(PlayerId, String)] { &self.log }
 
     /// Drive the game through bot + trivial decisions until a human must choose
     /// or the game ends.
     pub fn advance(&mut self) -> Turn {
+        self.log.clear();
         loop {
             let (player, legal, context) = match &self.yld {
                 EngineYield::GameOver(r) => {
@@ -125,6 +148,12 @@ impl<'a> Session<'a> {
                 }
                 Seat::Bot(policy) => policy.choose(&self.state, self.registry, player, &legal),
             };
+            // Render the description NOW, while the object is still live (apply
+            // re-ids it on zone change). Only log notable actions.
+            if is_notable(&action) {
+                let desc = render_action(&action, &self.state, self.registry);
+                self.log.push((player, desc));
+            }
             self.apply_internal(action);
         }
     }

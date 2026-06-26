@@ -5,9 +5,11 @@
 
 use std::fmt::Write as _;
 
-use crate::actions::Action;
+use crate::actions::{Action, ChoiceAction, ChoiceResponse};
+use crate::objects::ObjectId;
 use crate::registry::CardRegistry;
 use crate::state::GameState;
+use crate::targets::{ObjectOrPlayer, TargetChoice, TargetSelection};
 use crate::types::PlayerId;
 use crate::zones::Zone;
 
@@ -123,6 +125,59 @@ pub fn render_object_brief(state: &GameState, registry: &CardRegistry,
     s
 }
 
+fn render_target(t: &TargetChoice, state: &GameState, registry: &CardRegistry) -> String {
+    match t {
+        TargetChoice::Object(id) | TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Object(id)) =>
+            card_name(state, registry, *id),
+        TargetChoice::Player(p) | TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Player(p)) =>
+            format!("P{p}"),
+    }
+}
+
+/// " → t1, t2" for a non-empty target list, else "".
+fn render_targets(sel: &TargetSelection, state: &GameState, registry: &CardRegistry) -> String {
+    if sel.targets.is_empty() { return String::new(); }
+    let names: Vec<String> = sel.targets.iter().map(|t| render_target(t, state, registry)).collect();
+    format!(" → {}", names.join(", "))
+}
+
+fn render_distribution(d: &[(ObjectId, u32)], state: &GameState, registry: &CardRegistry) -> String {
+    d.iter()
+        .map(|(id, n)| format!("{n}×{}", card_name(state, registry, *id)))
+        .collect::<Vec<_>>().join(", ")
+}
+
+/// A resolution choice ([`Action::MakeChoice`]) — common variants get friendly
+/// text; rarer ones fall back to debug.
+fn render_choice_action(c: &ChoiceAction, state: &GameState, registry: &CardRegistry) -> String {
+    match c {
+        ChoiceAction::ChooseObject(id) => format!("Choose {}", card_name(state, registry, *id)),
+        ChoiceAction::ChoosePlayer(p) => format!("Choose P{p}"),
+        ChoiceAction::ChooseColor(col) => format!("Choose {col:?}"),
+        ChoiceAction::ChooseManaColor(col) => format!("Choose {col:?}"),
+        ChoiceAction::ChooseNumber(n) => format!("Choose {n}"),
+        ChoiceAction::ChooseYesNo(b) => if *b { "Yes".into() } else { "No".into() },
+        ChoiceAction::Distribute(d) => format!("Distribute {}", render_distribution(d, state, registry)),
+        other => format!("{other:?}"),
+    }
+}
+
+/// A reply to a pending resolution choice ([`Action::SubmitResolutionChoice`]).
+fn render_choice_response(r: &ChoiceResponse, state: &GameState, registry: &CardRegistry) -> String {
+    match r {
+        ChoiceResponse::YesNo { answer } => if *answer { "Yes".into() } else { "No".into() },
+        ChoiceResponse::PayOrDecline { pay } | ChoiceResponse::OptionalCost { pay } =>
+            if *pay { "Pay".into() } else { "Decline".into() },
+        ChoiceResponse::PickCards { picked } if picked.is_empty() => "Pick nothing".into(),
+        ChoiceResponse::PickCards { picked } => format!("Pick {}",
+            picked.iter().map(|id| card_name(state, registry, *id)).collect::<Vec<_>>().join(", ")),
+        ChoiceResponse::DistributeDamage { distribution }
+        | ChoiceResponse::DistributeCounters { distribution } =>
+            format!("Distribute {}", render_distribution(distribution, state, registry)),
+        other => format!("{other:?}"),
+    }
+}
+
 /// A short, human-readable label for `action` — the menu text in human play.
 /// Resolves object ids to card names; common actions get friendly phrasing, the
 /// rest fall back to a compact debug form (improved incrementally). Shared by
@@ -137,10 +192,21 @@ pub fn render_action(action: &Action, state: &GameState, registry: &CardRegistry
             let name = card_name(state, registry, *object_id);
             if *mdfc_back { format!("Play {name} (back face)") } else { format!("Play {name}") }
         }
-        Action::CastSpell { object_id, .. } =>
-            format!("Cast {}", card_name(state, registry, *object_id)),
-        Action::ActivateAbility { source, ability_index, .. } =>
-            format!("Activate {} [ability {ability_index}]", card_name(state, registry, *source)),
+        Action::CastSpell { object_id, targets, x_value, .. } => {
+            let mut s = format!("Cast {}", card_name(state, registry, *object_id));
+            if let Some(x) = x_value { let _ = write!(s, " (X={x})"); }
+            s.push_str(&render_targets(targets, state, registry));
+            s
+        }
+        Action::ActivateAbility { source, ability_index, targets, .. } => {
+            let mut s = format!("Activate {} [ability {ability_index}]",
+                card_name(state, registry, *source));
+            s.push_str(&render_targets(targets, state, registry));
+            s
+        }
+        Action::MakeChoice(c) => render_choice_action(c, state, registry),
+        Action::SubmitResolutionChoice { response, .. } =>
+            render_choice_response(response, state, registry),
         Action::DeclareAttackers { attackers } if attackers.is_empty() =>
             "Attack with nothing".to_string(),
         Action::DeclareAttackers { attackers } => {
