@@ -133,6 +133,16 @@
     font-weight: 800; margin-bottom: 8px; font-size: 15px;
   }
   .empty { opacity: .35; font-size: 12px; padding: 3px; }
+
+  /* right-click card zoom */
+  #zoom {
+    display: none; position: fixed; inset: 0; z-index: 100; cursor: zoom-out;
+    background: rgba(8, 9, 12, .85); align-items: center; justify-content: center;
+    flex-direction: column; gap: 12px;
+  }
+  #zoom.show { display: flex; }
+  #zoom img { max-height: 84vh; max-width: 92vw; border-radius: 14px; box-shadow: 0 10px 44px #000; }
+  #zoominfo { font-size: 14px; color: #e7e9ee; max-width: 90vw; text-align: center; }
 </style>
 </head>
 <body>
@@ -159,6 +169,9 @@
 
   <div class="zone-label">Your actions</div>
   <div id="actions"></div>
+
+  <!-- right-click any card to zoom (dismiss: click / Esc / right-click) -->
+  <div id="zoom"><img id="zoomimg" alt="card" /><div id="zoominfo"></div></div>
 
 <script>
 "use strict";
@@ -301,8 +314,30 @@ function cardEl(c, opts) {
   }
   if (opts.cls) div.classList.add(...opts.cls);
   if (opts.onclick) div.onclick = opts.onclick;
+  // right-click to zoom (MTGA/Forge style)
+  div.oncontextmenu = (e) => { e.preventDefault(); showZoom(c); };
   return div;
 }
+
+function showZoom(c) {
+  const z = document.getElementById("zoom");
+  const img = document.getElementById("zoomimg");
+  const info = document.getElementById("zoominfo");
+  if (c.name) {
+    img.src = artUrl(c.name);
+    img.style.display = "block";
+    img.onerror = () => { img.style.display = "none"; }; // fall back to the info line
+  } else {
+    img.style.display = "none";
+  }
+  const parts = [c.name || "(hidden card)"];
+  if (c.mana_cost) parts.push(c.mana_cost);
+  if (c.type_line) parts.push(c.type_line);
+  if (c.power !== null && c.power !== undefined) parts.push(c.power + "/" + c.toughness);
+  info.textContent = parts.join("  ·  ");
+  z.classList.add("show");
+}
+function hideZoom() { document.getElementById("zoom").classList.remove("show"); }
 
 function renderCards(container, cards, emptyMsg, decorate) {
   container.innerHTML = "";
@@ -986,6 +1021,10 @@ async function newGame() {
 
 document.getElementById("new").onclick = newGame;
 document.getElementById("refresh").onclick = getState;
+// dismiss the zoom overlay: click, right-click, or Escape
+document.getElementById("zoom").onclick = hideZoom;
+document.getElementById("zoom").oncontextmenu = (e) => { e.preventDefault(); hideZoom(); };
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") hideZoom(); });
 getState();
 </script>
 </body>

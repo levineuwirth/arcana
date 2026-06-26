@@ -83,14 +83,27 @@ fn is_notable(a: &Action) -> bool {
 }
 
 /// A decision the engine can resolve without prompting: a single legal action,
-/// or "nothing to do but pass" (only pass/concede offered → pass). Applied to
-/// humans AND bots so neither is pestered with forced passes.
+/// "nothing to do but pass" (only pass/concede → pass), or a forced resolution
+/// choice with a single legal response (e.g. the only legal target is the
+/// opponent — don't make the player click the one option). Applied to humans AND
+/// bots so neither is pestered with non-decisions. Concede never counts as a real
+/// option here (it's always available, never forced).
 fn auto_action(legal: &[Action]) -> Option<Action> {
     if legal.len() <= 1 {
         return legal.first().cloned();
     }
     if legal.iter().all(|a| matches!(a, Action::PassPriority | Action::Concede)) {
         return legal.iter().find(|a| matches!(a, Action::PassPriority)).cloned();
+    }
+    // A pending resolution choice always offers Concede alongside the responses;
+    // when only ONE response is legal it isn't a decision, so resolve it. (A
+    // single optional priority action like one Cast is NOT auto-taken — those
+    // come with PassPriority, which is a second non-Concede option.)
+    let mut responses = legal.iter().filter(|a| !matches!(a, Action::Concede));
+    if let (Some(only), None) = (responses.next(), responses.next()) {
+        if matches!(only, Action::SubmitResolutionChoice { .. }) {
+            return Some(only.clone());
+        }
     }
     None
 }
@@ -247,6 +260,30 @@ mod tests {
         // The transcript replays (record was populated + result set).
         assert!(session.record().result.is_some());
         assert!(!session.record().actions.is_empty());
+    }
+
+    /// A forced resolution choice with a single legal response (only the
+    /// opponent is a legal target) auto-resolves; with two options it doesn't.
+    #[test]
+    fn single_forced_choice_auto_resolves() {
+        use arcana_core::actions::ChoiceResponse;
+        let one = vec![
+            Action::SubmitResolutionChoice { id: 1, response: ChoiceResponse::YesNo { answer: true } },
+            Action::Concede,
+        ];
+        assert!(matches!(auto_action(&one), Some(Action::SubmitResolutionChoice { .. })),
+            "a lone forced choice is resolved, not surfaced");
+
+        let two = vec![
+            Action::SubmitResolutionChoice { id: 1, response: ChoiceResponse::YesNo { answer: true } },
+            Action::SubmitResolutionChoice { id: 1, response: ChoiceResponse::YesNo { answer: false } },
+            Action::Concede,
+        ];
+        assert!(auto_action(&two).is_none(), "a real choice with two options is surfaced");
+
+        // An optional priority action (one Cast + Pass + Concede) is NOT auto-taken.
+        let prio = vec![Action::PassPriority, Action::Concede];
+        assert!(matches!(auto_action(&prio), Some(Action::PassPriority)));
     }
 
     /// Auto-pass (default on) must never surface a "dead" priority window — one
