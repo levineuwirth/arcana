@@ -2596,6 +2596,141 @@ pub fn has_meaningful_play(
     })
 }
 
+// --- auto-tap ---------------------------------------------------------------
+
+const ALL_MANA_COLORS: [crate::types::ManaColor; 6] = {
+    use crate::types::ManaColor::*;
+    [White, Blue, Black, Red, Green, Colorless]
+};
+
+fn mana_color_index(c: crate::types::ManaColor) -> usize {
+    use crate::types::ManaColor::*;
+    match c { White => 0, Blue => 1, Black => 2, Red => 3, Green => 4, Colorless => 5 }
+}
+
+fn pool_color_counts(pool: &crate::mana::ManaPool) -> [u32; 6] {
+    let mut c = [0u32; 6];
+    for u in pool.iter() { c[mana_color_index(u.color)] += 1; }
+    c
+}
+
+/// Does `action` cast or play the hand card `target`?
+fn action_plays_card(action: &Action, target: ObjectId) -> bool {
+    matches!(action,
+        Action::CastSpell { object_id, .. } | Action::PlayLand { object_id, .. }
+            if *object_id == target)
+}
+
+fn is_mana_activation(state: &GameState, action: &Action, registry: &CardRegistry) -> bool {
+    matches!(action, Action::ActivateAbility { source, ability_index, .. }
+        if state.objects.get(*source)
+            .and_then(|o| lookup_activated_ability(o, registry, state, *ability_index))
+            .map_or(false, |ab| ab.is_mana_ability))
+}
+
+/// The mana colors `action` (a mana-ability activation) nets for `player`,
+/// measured by applying it on a clone — the effect is an opaque fn pointer, and
+/// measuring the per-color delta handles filters (which spend then produce).
+fn mana_production_colors(
+    state: &GameState, player: PlayerId, action: &Action, registry: &CardRegistry,
+) -> Vec<crate::types::ManaColor> {
+    let before = pool_color_counts(&state.player(player).mana_pool);
+    let mut sim = state.clone();
+    crate::engine::apply_action(&mut sim, action.clone(), registry);
+    let after = pool_color_counts(&sim.player(player).mana_pool);
+    ALL_MANA_COLORS.iter().copied()
+        .filter(|&c| after[mana_color_index(c)] > before[mana_color_index(c)])
+        .collect()
+}
+
+/// Colors a cost still needs that the current pool can't cover (colored pips
+/// only; generic/colorless are handled by raw mana count). A heuristic for
+/// choosing which source to tap next.
+fn unmet_cost_colors(
+    cost: Option<&crate::mana::ManaCost>, pool: &crate::mana::ManaPool,
+) -> Vec<crate::types::ManaColor> {
+    let Some(cost) = cost else { return Vec::new(); };
+    let mut need = [0i32; 6];
+    for comp in &cost.components {
+        if let crate::mana::ManaCostComponent::Colored(c) = comp {
+            need[mana_color_index(c.to_mana())] += 1;
+        }
+    }
+    let have = pool_color_counts(pool);
+    ALL_MANA_COLORS.iter().copied()
+        .filter(|&c| need[mana_color_index(c)] > have[mana_color_index(c)] as i32)
+        .collect()
+}
+
+/// Pick the next mana source to tap toward affording `cost`: prefer one that
+/// supplies a still-unmet colored pip, and among those the least flexible (fewest
+/// colors), so dual/any-color sources are preserved for when they're needed.
+fn choose_mana_source(
+    state: &GameState, player: PlayerId, candidates: &[Action],
+    cost: Option<&crate::mana::ManaCost>, registry: &CardRegistry,
+) -> Action {
+    let unmet = unmet_cost_colors(cost, &state.player(player).mana_pool);
+    let mut best: Option<&Action> = None;
+    let mut best_key = (false, usize::MAX); // (supplies an unmet color, #colors)
+    for c in candidates {
+        let prod = mana_production_colors(state, player, c, registry);
+        let key = (prod.iter().any(|col| unmet.contains(col)), prod.len());
+        let better = best.is_none()
+            || (key.0 && !best_key.0)
+            || (key.0 == best_key.0 && key.1 < best_key.1);
+        if better { best = Some(c); best_key = key; }
+    }
+    best.cloned().unwrap_or_else(|| candidates[0].clone())
+}
+
+/// Plan an "auto-tap and cast" for the hand card `target`: the sequence of
+/// mana-ability activations that make it castable/playable, followed by the
+/// cast/play itself **iff** there is exactly one way to do it (no target / mode /
+/// X choice to make — otherwise the taps are returned alone so the caller can
+/// surface the now-available choices). Returns `None` if `target` can't be made
+/// castable even tapping out (i.e. it isn't playable).
+///
+/// Planned on a clone via [`crate::engine::step`] — the same path the caller will
+/// replay the sequence through — so applying it reproduces the plan exactly. The
+/// engine's payment solver fills each `CastSpell`'s `ManaPaymentPlan`, so all the
+/// hard cost assignment stays engine-side; this only decides which sources to tap.
+/// Shares [`available_mana`]'s flexible-source caveat (a source's color is its
+/// deterministic default).
+pub fn auto_tap_sequence(
+    state: &GameState, registry: &CardRegistry, player: PlayerId, target: ObjectId,
+) -> Option<Vec<Action>> {
+    let cost = state.objects.get(target)
+        .and_then(|o| o.characteristics.mana_cost.clone());
+    let mut sim = state.clone();
+    sim.priority.give_to(player);
+    let mut seq: Vec<Action> = Vec::new();
+    let guard = sim.objects.objects_in_zone(Zone::Battlefield).count() + 4;
+
+    for _ in 0..guard {
+        let legal = legal_actions(&sim, registry);
+        let plays: Vec<Action> =
+            legal.iter().filter(|a| action_plays_card(a, target)).cloned().collect();
+        if !plays.is_empty() {
+            // Unambiguous (a single cast/play) → finish it; otherwise leave the
+            // taps so the caller surfaces the target/mode/X choice.
+            if plays.len() == 1 {
+                seq.push(plays.into_iter().next().unwrap());
+            }
+            return Some(seq);
+        }
+        let candidates: Vec<Action> = legal.into_iter()
+            .filter(|a| is_mana_activation(&sim, a, registry)).collect();
+        if candidates.is_empty() {
+            return None; // can't produce more mana, and target isn't castable
+        }
+        let pick = choose_mana_source(&sim, player, &candidates, cost.as_ref(), registry);
+        seq.push(pick.clone());
+        let (next, _yld) = crate::engine::step(sim, pick, registry);
+        sim = next;
+    }
+    None
+}
+
 /// Look up an activated ability by flat index — registry abilities
 /// first, then [`crate::objects::GameObject::intrinsic_activated_abilities`].
 /// Returns the ability and a tag identifying which list it came from
@@ -3751,6 +3886,83 @@ mod tests {
             "no mana available -> bear not playable");
         assert!(!has_meaningful_play(&s, 0, &reg),
             "only pass + a now-useless mana source -> safe to auto-pass");
+    }
+
+    fn add_one_red(
+        _: &GameState, ctx: &crate::registry::ActivationContext, _: &CardRegistry,
+    ) -> Vec<crate::effects::Effect> {
+        vec![crate::effects::Effect::AddMana {
+            player: ctx.controller,
+            mana: vec![ManaUnit::plain(ManaColor::Red, ctx.source)],
+        }]
+    }
+
+    fn red_creature_def(reg: &mut CardRegistry) -> (CardId, Characteristics) {
+        use crate::registry::CardDefinition;
+        let mut chars = creature_chars(3, 3);
+        chars.mana_cost = Some(ManaCost::parse("{2}{R}").unwrap());
+        chars.colors = ColorSet::red();
+        let nm = reg.interner_mut().intern("Test Ogre");
+        (reg.register(CardDefinition::new(nm, chars.clone())), chars)
+    }
+
+    #[test]
+    fn auto_tap_sequence_taps_minimally_and_casts() {
+        let mut reg = CardRegistry::new();
+        let forest = register_mana_source(
+            &mut reg, "Test Forest", land_chars(), ActivationCost::tap_only(), add_one_green);
+        let mountain = register_mana_source(
+            &mut reg, "Test Mountain", land_chars(), ActivationCost::tap_only(), add_one_red);
+        let (ogre_def, ogre_chars) = red_creature_def(&mut reg);
+
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        // 3 Forests + 1 Mountain — a naive tap order would burn all 3 Forests
+        // before the Mountain (4 taps); the color-aware planner takes the R
+        // source first, so a {2}{R} spell needs exactly 3.
+        for _ in 0..3 { state_put_with_card(&mut s, 0, Zone::Battlefield, land_chars(), forest); }
+        state_put_with_card(&mut s, 0, Zone::Battlefield, land_chars(), mountain);
+        let ogre = state_put_with_card(&mut s, 0, Zone::Hand(0), ogre_chars, ogre_def);
+
+        let seq = auto_tap_sequence(&s, &reg, 0, ogre).expect("castable after tapping out");
+        let taps = seq.iter().filter(|a| matches!(a, Action::ActivateAbility { .. })).count();
+        assert_eq!(taps, 3, "exactly 3 sources tapped for a 3-cost spell (no over-tap)");
+
+        // Replaying the plan (taps, plus the cast if it was bundled) takes the
+        // ogre out of hand. If the cast was left out (ambiguous), finish it.
+        let mut sim = s.clone();
+        for act in seq { let (n, _) = crate::engine::step(sim, act, &reg); sim = n; }
+        if sim.objects.get(ogre).map_or(false, |o| o.zone == Zone::Hand(0)) {
+            let cast = legal_actions(&sim, &reg).into_iter()
+                .find(|a| action_plays_card(a, ogre)).expect("cast now legal");
+            let (n, _) = crate::engine::step(sim, cast, &reg); sim = n;
+        }
+        assert!(sim.objects.get(ogre).map_or(true, |o| o.zone != Zone::Hand(0)),
+            "the ogre left the hand via the auto-tap cast");
+    }
+
+    #[test]
+    fn auto_tap_sequence_none_when_unaffordable() {
+        let mut reg = CardRegistry::new();
+        let (ogre_def, ogre_chars) = red_creature_def(&mut reg);
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let ogre = state_put_with_card(&mut s, 0, Zone::Hand(0), ogre_chars, ogre_def);
+        assert!(auto_tap_sequence(&s, &reg, 0, ogre).is_none(), "no mana sources -> no plan");
+    }
+
+    #[test]
+    fn auto_tap_sequence_for_land_is_just_play() {
+        let mut reg = CardRegistry::new();
+        let forest = register_mana_source(
+            &mut reg, "Test Forest", land_chars(), ActivationCost::tap_only(), add_one_green);
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let land = state_put_with_card(&mut s, 0, Zone::Hand(0), land_chars(), forest);
+        let seq = auto_tap_sequence(&s, &reg, 0, land).expect("a land is playable in main");
+        assert!(matches!(seq.as_slice(),
+            [Action::PlayLand { object_id, .. }] if *object_id == land),
+            "a land's plan is a single PlayLand, no taps");
     }
 
     #[test]

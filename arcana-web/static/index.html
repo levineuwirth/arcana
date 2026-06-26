@@ -193,10 +193,12 @@ const MANA_COL = {
   red: ["R", "#e69a8a"], green: ["G", "#9ccb9c"], colorless: ["C", "#c8ccd4"],
 };
 
-// hand cards: green-glow the ones playable this turn (cast/play if tapped out),
-// dim the rest. `playable` is server-computed (engine castability + available mana).
+// hand cards: green-glow the ones playable this turn and make them click-to-play
+// (the server auto-taps mana and casts/plays, or floats mana and surfaces the
+// cast variants if a choice remains). Dim the rest. `playable` is server-computed.
 function handDecor(c) {
-  return { cls: c.playable ? ["playable"] : ["unplayable"] };
+  if (c.playable) return { cls: ["playable"], onclick: () => sendAutoTap(c.id, c.name) };
+  return { cls: ["unplayable"] };
 }
 
 // summarize a player's mana picture: the colored mana they could produce right
@@ -392,7 +394,7 @@ function renderPlayer(container, p, isYou, cm) {
   if (isYou) {
     const hlab = document.createElement("div");
     hlab.className = "zone-label";
-    hlab.textContent = "Your hand — green = playable this turn (tap mana, then cast)";
+    hlab.textContent = "Your hand — click a green card to play it (auto-taps mana)";
     container.appendChild(hlab);
     const hand = document.createElement("div");
     hand.className = "cards";
@@ -644,6 +646,29 @@ async function sendAction(index, label) {
     const r = await fetch("/action", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ index }),
+    });
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({ error: r.statusText }));
+      logLine("sys", "✗ " + (e.error || r.status));
+      await getState();
+      return;
+    }
+    adopt(await r.json(), true);
+  } catch (e) {
+    logLine("sys", "request failed: " + e);
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function sendAutoTap(id, name) {
+  if (G.busy) return;
+  setBusy(true);
+  logLine("you", "You: play " + (name || "card"));
+  try {
+    const r = await fetch("/autotap", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ object_id: id }),
     });
     if (!r.ok) {
       const e = await r.json().catch(() => ({ error: r.statusText }));

@@ -153,6 +153,9 @@ pub enum ApplyError {
     /// illegal set, or one beyond the engine's enumeration cap). The frontend
     /// should re-prompt with the current options.
     IllegalCombat,
+    /// Auto-tap was asked to play a card that can't be cast/played this turn even
+    /// tapping out (it shouldn't have been clickable).
+    NotPlayable { id: ObjectId },
 }
 
 impl fmt::Display for ApplyError {
@@ -166,6 +169,9 @@ impl fmt::Display for ApplyError {
             }
             ApplyError::IllegalCombat => {
                 write!(f, "that combat declaration is not legal — pick again")
+            }
+            ApplyError::NotPlayable { id } => {
+                write!(f, "card {id} can't be played this turn")
             }
         }
     }
@@ -285,6 +291,21 @@ impl GameCore {
         };
         let action = action.ok_or(ApplyError::IllegalCombat)?;
         self.session.apply(action);
+        Ok(self.snapshot())
+    }
+
+    /// MTGA-style "click a card to play it": auto-tap the mana to make hand card
+    /// `target` castable, then cast/play it if there's a single way to — else
+    /// leave the mana floated and surface the now-available cast variants (e.g.
+    /// to choose targets). Returns [`ApplyError::NotPlayable`] if it can't be
+    /// played this turn. See [`arcana_core::legal_actions::auto_tap_sequence`].
+    pub fn auto_tap_and_cast(&mut self, target: ObjectId) -> Result<StateResponse, ApplyError> {
+        let seq = arcana_core::legal_actions::auto_tap_sequence(
+            self.session.state(), self.reg, HUMAN, target)
+            .ok_or(ApplyError::NotPlayable { id: target })?;
+        for action in seq {
+            self.session.apply(action);
+        }
         Ok(self.snapshot())
     }
 }
@@ -445,6 +466,49 @@ mod tests {
         }
 
         assert!(saw_combat, "expected at least one combat declaration in a full game");
+    }
+
+    /// Auto-tap: drive to the first state with a playable hand card, click it,
+    /// and confirm it leaves the hand (a land played / spell cast). Also confirms
+    /// a non-playable card is rejected gracefully.
+    #[test]
+    fn auto_tap_plays_a_playable_card() {
+        let reg = leaked_catalog();
+        let mut core = GameCore::new(reg, 11);
+
+        // At the opening (mulligan), nothing is playable → auto-tap is rejected.
+        let s = core.snapshot();
+        let some_card = s.view.players[0].hand[0].id;
+        assert!(matches!(core.auto_tap_and_cast(some_card),
+            Err(ApplyError::NotPlayable { .. })),
+            "can't auto-tap during the mulligan");
+
+        // Advance (keeping the hand, taking real actions) until a hand card is
+        // flagged playable — on turn one that's a land.
+        let mut cur = s;
+        let mut guard = 0;
+        loop {
+            guard += 1;
+            assert!(guard < 300, "should reach a playable card");
+            assert!(cur.view.game_over.is_none(), "game ended before a playable card");
+            // Turn one: the first playable card is a land. Auto-tap it and
+            // confirm it entered the human's battlefield. (Battlefield is a clean
+            // signal — the bot's interleaved turn never adds to the human's side,
+            // whereas hand_count is confounded by the human's next-turn draw.)
+            if let Some(card) = cur.view.players[0].hand.iter().find(|c| c.playable && c.is_land) {
+                let id = card.id;
+                let before_bf = cur.view.players[0].battlefield.len();
+                let after = core.auto_tap_and_cast(id).expect("a playable land plays");
+                assert!(after.view.players[0].battlefield.len() > before_bf,
+                    "the auto-tapped land entered the battlefield");
+                return;
+            }
+            let idx = cur.view.legal.iter().position(|a| {
+                let l = a.label.as_str();
+                l != "Pass" && l != "Concede" && l != "Mulligan (draw a new hand)"
+            }).unwrap_or(0);
+            cur = core.apply_index(idx).expect("legal index applies");
+        }
     }
 
     /// The StateResponse round-trips through JSON — the actual web transport.

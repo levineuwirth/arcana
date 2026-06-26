@@ -12,6 +12,9 @@
 //! * `POST /combat` → body `{ "kind":"attackers", "attackers":[…] }` or
 //!   `{ "kind":"blockers", "blockers":[…] }`, the incremental combat builder's
 //!   declaration; matched against the legal enumeration. Illegal set → 400.
+//! * `POST /autotap`→ body `{ "object_id": N }`, MTGA-style "click to play":
+//!   auto-tap mana for hand card N and cast/play it (or float mana and surface
+//!   the cast variants if a choice remains). Not playable → 400.
 //! * `POST /new`    → optional body `{ "seed": N }`, start a fresh game.
 //!
 //! ## Concurrency / lifetime note
@@ -27,6 +30,7 @@
 use std::net::SocketAddr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::CardRegistry;
 use arcana_web::{CombatSubmission, GameCore, StateResponse};
 use axum::extract::State;
@@ -45,6 +49,7 @@ enum Command {
     State(oneshot::Sender<StateResponse>),
     Action { index: usize, reply: oneshot::Sender<Result<StateResponse, String>> },
     Combat { sub: CombatSubmission, reply: oneshot::Sender<Result<StateResponse, String>> },
+    AutoTap { target: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
     New { seed: Option<u64>, reply: oneshot::Sender<StateResponse> },
 }
 
@@ -58,6 +63,11 @@ struct AppState {
 #[derive(Debug, Deserialize)]
 struct ActionRequest {
     index: usize,
+}
+
+#[derive(Debug, Deserialize)]
+struct AutoTapRequest {
+    object_id: ObjectId,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -100,6 +110,10 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>) {
             }
             Command::Combat { sub, reply } => {
                 let res = core.apply_combat(sub).map_err(|e| e.to_string());
+                let _ = reply.send(res);
+            }
+            Command::AutoTap { target, reply } => {
+                let res = core.auto_tap_and_cast(target).map_err(|e| e.to_string());
                 let _ = reply.send(res);
             }
             Command::New { seed, reply } => {
@@ -166,6 +180,24 @@ async fn post_combat(State(app): State<AppState>, body: String) -> Response {
     }
 }
 
+async fn post_autotap(State(app): State<AppState>, body: String) -> Response {
+    let req: AutoTapRequest = match serde_json::from_str(&body) {
+        Ok(r) => r,
+        Err(e) => {
+            return (StatusCode::BAD_REQUEST, err(format!("invalid /autotap body: {e}"))).into_response()
+        }
+    };
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::AutoTap { target: req.object_id, reply }).is_err() {
+        return worker_gone();
+    }
+    match rx.await {
+        Ok(Ok(resp)) => Json(resp).into_response(),
+        Ok(Err(msg)) => (StatusCode::BAD_REQUEST, err(msg)).into_response(),
+        Err(_) => worker_gone(),
+    }
+}
+
 async fn post_new(State(app): State<AppState>, body: String) -> Response {
     // Lenient: empty body is allowed (→ default → time-based seed).
     let req: NewRequest = serde_json::from_str(&body).unwrap_or_default();
@@ -195,6 +227,7 @@ async fn main() {
         .route("/state", get(get_state))
         .route("/action", post(post_action))
         .route("/combat", post(post_combat))
+        .route("/autotap", post(post_autotap))
         .route("/new", post(post_new))
         .with_state(AppState { tx });
 
