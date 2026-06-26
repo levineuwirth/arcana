@@ -905,7 +905,7 @@ function handDecor(c) {
       onClick: () => { if (sel) G.bottomSel.delete(c.id); else G.bottomSel.add(c.id); renderAll(); },
     };
   }
-  if (c.playable) return { classes: ["selectable"], onClick: () => sendAutoTap(c.id, c.name) };
+  if (c.playable) return { classes: ["selectable"], onClick: (ev) => playHandCard(c, ev) };
   return { classes: ["dim"] };
 }
 
@@ -1292,13 +1292,16 @@ function onPermanentClick(acts, ev) {
 
 // A small floating menu of action buttons, anchored at the pointer (for a
 // permanent with multiple abilities). Dismisses on the next outside click.
-function showActionMenu(ev, acts) {
+function showActionMenu(ev, acts, title) {
   closeActionMenu();
   const menu = document.createElement("div");
   menu.id = "action-menu"; menu.className = "action-menu";
   const head = document.createElement("div");
-  head.className = "action-menu-head"; head.textContent = "Choose an ability";
+  head.className = "action-menu-head"; head.textContent = title || "Choose an ability";
   menu.appendChild(head);
+  // Collapse identical labels (e.g. the same target via different mana plans).
+  const seen = new Set();
+  acts = acts.filter((a) => (seen.has(a.label) ? false : seen.add(a.label)));
   for (const a of acts) {
     const b = document.createElement("button");
     b.textContent = a.label;
@@ -1746,16 +1749,19 @@ async function getState() {
 
 // generic guarded request: run `fn`, adopt the result, surface errors gracefully
 async function guarded(fn) {
-  if (G.busy) return;
+  if (G.busy) return false;
   setBusy(true);
+  let ok = false;
   try {
     adopt(await fn(), true);
+    ok = true;
   } catch (e) {
     if (e.isApi) { logLine("sys", "✗ " + e.message); await getState(); }
     else logLine("sys", "request failed: " + e);
   } finally {
     setBusy(false);
   }
+  return ok;
 }
 
 async function sendAction(index, label) {
@@ -1763,9 +1769,20 @@ async function sendAction(index, label) {
   await guarded(() => Arcana.Api.action(index));
 }
 
-async function sendAutoTap(id, name) {
-  logLine("you", "You: play " + (name || "card"));
-  await guarded(() => Arcana.Api.autotap(id));
+// Click a hand card to play it. Auto-taps mana and casts/plays it when that's
+// unambiguous; for a TARGETED (or modal/X) spell, auto-tap floats the mana so the
+// per-target casts become legal, then we offer them in a chooser (each labelled
+// with its target) — fixes targeted spells (e.g. Torment of Venom) doing nothing.
+async function playHandCard(c, ev) {
+  const ok = await guarded(() => Arcana.Api.autotap(c.id));
+  if (!ok) return;
+  const casts = ((G.resp && G.resp.view.legal) || [])
+    .filter((a) => a.source === c.id && /^Cast /.test(a.label));
+  if (casts.length) {
+    showActionMenu(ev, casts, "Cast — choose a target");
+  } else {
+    logLine("you", "You: play " + (c.name || "card"));
+  }
 }
 
 async function postCombat(body) { await guarded(() => Arcana.Api.combat(body)); }
