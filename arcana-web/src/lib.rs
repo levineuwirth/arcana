@@ -199,6 +199,15 @@ fn eval_for(state: &GameState) -> Eval {
     Eval { value, win_pct }
 }
 
+/// The human's per-permanent card power (marginal win% in this position), sorted
+/// descending. Cheap (no clones/rollouts); see `card_marginal_values`.
+fn card_power_for(state: &GameState) -> Vec<CardPower> {
+    arcana_ai::search::card_marginal_values(state, HUMAN)
+        .into_iter()
+        .map(|(id, win_pct)| CardPower { id, win_pct })
+        .collect()
+}
+
 fn library_stats(state: &GameState, reg: &CardRegistry) -> LibraryStats {
     use std::collections::HashMap;
     let mut by_type: HashMap<&'static str, usize> = HashMap::new();
@@ -248,6 +257,16 @@ pub struct Suggestion {
 /// naturally because the rolled-out state differs.
 const SUGGEST_SEED: u64 = 0x5066_E57E_D11E_5;
 
+/// One permanent's in-game "card power" for the cockpit panel: the object `id`
+/// (the frontend resolves its name/art from the view) and `win_pct`, the
+/// percentage points of win probability it is worth in the current position
+/// (`arcana_ai::search::card_marginal_values`). Sorted descending.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct CardPower {
+    pub id: ObjectId,
+    pub win_pct: f32,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct StateResponse {
     pub view: ViewState,
@@ -262,6 +281,9 @@ pub struct StateResponse {
     /// library after a London mulligan (they choose which `n` to bottom; the
     /// rest is their opening hand).
     pub bottom: Option<usize>,
+    /// Per-permanent in-game card power for the human's board (cockpit panel),
+    /// sorted by win% contribution descending.
+    pub card_power: Vec<CardPower>,
 }
 
 /// The number of cards a London-mulligan bottoming asks for, or `None` if no
@@ -471,7 +493,8 @@ impl GameCore {
         let bottom = bottom_prompt(&self.legal);
         let eval = eval_for(self.session.state());
         let library = library_stats(self.session.state(), self.reg);
-        StateResponse { view, recent, eval, library, combat, bottom }
+        let card_power = card_power_for(self.session.state());
+        StateResponse { view, recent, eval, library, combat, bottom, card_power }
     }
 
     /// Rank the human's current legal actions by value-MC lookahead for the

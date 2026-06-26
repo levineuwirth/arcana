@@ -286,6 +286,16 @@
   .sg-pct { flex: 0 0 auto; font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
   .sg-delta { flex: 0 0 30px; text-align: right; font-size: 11px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
 
+  /* ---- Card-power panel ---- */
+  #powerpanel { display: flex; flex-direction: column; gap: 3px; min-height: 0; max-height: 100%; overflow-y: auto; }
+  .cp-row { display: flex; align-items: center; gap: 8px; padding: 2px 4px; border: 1px solid transparent; border-radius: var(--radius-control); }
+  .cp-row.clickable { cursor: pointer; }
+  .cp-row.clickable:hover { background: var(--bg-offset); border-color: var(--border-muted); }
+  .cp-meter { flex: 0 0 44px; height: 7px; background: var(--bg); border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
+  .cp-fill { height: 100%; background: var(--text-muted); }
+  .cp-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+  .cp-pct { flex: 0 0 auto; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text-muted); }
+
   /* ---- deferred panel slots (registry placeholders) ---- */
   .deferred-note { font-size: 12px; font-style: italic; font-family: var(--font-serif); color: var(--text-faint); }
 
@@ -435,10 +445,8 @@ const PANELS = [
   // the button list is just non-card choices + pass/concede.
   { id: "play",  title: "Play",            region: "center", grow: false, build: buildPlayPanel },
   { id: "suggested", title: "Suggested lines", region: "right", grow: true, build: buildSuggestPanel },
+  { id: "power", title: "Card power",       region: "right",  grow: false, build: buildCardPowerPanel },
   { id: "draw",  title: "Draw odds",       region: "right",  grow: true,  build: buildDrawPanel },
-  // deferred registry slot (hidden by default; reserve room in the right dock)
-  { id: "power", title: "Card power",       region: "right",  grow: false, defaultHidden: true,
-    build: buildDeferred("Card power — per-card power / value readout. Deferred (registry slot reserved).") },
 ];
 
 const REGION_DOCK = { left: "dock-left", center: "dock-center", right: "dock-right" };
@@ -463,13 +471,14 @@ function buildPlayPanel(body) {
 }
 function buildDrawPanel(body) { body.innerHTML = '<div id="drawpanel"></div>'; }
 function buildSuggestPanel(body) { body.innerHTML = '<div id="suggestpanel"></div>'; }
+function buildCardPowerPanel(body) { body.innerHTML = '<div id="powerpanel"></div>'; }
 function buildLogPanel(body) { body.innerHTML = '<div id="log"></div>'; }
 function buildDeferred(note) {
   return (body) => { const d = document.createElement("div"); d.className = "deferred-note"; d.textContent = note; body.appendChild(d); };
 }
 
 // ---- layout state + persistence ----
-const LAYOUT_KEY = "arcana.cockpit.layout.v3"; // bumped: Suggested-lines now a real, default-visible panel
+const LAYOUT_KEY = "arcana.cockpit.layout.v4"; // bumped: Card-power now a real, default-visible panel
 let L = defaultLayout();
 
 function defaultLayout() {
@@ -825,6 +834,41 @@ function renderSuggest() {
     const delta = document.createElement("span"); delta.className = "sg-delta tnum";
     if (base != null) { const d = l.win_pct - base; delta.textContent = (d >= 0 ? "+" : "") + d.toFixed(0); }
     row.append(meter, name, pct, delta);
+    el.appendChild(row);
+  }
+}
+
+/* ===========================================================================
+   CARD POWER panel — each of your permanents' marginal win% in this position
+   (from /state's card_power, computed by arcana_ai::search::card_marginal_values).
+   Names resolve from the live board (G.cardById); click a row to zoom the card.
+   ======================================================================== */
+function renderCardPower() {
+  const el = document.getElementById("powerpanel");
+  if (!el) return;
+  el.innerHTML = "";
+  const cp = (G.resp && G.resp.card_power) || [];
+  if (!cp.length) {
+    const e = document.createElement("div"); e.className = "empty";
+    e.textContent = "No permanents to rank.";
+    el.appendChild(e);
+    return;
+  }
+  const max = cp.reduce((m, c) => Math.max(m, c.win_pct), 0.0001);
+  for (const c of cp) {
+    const card = G.cardById.get(c.id);
+    const row = document.createElement("div");
+    row.className = "cp-row" + (card ? " clickable" : "");
+    if (card) { row.title = "Zoom " + card.name; row.onclick = () => Arcana.Zoom.show(card); }
+    const meter = document.createElement("div"); meter.className = "cp-meter";
+    const fill = document.createElement("div"); fill.className = "cp-fill";
+    fill.style.width = Math.max(2, (c.win_pct / max) * 100) + "%";
+    meter.appendChild(fill);
+    const nm = document.createElement("span"); nm.className = "cp-label";
+    nm.textContent = card ? card.name : "#" + c.id;
+    const pct = document.createElement("span"); pct.className = "cp-pct tnum";
+    pct.textContent = "+" + c.win_pct.toFixed(1) + "%";
+    row.append(meter, nm, pct);
     el.appendChild(row);
   }
 }
@@ -1626,6 +1670,7 @@ function renderAll() {
   renderDraw(resp.library);
   renderSuggest();
   maybeAutoSuggest(view);
+  renderCardPower();
   syncOverlay();
 
   // remember which battlefield ids we've now shown (so new ones pulse next time)

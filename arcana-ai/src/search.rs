@@ -25,6 +25,7 @@ use arcana_core::actions::Action;
 use arcana_core::engine::{new_game, step, EngineYield};
 use arcana_core::registry::CardRegistry;
 use arcana_core::state::{GameResult, GameState};
+use arcana_core::objects::ObjectId;
 use arcana_core::types::{CardId, PlayerId};
 use arcana_core::zones::Zone;
 use rand::seq::SliceRandom;
@@ -94,6 +95,51 @@ pub fn value(state: &GameState, player: PlayerId) -> f32 {
             0.9 * ((me - opp) / 30.0).tanh()
         }
     }
+}
+
+/// Per-permanent MARGINAL value — the in-game "card power" readout. For each
+/// battlefield permanent `player` controls, how many percentage points of win
+/// probability it is worth in THIS position: `win%(state) − win%(state with that
+/// permanent's material removed)`, using the same material weights and calibrated
+/// logistic as [`value`] / [`crate::calibrate::win_probability`] (so it's
+/// consistent with the eval bar). Answers "which of my permanents is carrying the
+/// position." Cheap — no clones, no rollouts: it subtracts each permanent's
+/// material weight and re-squashes. Returns `(id, win%_points)` sorted
+/// descending; empty if the game is already decided. Note: a MATERIAL marginal
+/// (P/T + presence), so it doesn't see ability/evasion value beyond stats — the
+/// same honest limit as the heuristic eval.
+pub fn card_marginal_values(state: &GameState, player: PlayerId) -> Vec<(ObjectId, f32)> {
+    if state.result.is_some() {
+        return Vec::new();
+    }
+    let me = material(state, player);
+    let opp = state.opponents_of(player)
+        .map(|o| material(state, o))
+        .fold(f32::NEG_INFINITY, f32::max);
+    let opp = if opp.is_finite() { opp } else { 0.0 };
+    // win% of a hypothetical own-material total (opp fixed), via value()'s squash.
+    let win_pct = |me_total: f32| {
+        100.0 * crate::calibrate::win_probability(0.9 * ((me_total - opp) / 30.0).tanh())
+    };
+    let full = win_pct(me);
+    let mut out = Vec::new();
+    for obj in state.objects.objects_in_zone(Zone::Battlefield) {
+        if obj.controller != player {
+            continue;
+        }
+        let w = if obj.is_creature() {
+            let p = state.computed_power(obj.id).unwrap_or(0).max(0) as f32;
+            let t = state.computed_toughness(obj.id).unwrap_or(0).max(0) as f32;
+            2.0 * p + t
+        } else if obj.is_land() {
+            1.0
+        } else {
+            2.0
+        };
+        out.push((obj.id, full - win_pct(me - w)));
+    }
+    out.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    out
 }
 
 /// A position evaluator: how good is `state` for `player`, in roughly [-1, 1]
@@ -972,6 +1018,31 @@ mod tests {
                 assert_eq!(a.index, b.index);
                 assert!((a.value - b.value).abs() < 1e-6);
             }
+        }
+    }
+
+    /// [`card_marginal_values`] (the card-power readout) returns one finite,
+    /// sorted-descending entry per the player's battlefield permanent.
+    #[test]
+    fn card_marginal_values_are_sane() {
+        let reg = arcana_cards::build_catalog();
+        let deck = arcana_cards::sample_deck(&reg, 7);
+        let (state, yld) = new_game(vec![deck.clone(), deck], &reg, 11);
+        // Develop a board with a short random playout.
+        let mut rng = ChaCha8Rng::seed_from_u64(7);
+        let dev = play_out(state, yld, &reg, 200, &mut rng);
+        if dev.result.is_some() {
+            return; // decided early; nothing to assert
+        }
+        let mv = card_marginal_values(&dev, 0);
+        let n = dev.objects.objects_in_zone(Zone::Battlefield)
+            .filter(|o| o.controller == 0).count();
+        assert_eq!(mv.len(), n, "one entry per controlled permanent");
+        for w in mv.windows(2) {
+            assert!(w[0].1 >= w[1].1, "not sorted descending");
+        }
+        for (_, v) in &mv {
+            assert!(v.is_finite());
         }
     }
 
