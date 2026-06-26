@@ -24,7 +24,7 @@
     padding: 0 var(--page-padding); gap: 6px; }
 
   /* CSS-var-driven dock sizes (mutated by the resizers, persisted to storage). */
-  :root { --dock-left: 230px; --dock-right: 290px; --dock-bottom: 130px; }
+  :root { --dock-left: 240px; --dock-right: 290px; }
 
   /* ---- top bar ---- */
   .topbar {
@@ -74,12 +74,10 @@
   #dock-left  { width: var(--dock-left);  flex: 0 0 auto; }
   #dock-right { width: var(--dock-right); flex: 0 0 auto; }
   #dock-center { flex: 1 1 auto; min-width: 260px; }
-  #dock-bottom { height: var(--dock-bottom); flex: 0 0 auto; }
 
-  /* draggable dividers */
+  /* draggable dividers (vertical only — left/right column resize) */
   .divider { flex: 0 0 auto; background: transparent; transition: background var(--transition-fast); }
   .divider-v { width: 7px; cursor: col-resize; }
-  .divider-h { height: 7px; cursor: row-resize; }
   .divider:hover, .divider.dragging { background: var(--border-muted); }
 
   /* ---- panel chrome ---- */
@@ -117,10 +115,9 @@
   /* ---- board panel ---- */
   .board { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
   .player {
-    flex: 1 1 0; min-height: 0; display: flex; flex-direction: column;
-    overflow-x: hidden; overflow-y: auto; /* a full board scrolls inside its half, never the page */
+    flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
     border: 1px solid var(--border); border-radius: var(--radius-panel);
-    padding: 6px 12px; background: var(--bg);
+    padding: 4px 12px 6px; background: var(--bg);
   }
   .player.you { border-color: var(--border-muted); }
   .ptitle { flex: 0 0 auto; display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 2px; }
@@ -152,15 +149,36 @@
   .cards.fit .ac-card.tapped { width: auto; height: 100%; aspect-ratio: 488 / 680; }
   .cards.fit .ac-card.tapped .ac-frame { left: 0; top: 0; transform: rotate(90deg) scale(.7); }
 
-  /* Battlefield cards get a comfortable viewport-scaled FIXED height instead of
-     filling their (split, often-squeezed) row — so cards in play read as large as
-     the hand. The row sizes to content and the player half scrolls if a full
-     board overflows. Scoped to .battlefield so hand/stack rows are unaffected. */
-  :root { --bf-card-h: clamp(140px, 18vh, 208px); }
-  .cards.battlefield.fit { flex: 0 0 auto; height: auto; align-items: flex-start; }
-  .cards.battlefield.fit .ac-card { height: var(--bf-card-h); }
-  .cards.battlefield.fit .ac-card.tapped { height: var(--bf-card-h); }
+  /* The HAND is a single content-height row (it lives in the content-sized Play
+     strip, not a flex-filled panel), so its cards get an explicit comfortable
+     height. The BATTLEFIELD stays height-driven (fills the now-large board,
+     never overflows → never cut off). Scoped by row class so they don't clash. */
+  :root { --hand-card-h: clamp(150px, 20vh, 224px); }
+  .cards.hand.fit { flex: 0 0 auto; height: auto; align-items: flex-start; }
+  .cards.hand.fit .ac-card { height: var(--hand-card-h); }
+  .cards.hand.fit .ac-card.tapped { height: var(--hand-card-h); }
   .empty { color: var(--text-faint); font-size: 12px; font-style: italic; font-family: var(--font-serif); padding: 2px 0; }
+
+  /* ---- consolidated player HUD (vitals on one line) ---- */
+  .phud {
+    flex: 0 0 auto; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+    padding: 2px 2px 4px; font-family: var(--font-sans); font-size: 12px; color: var(--text-muted);
+  }
+  .phud .who { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .1em; color: var(--text-faint); }
+  .phud .life { font-family: var(--font-serif); font-weight: 600; font-size: 20px; color: var(--text);
+    font-variant-numeric: tabular-nums; line-height: 1; }
+  .phud .life .unit { font-size: 10px; color: var(--text-faint); font-weight: 400; margin-left: 3px; }
+  .phud .gauge { display: flex; align-items: center; gap: 8px; }
+  .phud .gauge .gpip { display: inline-flex; align-items: center; gap: 1px; font-variant-numeric: tabular-nums; }
+  .phud .gauge .floating { color: var(--text-faint); }
+  .phud .spacer { flex: 1; }
+  .phud .counts { display: flex; gap: 12px; font-variant-numeric: tabular-nums; }
+  .phud.opp { border-bottom: 1px solid var(--border); margin-bottom: 2px; }
+
+  /* ---- Play strip: your HUD + hand + minimal action controls ---- */
+  .body-play { display: flex; flex-direction: column; gap: 4px; }
+  #handzone { flex: 0 0 auto; display: flex; flex-direction: column; }
+  #actions { flex: 0 0 auto; }
 
   /* ---- stack / log panels ---- */
   #stack { flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; }
@@ -169,9 +187,6 @@
   #log .you { color: var(--text); }
   #log .opp { color: var(--text-muted); }
   #log .sys { color: var(--text-faint); font-style: italic; }
-
-  /* ---- hand panel ---- */
-  #handzone { flex: 1; min-height: 0; height: 100%; display: flex; flex-direction: column; }
 
   /* ---- Eval panel (chess-style bar) ---- */
   .evalwrap { display: flex; flex-direction: column; gap: 6px; }
@@ -212,6 +227,15 @@
 
   /* ---- deferred panel slots (registry placeholders) ---- */
   .deferred-note { font-size: 12px; font-style: italic; font-family: var(--font-serif); color: var(--text-faint); }
+
+  /* ---- card-driven actions: hint + multi-ability chooser popup ---- */
+  .action-hint { margin: 2px 0 4px; }
+  .action-menu {
+    position: fixed; z-index: 140; display: flex; flex-direction: column; gap: 2px;
+    background: var(--bg-offset); border: 1px solid var(--border-muted);
+    border-radius: var(--radius-control); box-shadow: var(--shadow-float); padding: 4px;
+  }
+  .action-menu button { text-align: left; white-space: nowrap; }
 
   /* ---- transient overlay (combat builder + mulligan bottoming) ----
      The backdrop only DIMS — it does not capture pointer events, so the board
@@ -275,7 +299,7 @@
 
   <div id="banner"></div>
 
-  <!-- The dockable workspace: a 3-column dock row + a full-width bottom dock,
+  <!-- The dockable workspace: a 3-column dock row (left / center / right),
        separated by draggable dividers. Panels are injected by the registry. -->
   <div id="workspace">
     <div id="docks-row">
@@ -285,8 +309,6 @@
       <div class="divider divider-v" data-resize="right"></div>
       <div class="dock" id="dock-right"></div>
     </div>
-    <div class="divider divider-h" data-resize="bottom"></div>
-    <div class="dock" id="dock-bottom"></div>
   </div>
 
   <!-- Transient combat / mulligan UI floats here (does not reflow the dock). -->
@@ -338,20 +360,22 @@ const MANA = {
    ======================================================================== */
 const PANELS = [
   { id: "eval",  title: "Eval",            region: "left",   grow: false, build: buildEvalPanel },
-  { id: "stack", title: "Stack",           region: "left",   grow: true,  build: buildStackPanel },
+  { id: "stack", title: "Stack",           region: "left",   grow: false, build: buildStackPanel },
+  { id: "log",   title: "Log",             region: "left",   grow: true,  build: buildLogPanel },
   { id: "board", title: "Board",           region: "center", grow: true,  build: buildBoardPanel },
-  { id: "hand",  title: "Hand",            region: "center", grow: false, build: buildHandPanel },
-  { id: "actions", title: "Actions",       region: "center", grow: false, build: buildActionsPanel },
+  // Play strip: your vitals + hand + minimal controls. Most actions are
+  // card-driven (click a hand card to play it, a permanent to activate it), so
+  // the button list is just non-card choices + pass/concede.
+  { id: "play",  title: "Play",            region: "center", grow: false, build: buildPlayPanel },
   { id: "draw",  title: "Draw odds",       region: "right",  grow: true,  build: buildDrawPanel },
   // deferred registry slots (hidden by default; reserve room in the right dock)
   { id: "suggested", title: "Suggested lines", region: "right", grow: false, defaultHidden: true,
-    build: buildDeferred("Suggested lines — engine line suggestions. Deferred (registry slot reserved).") },
+    build: buildDeferred("Suggested lines — engine line suggestions. /suggest endpoint is live; panel wiring is the next step.") },
   { id: "power", title: "Card power",       region: "right",  grow: false, defaultHidden: true,
     build: buildDeferred("Card power — per-card power / value readout. Deferred (registry slot reserved).") },
-  { id: "log",   title: "Log",             region: "bottom", grow: true,  build: buildLogPanel },
 ];
 
-const REGION_DOCK = { left: "dock-left", center: "dock-center", right: "dock-right", bottom: "dock-bottom" };
+const REGION_DOCK = { left: "dock-left", center: "dock-center", right: "dock-right" };
 
 // ---- panel body builders (construct stable inner DOM once) ----
 function buildEvalPanel(body) { body.innerHTML = '<div id="evalpanel" class="evalwrap"></div>'; }
@@ -359,12 +383,18 @@ function buildStackPanel(body) { body.innerHTML = '<div id="stack" class="cards 
 function buildBoardPanel(body) {
   body.innerHTML =
     '<div class="board">' +
+      '<div id="opphud" class="phud opp"></div>' +
       '<section id="opponent" class="player"></section>' +
       '<section id="you" class="player you"></section>' +
     "</div>";
 }
-function buildHandPanel(body) { body.innerHTML = '<section id="handzone"></section>'; }
-function buildActionsPanel(body) { body.innerHTML = '<div id="actions"></div>'; }
+// Play strip: your vitals (HUD) + hand + minimal action controls, consolidated.
+function buildPlayPanel(body) {
+  body.innerHTML =
+    '<div id="youhud" class="phud you"></div>' +
+    '<section id="handzone"></section>' +
+    '<div id="actions"></div>';
+}
 function buildDrawPanel(body) { body.innerHTML = '<div id="drawpanel"></div>'; }
 function buildLogPanel(body) { body.innerHTML = '<div id="log"></div>'; }
 function buildDeferred(note) {
@@ -372,13 +402,13 @@ function buildDeferred(note) {
 }
 
 // ---- layout state + persistence ----
-const LAYOUT_KEY = "arcana.cockpit.layout";
+const LAYOUT_KEY = "arcana.cockpit.layout.v2"; // bumped: panel set changed (log→left, hand+actions→play)
 let L = defaultLayout();
 
 function defaultLayout() {
   const hidden = {};
   for (const p of PANELS) if (p.defaultHidden) hidden[p.id] = true;
-  return { sizes: { left: 230, right: 290, bottom: 130 }, collapsed: {}, hidden };
+  return { sizes: { left: 240, right: 290 }, collapsed: {}, hidden };
 }
 function loadLayout() {
   let saved = null;
@@ -427,7 +457,6 @@ function buildWorkspace() {
 function applyLayout() {
   setVar("--dock-left", L.sizes.left);
   setVar("--dock-right", L.sizes.right);
-  setVar("--dock-bottom", L.sizes.bottom);
   for (const p of PANELS) {
     const el = document.getElementById("panel-" + p.id);
     if (!el) continue;
@@ -475,7 +504,6 @@ function startResize(e, div, which) {
   div.setPointerCapture(e.pointerId);
   div.classList.add("dragging");
   const row = document.getElementById("docks-row").getBoundingClientRect();
-  const ws = document.getElementById("workspace").getBoundingClientRect();
   const move = (ev) => {
     if (which === "left") {
       let w = ev.clientX - row.left;
@@ -485,10 +513,6 @@ function startResize(e, div, which) {
       let w = row.right - ev.clientX;
       w = Math.max(170, Math.min(w, row.width - 260 - L.sizes.left));
       L.sizes.right = Math.round(w); setVar("--dock-right", w);
-    } else {
-      let h = ws.bottom - ev.clientY;
-      h = Math.max(44, Math.min(h, ws.height - 160));
-      L.sizes.bottom = Math.round(h); setVar("--dock-bottom", h);
     }
   };
   const up = () => {
@@ -771,12 +795,11 @@ async function confirmBlockers() {
 // ----- rendering -----------------------------------------------------------
 function prettyPhase(view) { return (view.phase || "").replace("/", " · "); }
 
-function renderPlayer(container, p, isYou, cm) {
-  container.innerHTML = "";
-
-  const title = document.createElement("div");
-  title.className = "ptitle";
-  title.innerHTML =
+// Compact one-line vitals (life / mana / counts) — opponent's at the board top,
+// yours in the Play strip. Replaces the old per-player board header.
+function renderHud(el, p, isYou) {
+  if (!el) return;
+  el.innerHTML =
     '<span class="who">' + (isYou ? "You" : "Opponent") + " · P" + p.id + "</span>" +
     '<span class="life tnum">' + p.life + '<span class="unit">life</span></span>' +
     '<span class="gauge">' + manaGaugeHtml(p) + "</span>" +
@@ -786,9 +809,12 @@ function renderPlayer(container, p, isYou, cm) {
       '<span>library <b class="tnum">' + p.library_count + "</b></span>" +
       '<span>graveyard <b class="tnum">' + p.graveyard_count + "</b></span>" +
     "</span>";
-  container.appendChild(title);
+}
 
-  // battlefield split: lands vs everything else (creatures/spells/PWs).
+// The battlefield only — no header (vitals live in the HUD). Cards stay
+// height-driven so the (now-large) board never overflows / cuts cards off.
+function renderBattlefield(container, p, isYou, cm) {
+  container.innerHTML = "";
   const lands = p.battlefield.filter((c) => c.is_land);
   const others = p.battlefield.filter((c) => !c.is_land);
   const grid = document.createElement("div");
@@ -803,14 +829,13 @@ function renderPlayer(container, p, isYou, cm) {
     z.appendChild(h);
     const row = document.createElement("div");
     row.className = "cards battlefield fit";
-    renderCards(row, cards, empty, (c) => combatDecor(c, isYou, cm));
+    renderCards(row, cards, empty, (c) => bfDecor(c, isYou, cm));
     z.appendChild(row);
     return z;
   };
   grid.appendChild(mkZone("Creatures & permanents", others, "no permanents"));
   grid.appendChild(mkZone("Lands", lands, "no lands"));
   container.appendChild(grid);
-  // (the hand lives in its own panel — see renderHand)
 }
 
 // The human's hand, in its own panel (so the board fits the viewport).
@@ -870,6 +895,68 @@ function combatDecor(c, isYou, cm) {
   return base;
 }
 
+// Battlefield decorator: combat affordances take precedence; otherwise, if it's
+// your permanent with an available activated ability, make it click-to-activate
+// (so abilities are card-driven, not buttons).
+function bfDecor(c, isYou, cm) {
+  const combat = combatDecor(c, isYou, cm);
+  const inCombat = cm && cm.mode;
+  if (!inCombat && isYou) {
+    const acts = activateActionsFor(c.id);
+    if (acts.length) {
+      return Object.assign(combat, {
+        classes: ["selectable"],
+        badge: acts.length === 1 ? "activate" : acts.length + " abilities",
+        onClick: (ev) => onPermanentClick(acts, ev),
+      });
+    }
+  }
+  return combat;
+}
+
+// Legal "Activate …" actions that act FROM this permanent (via ActionView.source).
+function activateActionsFor(id) {
+  if (!G.resp) return [];
+  return G.resp.view.legal.filter(
+    (a) => a.source === id && /^Activate /.test(a.label)
+  );
+}
+
+// Click a permanent: one ability → activate it; several → a small chooser popup.
+function onPermanentClick(acts, ev) {
+  if (G.busy) return;
+  if (acts.length === 1) { sendAction(acts[0].index, acts[0].label); return; }
+  showActionMenu(ev, acts);
+}
+
+// A small floating menu of action buttons, anchored at the pointer (for a
+// permanent with multiple abilities). Dismisses on the next outside click.
+function showActionMenu(ev, acts) {
+  closeActionMenu();
+  const menu = document.createElement("div");
+  menu.id = "action-menu"; menu.className = "action-menu";
+  for (const a of acts) {
+    const b = document.createElement("button");
+    b.textContent = a.label;
+    b.onclick = () => { closeActionMenu(); sendAction(a.index, a.label); };
+    menu.appendChild(b);
+  }
+  document.body.appendChild(menu);
+  const x = ev && ev.clientX != null ? ev.clientX : 80;
+  const y = ev && ev.clientY != null ? ev.clientY : 80;
+  menu.style.left = Math.min(x, window.innerWidth - menu.offsetWidth - 8) + "px";
+  menu.style.top = Math.min(y, window.innerHeight - menu.offsetHeight - 8) + "px";
+  setTimeout(() => document.addEventListener("pointerdown", onMenuOutside, { once: true }), 0);
+}
+function onMenuOutside(e) {
+  const m = document.getElementById("action-menu");
+  if (m && !m.contains(e.target)) closeActionMenu();
+}
+function closeActionMenu() {
+  const m = document.getElementById("action-menu");
+  if (m) m.remove();
+}
+
 // classify a legal action label into a group for tidier presentation
 function groupOf(label) {
   if (label === "Pass" || label === "Pass priority") return "pass";
@@ -898,13 +985,23 @@ function renderActions(view) {
     return;
   }
 
-  const order = ["Lands", "Spells", "Abilities", "Choices", "Other"];
-  const groups = {}; let pass = null, concede = null;
+  // Lands / Spells / Abilities are CARD-DRIVEN (click a hand card to play/cast,
+  // a permanent to activate), so they aren't rendered as buttons. Only genuine
+  // non-card choices get buttons.
+  const order = ["Choices", "Other"];
+  const groups = {}; let pass = null, concede = null, cardDriven = 0;
   for (const a of view.legal) {
     const g = groupOf(a.label);
     if (g === "pass") { pass = a; continue; }
     if (g === "concede") { concede = a; continue; }
+    if (g === "Lands" || g === "Spells" || g === "Abilities") { cardDriven++; continue; }
     (groups[g] = groups[g] || []).push(a);
+  }
+  if (cardDriven) {
+    const hint = document.createElement("div");
+    hint.className = "meta-label action-hint";
+    hint.textContent = "Click a highlighted card to play or activate it";
+    root.appendChild(hint);
   }
   for (const g of order) {
     if (!groups[g]) continue;
@@ -1229,8 +1326,10 @@ function renderAll() {
   }
 
   const cm = combatMaps();
-  renderPlayer(document.getElementById("opponent"), opp, false, cm);
-  renderPlayer(document.getElementById("you"), you, true, cm);
+  renderHud(document.getElementById("opphud"), opp, false);
+  renderBattlefield(document.getElementById("opponent"), opp, false, cm);
+  renderBattlefield(document.getElementById("you"), you, true, cm);
+  renderHud(document.getElementById("youhud"), you, true);
   renderHand(you);
   renderCards(document.getElementById("stack"), view.stack, "(stack empty)");
   if (resp.bottom != null) renderBottomPanel(); else renderCombatPanel();

@@ -109,10 +109,28 @@ pub struct PlayerView {
 
 /// A legal action plus its display label and stable index into the `legal`
 /// slice the frontend was given (the frontend sends the index back to apply).
+///
+/// `source` is the game object the action acts FROM when there is one — the land
+/// played, the spell cast, or the permanent whose ability is activated — so a
+/// card-driven UI can map a click on that card to its legal action(s) instead of
+/// rendering a button. `None` for actions with no single source (pass, choices,
+/// combat declarations).
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ActionView {
     pub index: usize,
     pub label: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<ObjectId>,
+}
+
+/// The object an action acts FROM, for card-driven UIs (see [`ActionView::source`]).
+fn action_source(a: &Action) -> Option<ObjectId> {
+    match a {
+        Action::PlayLand { object_id, .. } => Some(*object_id),
+        Action::CastSpell { object_id, .. } => Some(*object_id),
+        Action::ActivateAbility { source, .. } => Some(*source),
+        _ => None,
+    }
 }
 
 /// A complete, serializable snapshot of the game from one player's view.
@@ -214,7 +232,11 @@ pub fn view_state(
         .collect();
 
     let legal = legal.iter().enumerate()
-        .map(|(index, a)| ActionView { index, label: render_action(a, state, registry) })
+        .map(|(index, a)| ActionView {
+            index,
+            label: render_action(a, state, registry),
+            source: action_source(a),
+        })
         .collect();
 
     let game_over = match state.result {
