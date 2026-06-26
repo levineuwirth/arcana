@@ -52,6 +52,7 @@
 //!   where small-value resolution matters and the tail compresses
 //!   gracefully.
 
+use arcana_core::effects::KeywordAbility;
 use arcana_core::objects::GameObject;
 use arcana_core::state::GameState;
 use arcana_core::turn::{Phase, Step};
@@ -104,7 +105,7 @@ pub trait Encoder {
 /// Per-player feature count. Update [`BASIC_E2_DIM_TWO_PLAYERS`]
 /// constant whenever this changes — `tests::dim_is_stable` enforces
 /// the explicit-update discipline.
-const PER_PLAYER_FEATURES: usize = 38;
+const PER_PLAYER_FEATURES: usize = 50;
 /// Game-level feature count (turn, phase, step, combat, stack,
 /// storm).
 const GAME_LEVEL_FEATURES: usize = 20;
@@ -339,6 +340,37 @@ fn encode_player_block(state: &GameState, player: PlayerId, buf: &mut [f32]) {
     buf[i] = log_size(cmc_seven_plus);
     i += 1;
 
+    // Card-aware: keyword presence on controlled creatures (8). The aggregate
+    // blocks above are board-shape only (type/color/CMC/P-T); these capture what
+    // the creatures DO — evasion, combat tricks, resilience — which materially
+    // changes a position's value. Layer-aware (counts granted keywords).
+    for kw in [
+        KeywordAbility::Flying, KeywordAbility::Trample, KeywordAbility::Deathtouch,
+        KeywordAbility::Lifelink, KeywordAbility::FirstStrike, KeywordAbility::Vigilance,
+        KeywordAbility::Menace, KeywordAbility::Indestructible,
+    ] {
+        let count = bf.iter()
+            .filter(|o| o.is_creature() && state.has_keyword(o.id, &kw))
+            .count();
+        buf[i] = log_size(count);
+        i += 1;
+    }
+
+    // Card-aware: hand composition (4). The plain hand-size count above can't
+    // tell 7 lands from 7 spells; lands / creatures / other-spells / total mana
+    // value capture mana-screw-vs-flood, gas, and curve. (For a player whose
+    // hand is hidden/anonymized these read 0 — no information leak.)
+    let hand: Vec<&GameObject> = state.objects.objects_in_zone(Zone::Hand(player)).collect();
+    buf[i] = log_size(hand.iter().filter(|o| o.is_land()).count());
+    i += 1;
+    buf[i] = log_size(hand.iter().filter(|o| o.is_creature()).count());
+    i += 1;
+    buf[i] = log_size(hand.iter().filter(|o| !o.is_land() && !o.is_creature()).count());
+    i += 1;
+    let hand_mv: u32 = hand.iter().map(|o| o.characteristics.mana_value()).sum();
+    buf[i] = sat_tanh(hand_mv as f32, 10.0);
+    i += 1;
+
     debug_assert_eq!(i, PER_PLAYER_FEATURES);
 }
 
@@ -497,7 +529,7 @@ mod tests {
         // would invalidate any loaded checkpoint sized off the
         // public constant.
         assert_eq!(enc().dim(), BASIC_E2_DIM_TWO_PLAYERS);
-        assert_eq!(BASIC_E2_DIM_TWO_PLAYERS, 99);
+        assert_eq!(BASIC_E2_DIM_TWO_PLAYERS, 123);
     }
 
     #[test]
