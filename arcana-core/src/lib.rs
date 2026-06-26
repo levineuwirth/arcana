@@ -27,6 +27,7 @@ pub mod registry;
 pub mod engine;
 pub mod record;
 pub mod render;
+pub mod view;
 
 // Re-export core types for convenience
 pub use state::GameState;
