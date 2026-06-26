@@ -117,7 +117,8 @@
   /* ---- board panel ---- */
   .board { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
   .player {
-    flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
+    flex: 1 1 0; min-height: 0; display: flex; flex-direction: column;
+    overflow-x: hidden; overflow-y: auto; /* a full board scrolls inside its half, never the page */
     border: 1px solid var(--border); border-radius: var(--radius-panel);
     padding: 6px 12px; background: var(--bg);
   }
@@ -150,6 +151,15 @@
   /* tapped: stay in the portrait slot, rotate + scale to fit (no overlap) */
   .cards.fit .ac-card.tapped { width: auto; height: 100%; aspect-ratio: 488 / 680; }
   .cards.fit .ac-card.tapped .ac-frame { left: 0; top: 0; transform: rotate(90deg) scale(.7); }
+
+  /* Battlefield cards get a comfortable viewport-scaled FIXED height instead of
+     filling their (split, often-squeezed) row — so cards in play read as large as
+     the hand. The row sizes to content and the player half scrolls if a full
+     board overflows. Scoped to .battlefield so hand/stack rows are unaffected. */
+  :root { --bf-card-h: clamp(140px, 18vh, 208px); }
+  .cards.battlefield.fit { flex: 0 0 auto; height: auto; align-items: flex-start; }
+  .cards.battlefield.fit .ac-card { height: var(--bf-card-h); }
+  .cards.battlefield.fit .ac-card.tapped { height: var(--bf-card-h); }
   .empty { color: var(--text-faint); font-size: 12px; font-style: italic; font-family: var(--font-serif); padding: 2px 0; }
 
   /* ---- stack / log panels ---- */
