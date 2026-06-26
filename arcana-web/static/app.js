@@ -287,6 +287,7 @@
     combat: (body) => call("POST", "/combat", body),
     autotap: (objectId) => call("POST", "/autotap", { object_id: objectId }),
     bottom: (ids) => call("POST", "/bottom", { ids }),
+    suggest: (deep) => call("GET", "/suggest" + (deep ? "?deep=true" : "")),
     newGame: (body) => call("POST", "/new", body || {}),
     // catalog / deckbuilder
     search: (query) => call("POST", "/search", query),

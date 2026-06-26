@@ -268,6 +268,24 @@
   .draw-odds-k { color: var(--text-faint); font-variant-numeric: tabular-nums; }
   .draw-odds-p { font-variant-numeric: tabular-nums; min-width: 52px; text-align: right; font-weight: 500; }
 
+  /* ---- Suggested-lines panel ---- */
+  #suggestpanel { display: flex; flex-direction: column; gap: 4px; min-height: 0; height: 100%; overflow-y: auto; }
+  .sg-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 2px; }
+  .sg-status { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-faint); }
+  .sg-row {
+    display: flex; align-items: center; gap: 8px; padding: 3px 4px;
+    border: 1px solid transparent; border-radius: var(--radius-control);
+  }
+  .sg-row.clickable { cursor: pointer; }
+  .sg-row.clickable:hover { background: var(--bg-offset); border-color: var(--border-muted); }
+  .sg-best { border-color: var(--border-muted); }
+  .sg-meter { flex: 0 0 44px; height: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
+  .sg-fill { height: 100%; background: var(--text-muted); }
+  .sg-best .sg-fill { background: var(--text); }
+  .sg-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+  .sg-pct { flex: 0 0 auto; font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .sg-delta { flex: 0 0 30px; text-align: right; font-size: 11px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+
   /* ---- deferred panel slots (registry placeholders) ---- */
   .deferred-note { font-size: 12px; font-style: italic; font-family: var(--font-serif); color: var(--text-faint); }
 
@@ -382,6 +400,10 @@ const G = {
   lastLib: null,
   // lands collapse to a compact mana strip by default; click to expand to cards.
   expandLands: false,
+  // suggested-lines panel: ranked legal actions for the current decision.
+  // token = position signature (so we fetch once per position); deep = whether
+  // the heavier "deepen" budget was used; lines = the ranked Suggestion[].
+  suggest: { token: null, deep: false, loading: false, lines: null },
 };
 
 // available-mana gauge: color key -> {pip class, symbol}
@@ -412,10 +434,9 @@ const PANELS = [
   // card-driven (click a hand card to play it, a permanent to activate it), so
   // the button list is just non-card choices + pass/concede.
   { id: "play",  title: "Play",            region: "center", grow: false, build: buildPlayPanel },
+  { id: "suggested", title: "Suggested lines", region: "right", grow: true, build: buildSuggestPanel },
   { id: "draw",  title: "Draw odds",       region: "right",  grow: true,  build: buildDrawPanel },
-  // deferred registry slots (hidden by default; reserve room in the right dock)
-  { id: "suggested", title: "Suggested lines", region: "right", grow: false, defaultHidden: true,
-    build: buildDeferred("Suggested lines — engine line suggestions. /suggest endpoint is live; panel wiring is the next step.") },
+  // deferred registry slot (hidden by default; reserve room in the right dock)
   { id: "power", title: "Card power",       region: "right",  grow: false, defaultHidden: true,
     build: buildDeferred("Card power — per-card power / value readout. Deferred (registry slot reserved).") },
 ];
@@ -441,13 +462,14 @@ function buildPlayPanel(body) {
     '<div id="actions"></div>';
 }
 function buildDrawPanel(body) { body.innerHTML = '<div id="drawpanel"></div>'; }
+function buildSuggestPanel(body) { body.innerHTML = '<div id="suggestpanel"></div>'; }
 function buildLogPanel(body) { body.innerHTML = '<div id="log"></div>'; }
 function buildDeferred(note) {
   return (body) => { const d = document.createElement("div"); d.className = "deferred-note"; d.textContent = note; body.appendChild(d); };
 }
 
 // ---- layout state + persistence ----
-const LAYOUT_KEY = "arcana.cockpit.layout.v2"; // bumped: panel set changed (log→left, hand+actions→play)
+const LAYOUT_KEY = "arcana.cockpit.layout.v3"; // bumped: Suggested-lines now a real, default-visible panel
 let L = defaultLayout();
 
 function defaultLayout() {
@@ -701,6 +723,109 @@ function refreshOdds() {
     const pc = document.createElement("span"); pc.className = "draw-odds-p tnum"; pc.textContent = (p * 100).toFixed(1) + "%";
     row.append(nm, kc, pc);
     box.appendChild(row);
+  }
+}
+
+/* ===========================================================================
+   SUGGESTED LINES panel — ranked legal actions from the value-MC backend
+   (/suggest). Auto-runs once per position at a snappy budget; "Deepen" re-runs
+   the same position at a heavier budget. Each row is click-to-play.
+   ======================================================================== */
+// Is the panel actually on screen (visible + not collapsed)? Don't burn a
+// worker-side rollout if the user has hidden it.
+function suggestVisible() {
+  const el = document.getElementById("panel-suggested");
+  return !!el && !el.classList.contains("hidden") && !el.classList.contains("collapsed");
+}
+// Position signature so we fetch once per decision (not on local re-renders).
+function positionToken(view) {
+  return view.turn + "/" + view.phase + "/" + view.priority_player + "/" +
+    (view.legal || []).map((a) => a.label).join("|");
+}
+function clearSuggest() {
+  G.suggest = { token: null, deep: false, loading: false, lines: null };
+  renderSuggest();
+}
+// Fetch + adopt suggestions for token `tok`; ignore a stale reply if the
+// position moved on while the worker was computing.
+function fetchSuggest(deep, tok) {
+  G.suggest = {
+    token: tok, deep, loading: true,
+    lines: G.suggest.token === tok ? G.suggest.lines : null,
+  };
+  renderSuggest();
+  Arcana.Api.suggest(deep).then((lines) => {
+    if (G.suggest.token !== tok) return;
+    G.suggest = { token: tok, deep, loading: false, lines };
+    renderSuggest();
+  }).catch(() => {
+    if (G.suggest.token !== tok) return;
+    G.suggest.loading = false; G.suggest.lines = [];
+    renderSuggest();
+  });
+}
+// Auto-run when it's a real (≥2-way) human decision and the panel is visible.
+function maybeAutoSuggest(view) {
+  if (!suggestVisible()) return;
+  const real = !view.game_over && (view.legal || []).length >= 2 &&
+    !(G.resp && (G.resp.combat || G.resp.bottom != null));
+  if (!real) { if (G.suggest.token !== null) clearSuggest(); return; }
+  const tok = positionToken(view);
+  if (tok === G.suggest.token && (G.suggest.lines || G.suggest.loading)) return;
+  fetchSuggest(false, tok);
+}
+function renderSuggest() {
+  const el = document.getElementById("suggestpanel");
+  if (!el) return;
+  const s = G.suggest;
+  el.innerHTML = "";
+
+  const bar = document.createElement("div"); bar.className = "sg-bar";
+  const status = document.createElement("span"); status.className = "sg-status";
+  status.textContent = s.loading ? "analyzing…" : (s.lines ? (s.deep ? "deepened" : "auto") : "idle");
+  const deepen = document.createElement("button");
+  deepen.textContent = s.loading && s.deep ? "deepening…" : "Deepen";
+  deepen.disabled = s.loading || !s.token || s.deep;
+  deepen.onclick = () => { if (s.token) fetchSuggest(true, s.token); };
+  bar.append(status, deepen);
+  el.appendChild(bar);
+
+  if (!s.lines) {
+    if (!s.loading) {
+      const e = document.createElement("div"); e.className = "empty";
+      e.textContent = "No suggestions — not your decision, or only one option.";
+      el.appendChild(e);
+    }
+    return;
+  }
+  if (!s.lines.length) {
+    const e = document.createElement("div"); e.className = "empty"; e.textContent = "No lines to rank.";
+    el.appendChild(e);
+    return;
+  }
+  // Collapse identical labels (e.g. three "Play Mountain", one per copy in hand)
+  // to one line — sorted, so the first kept is the best-scoring of its kind.
+  const seen = new Set();
+  const lines = s.lines.filter((l) => (seen.has(l.label) ? false : seen.add(l.label)));
+  // delta baseline = the Pass line's win% (so each line reads "+N vs pass").
+  const passLine = lines.find((l) => /^Pass/.test(l.label));
+  const base = passLine ? passLine.win_pct : null;
+  const best = lines[0].win_pct;
+  for (const l of lines) {
+    const row = document.createElement("div");
+    row.className = "sg-row clickable" + (l.win_pct === best ? " sg-best" : "");
+    row.title = "Apply: " + l.label;
+    row.onclick = () => sendAction(l.index, l.label);
+    const meter = document.createElement("div"); meter.className = "sg-meter";
+    const fill = document.createElement("div"); fill.className = "sg-fill";
+    fill.style.width = Math.max(2, Math.min(100, l.win_pct)) + "%";
+    meter.appendChild(fill);
+    const name = document.createElement("span"); name.className = "sg-label"; name.textContent = l.label;
+    const pct = document.createElement("span"); pct.className = "sg-pct tnum"; pct.textContent = l.win_pct.toFixed(0) + "%";
+    const delta = document.createElement("span"); delta.className = "sg-delta tnum";
+    if (base != null) { const d = l.win_pct - base; delta.textContent = (d >= 0 ? "+" : "") + d.toFixed(0); }
+    row.append(meter, name, pct, delta);
+    el.appendChild(row);
   }
 }
 
@@ -1499,6 +1624,8 @@ function renderAll() {
   // new analyst panels
   renderEval(resp.eval);
   renderDraw(resp.library);
+  renderSuggest();
+  maybeAutoSuggest(view);
   syncOverlay();
 
   // remember which battlefield ids we've now shown (so new ones pulse next time)
