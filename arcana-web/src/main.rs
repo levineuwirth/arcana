@@ -18,6 +18,8 @@
 //!   the cast variants if a choice remains). Not playable → 400.
 //! * `POST /bottom` → body `{ "ids": [N, …] }`, the London-mulligan bottoming:
 //!   put the chosen cards on the bottom of the library. Malformed → 400.
+//! * `POST /search` → body `CardQuery` (name/colors/types/keywords/cmc/limit), the
+//!   catalog query for deckbuilding; returns `[CardInfo, …]` (capped at 200).
 //! * `POST /new`    → optional body `{ "seed": N }`, start a fresh game.
 //!
 //! ## Concurrency / lifetime note
@@ -33,6 +35,7 @@
 use std::net::SocketAddr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use arcana_core::catalog::{CardInfo, CardQuery};
 use arcana_core::objects::ObjectId;
 use arcana_core::registry::CardRegistry;
 use arcana_web::{CombatSubmission, GameCore, StateResponse};
@@ -54,6 +57,7 @@ enum Command {
     Combat { sub: CombatSubmission, reply: oneshot::Sender<Result<StateResponse, String>> },
     AutoTap { target: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
     Bottom { ids: Vec<ObjectId>, reply: oneshot::Sender<Result<StateResponse, String>> },
+    Search { query: CardQuery, reply: oneshot::Sender<Vec<CardInfo>> },
     New { seed: Option<u64>, reply: oneshot::Sender<StateResponse> },
 }
 
@@ -128,6 +132,9 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>) {
             Command::Bottom { ids, reply } => {
                 let res = core.bottom_cards(ids).map_err(|e| e.to_string());
                 let _ = reply.send(res);
+            }
+            Command::Search { query, reply } => {
+                let _ = reply.send(arcana_core::catalog::query(core.registry(), &query));
             }
             Command::New { seed, reply } => {
                 core = GameCore::new(reg, seed.unwrap_or_else(time_seed));
@@ -240,6 +247,23 @@ async fn post_bottom(State(app): State<AppState>, body: String) -> Response {
     }
 }
 
+async fn post_search(State(app): State<AppState>, body: String) -> Response {
+    // Lenient: empty body is an unconstrained query. Cap results for the UI
+    // unless the client asked for a specific limit (the catalog is huge).
+    let mut query: CardQuery = serde_json::from_str(&body).unwrap_or_default();
+    if query.limit.is_none() {
+        query.limit = Some(200);
+    }
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::Search { query, reply }).is_err() {
+        return worker_gone();
+    }
+    match rx.await {
+        Ok(results) => Json(results).into_response(),
+        Err(_) => worker_gone(),
+    }
+}
+
 async fn post_new(State(app): State<AppState>, body: String) -> Response {
     // Lenient: empty body is allowed (→ default → time-based seed).
     let req: NewRequest = serde_json::from_str(&body).unwrap_or_default();
@@ -272,6 +296,7 @@ async fn main() {
         .route("/combat", post(post_combat))
         .route("/autotap", post(post_autotap))
         .route("/bottom", post(post_bottom))
+        .route("/search", post(post_search))
         .route("/new", post(post_new))
         .with_state(AppState { tx });
 

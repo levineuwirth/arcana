@@ -132,38 +132,6 @@ pub struct ViewState {
     pub game_over: Option<String>,
 }
 
-/// Build a printed type line: "{supertypes} {types} — {subtypes}" (the em-dash
-/// and subtype clause only when subtypes are present). Subtypes are resolved via
-/// the interner and sorted for deterministic display (the underlying set is
-/// unordered).
-fn type_line(c: &crate::objects::Characteristics, registry: &CardRegistry) -> String {
-    use crate::types::TypeLine;
-    let mut head: Vec<&str> = Vec::new();
-    let s = &c.supertypes;
-    if s.is_basic() { head.push("Basic"); }
-    if s.is_legendary() { head.push("Legendary"); }
-    if s.is_snow() { head.push("Snow"); }
-    if s.is_world() { head.push("World"); }
-    let t = &c.types;
-    if t.is_artifact() { head.push("Artifact"); }
-    if t.is_battle() { head.push("Battle"); }
-    if t.is_creature() { head.push("Creature"); }
-    if t.is_enchantment() { head.push("Enchantment"); }
-    if t.is_instant() { head.push("Instant"); }
-    if t.has(TypeLine::KINDRED) { head.push("Kindred"); }
-    if t.is_land() { head.push("Land"); }
-    if t.is_planeswalker() { head.push("Planeswalker"); }
-    if t.is_sorcery() { head.push("Sorcery"); }
-
-    let mut subs: Vec<&str> = c.subtypes.iter()
-        .filter_map(|sm| registry.interner().resolve(sm))
-        .collect();
-    subs.sort_unstable();
-
-    let head = head.join(" ");
-    if subs.is_empty() { head } else { format!("{head} — {}", subs.join(" ")) }
-}
-
 fn card_view(state: &GameState, registry: &CardRegistry, id: ObjectId) -> CardView {
     let Some(o) = state.objects.get(id) else {
         return CardView {
@@ -179,7 +147,7 @@ fn card_view(state: &GameState, registry: &CardRegistry, id: ObjectId) -> CardVi
         .unwrap_or_default();
     let mana_cost = c.mana_cost.as_ref().map(|mc| mc.to_string());
     let mana_value = c.mana_value();
-    let type_line = type_line(c, registry);
+    let type_line = crate::catalog::card_type_line(c, registry);
     let is_land = c.types.is_land();
     let (power, toughness) = if c.types.is_creature() {
         (state.computed_power(id), state.computed_toughness(id))

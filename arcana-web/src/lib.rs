@@ -674,6 +674,30 @@ mod tests {
         assert_eq!(after.bottom, None, "bottoming resolved");
     }
 
+    /// The catalog query layer works over the real ~20k-card catalog: an
+    /// unconstrained query sees every card, and filters genuinely narrow it.
+    #[test]
+    fn catalog_query_over_real_catalog() {
+        use arcana_core::catalog::{query, CardQuery};
+        let reg = leaked_catalog();
+        let all = query(reg, &CardQuery::default());
+        assert_eq!(all.len(), reg.len(), "unconstrained query returns the whole catalog");
+        assert!(all.len() > 1000, "the real catalog is large");
+        assert!(all.iter().all(|c| !c.name.is_empty() && !c.type_line.is_empty()));
+
+        let creatures = query(reg, &CardQuery {
+            types: Some(vec!["creature".into()]), ..Default::default() });
+        assert!(!creatures.is_empty() && creatures.len() < all.len());
+        assert!(creatures.iter().all(|c| c.is_creature));
+
+        let cheap_red = query(reg, &CardQuery {
+            colors: Some(vec!['R']), cmc_max: Some(2), ..Default::default() });
+        assert!(cheap_red.iter().all(|c| c.colors.contains(&'R') && c.mana_value <= 2));
+
+        let capped = query(reg, &CardQuery { limit: Some(25), ..Default::default() });
+        assert_eq!(capped.len(), 25);
+    }
+
     /// The StateResponse round-trips through JSON — the actual web transport.
     #[test]
     fn state_response_serializes() {
