@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Arcana — Deckbuilder</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, sans-serif; background: #14161b; color: #e7e9ee; }
+  header {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    padding: 8px 14px; border-bottom: 1px solid #2a2f3a; position: sticky; top: 0; background: #14161b; z-index: 10;
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 700; }
+  header .spacer { flex: 1; }
+  a, a:visited { color: #8fb3ff; text-decoration: none; }
+  input, select, button {
+    background: #20242d; color: #e7e9ee; border: 1px solid #3a4150; border-radius: 6px;
+    padding: 5px 8px; font-size: 13px;
+  }
+  button { cursor: pointer; background: #2a2f3a; }
+  button:hover:not(:disabled) { background: #353c4a; }
+  button:disabled { opacity: .45; cursor: default; }
+  button.primary { background: #2d6a3f; border-color: #3f8a55; font-weight: 600; }
+  button.primary:hover:not(:disabled) { background: #357a49; }
+  main { display: flex; gap: 12px; padding: 12px 14px; align-items: flex-start; }
+  #browse { flex: 1; min-width: 0; }
+  #deckpanel { width: 320px; flex-shrink: 0; border: 1px solid #2a2f3a; border-radius: 8px; padding: 10px; background: #1a1d24; position: sticky; top: 56px; max-height: calc(100vh - 70px); overflow-y: auto; }
+  form#search { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+  form#search .colors label { margin-right: 6px; font-size: 12px; }
+  .grid { display: flex; gap: 8px; flex-wrap: wrap; }
+  .card {
+    width: 104px; border-radius: 6px; overflow: hidden; background: #20242d; border: 1px solid #333a47;
+    font-size: 11px; position: relative; cursor: pointer;
+  }
+  .card:hover { border-color: #4a6aa0; }
+  .card img { width: 100%; display: block; aspect-ratio: 488/680; object-fit: cover; background: #0c0d11; }
+  .card .nm { padding: 3px 4px; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card .cost { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,.75); padding: 1px 5px; border-radius: 4px; font-weight: 700; font-size: 10px; }
+  .card .cnt { position: absolute; top: 2px; left: 2px; background: #2d6a3f; padding: 1px 6px; border-radius: 999px; font-weight: 800; font-size: 11px; }
+  .muted { opacity: .6; font-size: 12px; }
+  #deckstats { font-size: 13px; margin-bottom: 8px; }
+  #deckstats .curve { display: flex; gap: 3px; align-items: flex-end; height: 46px; margin: 6px 0; }
+  #deckstats .bar { flex: 1; background: #3f5d8a; border-radius: 2px 2px 0 0; min-height: 2px; position: relative; }
+  #deckstats .bar span { position: absolute; bottom: -15px; left: 0; right: 0; text-align: center; font-size: 9px; opacity: .6; }
+  #decklist .row { display: flex; gap: 6px; align-items: center; padding: 2px 0; font-size: 13px; }
+  #decklist .row .n { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #decklist .row button { padding: 0 7px; }
+  .sectlabel { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; opacity: .55; margin: 8px 0 3px; }
+  /* zoom */
+  #zoom { display: none; position: fixed; inset: 0; z-index: 100; cursor: zoom-out; background: rgba(8,9,12,.85); align-items: center; justify-content: center; flex-direction: column; gap: 10px; }
+  #zoom.show { display: flex; }
+  #zoom img { max-height: 82vh; border-radius: 14px; box-shadow: 0 10px 44px #000; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Arcana Deckbuilder <span class="muted">(prototype)</span></h1>
+    <a href="/">← Play</a>
+    <span class="spacer"></span>
+    <input id="deckname" placeholder="deck name" size="14" />
+    <button id="save">Save</button>
+    <select id="loadsel"><option value="">load…</option></select>
+    <button id="clear">Clear</button>
+    <span id="total" class="muted"></span>
+    <button id="play" class="primary">Play this deck</button>
+  </header>
+
+  <main>
+    <section id="browse">
+      <form id="search">
+        <input id="q-name" placeholder="name contains…" size="16" />
+        <span class="colors">
+          <label><input type="checkbox" value="W" />W</label>
+          <label><input type="checkbox" value="U" />U</label>
+          <label><input type="checkbox" value="B" />B</label>
+          <label><input type="checkbox" value="R" />R</label>
+          <label><input type="checkbox" value="G" />G</label>
+          <label><input type="checkbox" value="C" />◇</label>
+        </span>
+        <select id="q-type">
+          <option value="">any type</option>
+          <option>Creature</option><option>Instant</option><option>Sorcery</option>
+          <option>Artifact</option><option>Enchantment</option><option>Land</option>
+          <option>Planeswalker</option><option>Battle</option>
+        </select>
+        <select id="q-kw"><option value="">any keyword</option></select>
+        <input id="q-cmin" type="number" min="0" placeholder="mv≥" style="width:64px" />
+        <input id="q-cmax" type="number" min="0" placeholder="mv≤" style="width:64px" />
+        <button type="submit">Search</button>
+        <span id="results-meta" class="muted"></span>
+      </form>
+      <div id="results" class="grid"><span class="muted">Search the catalog to add cards.</span></div>
+    </section>
+
+    <aside id="deckpanel">
+      <div id="deckstats"></div>
+      <div id="decklist"></div>
+    </aside>
+  </main>
+
+  <div id="zoom"><img id="zoomimg" alt="card" /></div>
+
+<script>
+"use strict";
+
+const deck = new Map();   // cardId -> { info, count }
+let glossary = {};
+
+function artUrl(name) {
+  return "https://api.scryfall.com/cards/named?format=image&exact=" + encodeURIComponent(name);
+}
+function compactCost(c) { return c ? c.replace(/[{}]/g, "") : ""; }
+
+// ---- card tiles ----
+function tile(info, inResults) {
+  const div = document.createElement("div");
+  div.className = "card";
+  const img = document.createElement("img");
+  img.loading = "lazy"; img.alt = info.name; img.src = artUrl(info.name);
+  img.onerror = () => { img.style.visibility = "hidden"; };
+  div.appendChild(img);
+  if (info.mana_cost) {
+    const cost = document.createElement("div");
+    cost.className = "cost"; cost.textContent = compactCost(info.mana_cost);
+    div.appendChild(cost);
+  }
+  const have = deck.get(info.id);
+  if (have) {
+    const cnt = document.createElement("div");
+    cnt.className = "cnt"; cnt.textContent = have.count;
+    div.appendChild(cnt);
+  }
+  const nm = document.createElement("div");
+  nm.className = "nm"; nm.textContent = info.name;
+  div.appendChild(nm);
+  div.title = info.name + (info.mana_cost ? "  " + info.mana_cost : "") + "\n" + info.type_line +
+    (info.keywords.length ? "\n" + info.keywords.join(", ") : "");
+  div.onclick = () => { addCard(info); };
+  div.oncontextmenu = (e) => { e.preventDefault(); zoom(info.name); };
+  return div;
+}
+
+// ---- deck ops ----
+function addCard(info) { const e = deck.get(info.id); if (e) e.count++; else deck.set(info.id, { info, count: 1 }); render(); }
+function setCount(id, n) { const e = deck.get(id); if (!e) return; e.count = n; if (e.count <= 0) deck.delete(id); render(); }
+function clearDeck() { deck.clear(); render(); }
+function deckTotal() { let t = 0; for (const e of deck.values()) t += e.count; return t; }
+
+function render() {
+  // re-render result counts + deck panel
+  document.querySelectorAll("#results .card").forEach(el => {});  // counts updated on next search render; cheap to skip
+  renderDeck();
+  // refresh result tiles' count badges by re-rendering them if present
+  if (window._lastResults) renderResults(window._lastResults);
+}
+
+function renderDeck() {
+  const total = deckTotal();
+  document.getElementById("total").textContent = total + " cards";
+  document.getElementById("play").disabled = total < 7;
+
+  // stats: mana curve (nonland) + color counts
+  const stats = document.getElementById("deckstats");
+  const bins = [0,0,0,0,0,0,0,0]; // 0,1,2,3,4,5,6,7+
+  const colorCount = { W:0,U:0,B:0,R:0,G:0,C:0 };
+  let lands = 0;
+  for (const { info, count } of deck.values()) {
+    if (info.is_land) lands += count;
+    else bins[Math.min(info.mana_value, 7)] += count;
+    if (info.colors.length === 0) colorCount.C += count;
+    else for (const c of info.colors) colorCount[c] += count;
+  }
+  const maxBin = Math.max(1, ...bins);
+  const curve = bins.map((v, i) =>
+    `<div class="bar" style="height:${Math.round(100 * v / maxBin)}%" title="mv ${i===7?'7+':i}: ${v}"><span>${i===7?'7+':i}</span></div>`).join("");
+  const colors = Object.entries(colorCount).filter(([,v]) => v > 0).map(([k,v]) => `${v}${k}`).join("  ");
+  stats.innerHTML =
+    `<div>${total} cards · ${lands} lands · ${total - lands} spells</div>` +
+    `<div class="curve">${curve}</div>` +
+    `<div class="muted" style="margin-top:18px">${colors || "—"}</div>`;
+
+  // list, sorted by mana value then name
+  const list = document.getElementById("decklist");
+  list.innerHTML = "";
+  const lbl = document.createElement("div"); lbl.className = "sectlabel"; lbl.textContent = "Decklist";
+  list.appendChild(lbl);
+  const entries = [...deck.values()].sort((a,b) =>
+    a.info.mana_value - b.info.mana_value || a.info.name.localeCompare(b.info.name));
+  if (!entries.length) { const e = document.createElement("div"); e.className = "muted"; e.textContent = "empty — click cards to add"; list.appendChild(e); }
+  for (const { info, count } of entries) {
+    const row = document.createElement("div"); row.className = "row";
+    const minus = document.createElement("button"); minus.textContent = "−"; minus.onclick = () => setCount(info.id, count - 1);
+    const cnt = document.createElement("span"); cnt.textContent = count; cnt.style.minWidth = "14px"; cnt.style.textAlign = "center";
+    const plus = document.createElement("button"); plus.textContent = "+"; plus.onclick = () => setCount(info.id, count + 1);
+    const n = document.createElement("span"); n.className = "n"; n.textContent = info.name;
+    n.title = info.type_line; n.style.cursor = "zoom-in"; n.oncontextmenu = (e) => { e.preventDefault(); zoom(info.name); };
+    const cost = document.createElement("span"); cost.className = "muted"; cost.textContent = compactCost(info.mana_cost);
+    row.append(minus, cnt, plus, n, cost);
+    list.appendChild(row);
+  }
+}
+
+// ---- search ----
+function buildQuery() {
+  const q = { limit: 120 };
+  const name = document.getElementById("q-name").value.trim();
+  if (name) q.name = name;
+  const checked = [...document.querySelectorAll("form#search .colors input:checked")].map(c => c.value);
+  if (checked.includes("C")) q.colorless = true;
+  const colors = checked.filter(c => c !== "C");
+  if (colors.length) q.colors = colors;
+  const type = document.getElementById("q-type").value; if (type) q.types = [type];
+  const kw = document.getElementById("q-kw").value; if (kw) q.keywords = [kw];
+  const cmin = document.getElementById("q-cmin").value; if (cmin !== "") q.cmc_min = +cmin;
+  const cmax = document.getElementById("q-cmax").value; if (cmax !== "") q.cmc_max = +cmax;
+  return q;
+}
+async function search() {
+  const r = await fetch("/search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildQuery()) });
+  const results = await r.json();
+  window._lastResults = results;
+  renderResults(results);
+  document.getElementById("results-meta").textContent = results.length + " shown (capped)";
+}
+function renderResults(results) {
+  const box = document.getElementById("results");
+  box.innerHTML = "";
+  if (!results.length) { box.innerHTML = '<span class="muted">No matches.</span>'; return; }
+  for (const info of results) box.appendChild(tile(info, true));
+}
+
+// ---- save / load (localStorage) ----
+function savedDecks() { try { return JSON.parse(localStorage.getItem("arcana.decks") || "{}"); } catch { return {}; } }
+function refreshLoadSelect() {
+  const sel = document.getElementById("loadsel");
+  sel.innerHTML = '<option value="">load…</option>';
+  for (const name of Object.keys(savedDecks())) { const o = document.createElement("option"); o.value = name; o.textContent = name; sel.appendChild(o); }
+}
+function saveDeck() {
+  const name = document.getElementById("deckname").value.trim();
+  if (!name) { alert("Name the deck first."); return; }
+  const decks = savedDecks();
+  decks[name] = [...deck.values()].map(({ info, count }) => ({ info, count }));
+  localStorage.setItem("arcana.decks", JSON.stringify(decks));
+  refreshLoadSelect();
+}
+function loadDeck(name) {
+  const d = savedDecks()[name]; if (!d) return;
+  deck.clear();
+  for (const { info, count } of d) deck.set(info.id, { info, count });
+  document.getElementById("deckname").value = name;
+  render();
+}
+
+// ---- play ----
+async function playDeck() {
+  const ids = [];
+  for (const { info, count } of deck.values()) for (let i = 0; i < count; i++) ids.push(info.id);
+  if (ids.length < 7) { alert("Need at least 7 cards (40–60 recommended)."); return; }
+  const r = await fetch("/new", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ deck: ids }) });
+  if (r.ok) window.location = "/"; else alert("Could not start a game with this deck.");
+}
+
+// ---- zoom ----
+function zoom(name) { const z = document.getElementById("zoom"); document.getElementById("zoomimg").src = artUrl(name); z.classList.add("show"); }
+document.getElementById("zoom").onclick = () => document.getElementById("zoom").classList.remove("show");
+document.addEventListener("keydown", e => { if (e.key === "Escape") document.getElementById("zoom").classList.remove("show"); });
+
+// ---- wire ----
+document.getElementById("search").onsubmit = (e) => { e.preventDefault(); search(); };
+document.getElementById("save").onclick = saveDeck;
+document.getElementById("clear").onclick = () => { if (confirm("Clear the deck?")) clearDeck(); };
+document.getElementById("loadsel").onchange = (e) => { if (e.target.value) loadDeck(e.target.value); };
+document.getElementById("play").onclick = playDeck;
+
+async function init() {
+  try { const r = await fetch("/glossary"); if (r.ok) glossary = await r.json(); } catch {}
+  const kwsel = document.getElementById("q-kw");
+  for (const k of Object.keys(glossary).sort()) { const o = document.createElement("option"); o.textContent = k; kwsel.appendChild(o); }
+  refreshLoadSelect();
+  render();
+  search(); // initial unconstrained page
+}
+init();
+</script>
+</body>
+</html>

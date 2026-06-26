@@ -30,7 +30,7 @@ use arcana_core::objects::ObjectId;
 use arcana_core::state::GameState;
 use arcana_core::registry::CardRegistry;
 use arcana_core::state::GameResult;
-use arcana_core::types::PlayerId;
+use arcana_core::types::{CardId, PlayerId};
 use arcana_core::view::{view_state, ViewState};
 use serde::{Deserialize, Serialize};
 
@@ -293,7 +293,12 @@ impl GameCore {
     /// Start a fresh game. `seed` controls the shuffle/RNG (the deck list itself
     /// is fixed by [`DECK_SEED`] so both seats play the same 40 cards).
     pub fn new(reg: &'static CardRegistry, seed: u64) -> Self {
-        let deck = arcana_cards::sample_deck(reg, DECK_SEED);
+        Self::new_with_deck(reg, seed, arcana_cards::sample_deck(reg, DECK_SEED))
+    }
+
+    /// Start a fresh game where both seats play `deck` (a list of card ids with
+    /// repeats — the deckbuilder's output). Human in seat 0, snappy bot in seat 1.
+    pub fn new_with_deck(reg: &'static CardRegistry, seed: u64, deck: Vec<CardId>) -> Self {
         let seats = vec![Seat::Human, Self::make_bot(seed)];
         let session = Session::new(vec![deck.clone(), deck], reg, seats, seed);
         Self { reg, session, legal: Vec::new() }
@@ -672,6 +677,21 @@ mod tests {
         let card = s.view.players[0].hand[0].id;
         let after = core.bottom_cards(vec![card]).expect("valid bottom applies");
         assert_eq!(after.bottom, None, "bottoming resolved");
+    }
+
+    /// A game started with a custom deck actually plays that deck: the human's
+    /// zones account for exactly the deck's cards.
+    #[test]
+    fn new_with_deck_uses_the_given_deck() {
+        let reg = leaked_catalog();
+        let deck = arcana_cards::sample_deck(reg, 3);
+        let mut core = GameCore::new_with_deck(reg, 1, deck.clone());
+        let s = core.snapshot();
+        let p0 = &s.view.players[0];
+        assert_eq!(p0.library_count + p0.hand_count, deck.len(),
+            "the human's library + hand equal the custom deck size");
+        assert!(s.view.game_over.is_none());
+        assert!(!s.view.legal.is_empty());
     }
 
     /// The catalog query layer works over the real ~20k-card catalog: an

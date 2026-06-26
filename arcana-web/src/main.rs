@@ -4,7 +4,8 @@
 //! All game logic lives in the library crate ([`arcana_web`]); this binary is
 //! just the axum/tokio HTTP shell around it:
 //!
-//! * `GET  /`       → the single-page UI (`static/index.html`, embedded).
+//! * `GET  /`       → the single-page game UI (`static/index.html`, embedded).
+//! * `GET  /deck`   → the deckbuilder UI (`static/deck.html`, embedded).
 //! * `GET  /glossary`→ keyword reminder text (base name → reminder), static.
 //! * `GET  /state`  → advance through bot/trivial decisions, return the human's
 //!   [`ViewState`](arcana_core::view::ViewState) + the opponent action log.
@@ -38,6 +39,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use arcana_core::catalog::{CardInfo, CardQuery};
 use arcana_core::objects::ObjectId;
 use arcana_core::registry::CardRegistry;
+use arcana_core::types::CardId;
 use arcana_web::{CombatSubmission, GameCore, StateResponse};
 use axum::extract::State;
 use axum::http::StatusCode;
@@ -49,6 +51,8 @@ use tokio::sync::{mpsc, oneshot};
 
 /// The single-page UI, embedded so the binary is self-contained.
 const INDEX_HTML: &str = include_str!("../static/index.html");
+/// The deckbuilder page (browse the catalog, build a deck, play it).
+const DECK_HTML: &str = include_str!("../static/deck.html");
 
 /// A request to the game worker thread. Each carries a oneshot reply channel.
 enum Command {
@@ -58,7 +62,7 @@ enum Command {
     AutoTap { target: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
     Bottom { ids: Vec<ObjectId>, reply: oneshot::Sender<Result<StateResponse, String>> },
     Search { query: CardQuery, reply: oneshot::Sender<Vec<CardInfo>> },
-    New { seed: Option<u64>, reply: oneshot::Sender<StateResponse> },
+    New { seed: Option<u64>, deck: Option<Vec<CardId>>, reply: oneshot::Sender<StateResponse> },
 }
 
 /// Shared server state: a handle to the game worker. Cheap to clone (just an
@@ -86,6 +90,16 @@ struct BottomRequest {
 #[derive(Debug, Default, Deserialize)]
 struct NewRequest {
     seed: Option<u64>,
+    /// Optional custom deck (card ids with repeats, from the deckbuilder). Both
+    /// seats play it. Ignored if too small or containing unregistered ids.
+    deck: Option<Vec<CardId>>,
+}
+
+/// A deck is playable if it can at least draw an opening hand and every id is a
+/// registered card (a bad submission falls back to the sample deck rather than
+/// risking an engine panic).
+fn deck_is_valid(reg: &CardRegistry, deck: &[CardId]) -> bool {
+    deck.len() >= 7 && deck.iter().all(|&id| reg.get(id).is_some())
 }
 
 #[derive(Debug, Serialize)]
@@ -136,8 +150,12 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>) {
             Command::Search { query, reply } => {
                 let _ = reply.send(arcana_core::catalog::query(core.registry(), &query));
             }
-            Command::New { seed, reply } => {
-                core = GameCore::new(reg, seed.unwrap_or_else(time_seed));
+            Command::New { seed, deck, reply } => {
+                let seed = seed.unwrap_or_else(time_seed);
+                core = match deck {
+                    Some(d) if deck_is_valid(reg, &d) => GameCore::new_with_deck(reg, seed, d),
+                    _ => GameCore::new(reg, seed),
+                };
                 let _ = reply.send(core.snapshot());
             }
         }
@@ -151,6 +169,10 @@ fn worker_gone() -> Response {
 
 async fn index() -> Html<&'static str> {
     Html(INDEX_HTML)
+}
+
+async fn deckbuilder() -> Html<&'static str> {
+    Html(DECK_HTML)
 }
 
 /// The keyword glossary (base name -> reminder text). Static — no game state, so
@@ -265,10 +287,10 @@ async fn post_search(State(app): State<AppState>, body: String) -> Response {
 }
 
 async fn post_new(State(app): State<AppState>, body: String) -> Response {
-    // Lenient: empty body is allowed (→ default → time-based seed).
+    // Lenient: empty body is allowed (→ default → time-based seed, sample deck).
     let req: NewRequest = serde_json::from_str(&body).unwrap_or_default();
     let (reply, rx) = oneshot::channel();
-    if app.tx.send(Command::New { seed: req.seed, reply }).is_err() {
+    if app.tx.send(Command::New { seed: req.seed, deck: req.deck, reply }).is_err() {
         return worker_gone();
     }
     match rx.await {
@@ -290,6 +312,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(index))
+        .route("/deck", get(deckbuilder))
         .route("/glossary", get(get_glossary))
         .route("/state", get(get_state))
         .route("/action", post(post_action))
