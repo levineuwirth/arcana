@@ -8,88 +8,106 @@
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("arcana.theme")||"dark";}catch(e){document.documentElement.dataset.theme="dark";}</script>
 <link rel="stylesheet" href="/theme.css" />
 <style>
-  body { padding: 0 var(--page-padding) 3rem; }
+  /* The play view fills the viewport and NEVER scrolls the page (MTGA-style):
+     a fixed-height flex column; battlefields flex-share the space; cards are
+     sized by their row height so they scale to fit; only the log / combat /
+     actions sub-regions scroll internally. */
+  html, body { height: 100%; }
+  body { height: 100dvh; overflow: hidden; display: flex; flex-direction: column;
+    padding: 0 var(--page-padding); gap: 8px; }
 
   /* ---- top bar ---- */
   .topbar {
-    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
-    padding: 12px 0; position: sticky; top: 0; z-index: 20;
-    background: var(--bg-nav); border-bottom: 1px solid var(--border); margin-bottom: 14px;
+    flex: 0 0 auto; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    padding: 8px 0; background: var(--bg-nav); border-bottom: 1px solid var(--border);
   }
   .topbar .spacer { flex: 1; }
   .brand { display: flex; align-items: baseline; gap: 8px; }
-  .brand .mark { font-family: var(--font-serif); font-weight: 600; font-size: 20px; letter-spacing: .01em; }
+  .brand .mark { font-family: var(--font-serif); font-weight: 600; font-size: 19px; letter-spacing: .01em; }
   .brand .sub { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--text-faint); }
-
   .phasebar {
     display: flex; align-items: baseline; gap: 10px;
-    padding: 5px 12px; border: 1px solid var(--border); border-radius: var(--radius-panel);
+    padding: 4px 12px; border: 1px solid var(--border); border-radius: var(--radius-panel);
     background: var(--bg-offset); font-size: 13px;
   }
   .phasebar .turn { font-variant-numeric: tabular-nums; color: var(--text-muted); }
   .phasebar .step { font-family: var(--font-serif); font-weight: 600; }
   .phasebar .who { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: .06em; }
 
-  /* ---- player panels ---- */
+  #banner {
+    flex: 0 0 auto; display: none; padding: 8px 14px; border: 1px solid var(--border-muted);
+    border-radius: var(--radius-panel); background: var(--bg-offset);
+    font-family: var(--font-serif); font-weight: 600; font-size: 16px;
+  }
+
+  /* ---- board: the flexible region between top bar and the bottom strips ---- */
+  .board { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+
   .player {
+    flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
     border: 1px solid var(--border); border-radius: var(--radius-panel);
-    padding: 12px 14px; margin-bottom: 12px; background: var(--bg-offset);
+    padding: 6px 12px; background: var(--bg-offset);
   }
   .player.you { border-color: var(--border-muted); }
-  .ptitle { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 4px; }
+  .ptitle { flex: 0 0 auto; display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 2px; }
   .ptitle .who { font-family: var(--font-sans); font-size: 11px; font-weight: 500;
     text-transform: uppercase; letter-spacing: .1em; color: var(--text-faint); }
-  .ptitle .life { font-family: var(--font-serif); font-weight: 600; font-size: 26px;
+  .ptitle .life { font-family: var(--font-serif); font-weight: 600; font-size: 22px;
     font-variant-numeric: tabular-nums; line-height: 1; }
-  .ptitle .life .unit { font-size: 12px; color: var(--text-faint); font-weight: 400; margin-left: 3px; }
-  .ptitle .gauge { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-muted); }
+  .ptitle .life .unit { font-size: 11px; color: var(--text-faint); font-weight: 400; margin-left: 3px; }
+  .ptitle .gauge { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); }
+  .ptitle .gauge .gpip { display: inline-flex; align-items: center; gap: 1px; font-variant-numeric: tabular-nums; }
   .ptitle .gauge .floating { color: var(--text-faint); }
   .ptitle .counts { display: flex; gap: 12px; font-size: 12px; color: var(--text-muted);
     font-variant-numeric: tabular-nums; }
   .ptitle .spacer { flex: 1; }
 
-  .zone { margin-top: 8px; }
-  .zone-head { margin: 8px 0 5px; }
-  .cards { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; min-height: 6px; }
-  .battlefield { --card-w: 104px; }
-  .hand { --card-w: 124px; }
-  .stack { --card-w: 96px; }
-  .ptitle .gauge .gpip { display: inline-flex; align-items: center; gap: 1px;
-    font-variant-numeric: tabular-nums; }
+  /* the battlefield: creatures row + lands row split the panel height */
+  .lands-creatures { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; }
+  .zone { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .zone.collapsed { flex: 0 0 auto; }   /* empty zones don't reserve a card row */
+  .zone-head { flex: 0 0 auto; margin: 1px 0 2px; }
 
-  .lands-creatures { display: grid; gap: 10px; }
-  .empty { color: var(--text-faint); font-size: 12px; font-style: italic; font-family: var(--font-serif); padding: 4px 0; }
+  /* height-driven card rows: cards fill the row height + scale with the viewport;
+     too many cards scroll horizontally (the page itself never scrolls). */
+  .cards { display: flex; gap: 8px; align-items: flex-end; }
+  .cards.fit { flex: 1; min-height: 0; height: 100%; overflow-x: auto; overflow-y: hidden; padding-bottom: 2px; }
+  .cards.fit .ac-card { height: 100%; width: auto; aspect-ratio: 488 / 680; flex: 0 0 auto; }
+  .cards.fit .ac-card .ac-frame { width: 100%; height: 100%; left: 0; top: 0; }
+  /* tapped: stay in the portrait slot, rotate + scale to fit (no overlap) */
+  .cards.fit .ac-card.tapped { width: auto; height: 100%; aspect-ratio: 488 / 680; }
+  .cards.fit .ac-card.tapped .ac-frame { left: 0; top: 0; transform: rotate(90deg) scale(.7); }
+  .empty { color: var(--text-faint); font-size: 12px; font-style: italic; font-family: var(--font-serif); padding: 2px 0; }
 
-  /* ---- middle row: stack + log ---- */
-  .midrow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; align-items: start; }
-  @media (max-width: 720px) { .midrow { grid-template-columns: 1fr; } }
+  /* ---- middle strip: stack + log (compact; both scroll internally) ---- */
+  .midrow { flex: 0 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; height: clamp(72px, 12vh, 150px); }
+  @media (max-width: 720px) { .midrow { grid-template-columns: 1fr; height: clamp(64px, 15vh, 130px); } }
   .stackzone, .logzone {
     border: 1px solid var(--border); border-radius: var(--radius-panel);
-    padding: 10px 12px; background: var(--bg-offset);
+    padding: 5px 10px; background: var(--bg-offset);
+    display: flex; flex-direction: column; min-height: 0; overflow: hidden;
   }
-  #log { font-size: 12px; max-height: 150px; overflow-y: auto; }
-  #log .ln { line-height: 1.45; padding: 1px 0; }
+  .stackzone .cards { flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; }
+  #log { flex: 1; min-height: 0; font-size: 12px; overflow-y: auto; }
+  #log .ln { line-height: 1.4; padding: 1px 0; }
   #log .you { color: var(--text); }
   #log .opp { color: var(--text-muted); }
   #log .sys { color: var(--text-faint); font-style: italic; }
 
-  /* ---- banner ---- */
-  #banner {
-    display: none; padding: 12px 14px; border: 1px solid var(--border-muted);
-    border-radius: var(--radius-panel); background: var(--bg-offset);
-    font-family: var(--font-serif); font-weight: 600; font-size: 16px; margin-bottom: 12px;
-  }
+  /* ---- hand (own bottom region) ---- */
+  #handzone { flex: 0 0 auto; display: flex; flex-direction: column; height: clamp(120px, 19vh, 230px); }
 
-  /* ---- combat / bottoming panel ---- */
-  #combat { display: none; }
+  /* ---- combat / actions: bottom strips that scroll internally, never the page ---- */
+  #combat { flex: 0 0 auto; display: none; }
   #combat.show {
-    display: block; border: 1px solid var(--border-muted); border-radius: var(--radius-panel);
-    background: var(--bg-offset); padding: 12px 14px; margin-bottom: 12px;
+    display: flex; flex-direction: column; border: 1px solid var(--border-muted);
+    border-radius: var(--radius-panel); background: var(--bg-offset);
+    padding: 10px 14px; max-height: 36vh; overflow-y: auto;
   }
   #combat .ctitle { font-family: var(--font-serif); font-weight: 600; font-size: 16px; margin-bottom: 4px; }
-  #combat .hint { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; max-width: 70ch; }
-  #combat .ctrls { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-  #combat .csec { border-top: 1px solid var(--border); padding: 8px 0; }
+  #combat .hint { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; max-width: 70ch; }
+  #combat .ctrls { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  #combat .csec { border-top: 1px solid var(--border); padding: 6px 0; }
   #combat .csec-h { font-size: 13px; font-weight: 500; margin-bottom: 5px; }
   #combat .ord-row, #combat .dmg-row { display: flex; gap: 8px; align-items: center; margin: 4px 0; font-size: 13px; }
   #combat .ord-num { width: 20px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
@@ -99,14 +117,12 @@
   #combat .dmg-status { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
   #combat .dmg-status.bad { color: var(--text); font-weight: 500; }
 
-  /* ---- actions ---- */
-  #actionzone { margin-top: 4px; }
-  .agroup { margin-bottom: 10px; }
+  #actionzone { flex: 0 0 auto; max-height: 22vh; overflow-y: auto; }
+  .agroup { margin-bottom: 8px; }
   .agroup .gl { margin-bottom: 4px; }
   .agroup .btns, .control-row { display: flex; gap: 8px; flex-wrap: wrap; }
   .control-row { margin-top: 6px; }
 
-  /* busy / disabled interaction */
   body.busy #actions, body.busy #combat, body.busy .player { pointer-events: none; opacity: .7; }
 
   /* ---- light tap pulse ---- */
@@ -134,7 +150,7 @@
     <div class="midrow">
       <section class="stackzone">
         <div class="meta-label">Stack</div>
-        <div id="stack" class="cards stack"></div>
+        <div id="stack" class="cards stack fit"></div>
       </section>
       <section class="logzone">
         <div class="meta-label">Game log</div>
@@ -144,6 +160,8 @@
 
     <section id="you" class="player you"></section>
   </main>
+
+  <section id="handzone"></section>
 
   <div id="combat"></div>
 
@@ -340,12 +358,13 @@ function renderPlayer(container, p, isYou, cm) {
 
   const mkZone = (label, cards, empty) => {
     const z = document.createElement("div");
-    z.className = "zone";
+    // empty zones collapse so the populated zone gets the panel's height.
+    z.className = "zone" + (cards.length ? "" : " collapsed");
     const h = document.createElement("div");
     h.className = "meta-label zone-head"; h.textContent = label;
     z.appendChild(h);
     const row = document.createElement("div");
-    row.className = "cards battlefield";
+    row.className = "cards battlefield fit";
     renderCards(row, cards, empty, (c) => combatDecor(c, isYou, cm));
     z.appendChild(row);
     return z;
@@ -353,20 +372,21 @@ function renderPlayer(container, p, isYou, cm) {
   grid.appendChild(mkZone("Creatures & permanents", others, "no permanents"));
   grid.appendChild(mkZone("Lands", lands, "no lands"));
   container.appendChild(grid);
+  // (the hand lives in its own bottom region — see renderHand)
+}
 
-  if (isYou) {
-    const hz = document.createElement("div");
-    hz.className = "zone";
-    const h = document.createElement("div");
-    h.className = "meta-label zone-head";
-    h.textContent = "Your hand — click a highlighted card to play it (auto-taps mana)";
-    hz.appendChild(h);
-    const hand = document.createElement("div");
-    hand.className = "cards hand";
-    renderCards(hand, p.hand, "empty hand", handDecor);
-    hz.appendChild(hand);
-    container.appendChild(hz);
-  }
+// The human's hand, in the dedicated bottom region (so the board fits the viewport).
+function renderHand(you) {
+  const hz = document.getElementById("handzone");
+  hz.innerHTML = "";
+  const h = document.createElement("div");
+  h.className = "meta-label zone-head";
+  h.textContent = "Your hand — click a highlighted card to play it (auto-taps mana)";
+  hz.appendChild(h);
+  const hand = document.createElement("div");
+  hand.className = "cards hand fit";
+  renderCards(hand, you.hand, "empty hand", handDecor);
+  hz.appendChild(hand);
 }
 
 // decorate a battlefield card with combat affordances + the enter-pulse
@@ -757,6 +777,7 @@ function renderAll() {
   const cm = combatMaps();
   renderPlayer(document.getElementById("opponent"), opp, false, cm);
   renderPlayer(document.getElementById("you"), you, true, cm);
+  renderHand(you);
   renderCards(document.getElementById("stack"), view.stack, "(stack empty)");
   if (resp.bottom != null) renderBottomPanel(); else renderCombatPanel();
   renderActions(view);
