@@ -287,4 +287,42 @@ mod tests {
         let rr = round_robin(names, &deck, &reg, 12, 4000);
         println!("Learned-value tournament:\n{}", rr.format_table());
     }
+
+    /// PAYOFF (non-asserting): the learned value as a SEARCH LEAF. ValueMcPolicy
+    /// runs short rollouts (lookahead, so not myopic) and scores the leaf with a
+    /// ValueFn — so this A/Bs vmc(learned) vs vmc(material) with everything else
+    /// identical, plus random and PIMC as reference. The value is learned from
+    /// RANDOM self-play (which actually attacks, unlike greedy-material), so it
+    /// sees combat→damage→win. Tells us whether the learned leaf beats the
+    /// hand-tuned leaf inside a search. #[ignore], run in release.
+    #[test]
+    #[ignore]
+    fn value_mc_learned_vs_material() {
+        use crate::search::{
+            round_robin, MaterialValue, PimcPolicy, RandomStatePolicy, StatePolicy, ValueMcPolicy,
+        };
+        let reg = arcana_cards::build_catalog();
+        let deck = arcana_cards::sample_deck(&reg, 7);
+
+        let lv = learn_value(
+            &deck, &reg, 30, 4000,
+            &|s| Box::new(RandomStatePolicy::new(s)),
+            300, 0.3, 1e-4, 1);
+
+        let f_rand = |s: u64| -> Box<dyn StatePolicy> { Box::new(RandomStatePolicy::new(s)) };
+        let f_vm = |s: u64| -> Box<dyn StatePolicy> {
+            Box::new(ValueMcPolicy::with_budget(Box::new(MaterialValue), s, 6, 25, 10)) };
+        let lv_c = lv.clone();
+        let f_vl = move |s: u64| -> Box<dyn StatePolicy> {
+            Box::new(ValueMcPolicy::with_budget(Box::new(lv_c.clone()), s, 6, 25, 10)) };
+        let dp = deck.clone();
+        let f_pimc = move |s: u64| -> Box<dyn StatePolicy> {
+            Box::new(PimcPolicy::with_budget(s, vec![dp.clone(), dp.clone()], 15, 150, 10)) };
+
+        let names: &[(&str, &dyn Fn(u64) -> Box<dyn StatePolicy>)] = &[
+            ("random", &f_rand), ("vmc-material", &f_vm), ("vmc-learned", &f_vl), ("pimc", &f_pimc),
+        ];
+        let rr = round_robin(names, &deck, &reg, 10, 4000);
+        println!("Value-MC leaf tournament:\n{}", rr.format_table());
+    }
 }

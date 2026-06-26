@@ -153,6 +153,65 @@ impl StatePolicy for GreedyValuePolicy {
     }
 }
 
+/// Flat Monte-Carlo with a pluggable value LEAF and a SHORT rollout: for each
+/// candidate action, run `rollouts` playouts of at most `rollout_step_cap` steps
+/// and score the (usually non-terminal) leaf with `value`, then pick the best
+/// mean. This is [`FlatMonteCarloPolicy`] generalized — the short rollout
+/// supplies the lookahead a [`GreedyValuePolicy`] lacks (so it isn't myopic),
+/// and `value` supplies the leaf signal, which a learned
+/// `crate::learn::LinearValue` can sharpen. Perfect-information (rolls out from
+/// the true state), so A/B-ing two leaf values is apples-to-apples.
+pub struct ValueMcPolicy {
+    pub value: Box<dyn ValueFn>,
+    rng: ChaCha8Rng,
+    pub rollouts: u32,
+    pub rollout_step_cap: u32,
+    pub max_candidates: usize,
+}
+impl ValueMcPolicy {
+    pub fn new(value: Box<dyn ValueFn>, seed: u64) -> Self {
+        Self { value, rng: ChaCha8Rng::seed_from_u64(seed),
+               rollouts: 10, rollout_step_cap: 30, max_candidates: 16 }
+    }
+    pub fn with_budget(value: Box<dyn ValueFn>, seed: u64, rollouts: u32,
+                       cap: u32, max_candidates: usize) -> Self {
+        Self { value, rng: ChaCha8Rng::seed_from_u64(seed),
+               rollouts, rollout_step_cap: cap, max_candidates }
+    }
+    fn candidate_indices(&mut self, legal: &[Action]) -> Vec<usize> {
+        if legal.len() <= self.max_candidates {
+            return (0..legal.len()).collect();
+        }
+        let mut idxs: Vec<usize> = (0..legal.len()).collect();
+        idxs.shuffle(&mut self.rng);
+        idxs.truncate(self.max_candidates);
+        if let Some(p) = legal.iter().position(|a| matches!(a, Action::PassPriority)) {
+            if !idxs.contains(&p) { idxs[0] = p; }
+        }
+        idxs
+    }
+}
+impl StatePolicy for ValueMcPolicy {
+    fn choose(&mut self, state: &GameState, registry: &CardRegistry,
+              decider: PlayerId, legal: &[Action]) -> Action {
+        if legal.len() <= 1 { return legal[0].clone(); }
+        let cands = self.candidate_indices(legal);
+        let mut best_idx = cands[0];
+        let mut best_avg = f32::NEG_INFINITY;
+        for ci in cands {
+            let mut sum = 0.0f32;
+            for _ in 0..self.rollouts {
+                let (s, y) = step(state.clone(), legal[ci].clone(), registry);
+                let leaf = play_out(s, y, registry, self.rollout_step_cap, &mut self.rng);
+                sum += self.value.value(&leaf, decider);
+            }
+            let avg = sum / self.rollouts.max(1) as f32;
+            if avg > best_avg { best_avg = avg; best_idx = ci; }
+        }
+        legal[best_idx].clone()
+    }
+}
+
 /// Pick a "make progress" action index, mirroring the random-game harness /
 /// `ProgressBiasedRandomPolicy`: end mulligans first, never concede, prefer
 /// real actions over passing — then random within the chosen tier so rollouts
