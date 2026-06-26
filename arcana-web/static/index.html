@@ -133,11 +133,15 @@
     font-variant-numeric: tabular-nums; }
   .ptitle .spacer { flex: 1; }
 
-  /* the battlefield: creatures row + lands row split the panel height */
-  .lands-creatures { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; }
-  .zone { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-  .zone.collapsed { flex: 0 0 auto; }   /* empty zones don't reserve a card row */
-  .zone-head { flex: 0 0 auto; margin: 1px 0 2px; }
+  /* the battlefield: lands (left) + permanents (right) as side-by-side COLUMNS,
+     so a player band is ONE card tall (not two stacked rows) → cards fill the
+     full band height. Each column's width is set ∝ its card count (in JS) so
+     every card gets ~equal width; an empty column is hidden so the populated one
+     spans the whole band. */
+  .lands-creatures { flex: 1; min-height: 0; display: flex; flex-direction: row; gap: 12px; }
+  .zone { flex: 1 1 0; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+  .zone.collapsed { display: none; }     /* empty column yields its width */
+  .zone-head { flex: 0 0 auto; margin: 0 0 2px; }
 
   /* height-driven card rows: cards fill the row height + scale with the viewport;
      too many cards scroll horizontally (the page itself never scrolls). */
@@ -822,8 +826,10 @@ function renderBattlefield(container, p, isYou, cm) {
 
   const mkZone = (label, cards, empty) => {
     const z = document.createElement("div");
-    // empty zones collapse so the populated zone gets the panel's height.
+    // empty columns collapse (hidden) so the populated one spans the band; a
+    // populated column's width is ∝ its card count → every card ~equal width.
     z.className = "zone" + (cards.length ? "" : " collapsed");
+    z.style.flexGrow = String(Math.max(1, cards.length));
     const h = document.createElement("div");
     h.className = "meta-label zone-head"; h.textContent = label;
     z.appendChild(h);
@@ -833,8 +839,9 @@ function renderBattlefield(container, p, isYou, cm) {
     z.appendChild(row);
     return z;
   };
-  grid.appendChild(mkZone("Creatures & permanents", others, "no permanents"));
+  // Lands on the LEFT, creatures/permanents on the RIGHT.
   grid.appendChild(mkZone("Lands", lands, "no lands"));
+  grid.appendChild(mkZone("Creatures & permanents", others, "no permanents"));
   container.appendChild(grid);
 }
 
