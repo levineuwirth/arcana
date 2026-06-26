@@ -12,11 +12,13 @@ fn main() -> Result<()> {
         Some("selfplay") => replay::selfplay(&args),
         Some("replay") => replay::run(args.get(2)),
         Some("eval") => replay::eval(&args),
+        Some("arena") => replay::arena(&args),
         _ => {
             println!("Arcana CLI — developer tools");
             println!("  selfplay <out.json> [seed] [mc|pimc|ismcts|random]  play a game, write a GameRecord");
             println!("  replay   <record.json>                              re-derive + render a recorded game");
             println!("  eval [--policy mc|pimc|ismcts --rollouts N --games K --cap N --candidates N]  search vs random win-rate");
+            println!("  arena [--games K --rollouts N --cap N --candidates N]  round-robin tournament (random/flatMC/pimc)");
             Ok(())
         }
     }

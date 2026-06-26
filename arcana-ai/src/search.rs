@@ -642,6 +642,92 @@ pub fn win_rate(
     (a_wins, b_wins, draws)
 }
 
+// =============================================================================
+// Round-robin tournament — the self-play yardstick
+// =============================================================================
+
+/// Result of a [`round_robin`]: a win matrix plus per-contestant totals. Once
+/// the honest policies all ceiling-out against random, this is how you tell
+/// them apart — they play each OTHER.
+pub struct RoundRobin {
+    pub names: Vec<String>,
+    /// `wins[i][j]` = games contestant `i` won against `j` (0 on the diagonal).
+    pub wins: Vec<Vec<u32>>,
+    /// `draws[i][j]` = drawn games between `i` and `j` (symmetric).
+    pub draws: Vec<Vec<u32>>,
+    /// Total wins per contestant across all opponents.
+    pub totals: Vec<u32>,
+}
+
+impl RoundRobin {
+    /// Contestant indices sorted by total wins, descending (the ranking).
+    pub fn ranking(&self) -> Vec<usize> {
+        let mut idx: Vec<usize> = (0..self.names.len()).collect();
+        idx.sort_by(|&a, &b| self.totals[b].cmp(&self.totals[a]));
+        idx
+    }
+
+    /// A human-readable win matrix + ranking (for CLI / test output).
+    pub fn format_table(&self) -> String {
+        let mut s = String::new();
+        let w = self.names.iter().map(|n| n.len()).max().unwrap_or(4).max(6);
+        // Header.
+        s.push_str(&format!("{:>w$} |", "", w = w));
+        for n in &self.names { s.push_str(&format!(" {:>8}", n)); }
+        s.push_str("  |    total\n");
+        // Rows.
+        for i in 0..self.names.len() {
+            s.push_str(&format!("{:>w$} |", self.names[i], w = w));
+            for j in 0..self.names.len() {
+                if i == j { s.push_str(&format!(" {:>8}", "—")); }
+                else { s.push_str(&format!(" {:>8}", self.wins[i][j])); }
+            }
+            s.push_str(&format!("  | {:>8}\n", self.totals[i]));
+        }
+        // Ranking line.
+        s.push_str("ranking: ");
+        let rank: Vec<String> = self.ranking().iter()
+            .map(|&i| format!("{}({})", self.names[i], self.totals[i])).collect();
+        s.push_str(&rank.join(" > "));
+        s
+    }
+}
+
+/// Round-robin self-play tournament: every unordered pair of `contestants`
+/// plays `games_per_pair` games on the mirror `deck` ([`win_rate`] alternates
+/// seats), and wins are tallied into a [`RoundRobin`]. Each contestant is a
+/// `(name, maker)` where the maker builds a fresh policy seeded per game.
+#[allow(clippy::type_complexity)]
+pub fn round_robin(
+    contestants: &[(&str, &dyn Fn(u64) -> Box<dyn StatePolicy>)],
+    deck: &[CardId],
+    registry: &CardRegistry,
+    games_per_pair: u32,
+    max_steps: u32,
+) -> RoundRobin {
+    let n = contestants.len();
+    let mut wins = vec![vec![0u32; n]; n];
+    let mut draws = vec![vec![0u32; n]; n];
+    let mut totals = vec![0u32; n];
+    for i in 0..n {
+        for j in (i + 1)..n {
+            let (iw, jw, d) = win_rate(
+                deck, deck, registry, games_per_pair, max_steps,
+                contestants[i].1, contestants[j].1);
+            wins[i][j] = iw;
+            wins[j][i] = jw;
+            draws[i][j] = d;
+            draws[j][i] = d;
+            totals[i] += iw;
+            totals[j] += jw;
+        }
+    }
+    RoundRobin {
+        names: contestants.iter().map(|c| c.0.to_string()).collect(),
+        wins, draws, totals,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -787,5 +873,73 @@ mod tests {
             &move |s| Box::new(PimcPolicy::with_budget(s, vec![d3.clone(), d3.clone()], 15, 150, 10)),
             &|s| Box::new(FlatMonteCarloPolicy::with_budget(s, 15, 150, 10)));
         println!("PIMC vs flat-MC(perfect): PIMC={pimc} flatMC={flat} draws={dr}");
+    }
+
+    /// Cheap, deterministic check that the [`round_robin`] harness tallies
+    /// correctly: matrix is square, totals equal the row sums, and every pair's
+    /// games are fully accounted for (wins + draws). Two random contestants.
+    #[test]
+    fn round_robin_tallies_correctly() {
+        let reg = arcana_cards::build_catalog();
+        let deck = arcana_cards::sample_deck(&reg, 7);
+        let a = |s: u64| -> Box<dyn StatePolicy> { Box::new(RandomStatePolicy::new(s)) };
+        let b = |s: u64| -> Box<dyn StatePolicy> { Box::new(RandomStatePolicy::new(s ^ 0xABCD)) };
+        let g = 4u32;
+        let rr = round_robin(&[("a", &a), ("b", &b)], &deck, &reg, g, 4000);
+        assert_eq!(rr.names, vec!["a", "b"]);
+        assert_eq!(rr.wins.len(), 2);
+        assert_eq!(rr.totals[0], rr.wins[0][1]);
+        assert_eq!(rr.totals[1], rr.wins[1][0]);
+        // The single pair's games are fully accounted for.
+        assert_eq!(rr.wins[0][1] + rr.wins[1][0] + rr.draws[0][1], g);
+        assert_eq!(rr.ranking().len(), 2);
+        assert!(rr.format_table().contains("ranking:"));
+    }
+
+    /// YARDSTICK (non-asserting): does PIMC get stronger with more
+    /// determinizations? Vs random every budget ceilings out, so this measures
+    /// budgets against EACH OTHER in self-play. Prints the win matrix + ranking;
+    /// asserting strict monotonicity over a handful of high-variance games would
+    /// be flaky. #[ignore], run in release.
+    #[test]
+    #[ignore]
+    fn pimc_budget_ladder() {
+        let reg = arcana_cards::build_catalog();
+        let deck = arcana_cards::sample_deck(&reg, 7);
+        let mk = |samples: u32| {
+            let d = deck.clone();
+            move |s: u64| -> Box<dyn StatePolicy> {
+                Box::new(PimcPolicy::with_budget(s, vec![d.clone(), d.clone()], samples, 150, 10))
+            }
+        };
+        let (f5, f15, f30) = (mk(5), mk(15), mk(30));
+        let rr = round_robin(
+            &[("pimc5", &f5), ("pimc15", &f15), ("pimc30", &f30)],
+            &deck, &reg, 10, 4000);
+        println!("PIMC budget ladder:\n{}", rr.format_table());
+    }
+
+    /// MEASUREMENT (non-asserting): the full self-play ranking — random,
+    /// flat-MC (perfect info), PIMC (imperfect), IS-MCTS — all playing each
+    /// other. The yardstick that distinguishes policies the vs-random ceiling
+    /// hides. #[ignore], run in release.
+    #[test]
+    #[ignore]
+    fn full_tournament() {
+        let reg = arcana_cards::build_catalog();
+        let deck = arcana_cards::sample_deck(&reg, 7);
+        let d_pimc = deck.clone();
+        let d_is = deck.clone();
+        let f_rand = |s: u64| -> Box<dyn StatePolicy> { Box::new(RandomStatePolicy::new(s)) };
+        let f_flat = |s: u64| -> Box<dyn StatePolicy> {
+            Box::new(FlatMonteCarloPolicy::with_budget(s, 15, 150, 10)) };
+        let f_pimc = move |s: u64| -> Box<dyn StatePolicy> {
+            Box::new(PimcPolicy::with_budget(s, vec![d_pimc.clone(), d_pimc.clone()], 15, 150, 10)) };
+        let f_is = move |s: u64| -> Box<dyn StatePolicy> {
+            Box::new(IsmctsPolicy::with_budget(s, vec![d_is.clone(), d_is.clone()], 60, 130, 10)) };
+        let rr = round_robin(
+            &[("random", &f_rand), ("flatMC", &f_flat), ("pimc", &f_pimc), ("ismcts", &f_is)],
+            &deck, &reg, 8, 4000);
+        println!("Full tournament:\n{}", rr.format_table());
     }
 }

@@ -9,7 +9,7 @@ use arcana_core::record::{replay_to, GameRecord};
 use arcana_core::render::{render, render_oneline};
 use arcana_core::types::CardId;
 use arcana_ai::search::{
-    play_match_recorded, win_rate, FlatMonteCarloPolicy, IsmctsPolicy, PimcPolicy,
+    play_match_recorded, round_robin, win_rate, FlatMonteCarloPolicy, IsmctsPolicy, PimcPolicy,
     RandomStatePolicy, StatePolicy,
 };
 
@@ -103,6 +103,47 @@ pub fn eval(args: &[String]) -> Result<()> {
         "{policy}={win}  random={rnd}  draws={draws}  ({policy} win share of decided: {:.0}%)",
         100.0 * win as f32 / decided as f32
     );
+    Ok(())
+}
+
+/// Run a round-robin self-play tournament among random / flat-MC / PIMC and
+/// print the win matrix + ranking — the yardstick for telling apart policies
+/// that all ceiling-out against random. Flags: `--games K` (per pair, default
+/// 8), `--rollouts N` (flat-MC/PIMC budget, default 12), `--cap N` (rollout step
+/// cap, default 150), `--candidates N` (default 10).
+pub fn arena(args: &[String]) -> Result<()> {
+    let flag = |name: &str, default: u32| -> Result<u32> {
+        match args.iter().position(|a| a == name) {
+            Some(i) => {
+                let v = args.get(i + 1).with_context(|| format!("{name} needs a value"))?;
+                v.parse().with_context(|| format!("{name} must be an integer, got {v:?}"))
+            }
+            None => Ok(default),
+        }
+    };
+    let games = flag("--games", 8)?;
+    let rollouts = flag("--rollouts", 12)?;
+    let cap = flag("--cap", 150)?;
+    let candidates = flag("--candidates", 10)? as usize;
+
+    let reg = arcana_cards::build_catalog();
+    let deck = arcana_cards::sample_deck(&reg, 7);
+    let decks = vec![deck.clone(), deck.clone()];
+
+    let f_rand = |s: u64| -> Box<dyn StatePolicy> { Box::new(RandomStatePolicy::new(s)) };
+    let f_flat = move |s: u64| -> Box<dyn StatePolicy> {
+        Box::new(FlatMonteCarloPolicy::with_budget(s, rollouts, cap, candidates)) };
+    let dp = decks.clone();
+    let f_pimc = move |s: u64| -> Box<dyn StatePolicy> {
+        Box::new(PimcPolicy::with_budget(s, dp.clone(), rollouts, cap, candidates)) };
+
+    println!(
+        "arena: round-robin (random, flatMC, pimc) — {games} games/pair, \
+         budget={rollouts} cap={cap} candidates={candidates}…");
+    let rr = round_robin(
+        &[("random", &f_rand), ("flatMC", &f_flat), ("pimc", &f_pimc)],
+        &deck, &reg, games, 4000);
+    println!("{}", rr.format_table());
     Ok(())
 }
 
