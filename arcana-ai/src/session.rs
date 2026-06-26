@@ -225,51 +225,51 @@ mod tests {
     /// that block-with-nothing always matches — the combat-UX path end-to-end.
     #[test]
     fn scripted_human_develops_and_attacks() {
-        use arcana_core::actions::DecisionContext;
         use arcana_core::combat::{attacker_options, match_attack, match_block, AttackerDeclaration};
         let reg = arcana_cards::build_catalog();
         let deck = arcana_cards::sample_deck(&reg, 7);
-        let seats = vec![Seat::Human, Seat::Bot(Box::new(RandomStatePolicy::new(5)))];
-        let mut session = Session::new(vec![deck.clone(), deck], &reg, seats, 11);
 
-        let mut attacks_declared = 0;
-        let mut guard = 0;
-        loop {
-            guard += 1;
-            assert!(guard < 200_000, "session failed to terminate");
-            let (legal, context) = match session.advance() {
-                Turn::GameOver(_) => break,
-                Turn::AwaitingHuman { legal, context, .. } => (legal, context),
-            };
-            let action = match context {
-                DecisionContext::DeclareAttackers => {
-                    // Build "attack with everything" (first legal defender each).
+        // The human dispatches on the actual legal-action SHAPES (exactly like
+        // the CLI frontend), not the DecisionContext — so the test exercises the
+        // real "build attack/block, match to a legal action" path through the
+        // Session. For non-combat decisions it takes any REAL action (like the
+        // random bot: tap lands for mana, play lands, cast — passive land-only
+        // play never generates mana, so never develops creatures, so never
+        // attacks). Whenever a DeclareAttackers decision arises the build MUST
+        // match (the `.expect`); the "attacks happened" check spans seeds.
+        let mut total_attacks = 0;
+        for seed in 0u64..6 {
+            let seats = vec![Seat::Human, Seat::Bot(Box::new(RandomStatePolicy::new(seed * 7 + 1)))];
+            let mut session = Session::new(vec![deck.clone(), deck.clone()], &reg, seats, seed);
+            let mut guard = 0;
+            loop {
+                guard += 1;
+                assert!(guard < 200_000, "session failed to terminate");
+                let legal = match session.advance() {
+                    Turn::GameOver(_) => break,
+                    Turn::AwaitingHuman { legal, .. } => legal,
+                };
+                let action = if legal.iter().any(|a| matches!(a, Action::DeclareAttackers { .. })) {
                     let decls: Vec<AttackerDeclaration> = attacker_options(&legal).iter()
                         .map(|(id, defs)| AttackerDeclaration { attacker: *id, defending: defs[0] })
                         .collect();
                     let action = match_attack(&legal, &decls)
                         .expect("an attack-with-everything build must match a legal declaration");
-                    if !decls.is_empty() { attacks_declared += 1; }
+                    if !decls.is_empty() { total_attacks += 1; }
                     action
-                }
-                DecisionContext::DeclareBlockers => {
+                } else if legal.iter().any(|a| matches!(a, Action::DeclareBlockers { .. })) {
                     match_block(&legal, &[]).expect("block-with-nothing must be legal")
-                }
-                _ => {
-                    // Develop: prefer a land, then a spell, else pass.
-                    legal.iter().find(|a| matches!(a, Action::PlayLand { .. }))
-                        .or_else(|| legal.iter().find(|a| matches!(a, Action::CastSpell { .. })))
-                        .or_else(|| legal.iter().find(|a| matches!(a, Action::MulliganKeep)))
+                } else {
+                    // Any real action (tap mana / play land / cast), else pass.
+                    legal.iter()
+                        .find(|a| !matches!(a, Action::PassPriority | Action::Concede | Action::MulliganAgain))
                         .or_else(|| legal.iter().find(|a| matches!(a, Action::PassPriority)))
-                        .or_else(|| legal.iter().find(|a| !a.is_concede()))
                         .cloned().unwrap_or_else(|| legal[0].clone())
-                }
-            };
-            session.apply(action);
+                };
+                session.apply(action);
+            }
         }
-        // The developing human should have reached combat with attackers at least
-        // once over a full game — exercising the build+match path for real.
-        assert!(attacks_declared > 0, "expected the human to declare attackers");
+        assert!(total_attacks > 0, "expected the human to declare attackers in some game");
     }
 
     /// All-bot seats: advance() runs the whole game with no human stop.

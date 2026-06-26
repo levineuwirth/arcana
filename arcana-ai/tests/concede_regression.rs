@@ -1,11 +1,13 @@
-//! End-to-end regression for the combat-concede winner bug: a player conceding
-//! while they are the DECIDER but not the priority holder must LOSE, not win.
+//! End-to-end regression for the combat-concede winner bug: conceding must make
+//! the CONCEDER lose — never win.
 //!
-//! Seed 7 on a mirror `sample_deck` deterministically reaches a state at
-//! action 13 where the decider is P1 while P0 holds priority. Before the fix,
-//! `apply_concede` eliminated the priority holder (P0), so P1's concede
-//! reported `Win(1)` — and `FlatMonteCarloPolicy` learned to concede instantly
-//! for a free "win". This locks the corrected behavior.
+//! Before the fix, `Action::Concede` was attributed to `priority_player()` while
+//! `compute_next_decision` yielded a different, per-combat-phase "decider"; at an
+//! in-combat priority window those disagreed, so the conceder could eliminate
+//! the OTHER player and "win" (a `FlatMonteCarloPolicy` learned to concede
+//! instantly for a free win). The decider is now always the priority holder, so
+//! conceding eliminates the conceder. Seed 7 on a mirror `sample_deck`
+//! deterministically reaches such an in-combat decision at action 13.
 
 use arcana_core::actions::Action;
 use arcana_core::engine::{new_game, step, EngineYield};
@@ -29,19 +31,22 @@ fn concede_when_decider_is_not_priority_holder_loses() {
         state = s; yld = y;
     }
 
-    // The engine should now be awaiting P1 (a non-priority decider).
+    // An in-combat decision that offers Concede.
     let decider = match &yld {
-        EngineYield::PendingDecision { player, .. } => *player,
+        EngineYield::PendingDecision { player, legal_actions, .. } => {
+            assert!(legal_actions.iter().any(|a| matches!(a, Action::Concede)),
+                "the decision must offer Concede");
+            *player
+        }
         EngineYield::GameOver(r) => panic!("unexpected early game over: {r:?}"),
     };
-    assert_eq!(decider, 1, "seed-7 fixture should put the decision on P1");
 
-    // P1 concedes — P1 must lose, so the opponent (P0) wins.
+    // The decider concedes — the conceder must LOSE (the bug made them WIN).
     let (_state, yld) = step(state, Action::Concede, &reg);
     match yld {
         EngineYield::GameOver(GameResult::Win(w)) => {
-            assert_eq!(w, 0, "the conceder (P1) must lose; opponent P0 wins");
+            assert_ne!(w, decider, "the conceder (P{decider}) must lose, not win");
         }
-        other => panic!("expected GameOver/Win(0), got {other:?}"),
+        other => panic!("expected a Win result after concede, got {other:?}"),
     }
 }

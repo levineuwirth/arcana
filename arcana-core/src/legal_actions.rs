@@ -335,23 +335,38 @@ fn legal_special_actions(
 /// contract as `BottomCards` and multi-attacker block batches.
 const MAX_COMBAT_ENUM: usize = 1024;
 
+/// Is a combat DECLARATION (attackers / blockers / damage-order) pending for
+/// `player`? True only in the matching combat phase for the player who makes
+/// that declaration — NOT for the priority windows that share the same combat
+/// step (which key on the same `player == priority_player()` but produce a
+/// normal priority action set). The single source of truth for "this is a
+/// combat-declaration decision", shared by [`legal_actions`] and the engine's
+/// decision/context routing (`compute_next_decision`) so the yielded player and
+/// context can't disagree with the legal actions.
+pub(crate) fn combat_declaration_pending(state: &GameState, player: PlayerId) -> bool {
+    let Some(combat) = state.combat.as_ref() else { return false; };
+    match combat.phase {
+        CombatPhase::DeclareAttackers | CombatPhase::OrderBlockers =>
+            player == state.active_player(),
+        CombatPhase::DeclareBlockers => player != state.active_player(),
+        _ => false,
+    }
+}
+
 fn legal_combat_declaration_actions(
     state: &GameState,
     player: PlayerId,
 ) -> Option<Vec<Action>> {
-    let combat = state.combat.as_ref()?;
-    match combat.phase {
-        CombatPhase::DeclareAttackers if player == state.active_player() => {
-            Some(enumerate_attacker_declarations(state, player))
-        }
-        CombatPhase::DeclareBlockers if player != state.active_player() => {
-            Some(enumerate_blocker_declarations(state, player))
-        }
-        CombatPhase::OrderBlockers if player == state.active_player() => {
-            Some(enumerate_blocker_orderings(state))
-        }
-        _ => None,
+    if !combat_declaration_pending(state, player) {
+        return None;
     }
+    let combat = state.combat.as_ref()?;
+    Some(match combat.phase {
+        CombatPhase::DeclareAttackers => enumerate_attacker_declarations(state, player),
+        CombatPhase::DeclareBlockers => enumerate_blocker_declarations(state, player),
+        CombatPhase::OrderBlockers => enumerate_blocker_orderings(state),
+        _ => unreachable!("combat_declaration_pending gated the phase"),
+    })
 }
 
 /// CR 509.2 — emit every legal assignment of damage-assignment order

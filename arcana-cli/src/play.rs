@@ -94,11 +94,11 @@ fn print_recent(recent: &[(arcana_core::types::PlayerId, String)]) {
 }
 
 /// Present the decision and return the chosen action (`None` = quit). Dispatch
-/// is by the ACTUAL legal-action shapes, not the `DecisionContext` label: the
-/// engine tags a priority window *during* a combat phase with that phase's
-/// context (e.g. a Pass/Activate window during DeclareBlockers), so trusting the
-/// context would route a priority window to the block builder. Routing on the
-/// actions present is robust — and the right contract for a GUI too.
+/// is by the ACTUAL legal-action shapes, not the `DecisionContext` label. The
+/// engine now yields accurate contexts (see `combat_declaration_pending`), but
+/// routing on the actions actually present stays the robust contract — a
+/// frontend can't be wrong-footed by an unexpected context/legal combination,
+/// and it's the same contract a GUI should use.
 fn prompt_action(
     state: &GameState, reg: &CardRegistry, legal: &[Action],
 ) -> Result<Option<Action>> {
