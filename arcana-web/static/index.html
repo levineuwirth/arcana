@@ -266,7 +266,9 @@
   .draw-cmc-cnt { color: var(--text-faint); font-variant-numeric: tabular-nums; width: 22px; }
   .draw-controls { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
   .draw-controls input { width: 58px; padding: 3px 6px; font-variant-numeric: tabular-nums; }
-  .draw-odds-row { display: flex; align-items: baseline; gap: 8px; font-size: 12px; padding: 1px 0; }
+  .draw-odds-row { display: flex; align-items: baseline; gap: 8px; font-size: 12px; padding: 1px 4px; border-radius: var(--radius-control); }
+  .draw-odds-row.clickable { cursor: pointer; }
+  .draw-odds-row.clickable:hover { background: var(--bg-offset); }
   .draw-odds-nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .draw-odds-k { color: var(--text-faint); font-variant-numeric: tabular-nums; }
   .draw-odds-p { font-variant-numeric: tabular-nums; min-width: 52px; text-align: right; font-weight: 500; }
@@ -739,8 +741,10 @@ function refreshOdds() {
   }
   for (const [name, k] of lib.by_name.slice(0, 16)) {
     const p = pAtLeastOne(lib.total, k, n);
-    const row = document.createElement("div"); row.className = "draw-odds-row";
-    const nm = document.createElement("span"); nm.className = "draw-odds-nm"; nm.textContent = name; nm.title = name;
+    const row = document.createElement("div"); row.className = "draw-odds-row clickable";
+    row.title = "Preview " + name;
+    row.onclick = () => Arcana.Zoom.show({ name: name });
+    const nm = document.createElement("span"); nm.className = "draw-odds-nm"; nm.textContent = name;
     const kc = document.createElement("span"); kc.className = "draw-odds-k tnum"; kc.textContent = "×" + k;
     const pc = document.createElement("span"); pc.className = "draw-odds-p tnum"; pc.textContent = (p * 100).toFixed(1) + "%";
     row.append(nm, kc, pc);
