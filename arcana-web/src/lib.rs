@@ -169,10 +169,73 @@ pub enum CombatSubmission {
 /// of the game, whatever the opponent did since the human last acted, and — when
 /// the pending decision is a combat declaration — the per-creature option sets
 /// for the rich combat builder.
+/// A heuristic evaluation of the position from the human's seat — for the
+/// cockpit's eval bar. `value` is the material heuristic (~[-1, 1], terminal ±1);
+/// `win_pct` is a logistic map of it to 0..100 (a readable estimate, NOT a true
+/// win probability — a rollout-based number is a deferred enhancement).
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct Eval {
+    pub value: f32,
+    pub win_pct: f32,
+}
+
+/// Composition of the human's own library, for the draw-odds panel. (The player
+/// legitimately knows their decklist, so what's LEFT in the library is derivable;
+/// the opponent's library is never exposed.) The client computes hypergeometric
+/// draw odds from these counts.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct LibraryStats {
+    pub total: usize,
+    pub by_type: Vec<(String, usize)>,
+    pub by_cmc: Vec<(u32, usize)>,
+    pub by_name: Vec<(String, usize)>,
+}
+
+fn eval_for(state: &GameState) -> Eval {
+    let value = arcana_ai::search::value(state, HUMAN);
+    let win_pct = 100.0 / (1.0 + (-2.5 * value).exp());
+    Eval { value, win_pct }
+}
+
+fn library_stats(state: &GameState, reg: &CardRegistry) -> LibraryStats {
+    use std::collections::HashMap;
+    let mut by_type: HashMap<&'static str, usize> = HashMap::new();
+    let mut by_cmc: HashMap<u32, usize> = HashMap::new();
+    let mut by_name: HashMap<String, usize> = HashMap::new();
+    let mut total = 0;
+    for o in state.objects.objects_in_zone(arcana_core::zones::Zone::Library(HUMAN)) {
+        total += 1;
+        let c = &o.characteristics;
+        let t = &c.types;
+        for (label, present) in [
+            ("Creature", t.is_creature()), ("Land", t.is_land()),
+            ("Instant", t.is_instant()), ("Sorcery", t.is_sorcery()),
+            ("Artifact", t.is_artifact()), ("Enchantment", t.is_enchantment()),
+            ("Planeswalker", t.is_planeswalker()), ("Battle", t.is_battle()),
+        ] {
+            if present { *by_type.entry(label).or_insert(0) += 1; }
+        }
+        *by_cmc.entry(c.mana_value().min(20)).or_insert(0) += 1;
+        let name = reg.interner().resolve(c.name).unwrap_or_default().to_string();
+        *by_name.entry(name).or_insert(0) += 1;
+    }
+    let mut by_type: Vec<(String, usize)> = by_type.into_iter().map(|(k, v)| (k.to_string(), v)).collect();
+    by_type.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+    let mut by_cmc: Vec<(u32, usize)> = by_cmc.into_iter().collect();
+    by_cmc.sort_by_key(|(c, _)| *c);
+    let mut by_name: Vec<(String, usize)> = by_name.into_iter().collect();
+    by_name.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+    LibraryStats { total, by_type, by_cmc, by_name }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct StateResponse {
     pub view: ViewState,
     pub recent: Vec<RecentAction>,
+    /// Heuristic position eval from the human's seat (cockpit eval bar).
+    pub eval: Eval,
+    /// The human's library composition (cockpit draw-odds panel).
+    pub library: LibraryStats,
     /// `Some` only when the human faces a combat decision.
     pub combat: Option<CombatPrompt>,
     /// `Some(n)` when the human must put `n` cards on the bottom of their
@@ -386,7 +449,9 @@ impl GameCore {
             .collect();
         let combat = combat_prompt(self.session.state(), &self.legal);
         let bottom = bottom_prompt(&self.legal);
-        StateResponse { view, recent, combat, bottom }
+        let eval = eval_for(self.session.state());
+        let library = library_stats(self.session.state(), self.reg);
+        StateResponse { view, recent, eval, library, combat, bottom }
     }
 
     /// Apply the human's chosen action by its `index` into the legal list from
