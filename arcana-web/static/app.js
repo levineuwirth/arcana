@@ -67,28 +67,27 @@
   /* ---- Mana pips --------------------------------------------------------- */
   const COLOR_CLASS = { W: "w", U: "u", B: "b", R: "r", G: "g", C: "c" };
 
-  /** Render a rendered cost string ("{2}{R}{R}") as a fragment of mana pips. */
+  // Real MTG mana symbols, served by Scryfall (the game-provided symbology):
+  // "{2}"->2.svg, "{R}"->R.svg, "{W/U}"->WU.svg, "{G/P}"->GP.svg, "{T}"->T.svg, "{C}"->C.svg.
+  Arcana.manaSymbolUrl = function (code) {
+    const c = String(code).replace(/[{}]/g, "").replace(/\//g, "").toUpperCase();
+    return "https://svgs.scryfall.io/card-symbols/" + encodeURIComponent(c) + ".svg";
+  };
+  /** A single inline mana-symbol <img> as an HTML string (for innerHTML contexts). */
+  Arcana.manaSymbolHtml = function (code) {
+    return '<img class="ac-sym" src="' + Arcana.manaSymbolUrl(code) + '" alt="' + code + '" />';
+  };
+  /** Render a cost string ("{2}{R}{R}") as a fragment of real mana symbols. */
   Arcana.renderMana = function (cost) {
     const frag = document.createDocumentFragment();
-    if (!cost) return frag;
-    const tokens = cost.match(/\{[^}]+\}/g);
+    const tokens = (cost || "").match(/\{[^}]+\}/g);
     if (!tokens) return frag;
     for (const tok of tokens) {
-      const inner = tok.slice(1, -1); // strip { }
-      const pip = document.createElement("span");
-      pip.className = "mana-pip";
-      if (/^\d+$/.test(inner) || inner === "X" || inner === "Y" || inner === "Z") {
-        pip.classList.add("generic");
-        pip.textContent = inner;
-      } else if (COLOR_CLASS[inner]) {
-        pip.classList.add(COLOR_CLASS[inner]);
-        pip.textContent = inner;
-      } else {
-        // hybrid / phyrexian / snow etc. — show the raw symbol, colourless tint
-        pip.classList.add("generic");
-        pip.textContent = inner.replace(/\//g, "");
-      }
-      frag.appendChild(pip);
+      const img = document.createElement("img");
+      img.className = "ac-sym";
+      img.alt = tok;
+      img.src = Arcana.manaSymbolUrl(tok);
+      frag.appendChild(img);
     }
     return frag;
   };
@@ -136,15 +135,10 @@
       frame.appendChild(fallback("", data));
     }
 
-    // Subtle cost pip cluster.
-    if (data.mana_cost) {
-      const cost = document.createElement("div");
-      cost.className = "ac-cost";
-      cost.appendChild(Arcana.renderMana(data.mana_cost));
-      frame.appendChild(cost);
-    }
+    // (No on-card cost overlay: the full card image already prints the cost.)
 
-    // P/T overlay (creatures only).
+    // P/T overlay (creatures only) — shows the LIVE computed P/T, which can differ
+    // from the card image's printed value (counters/pumps), so it's not redundant.
     if (data.power !== null && data.power !== undefined) {
       const pt = document.createElement("div");
       pt.className = "ac-pt";

@@ -29,7 +29,9 @@
   form#search .colors label { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; color: var(--text-muted); }
   .results-meta { color: var(--text-faint); font-size: 12px; }
 
-  .grid { display: flex; gap: 10px; flex-wrap: wrap; --card-w: 96px; }
+  .grid { display: flex; gap: 10px; flex-wrap: wrap; --card-w: 122px; }
+  #deckstats .colors .ctile { display: inline-flex; align-items: center; gap: 1px;
+    font-variant-numeric: tabular-nums; }
 
   .muted { color: var(--text-muted); font-size: 12px; }
   .empty-note { color: var(--text-faint); font-style: italic; font-family: var(--font-serif); font-size: 13px; }
@@ -211,7 +213,7 @@ function renderDeck() {
     '<div class="bar" style="height:' + Math.round(100 * v / maxBin) + '%" title="mv ' +
     (i === 7 ? "7+" : i) + ": " + v + '"><span>' + (i === 7 ? "7+" : i) + "</span></div>").join("");
   const colors = Object.entries(colorCount).filter(([, v]) => v > 0)
-    .map(([k, v]) => '<span class="mana-pip ' + COLOR_PIP[k] + '">' + v + k + "</span>").join("");
+    .map(([k, v]) => '<span class="ctile">' + v + Arcana.manaSymbolHtml(k) + "</span>").join("");
 
   stats.innerHTML =
     '<div class="summary"><span class="tnum">' + total + "</span> cards · <span class=\"tnum\">" + lands +

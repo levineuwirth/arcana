@@ -51,9 +51,11 @@
   .zone { margin-top: 8px; }
   .zone-head { margin: 8px 0 5px; }
   .cards { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; min-height: 6px; }
-  .battlefield { --card-w: 80px; }
-  .hand { --card-w: 96px; }
-  .stack { --card-w: 76px; }
+  .battlefield { --card-w: 104px; }
+  .hand { --card-w: 124px; }
+  .stack { --card-w: 96px; }
+  .ptitle .gauge .gpip { display: inline-flex; align-items: center; gap: 1px;
+    font-variant-numeric: tabular-nums; }
 
   .lands-creatures { display: grid; gap: 10px; }
   .empty { color: var(--text-faint); font-size: 12px; font-style: italic; font-family: var(--font-serif); padding: 4px 0; }
@@ -199,7 +201,7 @@ function manaGaugeHtml(p) {
   const a = p.available_mana || { total: 0 };
   let pips = "";
   for (const k of ["white", "blue", "black", "red", "green", "colorless"]) {
-    if (a[k]) pips += '<span class="mana-pip ' + MANA[k].cls + '">' + a[k] + MANA[k].sym + "</span>";
+    if (a[k]) pips += '<span class="gpip">' + a[k] + Arcana.manaSymbolHtml(MANA[k].sym) + "</span>";
   }
   let s = a.total ? pips : '<span class="floating">no mana</span>';
   if (p.mana_pool) s += ' <span class="floating">(' + p.mana_pool + " floating)</span>";

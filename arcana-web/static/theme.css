@@ -101,8 +101,8 @@
   --shadow-float: 0 4px 16px rgba(0, 0, 0, .1);
 
   /* Card geometry (override per context via --card-w) */
-  --card-w: 84px;
-  --card-h: calc(var(--card-w) * 1.393);
+  --card-w: 108px;
+  --card-h: calc(var(--card-w) * 1.3934);
 }
 
 /* ---- Dark (DEFAULT theme) ------------------------------------------------ */
@@ -278,6 +278,14 @@ button.ghost, .btn.ghost { background: transparent; }
 .mana-pip.g { background: var(--mana-g); color: var(--mana-ink-dark); }
 .mana-pip.c, .mana-pip.generic { background: var(--mana-c); color: var(--mana-ink-dark); }
 
+/* Real MTG mana symbols (Scryfall SVGs), inline at the surrounding font size. */
+.ac-sym {
+  height: 1.05em;
+  width: auto;
+  vertical-align: -0.16em;
+  margin: 0 .5px;
+}
+
 /* ---- Shared card component ----------------------------------------------- */
 /* Art-first: the image fills the tile. The slot reserves layout space so a
    tapped (rotated) card never overlaps its neighbours. */
@@ -294,13 +302,14 @@ button.ghost, .btn.ghost { background: transparent; }
   left: 0;
   width: var(--card-w);
   height: var(--card-h);
-  border: 1px solid var(--border-muted);
+  /* No border: a 1px border under border-box shrinks the content box and makes
+     object-fit crop the card top. Use a layout-free shadow ring for the edge. */
+  box-shadow: 0 0 0 1px var(--border);
   border-radius: var(--radius-panel);
   overflow: hidden;
-  background: var(--bg-offset);
+  background: transparent;
   transform-origin: center;
-  transition: transform var(--transition-medium), border-color var(--transition-fast),
-              box-shadow var(--transition-fast);
+  transition: transform var(--transition-medium), box-shadow var(--transition-fast);
 }
 /* Tapped: the slot rotates to a landscape box; the frame is centred + turned. */
 .ac-card.tapped { width: var(--card-h); height: var(--card-w); }
@@ -310,14 +319,14 @@ button.ghost, .btn.ghost { background: transparent; }
   transform: rotate(90deg);
 }
 .ac-card.clickable .ac-frame { cursor: pointer; }
-.ac-card.clickable:hover .ac-frame { border-color: var(--text-muted); }
+.ac-card.clickable:hover .ac-frame { box-shadow: 0 0 0 2px var(--text-muted); }
 
 .ac-art {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;   /* show the WHOLE card (never crop the title/top) */
   display: block;
   background: var(--bg-offset);
 }
@@ -326,6 +335,7 @@ button.ghost, .btn.ghost { background: transparent; }
 .ac-fallback {
   position: absolute;
   inset: 0;
+  background: var(--bg-offset);
   display: flex;
   flex-direction: column;
   align-items: center;
