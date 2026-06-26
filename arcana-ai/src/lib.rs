@@ -7,3 +7,4 @@ pub mod information_set;
 pub mod action_flattening;
 pub mod selfplay;
 pub mod search;
+pub mod learn;

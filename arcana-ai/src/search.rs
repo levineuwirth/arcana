@@ -96,6 +96,63 @@ pub fn value(state: &GameState, player: PlayerId) -> f32 {
     }
 }
 
+/// A position evaluator: how good is `state` for `player`, in roughly [-1, 1]
+/// (terminal ±1). The pluggable leaf signal — [`MaterialValue`] wraps the
+/// hand-tuned [`value`] heuristic; `crate::learn::LinearValue` is learned from
+/// self-play. A policy can then be A/B-tested purely on its evaluator.
+pub trait ValueFn {
+    fn value(&self, state: &GameState, player: PlayerId) -> f32;
+}
+
+/// The hand-tuned material heuristic ([`value`]) as a [`ValueFn`].
+pub struct MaterialValue;
+impl ValueFn for MaterialValue {
+    fn value(&self, state: &GameState, player: PlayerId) -> f32 { value(state, player) }
+}
+
+/// One-ply greedy on a [`ValueFn`]: pick the action whose resulting state has
+/// the best evaluation for the decider. No rollouts — a direct, cheap test of
+/// the evaluator's quality (greedy(learned) vs greedy(material) isolates whether
+/// learning beat hand-tuning). Large action sets are sub-sampled (PassPriority
+/// always kept).
+pub struct GreedyValuePolicy {
+    pub value: Box<dyn ValueFn>,
+    rng: ChaCha8Rng,
+    max_candidates: usize,
+}
+impl GreedyValuePolicy {
+    pub fn new(value: Box<dyn ValueFn>, seed: u64) -> Self {
+        Self { value, rng: ChaCha8Rng::seed_from_u64(seed), max_candidates: 24 }
+    }
+    fn candidates(&mut self, legal: &[Action]) -> Vec<usize> {
+        if legal.len() <= self.max_candidates {
+            return (0..legal.len()).collect();
+        }
+        let mut idxs: Vec<usize> = (0..legal.len()).collect();
+        idxs.shuffle(&mut self.rng);
+        idxs.truncate(self.max_candidates);
+        if let Some(p) = legal.iter().position(|a| matches!(a, Action::PassPriority)) {
+            if !idxs.contains(&p) { idxs[0] = p; }
+        }
+        idxs
+    }
+}
+impl StatePolicy for GreedyValuePolicy {
+    fn choose(&mut self, state: &GameState, registry: &CardRegistry,
+              decider: PlayerId, legal: &[Action]) -> Action {
+        if legal.len() <= 1 { return legal[0].clone(); }
+        let cands = self.candidates(legal);
+        let mut best = cands[0];
+        let mut best_v = f32::NEG_INFINITY;
+        for ci in cands {
+            let (s, _y) = step(state.clone(), legal[ci].clone(), registry);
+            let v = self.value.value(&s, decider);
+            if v > best_v { best_v = v; best = ci; }
+        }
+        legal[best].clone()
+    }
+}
+
 /// Pick a "make progress" action index, mirroring the random-game harness /
 /// `ProgressBiasedRandomPolicy`: end mulligans first, never concede, prefer
 /// real actions over passing — then random within the chosen tier so rollouts
