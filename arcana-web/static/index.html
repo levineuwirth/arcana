@@ -1,379 +1,212 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Arcana — Web Play</title>
+<title>Arcana — Play</title>
+<!-- apply the persisted theme before paint to avoid a flash -->
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("arcana.theme")||"dark";}catch(e){document.documentElement.dataset.theme="dark";}</script>
+<link rel="stylesheet" href="/theme.css" />
 <style>
-  :root { color-scheme: dark; }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; font-family: system-ui, sans-serif; background: #14161b; color: #e7e9ee;
-    padding: 10px 14px 40px;
-  }
-  h1 { font-size: 17px; margin: 0; font-weight: 700; }
-  h1 .sub { opacity: .5; font-weight: 400; font-size: 12px; }
+  body { padding: 0 var(--page-padding) 3rem; }
 
-  .topbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  /* ---- top bar ---- */
+  .topbar {
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    padding: 12px 0; position: sticky; top: 0; z-index: 20;
+    background: var(--bg-nav); border-bottom: 1px solid var(--border); margin-bottom: 14px;
+  }
   .topbar .spacer { flex: 1; }
-  .phase {
-    font-size: 13px; padding: 4px 10px; border-radius: 6px; background: #1c2330; border: 1px solid #2c3647;
-  }
-  .phase b { color: #8fb3ff; }
+  .brand { display: flex; align-items: baseline; gap: 8px; }
+  .brand .mark { font-family: var(--font-serif); font-weight: 600; font-size: 20px; letter-spacing: .01em; }
+  .brand .sub { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--text-faint); }
 
-  button {
-    background: #2a2f3a; color: #e7e9ee; border: 1px solid #3a4150; border-radius: 6px;
-    padding: 6px 11px; cursor: pointer; font-size: 13px;
+  .phasebar {
+    display: flex; align-items: baseline; gap: 10px;
+    padding: 5px 12px; border: 1px solid var(--border); border-radius: var(--radius-panel);
+    background: var(--bg-offset); font-size: 13px;
   }
-  button:hover:not(:disabled) { background: #353c4a; }
-  button:disabled { opacity: .45; cursor: default; }
-  button.action { background: #2d4263; border-color: #3f5d8a; }
-  button.action:hover:not(:disabled) { background: #375079; }
-  button.pass { background: #34502f; border-color: #4a6b41; font-weight: 600; }
-  button.pass:hover:not(:disabled) { background: #3f6038; }
-  button.concede { background: #4a2d2d; border-color: #6b4141; }
-  button.danger { background: #5a2d2d; border-color: #8a4f4f; font-weight: 600; }
-  button.danger:hover:not(:disabled) { background: #6e3838; }
+  .phasebar .turn { font-variant-numeric: tabular-nums; color: var(--text-muted); }
+  .phasebar .step { font-family: var(--font-serif); font-weight: 600; }
+  .phasebar .who { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: .06em; }
 
-  /* layout: opponent top, your area bottom, stack + log in the middle */
+  /* ---- player panels ---- */
   .player {
-    border: 1px solid #2a2f3a; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px;
-    background: #1a1d24;
+    border: 1px solid var(--border); border-radius: var(--radius-panel);
+    padding: 12px 14px; margin-bottom: 12px; background: var(--bg-offset);
   }
-  .player.you { border-color: #3f5d8a; }
-  .ptitle { display: flex; gap: 14px; align-items: baseline; margin-bottom: 4px; }
-  .ptitle .name { font-weight: 700; }
-  .ptitle .life { font-size: 20px; font-weight: 800; color: #ff8d8d; }
-  .ptitle .mana { font-size: 12px; color: #9aa4b2; }
-  .ptitle .counts { font-size: 12px; opacity: .7; }
+  .player.you { border-color: var(--border-muted); }
+  .ptitle { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 4px; }
+  .ptitle .who { font-family: var(--font-sans); font-size: 11px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: .1em; color: var(--text-faint); }
+  .ptitle .life { font-family: var(--font-serif); font-weight: 600; font-size: 26px;
+    font-variant-numeric: tabular-nums; line-height: 1; }
+  .ptitle .life .unit { font-size: 12px; color: var(--text-faint); font-weight: 400; margin-left: 3px; }
+  .ptitle .gauge { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-muted); }
+  .ptitle .gauge .floating { color: var(--text-faint); }
+  .ptitle .counts { display: flex; gap: 12px; font-size: 12px; color: var(--text-muted);
+    font-variant-numeric: tabular-nums; }
+  .ptitle .spacer { flex: 1; }
 
-  .zone-label { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; opacity: .55; margin: 7px 0 3px; }
-  .cards { display: flex; gap: 6px; flex-wrap: wrap; min-height: 8px; }
+  .zone { margin-top: 8px; }
+  .zone-head { margin: 8px 0 5px; }
+  .cards { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; min-height: 6px; }
+  .battlefield { --card-w: 80px; }
+  .hand { --card-w: 96px; }
+  .stack { --card-w: 76px; }
 
-  .card {
-    width: 92px; border-radius: 6px; overflow: hidden; background: #20242d;
-    border: 2px solid #333a47; font-size: 11px; position: relative; transition: transform .08s, border-color .08s;
+  .lands-creatures { display: grid; gap: 10px; }
+  .empty { color: var(--text-faint); font-size: 12px; font-style: italic; font-family: var(--font-serif); padding: 4px 0; }
+
+  /* ---- middle row: stack + log ---- */
+  .midrow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; align-items: start; }
+  @media (max-width: 720px) { .midrow { grid-template-columns: 1fr; } }
+  .stackzone, .logzone {
+    border: 1px solid var(--border); border-radius: var(--radius-panel);
+    padding: 10px 12px; background: var(--bg-offset);
   }
-  .card.tapped { transform: rotate(90deg) scale(.86); }
-  .card img { width: 100%; display: block; aspect-ratio: 488/680; object-fit: cover; background: #0c0d11; }
-  .card .nm { padding: 3px 4px; line-height: 1.15; }
-  .card .foot { padding: 3px 4px; }
-  .card .nmrow { display: flex; gap: 4px; align-items: baseline; }
-  .card .cardname { flex: 1; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .card .cost { font-weight: 800; font-size: 10px; color: #e0cf90; white-space: nowrap; }
-  .card .tlrow { display: flex; gap: 4px; align-items: baseline; margin-top: 1px; }
-  .card .tl { flex: 1; font-size: 9px; opacity: .58; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .card .pt2 { font-weight: 800; font-size: 11px; color: #f0f2f6; white-space: nowrap; }
-  /* subtle type tint on the footer for at-a-glance category reading */
-  .card .foot.cat-land     { background: #241f14; }
-  .card .foot.cat-creature { background: #1b241a; }
-  .card .foot.cat-spell    { background: #1a2031; }
-  .card .foot.cat-pw       { background: #2a1f2c; }
-  .card .foot.cat-artifact { background: #1f242b; }
-  .card .foot.cat-ench     { background: #231f2a; }
-  .card.fallback { padding: 6px 4px; min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  #log { font-size: 12px; max-height: 150px; overflow-y: auto; }
+  #log .ln { line-height: 1.45; padding: 1px 0; }
+  #log .you { color: var(--text); }
+  #log .opp { color: var(--text-muted); }
+  #log .sys { color: var(--text-faint); font-style: italic; }
 
-  /* combat affordances */
-  .card.selectable { cursor: pointer; border-color: #6b8; }
-  .card.selectable:hover { border-color: #9d8; }
-  .card.attacking { border-color: #e0a24a; box-shadow: 0 0 0 2px #e0a24a55; }
-  .card.incoming { border-color: #e06a6a; box-shadow: 0 0 0 2px #e06a6a55; }
-  .card.pending { border-color: #f0d24a; box-shadow: 0 0 0 3px #f0d24a88; }
-  .card.blocking { border-color: #6ab0e0; box-shadow: 0 0 0 2px #6ab0e055; }
-  /* hand: playable this turn (cast/play if tapped out) vs not */
-  .card.playable { border-color: #6bdc8a; box-shadow: 0 0 0 2px #6bdc8a55; }
-  .card.unplayable { opacity: .58; }
-  /* mulligan: cards marked to go on the bottom */
-  .card.tobottom { opacity: .5; border-color: #c98; box-shadow: 0 0 0 2px #cc9988aa; }
-  body.busy #actions, body.busy #combat, body.busy .player { pointer-events: none; opacity: .75; }
-  .card .badge {
-    position: absolute; left: 0; top: 0; right: 0; font-size: 10px; font-weight: 700;
-    padding: 2px 4px; text-align: center; background: rgba(0,0,0,.72);
-  }
-  .card .badge.atk { color: #f0c070; }
-  .card .badge.blk { color: #8fc6f0; }
-
-  .stack { border: 1px dashed #4a4150; border-radius: 6px; padding: 4px; }
-
-  /* combat control panel */
-  #combat { display: none; border: 1px solid #5a4a2a; background: #221d12; border-radius: 8px; padding: 10px; margin: 8px 0; }
-  #combat.show { display: block; }
-  #combat .ctitle { font-weight: 700; margin-bottom: 4px; color: #e0c080; }
-  #combat .hint { font-size: 12px; opacity: .8; margin-bottom: 8px; }
-  #combat .ctrls { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-  #combat .csec { border-top: 1px solid #3a3220; padding: 6px 0; }
-  #combat .csec-h { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
-  #combat .ord-row, #combat .dmg-row { display: flex; gap: 8px; align-items: center; margin: 3px 0; font-size: 13px; }
-  #combat .ord-num { width: 18px; opacity: .7; }
-  #combat .ord-nm, #combat .dmg-nm { flex: 1; }
-  #combat .dmg-amt { min-width: 18px; text-align: center; font-weight: 700; }
-  #combat button { padding: 2px 9px; }
-  #combat .dmg-status { font-size: 12px; opacity: .8; margin-top: 2px; }
-  #combat .dmg-status.bad { color: #e69a8a; opacity: 1; }
-
-  /* action groups */
-  #actions { margin: 8px 0; }
-  .agroup { margin-bottom: 8px; }
-  .agroup .gl { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; opacity: .5; margin-bottom: 3px; }
-  .agroup .btns { display: flex; gap: 6px; flex-wrap: wrap; }
-  .control-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
-
-  /* game log */
-  #log {
-    font-size: 12px; background: #12141a; border: 1px solid #242a36; border-radius: 6px;
-    padding: 6px 8px; max-height: 92px; overflow-y: auto; margin-bottom: 8px;
-  }
-  #log .you { color: #8fb3ff; }
-  #log .opp { color: #c6b27a; }
-  #log .sys { opacity: .6; }
-  #log .ln { line-height: 1.4; }
-
+  /* ---- banner ---- */
   #banner {
-    display: none; padding: 11px; border-radius: 8px; background: #2d3a2d; border: 1px solid #4a6b4a;
-    font-weight: 800; margin-bottom: 8px; font-size: 15px;
+    display: none; padding: 12px 14px; border: 1px solid var(--border-muted);
+    border-radius: var(--radius-panel); background: var(--bg-offset);
+    font-family: var(--font-serif); font-weight: 600; font-size: 16px; margin-bottom: 12px;
   }
-  .empty { opacity: .35; font-size: 12px; padding: 3px; }
 
-  /* right-click card zoom */
-  #zoom {
-    display: none; position: fixed; inset: 0; z-index: 100; cursor: zoom-out;
-    background: rgba(8, 9, 12, .85); align-items: center; justify-content: center;
-    flex-direction: column; gap: 12px;
+  /* ---- combat / bottoming panel ---- */
+  #combat { display: none; }
+  #combat.show {
+    display: block; border: 1px solid var(--border-muted); border-radius: var(--radius-panel);
+    background: var(--bg-offset); padding: 12px 14px; margin-bottom: 12px;
   }
-  #zoom.show { display: flex; }
-  #zoom img { max-height: 76vh; max-width: 92vw; border-radius: 14px; box-shadow: 0 10px 44px #000; }
-  #zoominfo { font-size: 14px; color: #e7e9ee; max-width: 90vw; text-align: center; }
-  #zoomkw { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 80vw; }
-  #zoomkw .kw {
-    background: #2d4263; border: 1px solid #3f5d8a; border-radius: 999px;
-    padding: 3px 11px; font-size: 12px; cursor: help; color: #e7e9ee;
-  }
-  #zoomkw .kw:hover { background: #4a6aa0; }
-  #zoomreminder { font-size: 13px; color: #c9d4e6; max-width: 68ch; text-align: center; min-height: 18px; }
+  #combat .ctitle { font-family: var(--font-serif); font-weight: 600; font-size: 16px; margin-bottom: 4px; }
+  #combat .hint { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; max-width: 70ch; }
+  #combat .ctrls { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  #combat .csec { border-top: 1px solid var(--border); padding: 8px 0; }
+  #combat .csec-h { font-size: 13px; font-weight: 500; margin-bottom: 5px; }
+  #combat .ord-row, #combat .dmg-row { display: flex; gap: 8px; align-items: center; margin: 4px 0; font-size: 13px; }
+  #combat .ord-num { width: 20px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+  #combat .ord-nm, #combat .dmg-nm { flex: 1; }
+  #combat .dmg-amt { min-width: 22px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+  #combat .stepper { padding: 1px 9px; font-size: 14px; line-height: 1.4; }
+  #combat .dmg-status { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+  #combat .dmg-status.bad { color: var(--text); font-weight: 500; }
+
+  /* ---- actions ---- */
+  #actionzone { margin-top: 4px; }
+  .agroup { margin-bottom: 10px; }
+  .agroup .gl { margin-bottom: 4px; }
+  .agroup .btns, .control-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .control-row { margin-top: 6px; }
+
+  /* busy / disabled interaction */
+  body.busy #actions, body.busy #combat, body.busy .player { pointer-events: none; opacity: .7; }
+
+  /* ---- light tap pulse ---- */
+  @keyframes ac-pulse { 0% { box-shadow: 0 0 0 0 var(--text-muted); } 100% { box-shadow: 0 0 0 6px transparent; } }
+  .ac-card.just-entered .ac-frame { animation: ac-pulse var(--transition-slow) ease-out; }
+  @media (prefers-reduced-motion: reduce) { .ac-card.just-entered .ac-frame { animation: none; } }
 </style>
 </head>
 <body>
-  <div class="topbar">
-    <h1>Arcana <span class="sub">web play</span></h1>
-    <div class="phase" id="phase"></div>
+  <header class="topbar">
+    <div class="brand"><span class="mark">Arcana</span><span class="sub">play</span></div>
+    <div class="phasebar" id="phase"></div>
     <div class="spacer"></div>
-    <a href="/deck" style="color:#8fb3ff;text-decoration:none;font-size:13px;align-self:center">Deckbuilder →</a>
-    <button id="refresh">Refresh</button>
-    <button id="new" class="danger">New game</button>
-  </div>
+    <a href="/deck">Deckbuilder →</a>
+    <button id="refresh" class="ghost">Refresh</button>
+    <button id="new">New game</button>
+    <span id="themeslot"></span>
+  </header>
 
   <div id="banner"></div>
 
-  <div id="opponent" class="player"></div>
+  <main class="board">
+    <section id="opponent" class="player"></section>
 
-  <div class="zone-label">Stack</div>
-  <div id="stack" class="cards stack"></div>
+    <div class="midrow">
+      <section class="stackzone">
+        <div class="meta-label">Stack</div>
+        <div id="stack" class="cards stack"></div>
+      </section>
+      <section class="logzone">
+        <div class="meta-label">Game log</div>
+        <div id="log"></div>
+      </section>
+    </div>
 
-  <div id="log"></div>
-
-  <div id="you" class="player you"></div>
+    <section id="you" class="player you"></section>
+  </main>
 
   <div id="combat"></div>
 
-  <div class="zone-label">Your actions</div>
-  <div id="actions"></div>
+  <section id="actionzone">
+    <div class="meta-label">Your actions</div>
+    <div id="actions"></div>
+  </section>
 
-  <!-- right-click any card to zoom (dismiss: click / Esc / right-click) -->
-  <div id="zoom">
-    <img id="zoomimg" alt="card" />
-    <div id="zoominfo"></div>
-    <div id="zoomkw"></div>
-    <div id="zoomreminder"></div>
-  </div>
-
+<script src="/app.js"></script>
 <script>
 "use strict";
 
 // ----- module state --------------------------------------------------------
 const G = {
   resp: null,
-  log: [],            // running game log lines: {cls, text}
-  cardById: new Map(),// id -> CardView (both battlefields), for combat display
+  log: [],             // running game log lines: {cls, text}
+  cardById: new Map(), // id -> CardView (both battlefields), for combat display
+  seenBf: new Set(),   // ids already seen on a battlefield (for enter-pulse)
   // combat selection (reset when the prompt identity changes)
   combatToken: null,
-  atk: new Map(),     // attackerId -> defending entity object
-  blk: new Map(),     // blockerId  -> attackerId
+  atk: new Map(),      // attackerId -> defending entity object
+  blk: new Map(),      // blockerId  -> attackerId
   pendingBlocker: null,
-  order: new Map(),   // attackerId -> [blockerId,...] in chosen damage order
-  damage: new Map(),  // attackerId -> Map(blockerId -> amount)
+  order: new Map(),    // attackerId -> [blockerId,...] in chosen damage order
+  damage: new Map(),   // attackerId -> Map(blockerId -> amount)
   bottomSel: new Set(),// mulligan: hand card ids selected to put on the bottom
-  glossary: {},       // keyword base-name -> reminder text (fetched once)
   busy: false,
 };
 
-// ----- card art / tiles ----------------------------------------------------
-function artUrl(name) {
-  return "https://api.scryfall.com/cards/named?format=image&exact=" + encodeURIComponent(name);
-}
-
-// "{2}{G}{G}" -> "2GG" (compact for the narrow card footer; full cost is in the tooltip)
-function compactCost(cost) {
-  return cost ? cost.replace(/[{}]/g, "") : "";
-}
-
-// a coarse type category for the subtle footer tint
-function categoryClass(c) {
-  if (!c.type_line) return "";
-  if (c.is_land) return "cat-land";
-  if (c.power !== null && c.power !== undefined) return "cat-creature";
-  const t = c.type_line;
-  if (t.indexOf("Instant") >= 0 || t.indexOf("Sorcery") >= 0) return "cat-spell";
-  if (t.indexOf("Planeswalker") >= 0) return "cat-pw";
-  if (t.indexOf("Artifact") >= 0) return "cat-artifact";
-  if (t.indexOf("Enchantment") >= 0) return "cat-ench";
-  return "";
-}
-
-// colored mana symbols for the gauge
-const MANA_COL = {
-  white: ["W", "#e9e3c8"], blue: ["U", "#a9c9e8"], black: ["B", "#b7a9c0"],
-  red: ["R", "#e69a8a"], green: ["G", "#9ccb9c"], colorless: ["C", "#c8ccd4"],
+// available-mana gauge: color key -> {pip class, symbol}
+const MANA = {
+  white: { cls: "w", sym: "W" }, blue: { cls: "u", sym: "U" }, black: { cls: "b", sym: "B" },
+  red: { cls: "r", sym: "R" }, green: { cls: "g", sym: "G" }, colorless: { cls: "c", sym: "C" },
 };
 
-// hand cards: green-glow the ones playable this turn and make them click-to-play
-// (the server auto-taps mana and casts/plays, or floats mana and surfaces the
-// cast variants if a choice remains). Dim the rest. `playable` is server-computed.
-// During a mulligan bottoming, hand clicks instead toggle bottom-selection.
+// ----- card tiles (built on the shared component) --------------------------
+// decorate hand cards: playable ones are click-to-play (server auto-taps + casts/
+// plays, or floats mana and surfaces variants). Dim the rest. During a mulligan
+// bottoming, hand clicks instead toggle bottom-selection.
 function handDecor(c) {
   if (G.resp && G.resp.bottom != null) {
     const sel = G.bottomSel.has(c.id);
     return {
-      cls: sel ? ["tobottom"] : ["selectable"],
+      classes: sel ? ["selected"] : ["selectable"],
       badge: sel ? "↓ bottom" : "keep",
-      badgeCls: "blk",
-      onclick: () => { if (G.bottomSel.has(c.id)) G.bottomSel.delete(c.id); else G.bottomSel.add(c.id); renderAll(); },
+      onClick: () => { if (sel) G.bottomSel.delete(c.id); else G.bottomSel.add(c.id); renderAll(); },
     };
   }
-  if (c.playable) return { cls: ["playable"], onclick: () => sendAutoTap(c.id, c.name) };
-  return { cls: ["unplayable"] };
+  if (c.playable) return { classes: ["selectable"], onClick: () => sendAutoTap(c.id, c.name) };
+  return { classes: ["dim"] };
 }
 
-// summarize a player's mana picture: the colored mana they could produce right
-// now (engine-computed, includes floating), plus an untapped-land tally.
-function manaGauge(p) {
+// available colored mana + floating + untapped-land tally, as a small gauge.
+function manaGaugeHtml(p) {
   const a = p.available_mana || { total: 0 };
-  const pips = [];
+  let pips = "";
   for (const k of ["white", "blue", "black", "red", "green", "colorless"]) {
-    if (a[k]) {
-      const [sym, col] = MANA_COL[k];
-      pips.push('<span style="color:' + col + '">' + a[k] + sym + "</span>");
-    }
+    if (a[k]) pips += '<span class="mana-pip ' + MANA[k].cls + '">' + a[k] + MANA[k].sym + "</span>";
   }
-  let s = a.total ? ("avail " + pips.join(" ")) : "";
-  if (p.mana_pool) s += (s ? " " : "") + '<span style="opacity:.65">(' + p.mana_pool + " floating)</span>";
-  const lands = p.battlefield.filter(c => c.is_land);
-  const untapped = lands.filter(c => !c.tapped).length;
-  if (lands.length) s += (s ? " · " : "") + '<span style="opacity:.7">' + untapped + "/" + lands.length + " lands</span>";
+  let s = a.total ? pips : '<span class="floating">no mana</span>';
+  if (p.mana_pool) s += ' <span class="floating">(' + p.mana_pool + " floating)</span>";
+  const lands = p.battlefield.filter((c) => c.is_land);
+  const untapped = lands.filter((c) => !c.tapped).length;
+  if (lands.length) s += ' <span class="floating tnum">· ' + untapped + "/" + lands.length + " lands</span>";
   return s;
-}
-
-function cardEl(c, opts) {
-  opts = opts || {};
-  const div = document.createElement("div");
-  div.className = "card" + (c.tapped ? " tapped" : "");
-  const name = c.name && c.name.length ? c.name : "(hidden)";
-  if (c.name && c.name.length) {
-    const img = document.createElement("img");
-    img.alt = name; img.loading = "lazy"; img.src = artUrl(name);
-    img.onerror = () => {
-      div.classList.add("fallback");
-      // keep any badge we add below; just drop the broken <img>
-      img.remove();
-    };
-    div.appendChild(img);
-  } else {
-    div.classList.add("fallback");
-  }
-  // footer: name + mana cost on one row, type line + P/T beneath
-  const hasPT = (c.power !== null && c.power !== undefined);
-  const foot = document.createElement("div");
-  foot.className = "foot " + categoryClass(c);
-  const row = document.createElement("div");
-  row.className = "nmrow";
-  const nm = document.createElement("div");
-  nm.className = "cardname"; nm.textContent = name;
-  row.appendChild(nm);
-  if (c.mana_cost) {
-    const cost = document.createElement("div");
-    cost.className = "cost"; cost.textContent = compactCost(c.mana_cost);
-    row.appendChild(cost);
-  }
-  foot.appendChild(row);
-  if (c.type_line || hasPT) {
-    const tlrow = document.createElement("div");
-    tlrow.className = "tlrow";
-    const tl = document.createElement("div");
-    tl.className = "tl"; tl.textContent = c.type_line || "";
-    tlrow.appendChild(tl);
-    if (hasPT) {
-      const pt = document.createElement("div");
-      pt.className = "pt2"; pt.textContent = c.power + "/" + c.toughness;
-      tlrow.appendChild(pt);
-    }
-    foot.appendChild(tlrow);
-  }
-  div.appendChild(foot);
-  // full info on hover (footer text truncates)
-  div.title = name + (c.mana_cost ? "  " + c.mana_cost : "") + (c.type_line ? "\n" + c.type_line : "");
-  if (opts.badge) {
-    const b = document.createElement("div");
-    b.className = "badge " + (opts.badgeCls || "");
-    b.textContent = opts.badge;
-    div.appendChild(b);
-  }
-  if (opts.cls) div.classList.add(...opts.cls);
-  if (opts.onclick) div.onclick = opts.onclick;
-  // right-click to zoom (MTGA/Forge style)
-  div.oncontextmenu = (e) => { e.preventDefault(); showZoom(c); };
-  return div;
-}
-
-function showZoom(c) {
-  const z = document.getElementById("zoom");
-  const img = document.getElementById("zoomimg");
-  const info = document.getElementById("zoominfo");
-  if (c.name) {
-    img.src = artUrl(c.name);
-    img.style.display = "block";
-    img.onerror = () => { img.style.display = "none"; }; // fall back to the info line
-  } else {
-    img.style.display = "none";
-  }
-  const parts = [c.name || "(hidden card)"];
-  if (c.mana_cost) parts.push(c.mana_cost);
-  if (c.type_line) parts.push(c.type_line);
-  if (c.power !== null && c.power !== undefined) parts.push(c.power + "/" + c.toughness);
-  info.textContent = parts.join("  ·  ");
-
-  // keyword chips + reminder text (hover or tap a chip to explain it)
-  const kwbox = document.getElementById("zoomkw");
-  const reminder = document.getElementById("zoomreminder");
-  kwbox.innerHTML = ""; reminder.textContent = "";
-  const kws = c.keywords || [];
-  const explain = (kw) => { reminder.textContent = kw + " — " + (G.glossary[kw] || "(no reminder text)"); };
-  kws.forEach((kw, i) => {
-    const chip = document.createElement("span");
-    chip.className = "kw"; chip.textContent = kw;
-    chip.title = G.glossary[kw] || "";
-    chip.onmouseenter = () => explain(kw);
-    chip.onclick = (e) => { e.stopPropagation(); explain(kw); }; // don't close the overlay
-    kwbox.appendChild(chip);
-    if (i === 0) explain(kw); // show the first keyword's reminder by default
-  });
-  z.classList.add("show");
-}
-function hideZoom() { document.getElementById("zoom").classList.remove("show"); }
-
-async function loadGlossary() {
-  try {
-    const r = await fetch("/glossary");
-    if (r.ok) G.glossary = await r.json();
-  } catch (e) { /* chips still show, just without reminders */ }
 }
 
 function renderCards(container, cards, emptyMsg, decorate) {
@@ -384,13 +217,16 @@ function renderCards(container, cards, emptyMsg, decorate) {
     container.appendChild(e);
     return;
   }
-  for (const c of cards) container.appendChild(cardEl(c, decorate ? decorate(c) : {}));
+  for (const c of cards) {
+    const decor = decorate ? decorate(c) : {};
+    const el = Arcana.renderCard(c, decor);
+    if (decor && decor.pulse) el.classList.add("just-entered");
+    container.appendChild(el);
+  }
 }
 
 // ----- combat helpers ------------------------------------------------------
 function combatMaps() {
-  // {mode, atkOpts, blkOpts, incoming, hiAtk, hiBlk} — the last two are
-  // board-highlight sets for the order/damage steps (attackers + their blockers).
   const cb = G.resp && G.resp.combat;
   if (!cb) return null;
   const base = { mode: cb.kind, atkOpts: new Map(), blkOpts: new Map(),
@@ -413,10 +249,10 @@ function combatMaps() {
 function combatTokenOf(cb) {
   if (!cb) return null;
   let ids;
-  if (cb.kind === "attackers") ids = cb.attackers.map(o => o.id);
-  else if (cb.kind === "blockers") ids = cb.blockers.map(o => o.id);
-  else if (cb.kind === "orderblockers") ids = cb.orderings.map(o => o.attacker);
-  else ids = cb.damage.map(o => o.attacker);
+  if (cb.kind === "attackers") ids = cb.attackers.map((o) => o.id);
+  else if (cb.kind === "blockers") ids = cb.blockers.map((o) => o.id);
+  else if (cb.kind === "orderblockers") ids = cb.orderings.map((o) => o.attacker);
+  else ids = cb.damage.map((o) => o.attacker);
   return cb.kind + ":" + ids.slice().sort((a, b) => a - b).join(",");
 }
 
@@ -429,15 +265,12 @@ function describeDefender(d) {
 
 function toggleAttacker(id, defenders) {
   if (defenders.length <= 1) {
-    // single defender (the lone opponent): plain on/off toggle
     if (G.atk.has(id)) G.atk.delete(id); else G.atk.set(id, defenders[0]);
   } else if (!G.atk.has(id)) {
-    // multiple defenders (a planeswalker/battle in play): start at the first
     G.atk.set(id, defenders[0]);
   } else {
-    // cycle through the remaining defenders, then off
     const cur = JSON.stringify(G.atk.get(id));
-    const i = defenders.findIndex(d => JSON.stringify(d) === cur);
+    const i = defenders.findIndex((d) => JSON.stringify(d) === cur);
     if (i >= 0 && i < defenders.length - 1) G.atk.set(id, defenders[i + 1]);
     else G.atk.delete(id);
   }
@@ -445,20 +278,15 @@ function toggleAttacker(id, defenders) {
 }
 
 function clickBlocker(id) {
-  if (G.blk.has(id)) {           // already assigned → clear it
-    G.blk.delete(id);
-    G.pendingBlocker = null;
-  } else {
-    G.pendingBlocker = (G.pendingBlocker === id) ? null : id;
-  }
+  if (G.blk.has(id)) { G.blk.delete(id); G.pendingBlocker = null; }
+  else { G.pendingBlocker = (G.pendingBlocker === id) ? null : id; }
   renderAll();
 }
 
 function clickAttacker(attackerId, blkOpts) {
-  // assign the pending blocker to this attacker, if legal
   if (G.pendingBlocker === null) return;
   const can = blkOpts.get(G.pendingBlocker) || [];
-  if (!can.includes(attackerId)) return; // this blocker can't block that attacker
+  if (!can.includes(attackerId)) return;
   G.blk.set(G.pendingBlocker, attackerId);
   G.pendingBlocker = null;
   renderAll();
@@ -483,56 +311,75 @@ async function confirmBlockers() {
 }
 
 // ----- rendering -----------------------------------------------------------
-function prettyPhase(view) {
-  const p = (view.phase || "").replace("/", " · ");
-  return p;
-}
+function prettyPhase(view) { return (view.phase || "").replace("/", " · "); }
 
 function renderPlayer(container, p, isYou, cm) {
   container.innerHTML = "";
+
   const title = document.createElement("div");
   title.className = "ptitle";
-  const gauge = manaGauge(p);
   title.innerHTML =
-    '<span class="name">' + (isYou ? "You" : "Opponent") + " (P" + p.id + ')</span>' +
-    '<span class="life">' + p.life + " life</span>" +
-    (gauge ? '<span class="mana">' + gauge + "</span>" : "") +
-    '<span class="counts">hand ' + p.hand_count + " · library " + p.library_count +
-      " · graveyard " + p.graveyard_count + "</span>";
+    '<span class="who">' + (isYou ? "You" : "Opponent") + " · P" + p.id + "</span>" +
+    '<span class="life tnum">' + p.life + '<span class="unit">life</span></span>' +
+    '<span class="gauge">' + manaGaugeHtml(p) + "</span>" +
+    '<span class="spacer"></span>' +
+    '<span class="counts">' +
+      '<span>hand <b class="tnum">' + p.hand_count + "</b></span>" +
+      '<span>library <b class="tnum">' + p.library_count + "</b></span>" +
+      '<span>graveyard <b class="tnum">' + p.graveyard_count + "</b></span>" +
+    "</span>";
   container.appendChild(title);
 
-  const blab = document.createElement("div");
-  blab.className = "zone-label"; blab.textContent = "Battlefield";
-  container.appendChild(blab);
-  const bf = document.createElement("div");
-  bf.className = "cards";
-  renderCards(bf, p.battlefield, "no permanents", (c) => combatDecor(c, isYou, cm));
-  container.appendChild(bf);
+  // battlefield split: lands vs everything else (creatures/spells/PWs).
+  const lands = p.battlefield.filter((c) => c.is_land);
+  const others = p.battlefield.filter((c) => !c.is_land);
+  const grid = document.createElement("div");
+  grid.className = "lands-creatures";
+
+  const mkZone = (label, cards, empty) => {
+    const z = document.createElement("div");
+    z.className = "zone";
+    const h = document.createElement("div");
+    h.className = "meta-label zone-head"; h.textContent = label;
+    z.appendChild(h);
+    const row = document.createElement("div");
+    row.className = "cards battlefield";
+    renderCards(row, cards, empty, (c) => combatDecor(c, isYou, cm));
+    z.appendChild(row);
+    return z;
+  };
+  grid.appendChild(mkZone("Creatures & permanents", others, "no permanents"));
+  grid.appendChild(mkZone("Lands", lands, "no lands"));
+  container.appendChild(grid);
 
   if (isYou) {
-    const hlab = document.createElement("div");
-    hlab.className = "zone-label";
-    hlab.textContent = "Your hand — click a green card to play it (auto-taps mana)";
-    container.appendChild(hlab);
+    const hz = document.createElement("div");
+    hz.className = "zone";
+    const h = document.createElement("div");
+    h.className = "meta-label zone-head";
+    h.textContent = "Your hand — click a highlighted card to play it (auto-taps mana)";
+    hz.appendChild(h);
     const hand = document.createElement("div");
-    hand.className = "cards";
+    hand.className = "cards hand";
     renderCards(hand, p.hand, "empty hand", handDecor);
-    container.appendChild(hand);
+    hz.appendChild(hand);
+    container.appendChild(hz);
   }
 }
 
-// decorate a battlefield card with combat affordances
+// decorate a battlefield card with combat affordances + the enter-pulse
 function combatDecor(c, isYou, cm) {
-  if (!cm) return {};
+  const pulse = !G.seenBf.has(c.id);
+  const base = pulse ? { pulse: true } : {};
+  if (!cm) return base;
   if (cm.mode === "attackers" && isYou && cm.atkOpts.has(c.id)) {
     const attacking = G.atk.has(c.id);
     const defenders = cm.atkOpts.get(c.id);
-    return {
-      cls: attacking ? ["attacking"] : ["selectable"],
-      badge: attacking ? ("ATK → " + describeDefender(G.atk.get(c.id))) : "attack",
-      badgeCls: "atk",
-      onclick: () => toggleAttacker(c.id, defenders),
-    };
+    return Object.assign(base, {
+      classes: attacking ? ["selected"] : ["selectable"],
+      badge: attacking ? ("Attacking → " + describeDefender(G.atk.get(c.id))) : "attack",
+      onClick: () => toggleAttacker(c.id, defenders),
+    });
   }
   if (cm.mode === "blockers") {
     if (isYou && cm.blkOpts.has(c.id)) {
@@ -541,32 +388,26 @@ function combatDecor(c, isYou, cm) {
       let badge = "block";
       if (assigned) {
         const tgt = G.cardById.get(G.blk.get(c.id));
-        badge = "BLK → " + (tgt ? tgt.name : "#" + G.blk.get(c.id));
-      } else if (pending) {
-        badge = "pick attacker…";
-      }
-      return {
-        cls: assigned ? ["blocking"] : (pending ? ["pending"] : ["selectable"]),
-        badge, badgeCls: "blk",
-        onclick: () => clickBlocker(c.id),
-      };
+        badge = "Block → " + (tgt ? tgt.name : "#" + G.blk.get(c.id));
+      } else if (pending) { badge = "pick attacker…"; }
+      return Object.assign(base, {
+        classes: assigned ? ["selected"] : (pending ? ["pending"] : ["selectable"]),
+        badge,
+        onClick: () => clickBlocker(c.id),
+      });
     }
     if (!isYou && cm.incoming.has(c.id)) {
-      return {
-        cls: ["incoming", "selectable"],
-        badge: "attacking",
-        badgeCls: "atk",
-        onclick: () => clickAttacker(c.id, cm.blkOpts),
-      };
+      return Object.assign(base, {
+        classes: ["selectable"], badge: "attacking",
+        onClick: () => clickAttacker(c.id, cm.blkOpts),
+      });
     }
   }
-  // order / damage steps: highlight the attackers and their blockers (no clicks;
-  // the controls live in the combat panel).
   if (cm.mode === "orderblockers" || cm.mode === "assigndamage") {
-    if (cm.hiAtk.has(c.id)) return { cls: ["attacking"], badge: "attacking", badgeCls: "atk" };
-    if (cm.hiBlk.has(c.id)) return { cls: ["incoming"], badge: "blocking", badgeCls: "blk" };
+    if (cm.hiAtk.has(c.id)) return Object.assign(base, { classes: ["selected"], badge: "attacking" });
+    if (cm.hiBlk.has(c.id)) return Object.assign(base, { classes: ["pending"], badge: "blocking" });
   }
-  return {};
+  return base;
 }
 
 // classify a legal action label into a group for tidier presentation
@@ -590,8 +431,6 @@ function renderActions(view) {
     root.appendChild(e);
     return;
   }
-  // when a rich combat builder or the mulligan bottoming UI is up, suppress the
-  // raw declaration/bottom buttons
   if (G.resp.combat || G.resp.bottom != null) return;
 
   const order = ["Lands", "Spells", "Abilities", "Choices", "Other"];
@@ -607,31 +446,30 @@ function renderActions(view) {
     const wrap = document.createElement("div");
     wrap.className = "agroup";
     const gl = document.createElement("div");
-    gl.className = "gl"; gl.textContent = g;
+    gl.className = "gl meta-label"; gl.textContent = g;
     wrap.appendChild(gl);
     const btns = document.createElement("div");
     btns.className = "btns";
     for (const a of groups[g]) {
       const btn = document.createElement("button");
-      btn.className = "action"; btn.textContent = a.label;
+      btn.textContent = a.label;
       btn.onclick = () => sendAction(a.index, a.label);
       btns.appendChild(btn);
     }
     wrap.appendChild(btns);
     root.appendChild(wrap);
   }
-  // control row: Pass (prominent) + Concede, always last
   const ctrl = document.createElement("div");
   ctrl.className = "control-row";
   if (pass) {
     const b = document.createElement("button");
-    b.className = "pass"; b.textContent = "Pass / next step";
+    b.className = "primary"; b.textContent = "Pass / next step";
     b.onclick = () => sendAction(pass.index, "Pass");
     ctrl.appendChild(b);
   }
   if (concede) {
     const b = document.createElement("button");
-    b.className = "concede"; b.textContent = "Concede";
+    b.className = "ghost"; b.textContent = "Concede";
     b.onclick = () => { if (confirm("Concede this game?")) sendAction(concede.index, "Concede"); };
     ctrl.appendChild(b);
   }
@@ -650,8 +488,8 @@ function cardToughness(id) {
 }
 
 const COMBAT_HINTS = {
-  attackers: "Click your creatures (green) to attack; if a planeswalker/battle is in play, click again to cycle which one they attack. Then confirm.",
-  blockers: "Click a creature to block with (green), then click the red attacker it should block. Click again to clear.",
+  attackers: "Click your creatures to attack; if a planeswalker/battle is in play, click again to cycle which one they attack. Then confirm.",
+  blockers: "Click a creature to block with, then click the attacker it should block. Click again to clear.",
   orderblockers: "Each attacker is blocked by several creatures — set the order damage is assigned in (first takes lethal first).",
   assigndamage: "Distribute each attacker's combat damage. 'Auto' assigns lethal-first; for tramplers the unassigned remainder hits the opponent.",
 };
@@ -686,12 +524,10 @@ function buildDeclarePanel(panel, word) {
   const isAtk = word === "attacker";
   const n = isAtk ? G.atk.size : G.blk.size;
   const go = document.createElement("button");
-  go.className = "action";
-  go.textContent = n ? ("Confirm " + n + " " + word + (n > 1 ? "s" : ""))
-                     : ("Confirm " + word + "s");
+  go.className = "primary";
+  go.textContent = n ? ("Confirm " + n + " " + word + (n > 1 ? "s" : "")) : ("Confirm " + word + "s");
   go.onclick = isAtk ? confirmAttackers : confirmBlockers;
   const none = document.createElement("button");
-  none.className = "pass";
   none.textContent = isAtk ? "No attacks" : "No blocks";
   none.onclick = isAtk
     ? () => { G.atk.clear(); confirmAttackers(); }
@@ -714,9 +550,9 @@ function buildOrderPanel(panel, cb) {
       const row = document.createElement("div"); row.className = "ord-row";
       const num = document.createElement("span"); num.className = "ord-num"; num.textContent = (i + 1) + ".";
       const nm = document.createElement("span"); nm.className = "ord-nm"; nm.textContent = cardLabel(bid);
-      const up = document.createElement("button"); up.textContent = "▲"; up.disabled = i === 0;
+      const up = document.createElement("button"); up.className = "stepper"; up.textContent = "▲"; up.disabled = i === 0;
       up.onclick = () => moveOrder(g.attacker, i, -1);
-      const dn = document.createElement("button"); dn.textContent = "▼"; dn.disabled = i === ord.length - 1;
+      const dn = document.createElement("button"); dn.className = "stepper"; dn.textContent = "▼"; dn.disabled = i === ord.length - 1;
       dn.onclick = () => moveOrder(g.attacker, i, 1);
       row.append(num, nm, up, dn);
       sec.appendChild(row);
@@ -724,7 +560,7 @@ function buildOrderPanel(panel, cb) {
     panel.appendChild(sec);
   }
   const ctrls = document.createElement("div"); ctrls.className = "ctrls";
-  const go = document.createElement("button"); go.className = "action"; go.textContent = "Confirm order";
+  const go = document.createElement("button"); go.className = "primary"; go.textContent = "Confirm order";
   go.onclick = confirmOrder;
   ctrls.appendChild(go);
   panel.appendChild(ctrls);
@@ -745,8 +581,7 @@ async function confirmOrder() {
   await postCombat({ kind: "order", orderings });
 }
 
-// lethal-first auto-assignment: each target gets its lethal (toughness) in order,
-// capped by remaining power; non-tramplers dump any remainder on the last target.
+// lethal-first auto-assignment
 function autoLethal(g) {
   const m = new Map();
   let rem = g.power;
@@ -775,13 +610,11 @@ function buildDamagePanel(panel, cb) {
   for (const g of cb.damage) {
     const m = G.damage.get(g.attacker);
     const order = g.targets;
-    const amtOf = i => (m.get(order[i]) || 0);
-    const lethalOf = i => Math.max(1, cardToughness(order[i]));
+    const amtOf = (i) => (m.get(order[i]) || 0);
+    const lethalOf = (i) => Math.max(1, cardToughness(order[i]));
     const sum = order.reduce((s, t) => s + (m.get(t) || 0), 0);
-    // lethal-first: can only add to target i once every earlier target has its
-    // lethal; can only reduce target i if no later target depends on it being lethal.
-    const earlierAllLethal = i => order.slice(0, i).every((t, j) => (m.get(t) || 0) >= lethalOf(j));
-    const laterAnyNonzero = i => order.slice(i + 1).some(t => (m.get(t) || 0) > 0);
+    const earlierAllLethal = (i) => order.slice(0, i).every((t, j) => (m.get(t) || 0) >= lethalOf(j));
+    const laterAnyNonzero = (i) => order.slice(i + 1).some((t) => (m.get(t) || 0) > 0);
 
     const sec = document.createElement("div"); sec.className = "csec";
     const h = document.createElement("div"); h.className = "csec-h";
@@ -790,18 +623,16 @@ function buildDamagePanel(panel, cb) {
     order.forEach((tid, i) => {
       const row = document.createElement("div"); row.className = "dmg-row";
       const nm = document.createElement("span"); nm.className = "dmg-nm"; nm.textContent = cardLabel(tid);
-      const minus = document.createElement("button"); minus.textContent = "−";
+      const minus = document.createElement("button"); minus.className = "stepper"; minus.textContent = "−";
       minus.disabled = !(amtOf(i) > 0 && (!laterAnyNonzero(i) || amtOf(i) - 1 >= lethalOf(i)));
       minus.onclick = () => setDmg(g.attacker, tid, amtOf(i) - 1, g.power);
       const amt = document.createElement("span"); amt.className = "dmg-amt"; amt.textContent = amtOf(i);
-      const plus = document.createElement("button"); plus.textContent = "+";
+      const plus = document.createElement("button"); plus.className = "stepper"; plus.textContent = "+";
       plus.disabled = !(sum < g.power && earlierAllLethal(i));
       plus.onclick = () => setDmg(g.attacker, tid, amtOf(i) + 1, g.power);
       row.append(nm, minus, amt, plus);
       sec.appendChild(row);
     });
-    // legal iff all power is assigned, or (trample) every blocker has ≥ lethal and
-    // the remainder tramples over.
     const allLethal = order.every((t, i) => (m.get(t) || 0) >= lethalOf(i));
     const validG = sum === g.power || (g.trample && sum < g.power && allLethal);
     allValid = allValid && validG;
@@ -819,9 +650,9 @@ function buildDamagePanel(panel, cb) {
     panel.appendChild(sec);
   }
   const ctrls = document.createElement("div"); ctrls.className = "ctrls";
-  const auto = document.createElement("button"); auto.className = "pass"; auto.textContent = "Auto (lethal-first)";
+  const auto = document.createElement("button"); auto.textContent = "Auto (lethal-first)";
   auto.onclick = () => { for (const g of cb.damage) G.damage.set(g.attacker, autoLethal(g)); renderAll(); };
-  const go = document.createElement("button"); go.className = "action"; go.textContent = "Confirm damage";
+  const go = document.createElement("button"); go.className = "primary"; go.textContent = "Confirm damage";
   go.disabled = !allValid;
   go.onclick = confirmDamage;
   ctrls.append(auto, go);
@@ -830,11 +661,10 @@ function buildDamagePanel(panel, cb) {
 
 async function confirmDamage() {
   const cb = G.resp.combat;
-  const distributions = cb.damage.map(g => {
+  const distributions = cb.damage.map((g) => {
     const m = G.damage.get(g.attacker);
-    // engine distributions list only blockers that took damage, in order
     const distribution = g.targets
-      .map(tid => [tid, m.get(tid) || 0])
+      .map((tid) => [tid, m.get(tid) || 0])
       .filter(([, amt]) => amt > 0);
     return { attacker: g.attacker, distribution };
   });
@@ -857,7 +687,7 @@ function renderBottomPanel() {
   panel.appendChild(hint);
   const ctrls = document.createElement("div"); ctrls.className = "ctrls";
   const sel = G.bottomSel.size;
-  const go = document.createElement("button"); go.className = "action";
+  const go = document.createElement("button"); go.className = "primary";
   go.textContent = "Confirm (" + sel + "/" + n + ")";
   go.disabled = sel !== n;
   go.onclick = confirmBottom;
@@ -872,20 +702,11 @@ async function confirmBottom() {
   logLine("you", "Bottom " + ids.length + " card" + (ids.length > 1 ? "s" : ""));
   setBusy(true);
   try {
-    const r = await fetch("/bottom", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids }),
-    });
-    if (!r.ok) {
-      const e = await r.json().catch(() => ({ error: r.statusText }));
-      logLine("sys", "✗ " + (e.error || r.status));
-      await getState();
-      return;
-    }
     G.bottomSel.clear();
-    adopt(await r.json(), true);
+    adopt(await Arcana.Api.bottom(ids), true);
   } catch (e) {
-    logLine("sys", "request failed: " + e);
+    if (e.isApi) { logLine("sys", "✗ " + e.message); await getState(); }
+    else logLine("sys", "request failed: " + e);
   } finally {
     setBusy(false);
   }
@@ -894,8 +715,7 @@ async function confirmBottom() {
 function renderLog() {
   const log = document.getElementById("log");
   log.innerHTML = "";
-  const lines = G.log.slice(-40);
-  for (const l of lines) {
+  for (const l of G.log.slice(-40)) {
     const d = document.createElement("div");
     d.className = "ln " + l.cls;
     d.textContent = l.text;
@@ -904,32 +724,30 @@ function renderLog() {
   log.scrollTop = log.scrollHeight;
 }
 
-function logLine(cls, text) {
-  G.log.push({ cls, text });
-  renderLog();
-}
+function logLine(cls, text) { G.log.push({ cls, text }); renderLog(); }
 
 function renderAll() {
   const resp = G.resp;
   if (!resp) return;
   const view = resp.view;
   const me = view.perspective;
-  const you = view.players.find(p => p.id === me);
-  const opp = view.players.find(p => p.id !== me);
+  const you = view.players.find((p) => p.id === me);
+  const opp = view.players.find((p) => p.id !== me);
 
   // refresh the id->card lookup for combat display
   G.cardById = new Map();
   for (const p of view.players) for (const c of p.battlefield) G.cardById.set(c.id, c);
 
   document.getElementById("phase").innerHTML =
-    "Turn " + view.turn + " — <b>" + prettyPhase(view) + "</b>" +
-    " · active P" + view.active_player;
+    '<span class="turn tnum">Turn ' + view.turn + "</span>" +
+    '<span class="step">' + prettyPhase(view) + "</span>" +
+    '<span class="who">active P' + view.active_player + "</span>";
 
   const banner = document.getElementById("banner");
   if (view.game_over) {
     banner.style.display = "block";
     const won = view.game_over.indexOf("P" + me) >= 0;
-    banner.textContent = (view.game_over.startsWith("Win") && won ? "You win! — " : "Game over — ") + view.game_over;
+    banner.textContent = (view.game_over.startsWith("Win") && won ? "You win — " : "Game over — ") + view.game_over;
   } else {
     banner.style.display = "none";
   }
@@ -940,19 +758,20 @@ function renderAll() {
   renderCards(document.getElementById("stack"), view.stack, "(stack empty)");
   if (resp.bottom != null) renderBottomPanel(); else renderCombatPanel();
   renderActions(view);
+
+  // remember which battlefield ids we've now shown (so new ones pulse next time)
+  G.seenBf = new Set();
+  for (const p of view.players) for (const c of p.battlefield) G.seenBf.add(c.id);
+
   setBusy(G.busy);
 }
 
 function setBusy(busy) {
   G.busy = busy;
-  // Busy disables interaction via CSS so per-button `disabled` stays free for
-  // semantic gating (lethal-first steppers, mulligan confirm count).
   document.body.classList.toggle("busy", busy);
 }
 
-// ----- networking ----------------------------------------------------------
-// Adopt a fresh response: reset combat selections if the decision changed,
-// append the opponent's actions to the log (only on real advances).
+// ----- networking (through Arcana.Api) -------------------------------------
 function adopt(resp, isAdvance) {
   const newToken = combatTokenOf(resp.combat);
   if (newToken !== G.combatToken) {
@@ -969,100 +788,55 @@ function adopt(resp, isAdvance) {
 }
 
 async function getState() {
-  const r = await fetch("/state");
-  adopt(await r.json(), false);
+  try { adopt(await Arcana.Api.state(), false); }
+  catch (e) { logLine("sys", "request failed: " + e); }
+}
+
+// generic guarded request: run `fn`, adopt the result, surface errors gracefully
+async function guarded(fn) {
+  if (G.busy) return;
+  setBusy(true);
+  try {
+    adopt(await fn(), true);
+  } catch (e) {
+    if (e.isApi) { logLine("sys", "✗ " + e.message); await getState(); }
+    else logLine("sys", "request failed: " + e);
+  } finally {
+    setBusy(false);
+  }
 }
 
 async function sendAction(index, label) {
-  if (G.busy) return;
-  setBusy(true);
   if (label && label !== "Pass") logLine("you", "You: " + label);
-  try {
-    const r = await fetch("/action", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ index }),
-    });
-    if (!r.ok) {
-      const e = await r.json().catch(() => ({ error: r.statusText }));
-      logLine("sys", "✗ " + (e.error || r.status));
-      await getState();
-      return;
-    }
-    adopt(await r.json(), true);
-  } catch (e) {
-    logLine("sys", "request failed: " + e);
-  } finally {
-    setBusy(false);
-  }
+  await guarded(() => Arcana.Api.action(index));
 }
 
 async function sendAutoTap(id, name) {
-  if (G.busy) return;
-  setBusy(true);
   logLine("you", "You: play " + (name || "card"));
-  try {
-    const r = await fetch("/autotap", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ object_id: id }),
-    });
-    if (!r.ok) {
-      const e = await r.json().catch(() => ({ error: r.statusText }));
-      logLine("sys", "✗ " + (e.error || r.status));
-      await getState();
-      return;
-    }
-    adopt(await r.json(), true);
-  } catch (e) {
-    logLine("sys", "request failed: " + e);
-  } finally {
-    setBusy(false);
-  }
+  await guarded(() => Arcana.Api.autotap(id));
 }
 
-async function postCombat(body) {
-  if (G.busy) return;
-  setBusy(true);
-  try {
-    const r = await fetch("/combat", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!r.ok) {
-      const e = await r.json().catch(() => ({ error: r.statusText }));
-      logLine("sys", "✗ " + (e.error || r.status));
-      await getState();
-      return;
-    }
-    adopt(await r.json(), true);
-  } catch (e) {
-    logLine("sys", "request failed: " + e);
-  } finally {
-    setBusy(false);
-  }
-}
+async function postCombat(body) { await guarded(() => Arcana.Api.combat(body)); }
 
 async function newGame() {
   setBusy(true);
   try {
-    const r = await fetch("/new", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
-    });
-    G.log = [];
-    G.combatToken = null;
+    const resp = await Arcana.Api.newGame({});
+    G.log = []; G.combatToken = null; G.seenBf = new Set();
     logLine("sys", "— new game —");
-    adopt(await r.json(), false);
+    adopt(resp, false);
+  } catch (e) {
+    logLine("sys", "could not start a new game: " + e);
   } finally {
     setBusy(false);
   }
 }
 
+// ----- wire ----------------------------------------------------------------
+Arcana.mountThemeSwitcher(document.getElementById("themeslot"));
 document.getElementById("new").onclick = newGame;
 document.getElementById("refresh").onclick = getState;
-// dismiss the zoom overlay: click, right-click, or Escape
-document.getElementById("zoom").onclick = hideZoom;
-document.getElementById("zoom").oncontextmenu = (e) => { e.preventDefault(); hideZoom(); };
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") hideZoom(); });
-loadGlossary();
+Arcana.loadGlossary();
 getState();
 </script>
 </body>

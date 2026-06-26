@@ -1,71 +1,73 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Arcana — Deckbuilder</title>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("arcana.theme")||"dark";}catch(e){document.documentElement.dataset.theme="dark";}</script>
+<link rel="stylesheet" href="/theme.css" />
 <style>
-  :root { color-scheme: dark; }
-  * { box-sizing: border-box; }
-  body { margin: 0; font-family: system-ui, sans-serif; background: #14161b; color: #e7e9ee; }
   header {
     display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
-    padding: 8px 14px; border-bottom: 1px solid #2a2f3a; position: sticky; top: 0; background: #14161b; z-index: 10;
+    padding: 10px var(--page-padding); border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: var(--bg-nav); z-index: 20;
   }
-  header h1 { font-size: 16px; margin: 0; font-weight: 700; }
+  header .mark { font-family: var(--font-serif); font-weight: 600; font-size: 18px; }
+  header .sub { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--text-faint); }
   header .spacer { flex: 1; }
-  a, a:visited { color: #8fb3ff; text-decoration: none; }
-  input, select, button {
-    background: #20242d; color: #e7e9ee; border: 1px solid #3a4150; border-radius: 6px;
-    padding: 5px 8px; font-size: 13px;
-  }
-  button { cursor: pointer; background: #2a2f3a; }
-  button:hover:not(:disabled) { background: #353c4a; }
-  button:disabled { opacity: .45; cursor: default; }
-  button.primary { background: #2d6a3f; border-color: #3f8a55; font-weight: 600; }
-  button.primary:hover:not(:disabled) { background: #357a49; }
-  main { display: flex; gap: 12px; padding: 12px 14px; align-items: flex-start; }
+
+  main { display: flex; gap: 16px; padding: 16px var(--page-padding); align-items: flex-start; }
   #browse { flex: 1; min-width: 0; }
-  #deckpanel { width: 320px; flex-shrink: 0; border: 1px solid #2a2f3a; border-radius: 8px; padding: 10px; background: #1a1d24; position: sticky; top: 56px; max-height: calc(100vh - 70px); overflow-y: auto; }
-  form#search { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
-  form#search .colors label { margin-right: 6px; font-size: 12px; }
-  .grid { display: flex; gap: 8px; flex-wrap: wrap; }
-  .card {
-    width: 104px; border-radius: 6px; overflow: hidden; background: #20242d; border: 1px solid #333a47;
-    font-size: 11px; position: relative; cursor: pointer;
+  #deckpanel {
+    width: 330px; flex-shrink: 0; border: 1px solid var(--border); border-radius: var(--radius-panel);
+    padding: 12px; background: var(--bg-offset); position: sticky; top: 64px;
+    max-height: calc(100vh - 80px); overflow-y: auto;
   }
-  .card:hover { border-color: #4a6aa0; }
-  .card img { width: 100%; display: block; aspect-ratio: 488/680; object-fit: cover; background: #0c0d11; }
-  .card .nm { padding: 3px 4px; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .card .cost { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,.75); padding: 1px 5px; border-radius: 4px; font-weight: 700; font-size: 10px; }
-  .card .cnt { position: absolute; top: 2px; left: 2px; background: #2d6a3f; padding: 1px 6px; border-radius: 999px; font-weight: 800; font-size: 11px; }
-  .muted { opacity: .6; font-size: 12px; }
-  #deckstats { font-size: 13px; margin-bottom: 8px; }
-  #deckstats .curve { display: flex; gap: 3px; align-items: flex-end; height: 46px; margin: 6px 0; }
-  #deckstats .bar { flex: 1; background: #3f5d8a; border-radius: 2px 2px 0 0; min-height: 2px; position: relative; }
-  #deckstats .bar span { position: absolute; bottom: -15px; left: 0; right: 0; text-align: center; font-size: 9px; opacity: .6; }
-  #decklist .row { display: flex; gap: 6px; align-items: center; padding: 2px 0; font-size: 13px; }
-  #decklist .row .n { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #decklist .row button { padding: 0 7px; }
-  .sectlabel { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; opacity: .55; margin: 8px 0 3px; }
-  #decklist .row button.mv { padding: 0 5px; font-size: 11px; opacity: .7; }
-  #legality.ok { color: #8fd0a0; } #legality.bad { color: #e69a8a; }
+
+  form#search { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+  form#search .colors { display: inline-flex; gap: 8px; }
+  form#search .colors label { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; color: var(--text-muted); }
+  .results-meta { color: var(--text-faint); font-size: 12px; }
+
+  .grid { display: flex; gap: 10px; flex-wrap: wrap; --card-w: 96px; }
+
+  .muted { color: var(--text-muted); font-size: 12px; }
+  .empty-note { color: var(--text-faint); font-style: italic; font-family: var(--font-serif); font-size: 13px; }
+
+  #deckstats { font-size: 13px; margin-bottom: 10px; }
+  #deckstats .summary { font-family: var(--font-serif); margin-bottom: 8px; }
+  #deckstats .summary .tnum { font-weight: 600; }
+  #deckstats .curve { display: flex; gap: 4px; align-items: flex-end; height: 52px; margin: 8px 0 22px; }
+  #deckstats .bar { flex: 1; background: var(--text-muted); border-radius: 2px 2px 0 0; min-height: 2px; position: relative; }
+  #deckstats .bar span { position: absolute; bottom: -17px; left: 0; right: 0; text-align: center;
+    font-size: 9px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+  #deckstats .colors { display: flex; gap: 5px; flex-wrap: wrap; }
+
+  .sectlabel { margin: 12px 0 5px; }
+  #decklist .row { display: flex; gap: 6px; align-items: center; padding: 3px 0; font-size: 13px; }
+  #decklist .row .n { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: zoom-in; }
+  #decklist .row .cnt { min-width: 16px; text-align: center; font-variant-numeric: tabular-nums; }
+  #decklist .row button { padding: 1px 8px; }
+  #decklist .row button.mv { padding: 1px 6px; font-size: 11px; color: var(--text-muted); }
+
+  #legality.ok { color: var(--text); font-weight: 500; }
+  #legality.bad { color: var(--text); font-weight: 500; text-decoration: underline; text-decoration-color: var(--border-muted); }
+
   /* import/export overlay */
-  #io { display: none; position: fixed; inset: 0; z-index: 90; background: rgba(8,9,12,.8); align-items: center; justify-content: center; }
+  #io { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(8,7,6,.8);
+    align-items: center; justify-content: center; padding: var(--page-padding); }
   #io.show { display: flex; }
-  #io .iobox { width: min(560px, 92vw); background: #1a1d24; border: 1px solid #3a4150; border-radius: 10px; padding: 12px; }
-  #io .iohdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-  #io textarea { width: 100%; height: 50vh; resize: vertical; font-family: ui-monospace, monospace; font-size: 12px; background: #12141a; color: #e7e9ee; border: 1px solid #2a2f3a; border-radius: 6px; padding: 8px; }
-  #io .iobtns { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
-  /* zoom */
-  #zoom { display: none; position: fixed; inset: 0; z-index: 100; cursor: zoom-out; background: rgba(8,9,12,.85); align-items: center; justify-content: center; flex-direction: column; gap: 10px; }
-  #zoom.show { display: flex; }
-  #zoom img { max-height: 82vh; border-radius: 14px; box-shadow: 0 10px 44px #000; }
+  #io .iobox { width: min(560px, 92vw); background: var(--bg); border: 1px solid var(--border-muted);
+    border-radius: var(--radius-panel); padding: 14px; box-shadow: var(--shadow-float); }
+  #io .iohdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  #io .iohdr b { font-family: var(--font-serif); font-size: 16px; }
+  #io textarea { width: 100%; height: 48vh; resize: vertical; font-family: var(--font-mono); font-size: 12px; }
+  #io .iobtns { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
 </style>
 </head>
 <body>
   <header>
-    <h1>Arcana Deckbuilder <span class="muted">(prototype)</span></h1>
+    <span class="mark">Arcana</span><span class="sub">deckbuilder</span>
     <a href="/">← Play</a>
     <span class="spacer"></span>
     <input id="deckname" placeholder="deck name" size="14" />
@@ -73,13 +75,14 @@
     <select id="loadsel"><option value="">load…</option></select>
     <button id="import">Import</button>
     <button id="export">Export</button>
-    <button id="clear">Clear</button>
+    <button id="clear" class="ghost">Clear</button>
     <select id="format"></select>
     <span id="legality" class="muted"></span>
     <span class="spacer"></span>
     <span id="total" class="muted"></span>
     <select id="opponent" title="opponent's deck"></select>
     <button id="play" class="primary">Play this deck</button>
+    <span id="themeslot"></span>
   </header>
 
   <main>
@@ -104,9 +107,9 @@
         <input id="q-cmin" type="number" min="0" placeholder="mv≥" style="width:64px" />
         <input id="q-cmax" type="number" min="0" placeholder="mv≤" style="width:64px" />
         <button type="submit">Search</button>
-        <span id="results-meta" class="muted"></span>
+        <span id="results-meta" class="results-meta"></span>
       </form>
-      <div id="results" class="grid"><span class="muted">Search the catalog to add cards.</span></div>
+      <div id="results" class="grid"><span class="empty-note">Search the catalog to add cards.</span></div>
     </section>
 
     <aside id="deckpanel">
@@ -117,68 +120,45 @@
 
   <div id="io">
     <div class="iobox">
-      <div class="iohdr"><b id="iotitle">Import deck</b><button id="ioclose">✕</button></div>
+      <div class="iohdr"><b id="iotitle">Import deck</b><button id="ioclose" class="ghost">✕</button></div>
       <textarea id="iotext" spellcheck="false" placeholder="Paste an Arena/MTGO deck list…&#10;&#10;Deck&#10;4 Lightning Bolt&#10;20 Mountain"></textarea>
       <div class="iobtns"><button id="iodo" class="primary">Import</button><span id="iomsg" class="muted"></span></div>
     </div>
   </div>
 
-  <div id="zoom"><img id="zoomimg" alt="card" /></div>
-
+<script src="/app.js"></script>
 <script>
 "use strict";
 
 const main = new Map();   // cardId -> { info, count }  (maindeck)
 const side = new Map();   // cardId -> { info, count }  (sideboard)
-let glossary = {};
 let formats = [];
 let curFormat = null;
 let legalityTimer = null;
-let sampleDeck = [];   // the baseline opponent (card ids)
+let sampleDeck = [];      // the baseline opponent (card ids)
 
-function artUrl(name) {
-  return "https://api.scryfall.com/cards/named?format=image&exact=" + encodeURIComponent(name);
-}
-function compactCost(c) { return c ? c.replace(/[{}]/g, "") : ""; }
+// color key -> mana-pip class (for the deck color tally)
+const COLOR_PIP = { W: "w", U: "u", B: "b", R: "r", G: "g", C: "c" };
+
 function mapTotal(m) { let t = 0; for (const e of m.values()) t += e.count; return t; }
 function sortedEntries(m) {
   return [...m.values()].sort((a, b) =>
     a.info.mana_value - b.info.mana_value || a.info.name.localeCompare(b.info.name));
 }
 
-// ---- card tiles ----
+// ---- card tiles (shared component) ----
 function tile(info) {
-  const div = document.createElement("div");
-  div.className = "card";
-  const img = document.createElement("img");
-  img.loading = "lazy"; img.alt = info.name; img.src = artUrl(info.name);
-  img.onerror = () => { img.style.visibility = "hidden"; };
-  div.appendChild(img);
-  if (info.mana_cost) {
-    const cost = document.createElement("div");
-    cost.className = "cost"; cost.textContent = compactCost(info.mana_cost);
-    div.appendChild(cost);
-  }
   const have = main.get(info.id);
-  if (have) {
-    const cnt = document.createElement("div");
-    cnt.className = "cnt"; cnt.textContent = have.count;
-    div.appendChild(cnt);
-  }
-  const nm = document.createElement("div");
-  nm.className = "nm"; nm.textContent = info.name;
-  div.appendChild(nm);
-  div.title = info.name + (info.mana_cost ? "  " + info.mana_cost : "") + "\n" + info.type_line +
-    (info.keywords.length ? "\n" + info.keywords.join(", ") : "");
-  div.onclick = () => addCard(main, info);
-  div.oncontextmenu = (e) => { e.preventDefault(); zoom(info.name); };
-  return div;
+  return Arcana.renderCard(info, {
+    count: have ? have.count : 0,
+    onClick: () => addCard(main, info),
+  });
 }
 
 // ---- deck ops (generic over a map: main or side) ----
 function addCard(m, info) { const e = m.get(info.id); if (e) e.count++; else m.set(info.id, { info, count: 1 }); render(); }
 function setCount(m, id, n) { const e = m.get(id); if (!e) return; e.count = n; if (e.count <= 0) m.delete(id); render(); }
-function moveCard(from, to, info) { setCountSilent(from, info.id, (from.get(info.id)?.count || 0) - 1); addCardSilent(to, info); render(); }
+function moveCard(from, to, info) { setCountSilent(from, info.id, (from.get(info.id) ? from.get(info.id).count : 0) - 1); addCardSilent(to, info); render(); }
 function setCountSilent(m, id, n) { const e = m.get(id); if (!e) return; e.count = n; if (e.count <= 0) m.delete(id); }
 function addCardSilent(m, info) { const e = m.get(info.id); if (e) e.count++; else m.set(info.id, { info, count: 1 }); }
 
@@ -189,15 +169,20 @@ function render() {
 }
 
 function sectionRows(container, m, isSide) {
-  if (!m.size) { const e = document.createElement("div"); e.className = "muted"; e.textContent = isSide ? "(empty)" : "empty — click cards to add"; container.appendChild(e); return; }
+  if (!m.size) {
+    const e = document.createElement("div"); e.className = "empty-note";
+    e.textContent = isSide ? "(empty)" : "empty — click cards to add";
+    container.appendChild(e); return;
+  }
   for (const { info, count } of sortedEntries(m)) {
     const row = document.createElement("div"); row.className = "row";
     const minus = document.createElement("button"); minus.textContent = "−"; minus.onclick = () => setCount(m, info.id, count - 1);
-    const cnt = document.createElement("span"); cnt.textContent = count; cnt.style.minWidth = "14px"; cnt.style.textAlign = "center";
+    const cnt = document.createElement("span"); cnt.className = "cnt"; cnt.textContent = count;
     const plus = document.createElement("button"); plus.textContent = "+"; plus.onclick = () => setCount(m, info.id, count + 1);
     const n = document.createElement("span"); n.className = "n"; n.textContent = info.name;
-    n.title = info.type_line; n.style.cursor = "zoom-in"; n.oncontextmenu = (e) => { e.preventDefault(); zoom(info.name); };
-    const cost = document.createElement("span"); cost.className = "muted"; cost.textContent = compactCost(info.mana_cost);
+    n.title = info.type_line; n.oncontextmenu = (e) => { e.preventDefault(); Arcana.Zoom.show(info); };
+    const cost = document.createElement("span"); cost.className = "mana-mini";
+    cost.appendChild(Arcana.renderMana(info.mana_cost));
     const mv = document.createElement("button"); mv.className = "mv"; mv.textContent = isSide ? "→main" : "→SB";
     mv.title = isSide ? "move to maindeck" : "move to sideboard";
     mv.onclick = () => moveCard(isSide ? side : main, isSide ? main : side, info);
@@ -211,10 +196,9 @@ function renderDeck() {
   document.getElementById("total").textContent = total + " main · " + mapTotal(side) + " SB";
   document.getElementById("play").disabled = total < 7;
 
-  // stats: mana curve (nonland) + color counts (maindeck)
   const stats = document.getElementById("deckstats");
-  const bins = [0,0,0,0,0,0,0,0];
-  const colorCount = { W:0,U:0,B:0,R:0,G:0,C:0 };
+  const bins = [0, 0, 0, 0, 0, 0, 0, 0];
+  const colorCount = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
   let lands = 0;
   for (const { info, count } of main.values()) {
     if (info.is_land) lands += count;
@@ -224,26 +208,27 @@ function renderDeck() {
   }
   const maxBin = Math.max(1, ...bins);
   const curve = bins.map((v, i) =>
-    `<div class="bar" style="height:${Math.round(100 * v / maxBin)}%" title="mv ${i===7?'7+':i}: ${v}"><span>${i===7?'7+':i}</span></div>`).join("");
-  const colors = Object.entries(colorCount).filter(([,v]) => v > 0).map(([k,v]) => `${v}${k}`).join("  ");
+    '<div class="bar" style="height:' + Math.round(100 * v / maxBin) + '%" title="mv ' +
+    (i === 7 ? "7+" : i) + ": " + v + '"><span>' + (i === 7 ? "7+" : i) + "</span></div>").join("");
+  const colors = Object.entries(colorCount).filter(([, v]) => v > 0)
+    .map(([k, v]) => '<span class="mana-pip ' + COLOR_PIP[k] + '">' + v + k + "</span>").join("");
+
   stats.innerHTML =
-    `<div>${total} cards · ${lands} lands · ${total - lands} spells</div>` +
-    `<div class="curve">${curve}</div>` +
-    `<div class="muted" style="margin-top:18px">${colors || "—"}</div>`;
+    '<div class="summary"><span class="tnum">' + total + "</span> cards · <span class=\"tnum\">" + lands +
+      '</span> lands · <span class="tnum">' + (total - lands) + "</span> spells</div>" +
+    '<div class="curve">' + curve + "</div>" +
+    '<div class="colors">' + (colors || '<span class="muted">—</span>') + "</div>";
 
   const list = document.getElementById("decklist");
   list.innerHTML = "";
-  const ml = document.createElement("div"); ml.className = "sectlabel"; ml.textContent = "Maindeck"; list.appendChild(ml);
+  const ml = document.createElement("div"); ml.className = "sectlabel meta-label"; ml.textContent = "Maindeck"; list.appendChild(ml);
   sectionRows(list, main, false);
-  const sl = document.createElement("div"); sl.className = "sectlabel"; sl.textContent = "Sideboard"; list.appendChild(sl);
+  const sl = document.createElement("div"); sl.className = "sectlabel meta-label"; sl.textContent = "Sideboard"; list.appendChild(sl);
   sectionRows(list, side, true);
 }
 
 // ---- legality ----
-function scheduleLegality() {
-  clearTimeout(legalityTimer);
-  legalityTimer = setTimeout(checkLegality, 200);
-}
+function scheduleLegality() { clearTimeout(legalityTimer); legalityTimer = setTimeout(checkLegality, 200); }
 async function checkLegality() {
   const el = document.getElementById("legality");
   if (!curFormat) { el.textContent = ""; return; }
@@ -253,8 +238,7 @@ async function checkLegality() {
     spec: curFormat,
   };
   try {
-    const r = await fetch("/legality", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    const rep = await r.json();
+    const rep = await Arcana.Api.legality(body);
     el.className = rep.legal ? "ok" : "bad";
     el.textContent = rep.legal ? "✓ legal" : ("✗ " + rep.violations.length + " issue" + (rep.violations.length > 1 ? "s" : ""));
     el.title = rep.violations.join("\n") || "legal for " + rep.format;
@@ -266,9 +250,9 @@ function buildQuery() {
   const q = { limit: 120 };
   const name = document.getElementById("q-name").value.trim();
   if (name) q.name = name;
-  const checked = [...document.querySelectorAll("form#search .colors input:checked")].map(c => c.value);
+  const checked = [...document.querySelectorAll("form#search .colors input:checked")].map((c) => c.value);
   if (checked.includes("C")) q.colorless = true;
-  const colors = checked.filter(c => c !== "C");
+  const colors = checked.filter((c) => c !== "C");
   if (colors.length) q.colors = colors;
   const type = document.getElementById("q-type").value; if (type) q.types = [type];
   const kw = document.getElementById("q-kw").value; if (kw) q.keywords = [kw];
@@ -277,17 +261,20 @@ function buildQuery() {
   return q;
 }
 async function search() {
-  const r = await fetch("/search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildQuery()) });
-  const results = await r.json();
-  window._lastResults = results;
-  renderResults(results);
-  document.getElementById("results-meta").textContent = results.length + " shown (capped)";
+  try {
+    const results = await Arcana.Api.search(buildQuery());
+    window._lastResults = results;
+    renderResults(results);
+    document.getElementById("results-meta").textContent = results.length + " shown (capped)";
+  } catch (e) {
+    document.getElementById("results-meta").textContent = "search failed";
+  }
 }
 function renderResults(results) {
   const box = document.getElementById("results");
   box.innerHTML = "";
-  if (!results.length) { box.innerHTML = '<span class="muted">No matches.</span>'; return; }
-  for (const info of results) box.appendChild(tile(info, true));
+  if (!results.length) { box.innerHTML = '<span class="empty-note">No matches.</span>'; return; }
+  for (const info of results) box.appendChild(tile(info));
 }
 
 // ---- save / load (localStorage) ----
@@ -297,7 +284,6 @@ function refreshLoadSelect() {
   const sel = document.getElementById("loadsel");
   sel.innerHTML = '<option value="">load…</option>';
   for (const name of names) { const o = document.createElement("option"); o.value = name; o.textContent = name; sel.appendChild(o); }
-  // opponent picker: Mirror / Sample / each saved deck
   const opp = document.getElementById("opponent");
   const prev = opp.value;
   opp.innerHTML = "";
@@ -327,7 +313,6 @@ function saveDeck() {
 }
 function loadDeck(name) {
   const d = savedDecks()[name]; if (!d) return;
-  // tolerate the old flat format (array == maindeck only)
   loadEntries(main, Array.isArray(d) ? d : d.main);
   loadEntries(side, Array.isArray(d) ? [] : d.side);
   document.getElementById("deckname").value = name;
@@ -342,8 +327,8 @@ function openIo(mode) {
   document.getElementById("iodo").textContent = mode === "export" ? "Copy" : "Import";
   document.getElementById("iomsg").textContent = "";
   const ta = document.getElementById("iotext");
-  if (mode === "export") { ta.value = exportText(); ta.readOnly = false; }
-  else { ta.value = ""; ta.readOnly = false; }
+  ta.value = mode === "export" ? exportText() : "";
+  ta.readOnly = false;
   io.dataset.mode = mode;
   io.classList.add("show");
   ta.focus();
@@ -364,15 +349,17 @@ async function ioAction() {
     catch { ta.select(); document.getElementById("iomsg").textContent = "select + copy manually"; }
     return;
   }
-  const r = await fetch("/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: ta.value }) });
-  if (!r.ok) { document.getElementById("iomsg").textContent = "import failed"; return; }
-  const d = await r.json();
-  loadEntries(main, d.main); loadEntries(side, d.sideboard);
-  if (d.name) document.getElementById("deckname").value = d.name;
-  render();
-  if (d.unresolved.length) {
-    document.getElementById("iomsg").textContent = "imported; unresolved: " + d.unresolved.map(([n, c]) => c + " " + n).join(", ");
-  } else { closeIo(); }
+  try {
+    const d = await Arcana.Api.import(ta.value);
+    loadEntries(main, d.main); loadEntries(side, d.sideboard);
+    if (d.name) document.getElementById("deckname").value = d.name;
+    render();
+    if (d.unresolved.length) {
+      document.getElementById("iomsg").textContent = "imported; unresolved: " + d.unresolved.map(([n, c]) => c + " " + n).join(", ");
+    } else { closeIo(); }
+  } catch (e) {
+    document.getElementById("iomsg").textContent = "import failed";
+  }
 }
 
 // ---- play ----
@@ -390,14 +377,9 @@ async function playDeck() {
   if (body.opponent && body.opponent.length < 7) {
     alert("Opponent deck has fewer than 7 cards; it will fall back to the sample deck.");
   }
-  const r = await fetch("/new", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  if (r.ok) window.location = "/"; else alert("Could not start a game with this deck.");
+  try { await Arcana.Api.newGame(body); window.location = "/"; }
+  catch (e) { alert("Could not start a game with this deck."); }
 }
-
-// ---- zoom ----
-function zoom(name) { const z = document.getElementById("zoom"); document.getElementById("zoomimg").src = artUrl(name); z.classList.add("show"); }
-document.getElementById("zoom").onclick = () => document.getElementById("zoom").classList.remove("show");
-document.addEventListener("keydown", e => { if (e.key === "Escape") { document.getElementById("zoom").classList.remove("show"); closeIo(); } });
 
 // ---- wire ----
 document.getElementById("search").onsubmit = (e) => { e.preventDefault(); search(); };
@@ -410,13 +392,15 @@ document.getElementById("export").onclick = () => openIo("export");
 document.getElementById("ioclose").onclick = closeIo;
 document.getElementById("iodo").onclick = ioAction;
 document.getElementById("format").onchange = (e) => { curFormat = formats[+e.target.value] || null; checkLegality(); };
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeIo(); });
 
 async function init() {
-  try { const r = await fetch("/glossary"); if (r.ok) glossary = await r.json(); } catch {}
+  Arcana.mountThemeSwitcher(document.getElementById("themeslot"));
+  await Arcana.loadGlossary();
   const kwsel = document.getElementById("q-kw");
-  for (const k of Object.keys(glossary).sort()) { const o = document.createElement("option"); o.textContent = k; kwsel.appendChild(o); }
-  try { const r = await fetch("/formats"); if (r.ok) formats = await r.json(); } catch {}
-  try { const r = await fetch("/sample-deck"); if (r.ok) sampleDeck = await r.json(); } catch {}
+  for (const k of Object.keys(Arcana.glossary).sort()) { const o = document.createElement("option"); o.textContent = k; kwsel.appendChild(o); }
+  try { formats = await Arcana.Api.formats(); } catch (e) { formats = []; }
+  try { sampleDeck = await Arcana.Api.sampleDeck(); } catch (e) { sampleDeck = []; }
   const fsel = document.getElementById("format");
   formats.forEach((f, i) => { const o = document.createElement("option"); o.value = i; o.textContent = f.name; fsel.appendChild(o); });
   curFormat = formats[0] || null;

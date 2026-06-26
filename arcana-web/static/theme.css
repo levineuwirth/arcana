@@ -1,0 +1,530 @@
+/* =============================================================================
+   Arcana — shared design tokens & base chrome.
+
+   Philosophy: paper-warm, monochromatic, serif-driven chrome that RECEDES.
+   Colour comes from the cards (Scryfall art); the chrome is a calm frame.
+   Links are text-coloured with underlines (never blue). Selection = inverted.
+   Flat, 1px-bordered components; sharp corners; fills only on hover/active;
+   ACTIVE = INVERT (background becomes text colour, text becomes bg).
+   Shadows only on floating layers. Small-caps for metadata labels.
+
+   Default theme is DARK (set on <html data-theme="dark">). Three themes are
+   selectable; the :root block below is the Light palette.
+   ========================================================================== */
+
+/* ---- Fonts ---------------------------------------------------------------- */
+/* @font-face is wired to /assets/fonts/*.woff2 but the var() stacks below fall
+   back cleanly to system serif/sans/mono if the binaries are not vendored. */
+@font-face {
+  font-family: "Spectral";
+  src: url("/assets/fonts/Spectral-Regular.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Spectral";
+  src: url("/assets/fonts/Spectral-Medium.woff2") format("woff2");
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Spectral";
+  src: url("/assets/fonts/Spectral-SemiBold.woff2") format("woff2");
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Spectral";
+  src: url("/assets/fonts/Spectral-Italic.woff2") format("woff2");
+  font-weight: 400; font-style: italic; font-display: swap;
+}
+@font-face {
+  font-family: "Fira Sans";
+  src: url("/assets/fonts/FiraSans-Regular.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Fira Sans";
+  src: url("/assets/fonts/FiraSans-Medium.woff2") format("woff2");
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/assets/fonts/JetBrainsMono-Regular.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+
+/* ---- Light (default :root palette) --------------------------------------- */
+:root {
+  --bg: #faf8f4;
+  --bg-nav: #faf8f4;
+  --bg-offset: #f2f0eb;
+  --text: #1a1a1a;
+  --text-muted: #555555;
+  --text-faint: #888888;
+  --border: #cccccc;
+  --border-muted: #aaaaaa;
+  --link: #1a1a1a;
+  --link-underline: #888888;
+  --link-hover: #1a1a1a;
+  --selection-bg: #1a1a1a;
+  --selection-text: #faf8f4;
+
+  /* Mana — parchment-harmonised (desaturated) WUBRG + colorless. The ONLY
+     sanctioned chrome colour. Muted so it sits calmly within the warm frame. */
+  --mana-w: #c7b88e;
+  --mana-u: #7e9cb0;
+  --mana-b: #6b625c;
+  --mana-r: #bd7d6e;
+  --mana-g: #7f976f;
+  --mana-c: #b0a695;
+  /* legible ink for symbols sitting ON the muted mana fills */
+  --mana-ink-dark: #2a2018;
+  --mana-ink-light: #f3efe6;
+
+  /* Type */
+  --font-serif: "Spectral", "Georgia", "Times New Roman", serif;
+  --font-sans: "Fira Sans", "Helvetica Neue", "Arial", sans-serif;
+  --font-mono: "JetBrains Mono", "Consolas", "Menlo", monospace;
+
+  /* Layout */
+  --page-padding: 1.5rem;
+
+  /* Radii — sharp corners */
+  --radius-control: 3px;
+  --radius-panel: 4px;
+  --radius-pill: 999px;
+
+  /* Transitions */
+  --transition-fast: .15s ease;
+  --transition-medium: .28s ease;
+  --transition-slow: .5s ease;
+
+  /* Floating-layer shadow (only on overlays / popovers) */
+  --shadow-float: 0 4px 16px rgba(0, 0, 0, .1);
+
+  /* Card geometry (override per context via --card-w) */
+  --card-w: 84px;
+  --card-h: calc(var(--card-w) * 1.393);
+}
+
+/* ---- Dark (DEFAULT theme) ------------------------------------------------ */
+[data-theme="dark"] {
+  --bg: #121212;
+  --bg-nav: #181818;
+  --bg-offset: #1a1a1a;
+  --text: #d4d0c8;
+  --text-muted: #8c8881;
+  --text-faint: #8b8680;
+  --border: #333333;
+  --border-muted: #444444;
+  --link: #d4d0c8;
+  --link-underline: #8b8680;
+  --link-hover: #ffffff;
+  --selection-bg: #d4d0c8;
+  --selection-text: #121212;
+
+  --mana-w: #d8cba6;
+  --mana-u: #93b0c4;
+  --mana-b: #9a8f86;
+  --mana-r: #cf9384;
+  --mana-g: #9bb088;
+  --mana-c: #c0b6a6;
+
+  --shadow-float: 0 4px 16px rgba(0, 0, 0, .45);
+}
+
+/* ---- Cappuccino ---------------------------------------------------------- */
+[data-theme="cappuccino"] {
+  --bg: #553a28;
+  --bg-nav: #503626;
+  --bg-offset: #4a3324;
+  --text: #ead0a0;
+  --text-muted: #d0b888;
+  --text-faint: #b09575;
+  --border: #7a5d44;
+  --border-muted: #6a4f38;
+  --link: #ead0a0;
+  --link-underline: #b09575;
+  --link-hover: #f5e6c0;
+  --selection-bg: #ead0a0;
+  --selection-text: #3a2418;
+
+  --mana-w: #e2cfa0;
+  --mana-u: #9bb3bf;
+  --mana-b: #8a7a68;
+  --mana-r: #cf9b86;
+  --mana-g: #a3b489;
+  --mana-c: #c2b496;
+
+  --shadow-float: 0 4px 16px rgba(0, 0, 0, .35);
+}
+
+/* ---- Reset / base -------------------------------------------------------- */
+* { box-sizing: border-box; }
+
+html { color-scheme: light dark; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--selection-bg);
+  color: var(--selection-text);
+}
+
+/* Serif for card names, headings, flavour. */
+h1, h2, h3, .serif { font-family: var(--font-serif); font-weight: 600; }
+
+/* Links: text-coloured with an underline — never blue. */
+a, a:visited {
+  color: var(--link);
+  text-decoration: underline;
+  text-decoration-color: var(--link-underline);
+  text-underline-offset: 2px;
+  transition: color var(--transition-fast);
+}
+a:hover { color: var(--link-hover); text-decoration-color: var(--link-hover); }
+
+/* Small-caps metadata label. */
+.meta-label {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-faint);
+}
+
+/* Tabular figures for life / mana / power-toughness numbers. */
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* ---- Controls (sans, flat, 1px border, invert on active) ----------------- */
+button,
+.btn,
+input,
+select,
+textarea {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 5px 10px;
+  transition: background var(--transition-fast), color var(--transition-fast),
+              border-color var(--transition-fast);
+}
+button, .btn { cursor: pointer; }
+button:hover:not(:disabled),
+.btn:hover { background: var(--bg-offset); border-color: var(--border-muted); }
+/* ACTIVE = INVERT */
+button:active:not(:disabled),
+.btn.active {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+}
+button:disabled, .btn:disabled { opacity: .4; cursor: default; }
+button:focus-visible, .btn:focus-visible,
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 1px solid var(--text-muted);
+  outline-offset: 1px;
+}
+
+/* A primary/affirmative button: pre-inverted (the calm "this is the move"). */
+button.primary, .btn.primary {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+  font-weight: 500;
+}
+button.primary:hover:not(:disabled), .btn.primary:hover {
+  background: var(--text-muted);
+  border-color: var(--text-muted);
+}
+
+/* A quiet/ghost button (Concede, secondary actions). */
+button.ghost, .btn.ghost { background: transparent; }
+
+/* ---- Mana pips ----------------------------------------------------------- */
+.mana-pip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25em;
+  height: 1.25em;
+  padding: 0 .28em;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(0, 0, 0, .18);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: .82em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--mana-ink-dark);
+  background: var(--mana-c);
+  vertical-align: middle;
+}
+.mana-pip + .mana-pip { margin-left: 2px; }
+.mana-pip.w { background: var(--mana-w); color: var(--mana-ink-dark); }
+.mana-pip.u { background: var(--mana-u); color: var(--mana-ink-light); }
+.mana-pip.b { background: var(--mana-b); color: var(--mana-ink-light); }
+.mana-pip.r { background: var(--mana-r); color: var(--mana-ink-dark); }
+.mana-pip.g { background: var(--mana-g); color: var(--mana-ink-dark); }
+.mana-pip.c, .mana-pip.generic { background: var(--mana-c); color: var(--mana-ink-dark); }
+
+/* ---- Shared card component ----------------------------------------------- */
+/* Art-first: the image fills the tile. The slot reserves layout space so a
+   tapped (rotated) card never overlaps its neighbours. */
+.ac-card {
+  position: relative;
+  width: var(--card-w);
+  height: var(--card-h);
+  flex: 0 0 auto;
+  transition: width var(--transition-medium), height var(--transition-medium);
+}
+.ac-frame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--card-w);
+  height: var(--card-h);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+  background: var(--bg-offset);
+  transform-origin: center;
+  transition: transform var(--transition-medium), border-color var(--transition-fast),
+              box-shadow var(--transition-fast);
+}
+/* Tapped: the slot rotates to a landscape box; the frame is centred + turned. */
+.ac-card.tapped { width: var(--card-h); height: var(--card-w); }
+.ac-card.tapped .ac-frame {
+  left: calc((var(--card-h) - var(--card-w)) / 2);
+  top: calc((var(--card-w) - var(--card-h)) / 2);
+  transform: rotate(90deg);
+}
+.ac-card.clickable .ac-frame { cursor: pointer; }
+.ac-card.clickable:hover .ac-frame { border-color: var(--text-muted); }
+
+.ac-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  background: var(--bg-offset);
+}
+
+/* Fallback when there is no art (hidden card / failed load): name + cost text. */
+.ac-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px;
+  text-align: center;
+  font-family: var(--font-serif);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Subtle cost pip cluster, top-left. */
+.ac-cost {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  display: flex;
+  gap: 2px;
+  font-size: 11px;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .5));
+  z-index: 2;
+}
+
+/* Power / toughness overlay, bottom-right. */
+.ac-pt {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  padding: 1px 5px;
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: #f3efe6;
+  background: rgba(12, 10, 8, .72);
+  border-radius: var(--radius-control);
+  z-index: 2;
+}
+
+/* Deckbuilder count, top-right. */
+.ac-count {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  padding: 1px 7px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--bg);
+  background: var(--text);
+  border-radius: var(--radius-pill);
+  z-index: 2;
+}
+
+/* Name caption — shown on hover only. */
+.ac-name {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 14px 5px 4px;
+  font-family: var(--font-serif);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: #f3efe6;
+  background: linear-gradient(to top, rgba(8, 7, 6, .92), rgba(8, 7, 6, 0));
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.ac-card:hover .ac-name { opacity: 1; }
+.ac-card.tapped .ac-name { display: none; }
+
+/* Status badge (combat etc.), top. */
+.ac-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 2px 4px;
+  font-family: var(--font-sans);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  text-align: center;
+  color: #f3efe6;
+  background: rgba(12, 10, 8, .78);
+  z-index: 3;
+}
+
+/* Selection / combat states — monochrome rings (chrome recedes). */
+.ac-card.selectable .ac-frame { box-shadow: 0 0 0 2px var(--border-muted); cursor: pointer; }
+.ac-card.selectable:hover .ac-frame { box-shadow: 0 0 0 2px var(--text-muted); }
+.ac-card.selected .ac-frame { box-shadow: 0 0 0 3px var(--text); border-color: var(--text); }
+.ac-card.pending .ac-frame { box-shadow: 0 0 0 3px var(--text-muted); }
+.ac-card.dim { opacity: .5; }
+.ac-card.dim:hover { opacity: .85; }
+
+/* Floating foil seam for future cosmetics (off by default). */
+.ac-card.foil .ac-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, .14) 50%, transparent 60%);
+  mix-blend-mode: screen;
+}
+
+/* ---- Card zoom overlay (right-click) ------------------------------------- */
+.ac-zoom {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  cursor: zoom-out;
+  background: rgba(8, 7, 6, .82);
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  padding: var(--page-padding);
+}
+.ac-zoom.show { display: flex; }
+.ac-zoom img {
+  max-height: 74vh;
+  max-width: 92vw;
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-float);
+}
+.ac-zoom .zoom-info {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  color: #f3efe6;
+  max-width: 90vw;
+  text-align: center;
+}
+.ac-zoom .zoom-kw {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 80vw;
+}
+.ac-zoom .zoom-chip {
+  padding: 3px 11px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: #f3efe6;
+  background: transparent;
+  border: 1px solid rgba(243, 239, 230, .4);
+  border-radius: var(--radius-pill);
+  cursor: help;
+}
+.ac-zoom .zoom-chip:hover { background: rgba(243, 239, 230, .14); }
+.ac-zoom .zoom-reminder {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 13px;
+  color: #d9d4c8;
+  max-width: 64ch;
+  text-align: center;
+  min-height: 18px;
+}
+
+/* ---- Theme switcher ------------------------------------------------------ */
+.theme-switch {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+}
+.theme-switch button {
+  border: none;
+  border-radius: 0;
+  padding: 4px 9px;
+  font-size: 12px;
+  background: var(--bg);
+}
+.theme-switch button + button { border-left: 1px solid var(--border); }
+.theme-switch button.active {
+  background: var(--text);
+  color: var(--bg);
+}
+
+/* ---- Reduced motion ------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: .001ms !important;
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

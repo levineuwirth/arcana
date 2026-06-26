@@ -6,6 +6,8 @@
 //!
 //! * `GET  /`       → the single-page game UI (`static/index.html`, embedded).
 //! * `GET  /deck`   → the deckbuilder UI (`static/deck.html`, embedded).
+//! * `GET  /theme.css` → the shared design-token stylesheet (themes, mana palette).
+//! * `GET  /app.js` → the shared frontend module (card component, theme, Api).
 //! * `GET  /glossary`→ keyword reminder text (base name → reminder), static.
 //! * `GET  /state`  → advance through bot/trivial decisions, return the human's
 //!   [`ViewState`](arcana_core::view::ViewState) + the opponent action log.
@@ -60,6 +62,10 @@ use tokio::sync::{mpsc, oneshot};
 const INDEX_HTML: &str = include_str!("../static/index.html");
 /// The deckbuilder page (browse the catalog, build a deck, play it).
 const DECK_HTML: &str = include_str!("../static/deck.html");
+/// Shared design-token stylesheet (themes, type, mana palette, card component).
+const THEME_CSS: &str = include_str!("../static/theme.css");
+/// Shared frontend module (theme switcher, card component, zoom, Api client).
+const APP_JS: &str = include_str!("../static/app.js");
 
 /// A request to the game worker thread. Each carries a oneshot reply channel.
 enum Command {
@@ -222,6 +228,21 @@ async fn index() -> Html<&'static str> {
 
 async fn deckbuilder() -> Html<&'static str> {
     Html(DECK_HTML)
+}
+
+/// The shared design-token stylesheet, served with the right content-type so the
+/// browser caches/parses it as CSS (both pages `<link>` it).
+async fn theme_css() -> Response {
+    ([(axum::http::header::CONTENT_TYPE, "text/css; charset=utf-8")], THEME_CSS).into_response()
+}
+
+/// The shared frontend module (card component, theme switcher, zoom, Api client).
+async fn app_js() -> Response {
+    (
+        [(axum::http::header::CONTENT_TYPE, "application/javascript; charset=utf-8")],
+        APP_JS,
+    )
+        .into_response()
 }
 
 /// The built-in deck formats (static — the UI populates a selector and the legality
@@ -417,6 +438,8 @@ async fn main() {
     let app = Router::new()
         .route("/", get(index))
         .route("/deck", get(deckbuilder))
+        .route("/theme.css", get(theme_css))
+        .route("/app.js", get(app_js))
         .route("/formats", get(get_formats))
         .route("/import", post(post_import))
         .route("/legality", post(post_legality))
