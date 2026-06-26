@@ -44,6 +44,7 @@
   .ptitle { display: flex; gap: 14px; align-items: baseline; margin-bottom: 4px; }
   .ptitle .name { font-weight: 700; }
   .ptitle .life { font-size: 20px; font-weight: 800; color: #ff8d8d; }
+  .ptitle .mana { font-size: 12px; color: #8fd0a0; }
   .ptitle .counts { font-size: 12px; opacity: .7; }
 
   .zone-label { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; opacity: .55; margin: 7px 0 3px; }
@@ -56,11 +57,21 @@
   .card.tapped { transform: rotate(90deg) scale(.86); }
   .card img { width: 100%; display: block; aspect-ratio: 488/680; object-fit: cover; background: #0c0d11; }
   .card .nm { padding: 3px 4px; line-height: 1.15; }
-  .card .pt {
-    position: absolute; right: 3px; bottom: 22px; background: rgba(0,0,0,.78);
-    padding: 1px 5px; border-radius: 4px; font-weight: 800; font-size: 12px;
-  }
-  .card.fallback { padding: 6px 4px; min-height: 120px; display: flex; align-items: center; justify-content: center; text-align: center; }
+  .card .foot { padding: 3px 4px; }
+  .card .nmrow { display: flex; gap: 4px; align-items: baseline; }
+  .card .cardname { flex: 1; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card .cost { font-weight: 800; font-size: 10px; color: #e0cf90; white-space: nowrap; }
+  .card .tlrow { display: flex; gap: 4px; align-items: baseline; margin-top: 1px; }
+  .card .tl { flex: 1; font-size: 9px; opacity: .58; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card .pt2 { font-weight: 800; font-size: 11px; color: #f0f2f6; white-space: nowrap; }
+  /* subtle type tint on the footer for at-a-glance category reading */
+  .card .foot.cat-land     { background: #241f14; }
+  .card .foot.cat-creature { background: #1b241a; }
+  .card .foot.cat-spell    { background: #1a2031; }
+  .card .foot.cat-pw       { background: #2a1f2c; }
+  .card .foot.cat-artifact { background: #1f242b; }
+  .card .foot.cat-ench     { background: #231f2a; }
+  .card.fallback { padding: 6px 4px; min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 
   /* combat affordances */
   .card.selectable { cursor: pointer; border-color: #6b8; }
@@ -155,6 +166,34 @@ function artUrl(name) {
   return "https://api.scryfall.com/cards/named?format=image&exact=" + encodeURIComponent(name);
 }
 
+// "{2}{G}{G}" -> "2GG" (compact for the narrow card footer; full cost is in the tooltip)
+function compactCost(cost) {
+  return cost ? cost.replace(/[{}]/g, "") : "";
+}
+
+// a coarse type category for the subtle footer tint
+function categoryClass(c) {
+  if (!c.type_line) return "";
+  if (c.is_land) return "cat-land";
+  if (c.power !== null && c.power !== undefined) return "cat-creature";
+  const t = c.type_line;
+  if (t.indexOf("Instant") >= 0 || t.indexOf("Sorcery") >= 0) return "cat-spell";
+  if (t.indexOf("Planeswalker") >= 0) return "cat-pw";
+  if (t.indexOf("Artifact") >= 0) return "cat-artifact";
+  if (t.indexOf("Enchantment") >= 0) return "cat-ench";
+  return "";
+}
+
+// summarize a player's mana picture from their public battlefield
+function manaGauge(p) {
+  const lands = p.battlefield.filter(c => c.is_land);
+  const untapped = lands.filter(c => !c.tapped).length;
+  let s = "";
+  if (lands.length) s += untapped + "/" + lands.length + " lands untapped";
+  if (p.mana_pool) s += (s ? " · " : "") + "+" + p.mana_pool + " floating";
+  return s;
+}
+
 function cardEl(c, opts) {
   opts = opts || {};
   const div = document.createElement("div");
@@ -172,14 +211,37 @@ function cardEl(c, opts) {
   } else {
     div.classList.add("fallback");
   }
+  // footer: name + mana cost on one row, type line + P/T beneath
+  const hasPT = (c.power !== null && c.power !== undefined);
+  const foot = document.createElement("div");
+  foot.className = "foot " + categoryClass(c);
+  const row = document.createElement("div");
+  row.className = "nmrow";
   const nm = document.createElement("div");
-  nm.className = "nm"; nm.textContent = name;
-  div.appendChild(nm);
-  if (c.power !== null && c.power !== undefined) {
-    const pt = document.createElement("div");
-    pt.className = "pt"; pt.textContent = c.power + "/" + c.toughness;
-    div.appendChild(pt);
+  nm.className = "cardname"; nm.textContent = name;
+  row.appendChild(nm);
+  if (c.mana_cost) {
+    const cost = document.createElement("div");
+    cost.className = "cost"; cost.textContent = compactCost(c.mana_cost);
+    row.appendChild(cost);
   }
+  foot.appendChild(row);
+  if (c.type_line || hasPT) {
+    const tlrow = document.createElement("div");
+    tlrow.className = "tlrow";
+    const tl = document.createElement("div");
+    tl.className = "tl"; tl.textContent = c.type_line || "";
+    tlrow.appendChild(tl);
+    if (hasPT) {
+      const pt = document.createElement("div");
+      pt.className = "pt2"; pt.textContent = c.power + "/" + c.toughness;
+      tlrow.appendChild(pt);
+    }
+    foot.appendChild(tlrow);
+  }
+  div.appendChild(foot);
+  // full info on hover (footer text truncates)
+  div.title = name + (c.mana_cost ? "  " + c.mana_cost : "") + (c.type_line ? "\n" + c.type_line : "");
   if (opts.badge) {
     const b = document.createElement("div");
     b.className = "badge " + (opts.badgeCls || "");
@@ -286,9 +348,11 @@ function renderPlayer(container, p, isYou, cm) {
   container.innerHTML = "";
   const title = document.createElement("div");
   title.className = "ptitle";
+  const gauge = manaGauge(p);
   title.innerHTML =
     '<span class="name">' + (isYou ? "You" : "Opponent") + " (P" + p.id + ')</span>' +
     '<span class="life">' + p.life + " life</span>" +
+    (gauge ? '<span class="mana">' + gauge + "</span>" : "") +
     '<span class="counts">hand ' + p.hand_count + " · library " + p.library_count +
       " · graveyard " + p.graveyard_count + "</span>";
   container.appendChild(title);

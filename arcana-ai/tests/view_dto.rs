@@ -38,6 +38,24 @@ fn session_view_serializes_and_carries_the_perspective_hand() {
     assert!(view.players[1].hand.is_empty(), "opponent hand is not revealed");
     assert!(view.players[1].hand_count >= 1);
 
+    // Card-type / mana display fields are populated for the visible hand: every
+    // card has a printed type line, `is_land` agrees with it, and a present mana
+    // cost implies a matching nonzero mana value (lands have neither).
+    for c in &view.players[0].hand {
+        assert!(!c.type_line.is_empty(), "{} should have a type line", c.name);
+        assert_eq!(c.is_land, c.type_line.contains("Land"),
+            "is_land must agree with the type line for {}", c.name);
+        if c.is_land {
+            assert!(c.mana_cost.is_none() && c.mana_value == 0, "a land has no mana cost");
+        }
+        if let Some(cost) = &c.mana_cost {
+            assert!(cost.starts_with('{'), "rendered cost is pip-formatted: {cost}");
+        }
+    }
+    // Floating mana pools start empty.
+    assert_eq!(view.players[0].mana_pool, 0);
+    assert_eq!(view.players[1].mana_pool, 0);
+
     // Round-trips through JSON unchanged — the web transport contract.
     let json = serde_json::to_string(&view).expect("serialize");
     let back: ViewState = serde_json::from_str(&json).expect("deserialize");
