@@ -146,14 +146,22 @@
   .zone-head .zone-toggle { font-size: 10px; color: var(--text-faint); text-transform: none; letter-spacing: 0; }
   .zone-head.toggle:hover .zone-toggle { color: var(--text-muted); }
 
-  /* collapsed lands: compact chips (one per name+tapped group), wrap + scroll */
-  .landstrip { min-width: 0; }
-  .landstrip .land-chips { flex: 1; min-height: 0; display: flex; flex-wrap: wrap;
-    align-content: flex-start; gap: 6px; overflow-y: auto; padding-top: 2px; }
+  /* collapsed lands: a VERTICAL chip column, sized to content + pinned left so
+     lands stay confined to a narrow left strip; scrolls if tall. */
+  .landstrip { flex: 0 0 auto; min-width: 0; }
+  .landstrip .land-chips { flex: 1; min-height: 0; display: flex; flex-direction: column;
+    flex-wrap: nowrap; gap: 4px; overflow-y: auto; padding-top: 2px; }
   .land-chip {
-    font-family: var(--font-sans); font-size: 12px; line-height: 1.4; white-space: nowrap;
+    display: flex; align-items: baseline; gap: 8px; justify-content: space-between;
+    min-width: 116px; max-width: 220px;
+    font-family: var(--font-sans); font-size: 12px; line-height: 1.4;
     padding: 3px 8px; border: 1px solid var(--border); border-radius: var(--radius-control);
-    color: var(--text); background: var(--bg); font-variant-numeric: tabular-nums; height: fit-content;
+    color: var(--text); background: var(--bg); font-variant-numeric: tabular-nums;
+  }
+  .land-chip .lc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .land-chip .lc-n {
+    flex: 0 0 auto; font-size: 10px; padding: 0 5px; border-radius: 999px;
+    background: var(--bg-offset); color: var(--text-muted); border: 1px solid var(--border-muted);
   }
   .land-chip.tapped { color: var(--text-faint); border-color: var(--border-muted); font-style: italic; }
   .land-chip.clickable { cursor: pointer; }
@@ -930,8 +938,7 @@ function renderBattlefield(container, p, isYou, cm) {
 // each "Name ×N", tapped dimmed. Clicking an untapped group taps one for mana.
 function renderLandStrip(lands, isYou, head) {
   const z = document.createElement("div");
-  z.className = "zone landstrip";
-  z.style.flexGrow = "1";
+  z.className = "zone landstrip"; // CSS sizes it to content (narrow left strip)
   z.appendChild(head);
   const wrap = document.createElement("div");
   wrap.className = "land-chips";
@@ -944,8 +951,15 @@ function renderLandStrip(lands, isYou, head) {
     const rep = g[0];
     const chip = document.createElement("div");
     chip.className = "land-chip" + (rep.tapped ? " tapped" : "");
-    chip.textContent = rep.name + (g.length > 1 ? " ×" + g.length : "");
     chip.title = rep.name + (rep.tapped ? " (tapped)" : "");
+    const nm = document.createElement("span");
+    nm.className = "lc-name"; nm.textContent = rep.name;
+    chip.appendChild(nm);
+    if (g.length > 1) {
+      const n = document.createElement("span");
+      n.className = "lc-n"; n.textContent = "×" + g.length;
+      chip.appendChild(n);
+    }
     if (isYou && !rep.tapped) {
       const acts = activateActionsFor(rep.id);
       if (acts.length) { chip.classList.add("clickable"); chip.onclick = (ev) => onPermanentClick(acts, ev); }
