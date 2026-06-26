@@ -158,12 +158,18 @@ impl TargetRequirement {
             return false;
         }
         if let Some(ctrl) = &self.controller {
-            // Controller constraint only meaningful for object targets.
-            if let Some(id) = choice.object_id() {
-                if let Some(obj) = state.objects.get(id) {
-                    if !ctrl.matches(obj.controller, source_controller) {
-                        return false;
-                    }
+            // The constraint applies to the target's controller. For a PLAYER
+            // target the player IS that controller (so "target opponent" can't
+            // pick yourself — Soldevi Steam Beast); for an object target it's the
+            // object's controller.
+            let target_controller = choice.player_id().or_else(|| {
+                choice.object_id()
+                    .and_then(|id| state.objects.get(id))
+                    .map(|obj| obj.controller)
+            });
+            if let Some(pc) = target_controller {
+                if !ctrl.matches(pc, source_controller) {
+                    return false;
                 }
             }
         }
@@ -1348,6 +1354,24 @@ mod tests {
         obj.controller = controller;
         state.objects.insert(obj);
         id
+    }
+
+    /// "target opponent" (e.g. Soldevi Steam Beast) must reject targeting
+    /// yourself — the outer controller constraint applies to PLAYER targets, not
+    /// just object targets.
+    #[test]
+    fn player_target_honors_opponent_controller_constraint() {
+        let s = GameState::new(2, 0);
+        let req = TargetRequirement {
+            filter: TargetFilter::Player,
+            count: TargetCount::Exactly(1),
+            controller: Some(ControllerConstraint::Opponent),
+        };
+        let src = crate::objects::NULL_OBJECT_ID;
+        assert!(!req.matches_choice(&TargetChoice::Player(0), &s, src, 0),
+            "opponent-only must reject targeting yourself");
+        assert!(req.matches_choice(&TargetChoice::Player(1), &s, src, 0),
+            "opponent-only must accept an opponent");
     }
 
     fn put_sorcery(state: &mut GameState, owner: PlayerId, zone: Zone) -> ObjectId {
