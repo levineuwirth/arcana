@@ -30,6 +30,7 @@ pub mod render;
 pub mod view;
 pub mod glossary;
 pub mod catalog;
+pub mod deck;
 
 // Re-export core types for convenience
 pub use state::GameState;

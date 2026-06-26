@@ -48,6 +48,15 @@
   #decklist .row .n { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #decklist .row button { padding: 0 7px; }
   .sectlabel { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; opacity: .55; margin: 8px 0 3px; }
+  #decklist .row button.mv { padding: 0 5px; font-size: 11px; opacity: .7; }
+  #legality.ok { color: #8fd0a0; } #legality.bad { color: #e69a8a; }
+  /* import/export overlay */
+  #io { display: none; position: fixed; inset: 0; z-index: 90; background: rgba(8,9,12,.8); align-items: center; justify-content: center; }
+  #io.show { display: flex; }
+  #io .iobox { width: min(560px, 92vw); background: #1a1d24; border: 1px solid #3a4150; border-radius: 10px; padding: 12px; }
+  #io .iohdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  #io textarea { width: 100%; height: 50vh; resize: vertical; font-family: ui-monospace, monospace; font-size: 12px; background: #12141a; color: #e7e9ee; border: 1px solid #2a2f3a; border-radius: 6px; padding: 8px; }
+  #io .iobtns { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
   /* zoom */
   #zoom { display: none; position: fixed; inset: 0; z-index: 100; cursor: zoom-out; background: rgba(8,9,12,.85); align-items: center; justify-content: center; flex-direction: column; gap: 10px; }
   #zoom.show { display: flex; }
@@ -62,7 +71,12 @@
     <input id="deckname" placeholder="deck name" size="14" />
     <button id="save">Save</button>
     <select id="loadsel"><option value="">load…</option></select>
+    <button id="import">Import</button>
+    <button id="export">Export</button>
     <button id="clear">Clear</button>
+    <select id="format"></select>
+    <span id="legality" class="muted"></span>
+    <span class="spacer"></span>
     <span id="total" class="muted"></span>
     <button id="play" class="primary">Play this deck</button>
   </header>
@@ -100,21 +114,38 @@
     </aside>
   </main>
 
+  <div id="io">
+    <div class="iobox">
+      <div class="iohdr"><b id="iotitle">Import deck</b><button id="ioclose">✕</button></div>
+      <textarea id="iotext" spellcheck="false" placeholder="Paste an Arena/MTGO deck list…&#10;&#10;Deck&#10;4 Lightning Bolt&#10;20 Mountain"></textarea>
+      <div class="iobtns"><button id="iodo" class="primary">Import</button><span id="iomsg" class="muted"></span></div>
+    </div>
+  </div>
+
   <div id="zoom"><img id="zoomimg" alt="card" /></div>
 
 <script>
 "use strict";
 
-const deck = new Map();   // cardId -> { info, count }
+const main = new Map();   // cardId -> { info, count }  (maindeck)
+const side = new Map();   // cardId -> { info, count }  (sideboard)
 let glossary = {};
+let formats = [];
+let curFormat = null;
+let legalityTimer = null;
 
 function artUrl(name) {
   return "https://api.scryfall.com/cards/named?format=image&exact=" + encodeURIComponent(name);
 }
 function compactCost(c) { return c ? c.replace(/[{}]/g, "") : ""; }
+function mapTotal(m) { let t = 0; for (const e of m.values()) t += e.count; return t; }
+function sortedEntries(m) {
+  return [...m.values()].sort((a, b) =>
+    a.info.mana_value - b.info.mana_value || a.info.name.localeCompare(b.info.name));
+}
 
 // ---- card tiles ----
-function tile(info, inResults) {
+function tile(info) {
   const div = document.createElement("div");
   div.className = "card";
   const img = document.createElement("img");
@@ -126,7 +157,7 @@ function tile(info, inResults) {
     cost.className = "cost"; cost.textContent = compactCost(info.mana_cost);
     div.appendChild(cost);
   }
-  const have = deck.get(info.id);
+  const have = main.get(info.id);
   if (have) {
     const cnt = document.createElement("div");
     cnt.className = "cnt"; cnt.textContent = have.count;
@@ -137,36 +168,53 @@ function tile(info, inResults) {
   div.appendChild(nm);
   div.title = info.name + (info.mana_cost ? "  " + info.mana_cost : "") + "\n" + info.type_line +
     (info.keywords.length ? "\n" + info.keywords.join(", ") : "");
-  div.onclick = () => { addCard(info); };
+  div.onclick = () => addCard(main, info);
   div.oncontextmenu = (e) => { e.preventDefault(); zoom(info.name); };
   return div;
 }
 
-// ---- deck ops ----
-function addCard(info) { const e = deck.get(info.id); if (e) e.count++; else deck.set(info.id, { info, count: 1 }); render(); }
-function setCount(id, n) { const e = deck.get(id); if (!e) return; e.count = n; if (e.count <= 0) deck.delete(id); render(); }
-function clearDeck() { deck.clear(); render(); }
-function deckTotal() { let t = 0; for (const e of deck.values()) t += e.count; return t; }
+// ---- deck ops (generic over a map: main or side) ----
+function addCard(m, info) { const e = m.get(info.id); if (e) e.count++; else m.set(info.id, { info, count: 1 }); render(); }
+function setCount(m, id, n) { const e = m.get(id); if (!e) return; e.count = n; if (e.count <= 0) m.delete(id); render(); }
+function moveCard(from, to, info) { setCountSilent(from, info.id, (from.get(info.id)?.count || 0) - 1); addCardSilent(to, info); render(); }
+function setCountSilent(m, id, n) { const e = m.get(id); if (!e) return; e.count = n; if (e.count <= 0) m.delete(id); }
+function addCardSilent(m, info) { const e = m.get(info.id); if (e) e.count++; else m.set(info.id, { info, count: 1 }); }
 
 function render() {
-  // re-render result counts + deck panel
-  document.querySelectorAll("#results .card").forEach(el => {});  // counts updated on next search render; cheap to skip
   renderDeck();
-  // refresh result tiles' count badges by re-rendering them if present
   if (window._lastResults) renderResults(window._lastResults);
+  scheduleLegality();
+}
+
+function sectionRows(container, m, isSide) {
+  if (!m.size) { const e = document.createElement("div"); e.className = "muted"; e.textContent = isSide ? "(empty)" : "empty — click cards to add"; container.appendChild(e); return; }
+  for (const { info, count } of sortedEntries(m)) {
+    const row = document.createElement("div"); row.className = "row";
+    const minus = document.createElement("button"); minus.textContent = "−"; minus.onclick = () => setCount(m, info.id, count - 1);
+    const cnt = document.createElement("span"); cnt.textContent = count; cnt.style.minWidth = "14px"; cnt.style.textAlign = "center";
+    const plus = document.createElement("button"); plus.textContent = "+"; plus.onclick = () => setCount(m, info.id, count + 1);
+    const n = document.createElement("span"); n.className = "n"; n.textContent = info.name;
+    n.title = info.type_line; n.style.cursor = "zoom-in"; n.oncontextmenu = (e) => { e.preventDefault(); zoom(info.name); };
+    const cost = document.createElement("span"); cost.className = "muted"; cost.textContent = compactCost(info.mana_cost);
+    const mv = document.createElement("button"); mv.className = "mv"; mv.textContent = isSide ? "→main" : "→SB";
+    mv.title = isSide ? "move to maindeck" : "move to sideboard";
+    mv.onclick = () => moveCard(isSide ? side : main, isSide ? main : side, info);
+    row.append(minus, cnt, plus, n, cost, mv);
+    container.appendChild(row);
+  }
 }
 
 function renderDeck() {
-  const total = deckTotal();
-  document.getElementById("total").textContent = total + " cards";
+  const total = mapTotal(main);
+  document.getElementById("total").textContent = total + " main · " + mapTotal(side) + " SB";
   document.getElementById("play").disabled = total < 7;
 
-  // stats: mana curve (nonland) + color counts
+  // stats: mana curve (nonland) + color counts (maindeck)
   const stats = document.getElementById("deckstats");
-  const bins = [0,0,0,0,0,0,0,0]; // 0,1,2,3,4,5,6,7+
+  const bins = [0,0,0,0,0,0,0,0];
   const colorCount = { W:0,U:0,B:0,R:0,G:0,C:0 };
   let lands = 0;
-  for (const { info, count } of deck.values()) {
+  for (const { info, count } of main.values()) {
     if (info.is_land) lands += count;
     else bins[Math.min(info.mana_value, 7)] += count;
     if (info.colors.length === 0) colorCount.C += count;
@@ -181,25 +229,34 @@ function renderDeck() {
     `<div class="curve">${curve}</div>` +
     `<div class="muted" style="margin-top:18px">${colors || "—"}</div>`;
 
-  // list, sorted by mana value then name
   const list = document.getElementById("decklist");
   list.innerHTML = "";
-  const lbl = document.createElement("div"); lbl.className = "sectlabel"; lbl.textContent = "Decklist";
-  list.appendChild(lbl);
-  const entries = [...deck.values()].sort((a,b) =>
-    a.info.mana_value - b.info.mana_value || a.info.name.localeCompare(b.info.name));
-  if (!entries.length) { const e = document.createElement("div"); e.className = "muted"; e.textContent = "empty — click cards to add"; list.appendChild(e); }
-  for (const { info, count } of entries) {
-    const row = document.createElement("div"); row.className = "row";
-    const minus = document.createElement("button"); minus.textContent = "−"; minus.onclick = () => setCount(info.id, count - 1);
-    const cnt = document.createElement("span"); cnt.textContent = count; cnt.style.minWidth = "14px"; cnt.style.textAlign = "center";
-    const plus = document.createElement("button"); plus.textContent = "+"; plus.onclick = () => setCount(info.id, count + 1);
-    const n = document.createElement("span"); n.className = "n"; n.textContent = info.name;
-    n.title = info.type_line; n.style.cursor = "zoom-in"; n.oncontextmenu = (e) => { e.preventDefault(); zoom(info.name); };
-    const cost = document.createElement("span"); cost.className = "muted"; cost.textContent = compactCost(info.mana_cost);
-    row.append(minus, cnt, plus, n, cost);
-    list.appendChild(row);
-  }
+  const ml = document.createElement("div"); ml.className = "sectlabel"; ml.textContent = "Maindeck"; list.appendChild(ml);
+  sectionRows(list, main, false);
+  const sl = document.createElement("div"); sl.className = "sectlabel"; sl.textContent = "Sideboard"; list.appendChild(sl);
+  sectionRows(list, side, true);
+}
+
+// ---- legality ----
+function scheduleLegality() {
+  clearTimeout(legalityTimer);
+  legalityTimer = setTimeout(checkLegality, 200);
+}
+async function checkLegality() {
+  const el = document.getElementById("legality");
+  if (!curFormat) { el.textContent = ""; return; }
+  const body = {
+    main: [...main.values()].map(({ info, count }) => [info.id, count]),
+    sideboard: [...side.values()].map(({ info, count }) => [info.id, count]),
+    spec: curFormat,
+  };
+  try {
+    const r = await fetch("/legality", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const rep = await r.json();
+    el.className = rep.legal ? "ok" : "bad";
+    el.textContent = rep.legal ? "✓ legal" : ("✗ " + rep.violations.length + " issue" + (rep.violations.length > 1 ? "s" : ""));
+    el.title = rep.violations.join("\n") || "legal for " + rep.format;
+  } catch (e) { el.textContent = ""; }
 }
 
 // ---- search ----
@@ -238,27 +295,73 @@ function refreshLoadSelect() {
   sel.innerHTML = '<option value="">load…</option>';
   for (const name of Object.keys(savedDecks())) { const o = document.createElement("option"); o.value = name; o.textContent = name; sel.appendChild(o); }
 }
+function loadEntries(m, arr) { m.clear(); for (const { info, count } of (arr || [])) m.set(info.id, { info, count }); }
 function saveDeck() {
   const name = document.getElementById("deckname").value.trim();
   if (!name) { alert("Name the deck first."); return; }
   const decks = savedDecks();
-  decks[name] = [...deck.values()].map(({ info, count }) => ({ info, count }));
+  decks[name] = {
+    main: [...main.values()].map(({ info, count }) => ({ info, count })),
+    side: [...side.values()].map(({ info, count }) => ({ info, count })),
+  };
   localStorage.setItem("arcana.decks", JSON.stringify(decks));
   refreshLoadSelect();
 }
 function loadDeck(name) {
   const d = savedDecks()[name]; if (!d) return;
-  deck.clear();
-  for (const { info, count } of d) deck.set(info.id, { info, count });
+  // tolerate the old flat format (array == maindeck only)
+  loadEntries(main, Array.isArray(d) ? d : d.main);
+  loadEntries(side, Array.isArray(d) ? [] : d.side);
   document.getElementById("deckname").value = name;
   render();
+}
+function clearDeck() { main.clear(); side.clear(); render(); }
+
+// ---- import / export ----
+function openIo(mode) {
+  const io = document.getElementById("io");
+  document.getElementById("iotitle").textContent = mode === "export" ? "Export deck" : "Import deck";
+  document.getElementById("iodo").textContent = mode === "export" ? "Copy" : "Import";
+  document.getElementById("iomsg").textContent = "";
+  const ta = document.getElementById("iotext");
+  if (mode === "export") { ta.value = exportText(); ta.readOnly = false; }
+  else { ta.value = ""; ta.readOnly = false; }
+  io.dataset.mode = mode;
+  io.classList.add("show");
+  ta.focus();
+}
+function closeIo() { document.getElementById("io").classList.remove("show"); }
+function exportText() {
+  const name = document.getElementById("deckname").value.trim() || "Untitled";
+  let s = "About\nName " + name + "\n\nDeck\n";
+  for (const { info, count } of sortedEntries(main)) s += count + " " + info.name + "\n";
+  if (side.size) { s += "\nSideboard\n"; for (const { info, count } of sortedEntries(side)) s += count + " " + info.name + "\n"; }
+  return s;
+}
+async function ioAction() {
+  const io = document.getElementById("io");
+  const ta = document.getElementById("iotext");
+  if (io.dataset.mode === "export") {
+    try { await navigator.clipboard.writeText(ta.value); document.getElementById("iomsg").textContent = "copied"; }
+    catch { ta.select(); document.getElementById("iomsg").textContent = "select + copy manually"; }
+    return;
+  }
+  const r = await fetch("/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: ta.value }) });
+  if (!r.ok) { document.getElementById("iomsg").textContent = "import failed"; return; }
+  const d = await r.json();
+  loadEntries(main, d.main); loadEntries(side, d.sideboard);
+  if (d.name) document.getElementById("deckname").value = d.name;
+  render();
+  if (d.unresolved.length) {
+    document.getElementById("iomsg").textContent = "imported; unresolved: " + d.unresolved.map(([n, c]) => c + " " + n).join(", ");
+  } else { closeIo(); }
 }
 
 // ---- play ----
 async function playDeck() {
   const ids = [];
-  for (const { info, count } of deck.values()) for (let i = 0; i < count; i++) ids.push(info.id);
-  if (ids.length < 7) { alert("Need at least 7 cards (40–60 recommended)."); return; }
+  for (const { info, count } of main.values()) for (let i = 0; i < count; i++) ids.push(info.id);
+  if (ids.length < 7) { alert("Need at least 7 maindeck cards (40–60 recommended)."); return; }
   const r = await fetch("/new", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ deck: ids }) });
   if (r.ok) window.location = "/"; else alert("Could not start a game with this deck.");
 }
@@ -266,7 +369,7 @@ async function playDeck() {
 // ---- zoom ----
 function zoom(name) { const z = document.getElementById("zoom"); document.getElementById("zoomimg").src = artUrl(name); z.classList.add("show"); }
 document.getElementById("zoom").onclick = () => document.getElementById("zoom").classList.remove("show");
-document.addEventListener("keydown", e => { if (e.key === "Escape") document.getElementById("zoom").classList.remove("show"); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") { document.getElementById("zoom").classList.remove("show"); closeIo(); } });
 
 // ---- wire ----
 document.getElementById("search").onsubmit = (e) => { e.preventDefault(); search(); };
@@ -274,11 +377,20 @@ document.getElementById("save").onclick = saveDeck;
 document.getElementById("clear").onclick = () => { if (confirm("Clear the deck?")) clearDeck(); };
 document.getElementById("loadsel").onchange = (e) => { if (e.target.value) loadDeck(e.target.value); };
 document.getElementById("play").onclick = playDeck;
+document.getElementById("import").onclick = () => openIo("import");
+document.getElementById("export").onclick = () => openIo("export");
+document.getElementById("ioclose").onclick = closeIo;
+document.getElementById("iodo").onclick = ioAction;
+document.getElementById("format").onchange = (e) => { curFormat = formats[+e.target.value] || null; checkLegality(); };
 
 async function init() {
   try { const r = await fetch("/glossary"); if (r.ok) glossary = await r.json(); } catch {}
   const kwsel = document.getElementById("q-kw");
   for (const k of Object.keys(glossary).sort()) { const o = document.createElement("option"); o.textContent = k; kwsel.appendChild(o); }
+  try { const r = await fetch("/formats"); if (r.ok) formats = await r.json(); } catch {}
+  const fsel = document.getElementById("format");
+  formats.forEach((f, i) => { const o = document.createElement("option"); o.value = i; o.textContent = f.name; fsel.appendChild(o); });
+  curFormat = formats[0] || null;
   refreshLoadSelect();
   render();
   search(); // initial unconstrained page

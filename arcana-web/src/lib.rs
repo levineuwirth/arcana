@@ -20,6 +20,8 @@ use std::fmt;
 use arcana_ai::search::{MaterialValue, ValueMcPolicy};
 use arcana_ai::session::{Seat, Session, Turn};
 use arcana_core::actions::Action;
+use arcana_core::catalog::{card_info, CardInfo};
+use arcana_core::deck::parse_deck_text;
 use arcana_core::combat::{
     attacker_options, blocker_options, damage_targets, match_attack, match_block, match_damage,
     match_ordering, ordering_targets, AttackerDeclaration, BlockerDeclaration, DamageAssignment,
@@ -38,6 +40,40 @@ use serde::{Deserialize, Serialize};
 pub const HUMAN: PlayerId = 0;
 /// Deck seed for the (mirrored) sample decks — fixed so both seats are even.
 pub const DECK_SEED: u64 = 7;
+
+/// A resolved deck entry for the deckbuilder: the full card info plus its count.
+#[derive(Clone, Debug, Serialize, PartialEq)]
+pub struct DeckEntry {
+    pub info: CardInfo,
+    pub count: u32,
+}
+
+/// The result of importing a deck list: resolved main + sideboard (renderable
+/// cards) and the names that didn't resolve against the catalog.
+#[derive(Clone, Debug, Serialize, PartialEq)]
+pub struct ImportedDeck {
+    pub name: String,
+    pub main: Vec<DeckEntry>,
+    pub sideboard: Vec<DeckEntry>,
+    pub unresolved: Vec<(String, u32)>,
+}
+
+/// Parse an Arena/MTGO deck list and project each resolved id to a [`CardInfo`]
+/// so the deckbuilder can render it directly.
+pub fn resolve_import(reg: &CardRegistry, text: &str) -> ImportedDeck {
+    let p = parse_deck_text(text, reg);
+    let proj = |entries: &[(arcana_core::types::CardId, u32)]| -> Vec<DeckEntry> {
+        entries.iter()
+            .filter_map(|(id, count)| card_info(reg, *id).map(|info| DeckEntry { info, count: *count }))
+            .collect()
+    };
+    ImportedDeck {
+        name: p.name,
+        main: proj(&p.main),
+        sideboard: proj(&p.sideboard),
+        unresolved: p.unresolved,
+    }
+}
 
 /// One opponent action worth showing the human ("Opponent: cast …").
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

@@ -21,6 +21,10 @@
 //!   put the chosen cards on the bottom of the library. Malformed → 400.
 //! * `POST /search` → body `CardQuery` (name/colors/types/keywords/cmc/limit), the
 //!   catalog query for deckbuilding; returns `[CardInfo, …]` (capped at 200).
+//! * `GET  /formats`→ built-in `[FormatSpec]` for the legality selector.
+//! * `POST /import` → body `{ "text": "<deck list>" }`, parse Arena/MTGO format →
+//!   resolved `ImportedDeck` (main/sideboard CardInfos + unresolved names).
+//! * `POST /legality`→ body `{ main, sideboard, spec }` → `LegalityReport`.
 //! * `POST /new`    → optional body `{ "seed": N }`, start a fresh game.
 //!
 //! ## Concurrency / lifetime note
@@ -37,10 +41,11 @@ use std::net::SocketAddr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use arcana_core::catalog::{CardInfo, CardQuery};
+use arcana_core::deck::{check_legality, builtin_formats, FormatSpec, LegalityReport};
 use arcana_core::objects::ObjectId;
 use arcana_core::registry::CardRegistry;
 use arcana_core::types::CardId;
-use arcana_web::{CombatSubmission, GameCore, StateResponse};
+use arcana_web::{resolve_import, CombatSubmission, GameCore, ImportedDeck, StateResponse};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Response};
@@ -62,6 +67,13 @@ enum Command {
     AutoTap { target: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
     Bottom { ids: Vec<ObjectId>, reply: oneshot::Sender<Result<StateResponse, String>> },
     Search { query: CardQuery, reply: oneshot::Sender<Vec<CardInfo>> },
+    Import { text: String, reply: oneshot::Sender<ImportedDeck> },
+    Legality {
+        main: Vec<(CardId, u32)>,
+        sideboard: Vec<(CardId, u32)>,
+        spec: FormatSpec,
+        reply: oneshot::Sender<LegalityReport>,
+    },
     New { seed: Option<u64>, deck: Option<Vec<CardId>>, reply: oneshot::Sender<StateResponse> },
 }
 
@@ -85,6 +97,20 @@ struct AutoTapRequest {
 #[derive(Debug, Deserialize)]
 struct BottomRequest {
     ids: Vec<ObjectId>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ImportRequest {
+    text: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct LegalityRequest {
+    #[serde(default)]
+    main: Vec<(CardId, u32)>,
+    #[serde(default)]
+    sideboard: Vec<(CardId, u32)>,
+    spec: FormatSpec,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -150,6 +176,12 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>) {
             Command::Search { query, reply } => {
                 let _ = reply.send(arcana_core::catalog::query(core.registry(), &query));
             }
+            Command::Import { text, reply } => {
+                let _ = reply.send(resolve_import(core.registry(), &text));
+            }
+            Command::Legality { main, sideboard, spec, reply } => {
+                let _ = reply.send(check_legality(&main, &sideboard, &spec, core.registry()));
+            }
             Command::New { seed, deck, reply } => {
                 let seed = seed.unwrap_or_else(time_seed);
                 core = match deck {
@@ -173,6 +205,48 @@ async fn index() -> Html<&'static str> {
 
 async fn deckbuilder() -> Html<&'static str> {
     Html(DECK_HTML)
+}
+
+/// The built-in deck formats (static — the UI populates a selector and the legality
+/// engine treats built-in and user-defined specs identically).
+async fn get_formats() -> Json<Vec<FormatSpec>> {
+    Json(builtin_formats())
+}
+
+async fn post_import(State(app): State<AppState>, body: String) -> Response {
+    let req: ImportRequest = match serde_json::from_str(&body) {
+        Ok(r) => r,
+        Err(e) => {
+            return (StatusCode::BAD_REQUEST, err(format!("invalid /import body: {e}"))).into_response()
+        }
+    };
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::Import { text: req.text, reply }).is_err() {
+        return worker_gone();
+    }
+    match rx.await {
+        Ok(deck) => Json(deck).into_response(),
+        Err(_) => worker_gone(),
+    }
+}
+
+async fn post_legality(State(app): State<AppState>, body: String) -> Response {
+    let req: LegalityRequest = match serde_json::from_str(&body) {
+        Ok(r) => r,
+        Err(e) => {
+            return (StatusCode::BAD_REQUEST, err(format!("invalid /legality body: {e}"))).into_response()
+        }
+    };
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::Legality {
+        main: req.main, sideboard: req.sideboard, spec: req.spec, reply,
+    }).is_err() {
+        return worker_gone();
+    }
+    match rx.await {
+        Ok(report) => Json(report).into_response(),
+        Err(_) => worker_gone(),
+    }
 }
 
 /// The keyword glossary (base name -> reminder text). Static — no game state, so
@@ -313,6 +387,9 @@ async fn main() {
     let app = Router::new()
         .route("/", get(index))
         .route("/deck", get(deckbuilder))
+        .route("/formats", get(get_formats))
+        .route("/import", post(post_import))
+        .route("/legality", post(post_legality))
         .route("/glossary", get(get_glossary))
         .route("/state", get(get_state))
         .route("/action", post(post_action))
