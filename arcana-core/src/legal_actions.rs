@@ -4448,6 +4448,66 @@ mod tests {
         assert!(!flattened.contains(&vec![(b1, 1), (b2, 4)]));
     }
 
+    /// The incremental-combat helpers (ordering_targets / match_ordering /
+    /// damage_targets / match_damage) work against the ENGINE's real enumerated
+    /// legal lists, not just synthetic ones — the path the human-play frontend
+    /// drives. 5/5 attacker double-blocked by a 2/2 and a 1/4.
+    #[test]
+    fn combat_ui_helpers_match_real_enumeration() {
+        use crate::combat::{
+            damage_targets, match_damage, match_ordering, ordering_targets,
+            AttackerDeclaration, BlockerDeclaration, DamageAssignment, DefendingEntity,
+            PendingDamagePass,
+        };
+        let reg = CardRegistry::new();
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        let mk = |s: &mut GameState, owner, p, t| {
+            let id = s.allocate_object_id();
+            let mut obj = GameObject::new(id, owner, Zone::Battlefield, 0, creature_chars(p, t));
+            obj.controller = owner;
+            obj.status.summoning_sick = false;
+            s.objects.insert(obj);
+            id
+        };
+        let atk = mk(&mut s, 0, 5, 5);
+        let b1 = mk(&mut s, 1, 2, 2);
+        let b2 = mk(&mut s, 1, 1, 4);
+        s.apply_declared_attackers(vec![AttackerDeclaration {
+            attacker: atk, defending: DefendingEntity::Player(1),
+        }]);
+        s.enter_declare_blockers();
+        s.apply_declared_blockers(vec![
+            BlockerDeclaration { blocker: b1, blocking: atk },
+            BlockerDeclaration { blocker: b2, blocking: atk },
+        ]);
+
+        // --- ordering ---
+        let legal = legal_actions(&s, &reg);
+        let targets = ordering_targets(&legal);
+        assert_eq!(targets.len(), 1);
+        assert_eq!(targets[0].0, atk);
+        assert_eq!(targets[0].1.len(), 2, "two blockers to order");
+        // Both permutations match a real legal ordering; a bogus one doesn't.
+        assert!(match_ordering(&legal, &[(atk, vec![b1, b2])]).is_some());
+        assert!(match_ordering(&legal, &[(atk, vec![b2, b1])]).is_some());
+        assert!(match_ordering(&legal, &[(atk, vec![b1, 9999])]).is_none());
+
+        // --- damage (after committing an order + opening the damage pass) ---
+        s.apply_blocker_ordering(vec![(atk, vec![b1, b2])]);
+        s.combat.as_mut().unwrap().pending_damage_assignment = Some(PendingDamagePass::Regular);
+        let legal = legal_actions(&s, &reg);
+        let dt = damage_targets(&legal);
+        assert_eq!(dt.len(), 1);
+        assert_eq!(dt[0].0, atk);
+        assert_eq!(dt[0].1, vec![b1, b2], "live order from the longest distribution");
+        let da = |dist| DamageAssignment { attacker: atk, distribution: dist };
+        assert!(match_damage(&legal, &[da(vec![(b1, 2), (b2, 3)])]).is_some());
+        assert!(match_damage(&legal, &[da(vec![(b1, 5)])]).is_some());
+        assert!(match_damage(&legal, &[da(vec![(b1, 1), (b2, 4)])]).is_none(),
+            "sub-lethal to first blocker is illegal");
+    }
+
     #[test]
     fn enumerate_trample_single_blocker_covers_overflow_range() {
         // CR 702.19b — a 5/5 trample attacker vs a 2/2 blocker has four

@@ -6,10 +6,11 @@
 use std::io::Write as _;
 
 use anyhow::{Context, Result};
-use arcana_core::actions::{Action, DecisionContext};
+use arcana_core::actions::Action;
 use arcana_core::combat::{
-    attacker_options, blocker_options, match_attack, match_block, AttackerDeclaration,
-    BlockerDeclaration, DefendingEntity,
+    attacker_options, blocker_options, damage_targets, match_attack, match_block, match_damage,
+    match_ordering, ordering_targets, AttackerDeclaration, BlockerDeclaration, DamageAssignment,
+    DefendingEntity,
 };
 use arcana_core::registry::CardRegistry;
 use arcana_core::render::{render, render_action, render_for, render_object_brief};
@@ -67,9 +68,10 @@ pub fn play(args: &[String]) -> Result<()> {
                 return Ok(());
             }
             Turn::AwaitingHuman { player, view, legal, context } => {
+                let _ = context;
                 println!("\n{}", render_for(&view.state, &reg, view.perspective));
-                println!("── P{player} to decide: {context:?} ──");
-                let Some(action) = prompt_action(&view.state, &reg, &legal, &context)? else {
+                println!("── P{player} to act ──");
+                let Some(action) = prompt_action(&view.state, &reg, &legal)? else {
                     println!("(quit)");
                     return Ok(());
                 };
@@ -79,15 +81,25 @@ pub fn play(args: &[String]) -> Result<()> {
     }
 }
 
-/// Present the decision and return the chosen action (`None` = quit). Combat
-/// declarations use an incremental builder; everything else is a numbered menu.
+/// Present the decision and return the chosen action (`None` = quit). Dispatch
+/// is by the ACTUAL legal-action shapes, not the `DecisionContext` label: the
+/// engine tags a priority window *during* a combat phase with that phase's
+/// context (e.g. a Pass/Activate window during DeclareBlockers), so trusting the
+/// context would route a priority window to the block builder. Routing on the
+/// actions present is robust — and the right contract for a GUI too.
 fn prompt_action(
-    state: &GameState, reg: &CardRegistry, legal: &[Action], context: &DecisionContext,
+    state: &GameState, reg: &CardRegistry, legal: &[Action],
 ) -> Result<Option<Action>> {
-    match context {
-        DecisionContext::DeclareAttackers => choose_attackers(state, reg, legal),
-        DecisionContext::DeclareBlockers => choose_blockers(state, reg, legal),
-        _ => choose_from_menu(state, reg, legal),
+    if legal.iter().any(|a| matches!(a, Action::DeclareAttackers { .. })) {
+        choose_attackers(state, reg, legal)
+    } else if legal.iter().any(|a| matches!(a, Action::DeclareBlockers { .. })) {
+        choose_blockers(state, reg, legal)
+    } else if legal.iter().any(|a| matches!(a, Action::OrderBlockers { .. })) {
+        choose_ordering(state, reg, legal)
+    } else if legal.iter().any(|a| matches!(a, Action::AssignCombatDamage { .. })) {
+        choose_damage(state, reg, legal)
+    } else {
+        choose_from_menu(state, reg, legal)
     }
 }
 
@@ -198,6 +210,93 @@ fn choose_blockers(
     }
 }
 
+/// CR 509.2 — order each multi-blocked attacker's blockers (the damage-
+/// assignment order). The human enters all blocker numbers in order; matched to
+/// a legal ordering. Re-prompts on an incomplete / illegal order.
+fn choose_ordering(
+    state: &GameState, reg: &CardRegistry, legal: &[Action],
+) -> Result<Option<Action>> {
+    let targets = ordering_targets(legal);
+    if targets.is_empty() {
+        return Ok(legal.first().cloned());
+    }
+    loop {
+        let mut chosen: Vec<(ObjectIdAlias, Vec<ObjectIdAlias>)> = Vec::new();
+        let mut restart = false;
+        for (atk, blockers) in &targets {
+            println!("Order the blockers of {} — damage is dealt in this order:",
+                render_object_brief(state, reg, *atk));
+            for (j, b) in blockers.iter().enumerate() {
+                println!("  [{j}] {}", render_object_brief(state, reg, *b));
+            }
+            println!("  enter ALL blocker numbers in order (e.g. {}):", order_hint(blockers.len()));
+            let Some(line) = read_line()? else { return Ok(None) };
+            match parse_indices(&line, blockers.len()) {
+                Some(idxs) if idxs.len() == blockers.len() =>
+                    chosen.push((*atk, idxs.iter().map(|&j| blockers[j]).collect())),
+                _ => {
+                    println!("  enter all {} distinct numbers in order", blockers.len());
+                    restart = true;
+                    break;
+                }
+            }
+        }
+        if restart { continue; }
+        match match_ordering(legal, &chosen) {
+            Some(a) => return Ok(Some(a)),
+            None => println!("  that ordering isn't legal here — try again"),
+        }
+    }
+}
+
+/// CR 510.1c — distribute each attacker's combat damage among its blockers in
+/// the established order. The human enters amounts per blocker (earlier blockers
+/// need lethal first; trample overflows to the defender); matched to a legal
+/// distribution. `auto` picks the engine's first legal assignment.
+fn choose_damage(
+    state: &GameState, reg: &CardRegistry, legal: &[Action],
+) -> Result<Option<Action>> {
+    let targets = damage_targets(legal);
+    if targets.is_empty() {
+        return Ok(legal.first().cloned());
+    }
+    loop {
+        let mut dists: Vec<DamageAssignment> = Vec::new();
+        let mut restart = false;
+        let mut auto = false;
+        for (atk, blockers) in &targets {
+            println!("Assign {}'s damage, in order (lethal to earlier blockers first; \
+                      'auto' for a default):", render_object_brief(state, reg, *atk));
+            for (j, b) in blockers.iter().enumerate() {
+                println!("  [{j}] {}", render_object_brief(state, reg, *b));
+            }
+            println!("  enter damage to each in order (e.g. {}):", order_hint(blockers.len()));
+            let Some(line) = read_line()? else { return Ok(None) };
+            let t = line.trim();
+            if t == "auto" { auto = true; break; }
+            match parse_amounts(t) {
+                Some(amts) => {
+                    let distribution: Vec<(ObjectIdAlias, u32)> =
+                        blockers.iter().zip(&amts).map(|(b, &a)| (*b, a)).collect();
+                    dists.push(DamageAssignment { attacker: *atk, distribution });
+                }
+                None => { println!("  enter numbers separated by spaces"); restart = true; break; }
+            }
+        }
+        if auto { return Ok(legal.first().cloned()); }
+        if restart { continue; }
+        match match_damage(legal, &dists) {
+            Some(a) => return Ok(Some(a)),
+            None => println!("  not a legal assignment (lethal-first; total = power; \
+                              trample overflows) — try again, or 'auto'"),
+        }
+    }
+}
+
+fn order_hint(n: usize) -> String {
+    (0..n).map(|i| i.to_string()).collect::<Vec<_>>().join(" ")
+}
+
 // --- input helpers ----------------------------------------------------------
 
 type ObjectIdAlias = arcana_core::objects::ObjectId;
@@ -236,4 +335,10 @@ fn parse_indices(line: &str, len: usize) -> Option<Vec<usize>> {
         if !out.contains(&i) { out.push(i); }
     }
     Some(out)
+}
+
+/// Parse space-separated non-negative damage amounts. Empty → empty (a zero-
+/// length prefix). `None` on any non-numeric token.
+fn parse_amounts(line: &str) -> Option<Vec<u32>> {
+    line.split_whitespace().map(|t| t.parse::<u32>().ok()).collect()
 }

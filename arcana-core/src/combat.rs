@@ -290,6 +290,67 @@ pub fn match_block(legal: &[Action], chosen: &[BlockerDeclaration]) -> Option<Ac
     }).cloned()
 }
 
+/// CR 509.2 — multi-blocked attackers needing a damage-assignment ORDER, each
+/// paired with its blockers (one legal permutation, the canonical list the
+/// attacking player reorders). Taken from the first legal `OrderBlockers`.
+pub fn ordering_targets(legal: &[Action]) -> Vec<(ObjectId, Vec<ObjectId>)> {
+    legal.iter().find_map(|a| match a {
+        Action::OrderBlockers { orderings } => Some(orderings.clone()),
+        _ => None,
+    }).unwrap_or_default()
+}
+
+/// Find the legal `OrderBlockers` whose per-attacker orderings equal `chosen`
+/// (order WITHIN each attacker's list is the chosen damage order and matters;
+/// the order of attackers between entries does not). `None` if not offered.
+pub fn match_ordering(legal: &[Action], chosen: &[(ObjectId, Vec<ObjectId>)]) -> Option<Action> {
+    use std::collections::HashMap;
+    let want: HashMap<ObjectId, &Vec<ObjectId>> =
+        chosen.iter().map(|(atk, ord)| (*atk, ord)).collect();
+    legal.iter().find(|a| match a {
+        Action::OrderBlockers { orderings } =>
+            orderings.len() == want.len()
+                && orderings.iter().all(|(atk, ord)| want.get(atk) == Some(&ord)),
+        _ => false,
+    }).cloned()
+}
+
+/// CR 510.1c — attackers needing a combat-damage DISTRIBUTION, each paired with
+/// its live blockers in damage-assignment ORDER (taken from the longest legal
+/// distribution, since each legal one is a prefix of the same order). The
+/// frontend assigns amounts to these in order; [`match_damage`] validates.
+pub fn damage_targets(legal: &[Action]) -> Vec<(ObjectId, Vec<ObjectId>)> {
+    let mut out: Vec<(ObjectId, Vec<ObjectId>)> = Vec::new();
+    for a in legal {
+        if let Action::AssignCombatDamage { distributions } = a {
+            for d in distributions {
+                let blockers: Vec<ObjectId> = d.distribution.iter().map(|(b, _)| *b).collect();
+                match out.iter_mut().find(|(id, _)| *id == d.attacker) {
+                    Some(e) => if blockers.len() > e.1.len() { e.1 = blockers; },
+                    None => out.push((d.attacker, blockers)),
+                }
+            }
+        }
+    }
+    out
+}
+
+/// Find the legal `AssignCombatDamage` whose per-attacker distributions equal
+/// `chosen` (the (blocker, amount) sequence, in order). `None` if the built
+/// distribution isn't legal (lethal-first / sum / trample rules) or wasn't
+/// enumerated — the frontend re-prompts.
+pub fn match_damage(legal: &[Action], chosen: &[DamageAssignment]) -> Option<Action> {
+    use std::collections::HashMap;
+    let want: HashMap<ObjectId, &Vec<(ObjectId, u32)>> =
+        chosen.iter().map(|d| (d.attacker, &d.distribution)).collect();
+    legal.iter().find(|a| match a {
+        Action::AssignCombatDamage { distributions } =>
+            distributions.len() == want.len()
+                && distributions.iter().all(|d| want.get(&d.attacker) == Some(&&d.distribution)),
+        _ => false,
+    }).cloned()
+}
+
 /// CR-derived aggregate count constraints on how many blockers may be
 /// declared against a single attacker. Computed per attacker by
 /// [`GameState::block_constraints`] from the attacker's current
@@ -3352,5 +3413,42 @@ mod tests {
         assert!(match_block(&legal, &[bd(10, 2)]).is_some());
         assert!(match_block(&legal, &[]).is_some());
         assert!(match_block(&legal, &[bd(10, 99)]).is_none());
+    }
+
+    #[test]
+    fn ordering_targets_and_match() {
+        // Attacker 1 blocked by [10, 11]; legal orderings are the two perms.
+        let legal = vec![
+            Action::OrderBlockers { orderings: vec![(1, vec![10, 11])] },
+            Action::OrderBlockers { orderings: vec![(1, vec![11, 10])] },
+        ];
+        let targets = ordering_targets(&legal);
+        assert_eq!(targets.len(), 1);
+        assert_eq!(targets[0].0, 1);
+        assert_eq!(targets[0].1.len(), 2);
+        // Order within the attacker's list matters (it's the damage order).
+        assert!(match_ordering(&legal, &[(1, vec![11, 10])]).is_some());
+        assert!(match_ordering(&legal, &[(1, vec![10, 11])]).is_some());
+        // A non-permutation / un-offered order → None.
+        assert!(match_ordering(&legal, &[(1, vec![10, 99])]).is_none());
+    }
+
+    #[test]
+    fn damage_targets_and_match() {
+        let da = |atk, dist: Vec<(ObjectId, u32)>| DamageAssignment { attacker: atk, distribution: dist };
+        // Attacker 1 (power 3) over blockers [10 (2 tough), 11]: lethal-first or all-on-first.
+        let legal = vec![
+            Action::AssignCombatDamage { distributions: vec![da(1, vec![(10, 2), (11, 1)])] },
+            Action::AssignCombatDamage { distributions: vec![da(1, vec![(10, 3)])] },
+        ];
+        let targets = damage_targets(&legal);
+        assert_eq!(targets.len(), 1);
+        assert_eq!(targets[0].0, 1);
+        // Longest distribution's order = [10, 11].
+        assert_eq!(targets[0].1, vec![10, 11]);
+        assert!(match_damage(&legal, &[da(1, vec![(10, 2), (11, 1)])]).is_some());
+        assert!(match_damage(&legal, &[da(1, vec![(10, 3)])]).is_some());
+        // Amounts that weren't enumerated (illegal split) → None.
+        assert!(match_damage(&legal, &[da(1, vec![(10, 1), (11, 2)])]).is_none());
     }
 }
