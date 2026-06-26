@@ -984,6 +984,14 @@ function combatMaps() {
   return base;
 }
 
+// Does this object have any role in the current combat (so it must show as a
+// clickable card rather than collapse into the land strip)?
+function landCombatRole(id, cm) {
+  if (!cm) return false;
+  return cm.atkOpts.has(id) || cm.blkOpts.has(id) || cm.incoming.has(id) ||
+         cm.hiAtk.has(id) || cm.hiBlk.has(id);
+}
+
 function combatTokenOf(cb) {
   if (!cb) return null;
   let ids;
@@ -1108,10 +1116,14 @@ function renderBattlefield(container, p, isYou, cm) {
     return z;
   };
 
-  // Lands (left): collapsed compact strip by default; expand to cards. Combat
-  // forces the full card view (an animated land could need to be clicked).
+  // Lands (left): collapsed compact strip by default; expand to cards. Stays
+  // collapsed during combat too — only force the card view if a LAND itself has
+  // a combat role (e.g. an animated man-land attacking/blocking), so it stays
+  // clickable.
   const toggleLands = () => { G.expandLands = !G.expandLands; renderAll(); };
-  if (lands.length && !inCombat && !G.expandLands) {
+  const landNeedsCards = inCombat && lands.some((c) => landCombatRole(c.id, cm));
+  const showLandCards = G.expandLands || landNeedsCards;
+  if (lands.length && !showLandCards) {
     grid.appendChild(renderLandStrip(lands, isYou, mkHead("Lands · " + lands.length, toggleLands, "expand ▸")));
   } else {
     const head = (lands.length && !inCombat)
