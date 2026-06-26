@@ -80,6 +80,9 @@
   .card.incoming { border-color: #e06a6a; box-shadow: 0 0 0 2px #e06a6a55; }
   .card.pending { border-color: #f0d24a; box-shadow: 0 0 0 3px #f0d24a88; }
   .card.blocking { border-color: #6ab0e0; box-shadow: 0 0 0 2px #6ab0e055; }
+  /* hand: playable this turn (cast/play if tapped out) vs not */
+  .card.playable { border-color: #6bdc8a; box-shadow: 0 0 0 2px #6bdc8a55; }
+  .card.unplayable { opacity: .58; }
   .card .badge {
     position: absolute; left: 0; top: 0; right: 0; font-size: 10px; font-weight: 700;
     padding: 2px 4px; text-align: center; background: rgba(0,0,0,.72);
@@ -189,6 +192,12 @@ const MANA_COL = {
   white: ["W", "#e9e3c8"], blue: ["U", "#a9c9e8"], black: ["B", "#b7a9c0"],
   red: ["R", "#e69a8a"], green: ["G", "#9ccb9c"], colorless: ["C", "#c8ccd4"],
 };
+
+// hand cards: green-glow the ones playable this turn (cast/play if tapped out),
+// dim the rest. `playable` is server-computed (engine castability + available mana).
+function handDecor(c) {
+  return { cls: c.playable ? ["playable"] : ["unplayable"] };
+}
 
 // summarize a player's mana picture: the colored mana they could produce right
 // now (engine-computed, includes floating), plus an untapped-land tally.
@@ -382,11 +391,12 @@ function renderPlayer(container, p, isYou, cm) {
 
   if (isYou) {
     const hlab = document.createElement("div");
-    hlab.className = "zone-label"; hlab.textContent = "Your hand";
+    hlab.className = "zone-label";
+    hlab.textContent = "Your hand — green = playable this turn (tap mana, then cast)";
     container.appendChild(hlab);
     const hand = document.createElement("div");
     hand.className = "cards";
-    renderCards(hand, p.hand, "empty hand");
+    renderCards(hand, p.hand, "empty hand", handDecor);
     container.appendChild(hand);
   }
 }

@@ -41,6 +41,11 @@ pub struct CardView {
     /// Whether this object is a land — lets a frontend tally untapped mana
     /// sources without re-parsing the type line.
     pub is_land: bool,
+    /// For the perspective player's hand only: true if this card could be cast
+    /// or played this turn assuming the player taps out (see
+    /// [`crate::legal_actions::playable_cards`]). Always false for opponents'
+    /// objects, the battlefield, and the stack.
+    pub playable: bool,
     /// Computed power/toughness; `None` for non-creatures.
     pub power: Option<i32>,
     pub toughness: Option<i32>,
@@ -159,7 +164,7 @@ fn card_view(state: &GameState, registry: &CardRegistry, id: ObjectId) -> CardVi
     let Some(o) = state.objects.get(id) else {
         return CardView {
             id, name: String::new(), mana_cost: None, mana_value: 0,
-            type_line: String::new(), is_land: false,
+            type_line: String::new(), is_land: false, playable: false,
             power: None, toughness: None, tapped: false,
         };
     };
@@ -178,7 +183,10 @@ fn card_view(state: &GameState, registry: &CardRegistry, id: ObjectId) -> CardVi
         (None, None)
     };
     let tapped = o.is_tapped();
-    CardView { id, name, mana_cost, mana_value, type_line, is_land, power, toughness, tapped }
+    CardView {
+        id, name, mana_cost, mana_value, type_line, is_land,
+        playable: false, power, toughness, tapped,
+    }
 }
 
 /// Project `state` (from `perspective`'s view) plus its `legal` actions into a
@@ -194,6 +202,12 @@ pub fn view_state(
         ids.into_iter().map(|id| card_view(state, registry, id)).collect()
     };
 
+    // Which of the perspective player's hand cards are playable this turn (cast
+    // or play if they tap out). Computed once; only that player's hand is shown.
+    let playable: std::collections::HashSet<ObjectId> =
+        crate::legal_actions::playable_cards(state, perspective, registry)
+            .into_iter().collect();
+
     let players = (0..state.num_players()).map(|p| {
         PlayerView {
             id: p,
@@ -203,7 +217,13 @@ pub fn view_state(
             graveyard_count: state.objects.objects_in_zone(Zone::Graveyard(p)).count(),
             mana_pool: state.player(p).mana_pool.total(),
             available_mana: mana_counts(&crate::legal_actions::available_mana(state, p, registry)),
-            hand: if p == perspective { cards_in(Zone::Hand(p)) } else { Vec::new() },
+            hand: if p == perspective {
+                let mut h = cards_in(Zone::Hand(p));
+                for c in &mut h { c.playable = playable.contains(&c.id); }
+                h
+            } else {
+                Vec::new()
+            },
             battlefield: {
                 let ids: Vec<ObjectId> = state.objects.objects_in_zone(Zone::Battlefield)
                     .filter(|o| o.controller == p).map(|o| o.id).collect();

@@ -2535,6 +2535,67 @@ pub fn available_mana(
     sim.player(player).mana_pool.clone()
 }
 
+/// `legal_actions` for `player` as if they had first produced all their
+/// [`available_mana`] — i.e., the actions that *would* be legal once they tap
+/// out. This is the basis for a "what can I play this turn" castability
+/// highlight and an auto-pass heuristic, both of which must see through the
+/// engine's manual-tap model (casting checks the floating pool, so nothing looks
+/// castable until mana is floated). Real timing/zone/stack rules still apply —
+/// only the pool is hypothetical — so a sorcery stays unplayable on the
+/// opponent's turn. Clones; never mutates `state`.
+pub fn potential_actions(
+    state: &GameState,
+    player: PlayerId,
+    registry: &CardRegistry,
+) -> Vec<Action> {
+    let avail = available_mana(state, player, registry);
+    let mut sim = state.clone();
+    sim.priority.give_to(player);
+    sim.player_mut(player).mana_pool = avail;
+    legal_actions(&sim, registry)
+}
+
+/// Object ids of the cards `player` could cast or play this turn if they tapped
+/// out — the `CastSpell` / `PlayLand` entries of [`potential_actions`]. Drives a
+/// "playable" highlight on the hand.
+pub fn playable_cards(
+    state: &GameState,
+    player: PlayerId,
+    registry: &CardRegistry,
+) -> Vec<ObjectId> {
+    potential_actions(state, player, registry)
+        .iter()
+        .filter_map(|a| match a {
+            Action::CastSpell { object_id, .. } => Some(*object_id),
+            Action::PlayLand { object_id, .. } => Some(*object_id),
+            _ => None,
+        })
+        .collect()
+}
+
+/// True if `player` has any non-trivial play available now or after tapping out
+/// — a `CastSpell`, a `PlayLand`, or a *non-mana* activated ability appears in
+/// [`potential_actions`]. False ⇒ the only options are passing or tapping mana
+/// with nothing to spend it on, so a UI may safely auto-pass this priority
+/// window (CR: a mana ability produces mana that empties at end of step, so
+/// floating it with nothing to cast accomplishes nothing). An unrecognized
+/// activated ability counts as meaningful, so the check never hides a real play.
+pub fn has_meaningful_play(
+    state: &GameState,
+    player: PlayerId,
+    registry: &CardRegistry,
+) -> bool {
+    potential_actions(state, player, registry).iter().any(|a| match a {
+        Action::PassPriority | Action::Concede => false,
+        Action::ActivateAbility { source, ability_index, .. } => {
+            state.objects.get(*source)
+                .and_then(|o| lookup_activated_ability(o, registry, state, *ability_index))
+                .map_or(true, |ab| !ab.is_mana_ability)
+        }
+        _ => true,
+    })
+}
+
 /// Look up an activated ability by flat index — registry abilities
 /// first, then [`crate::objects::GameObject::intrinsic_activated_abilities`].
 /// Returns the ability and a tag identifying which list it came from
@@ -3652,6 +3713,44 @@ mod tests {
         assert_eq!(pool.total(), 2, "filter chain nets two mana");
         assert!(pool.iter().all(|u| u.color == ManaColor::Red),
             "the green was consumed paying the filter's input");
+    }
+
+    #[test]
+    fn playable_cards_and_meaningful_play_reflect_tap_out_castability() {
+        use crate::registry::CardDefinition;
+        let mut reg = CardRegistry::new();
+        let forest = register_mana_source(
+            &mut reg, "Test Forest", land_chars(), ActivationCost::tap_only(), add_one_green);
+        // a vanilla {G} creature (sorcery-speed cast)
+        let bear_def = {
+            let nm = reg.interner_mut().intern("Test Bear");
+            reg.register(CardDefinition::new(nm, creature_chars(2, 2)))
+        };
+
+        // Board: one untapped green source; the {G} bear in hand. The pool is
+        // empty, so nothing is castable *right now* — but it is playable if the
+        // forest is tapped, which is exactly what the highlight should reflect.
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        state_put_with_card(&mut s, 0, Zone::Battlefield, land_chars(), forest);
+        let bear = state_put_with_card(&mut s, 0, Zone::Hand(0), creature_chars(2, 2), bear_def);
+
+        assert!(legal_actions(&s, &reg).iter().all(|a|
+            !matches!(a, Action::CastSpell { .. })),
+            "nothing is castable from an empty pool (manual-tap model)");
+        assert!(playable_cards(&s, 0, &reg).contains(&bear),
+            "the bear is playable once the forest is tapped");
+        assert!(has_meaningful_play(&s, 0, &reg), "a castable spell is a meaningful play");
+
+        // Tap the only source: now even tapping out yields no mana, so the bear
+        // is not playable and the window has nothing to do but pass.
+        let land = s.objects.objects_in_zone(Zone::Battlefield)
+            .find(|o| o.controller == 0).map(|o| o.id).unwrap();
+        s.objects.get_mut(land).unwrap().tap();
+        assert!(!playable_cards(&s, 0, &reg).contains(&bear),
+            "no mana available -> bear not playable");
+        assert!(!has_meaningful_play(&s, 0, &reg),
+            "only pass + a now-useless mana source -> safe to auto-pass");
     }
 
     #[test]

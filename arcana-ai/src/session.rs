@@ -65,6 +65,11 @@ pub struct Session<'a> {
     /// the full state — correct since a played/cast/attacking card is public.
     /// Cleared each `advance`; passes and empty declarations are not recorded.
     log: Vec<(PlayerId, String)>,
+    /// MTGA/Forge-style auto-pass for HUMAN seats: skip a priority window when
+    /// the human has no meaningful play even after tapping out (only passing or
+    /// tapping mana with nothing to spend it on). On by default; disable for a
+    /// "full control" mode. Bots are unaffected (they choose via their policy).
+    auto_pass: bool,
 }
 
 /// Worth showing in the opponent log: not a pass, not an empty attack/block.
@@ -102,8 +107,12 @@ impl<'a> Session<'a> {
         assert_eq!(decks.len(), seats.len(), "one seat per deck");
         let record = GameRecord::new(decks.clone(), seed);
         let (state, yld) = new_game(decks, registry, seed);
-        Self { state, yld, registry, seats, record, log: Vec::new() }
+        Self { state, yld, registry, seats, record, log: Vec::new(), auto_pass: true }
     }
+
+    /// Toggle MTGA-style auto-pass for human seats (on by default). With it off,
+    /// every human priority window is surfaced ("full control").
+    pub fn set_auto_pass(&mut self, on: bool) { self.auto_pass = on; }
 
     /// The current (full, un-projected) game state — for spectator rendering.
     pub fn state(&self) -> &GameState { &self.state }
@@ -132,6 +141,21 @@ impl<'a> Session<'a> {
 
             if let Some(action) = auto_action(&legal) {
                 self.apply_internal(action);
+                continue;
+            }
+
+            // MTGA-style auto-pass: for a human priority window with no
+            // meaningful play (only passing or tapping mana with nothing to
+            // spend it on), pass on their behalf instead of surfacing a dead
+            // decision. Bots are unaffected. Gated on a priority window so it
+            // never short-circuits mulligans, combat declarations, or choices.
+            if self.auto_pass
+                && matches!(self.seats[player as usize], Seat::Human)
+                && legal.iter().any(|a| matches!(a, Action::PassPriority))
+                && !arcana_core::legal_actions::has_meaningful_play(
+                    &self.state, player, self.registry)
+            {
+                self.apply_internal(Action::PassPriority);
                 continue;
             }
 
@@ -216,6 +240,52 @@ mod tests {
         // The transcript replays (record was populated + result set).
         assert!(session.record().result.is_some());
         assert!(!session.record().actions.is_empty());
+    }
+
+    /// Auto-pass (default on) must never surface a "dead" priority window — one
+    /// where the human has nothing to do but pass or tap mana with nothing to
+    /// spend it on. Such windows genuinely occur (proven by the full-control
+    /// run), so auto-pass is doing real work, not a no-op.
+    #[test]
+    fn auto_pass_skips_dead_priority_windows() {
+        use arcana_core::legal_actions::has_meaningful_play;
+
+        // Returns whether any *surfaced* priority window had no meaningful play.
+        fn run(auto_pass: bool) -> bool {
+            let reg = arcana_cards::build_catalog();
+            let deck = arcana_cards::sample_deck(&reg, 7);
+            let seats = vec![Seat::Human, Seat::Human];
+            let mut session = Session::new(vec![deck.clone(), deck], &reg, seats, 7);
+            session.set_auto_pass(auto_pass);
+
+            let mut saw_dead = false;
+            let mut guard = 0;
+            loop {
+                guard += 1;
+                assert!(guard < 100_000, "session must terminate");
+                match session.advance() {
+                    Turn::GameOver(_) => break,
+                    Turn::AwaitingHuman { legal, player, .. } => {
+                        let is_priority = legal.iter().any(|a| matches!(a, Action::PassPriority));
+                        if is_priority && !has_meaningful_play(session.state(), player, &reg) {
+                            saw_dead = true;
+                        }
+                        // Develop where possible, else pass; keep mulligans.
+                        let pick = legal.iter()
+                            .position(|a| matches!(a, Action::MulliganKeep))
+                            .or_else(|| legal.iter().position(|a|
+                                matches!(a, Action::PlayLand { .. } | Action::CastSpell { .. })))
+                            .or_else(|| legal.iter().position(|a| matches!(a, Action::PassPriority)))
+                            .unwrap_or(0);
+                        session.apply(legal[pick].clone());
+                    }
+                }
+            }
+            saw_dead
+        }
+
+        assert!(run(false), "full-control mode should surface at least one no-play window");
+        assert!(!run(true), "auto-pass must never surface a no-play priority window");
     }
 
     /// A scripted human that DEVELOPS (plays lands/spells) and ATTACKS, building
