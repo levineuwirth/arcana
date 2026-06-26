@@ -3,18 +3,28 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Arcana — Play</title>
+<title>Arcana — Analyst Cockpit</title>
 <!-- apply the persisted theme before paint to avoid a flash -->
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("arcana.theme")||"dark";}catch(e){document.documentElement.dataset.theme="dark";}</script>
 <link rel="stylesheet" href="/theme.css" />
 <style>
-  /* The play view fills the viewport and NEVER scrolls the page (MTGA-style):
-     a fixed-height flex column; battlefields flex-share the space; cards are
-     sized by their row height so they scale to fit; only the log / combat /
-     actions sub-regions scroll internally. */
+  /* =========================================================================
+     ANALYST COCKPIT — a fixed-viewport, dockable panel workspace.
+
+     The page NEVER scrolls (100dvh). A top bar sits above a workspace made of a
+     three-column dock row (left / center / right) plus a full-width bottom dock,
+     separated by draggable dividers. Each region holds one-or-more PANELS from a
+     registry; every panel has a header with a collapse toggle, can be hidden via
+     the Panels menu, and the full layout (sizes / collapsed / hidden) persists to
+     localStorage. Panels scroll INTERNALLY; the board's cards are height-driven
+     so they stay legible (analysis framing, not a maximized table).
+     ========================================================================= */
   html, body { height: 100%; }
   body { height: 100dvh; overflow: hidden; display: flex; flex-direction: column;
-    padding: 0 var(--page-padding); gap: 8px; }
+    padding: 0 var(--page-padding); gap: 6px; }
+
+  /* CSS-var-driven dock sizes (mutated by the resizers, persisted to storage). */
+  :root { --dock-left: 230px; --dock-right: 290px; --dock-bottom: 130px; }
 
   /* ---- top bar ---- */
   .topbar {
@@ -34,19 +44,82 @@
   .phasebar .step { font-family: var(--font-serif); font-weight: 600; }
   .phasebar .who { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: .06em; }
 
+  /* ---- Panels menu (show/hide + reset) ---- */
+  .menu-wrap { position: relative; }
+  .menu-pop {
+    position: absolute; right: 0; top: calc(100% + 4px); z-index: 140; min-width: 190px;
+    display: none; padding: 6px; background: var(--bg-nav);
+    border: 1px solid var(--border-muted); border-radius: var(--radius-panel);
+    box-shadow: var(--shadow-float);
+  }
+  .menu-pop.show { display: block; }
+  .menu-item {
+    display: flex; align-items: center; gap: 8px; padding: 4px 6px; font-size: 13px;
+    cursor: pointer; border-radius: var(--radius-control);
+  }
+  .menu-item:hover { background: var(--bg-offset); }
+  .menu-item input { width: auto; padding: 0; margin: 0; }
+  .menu-sep { height: 1px; background: var(--border); margin: 6px 2px; }
+
   #banner {
     flex: 0 0 auto; display: none; padding: 8px 14px; border: 1px solid var(--border-muted);
     border-radius: var(--radius-panel); background: var(--bg-offset);
     font-family: var(--font-serif); font-weight: 600; font-size: 16px;
   }
 
-  /* ---- board: the flexible region between top bar and the bottom strips ---- */
-  .board { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+  /* ---- workspace + docks ---- */
+  #workspace { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  #docks-row { flex: 1 1 auto; min-height: 0; display: flex; }
+  .dock { display: flex; flex-direction: column; gap: 6px; min-height: 0; min-width: 0; overflow: hidden; }
+  #dock-left  { width: var(--dock-left);  flex: 0 0 auto; }
+  #dock-right { width: var(--dock-right); flex: 0 0 auto; }
+  #dock-center { flex: 1 1 auto; min-width: 260px; }
+  #dock-bottom { height: var(--dock-bottom); flex: 0 0 auto; }
 
+  /* draggable dividers */
+  .divider { flex: 0 0 auto; background: transparent; transition: background var(--transition-fast); }
+  .divider-v { width: 7px; cursor: col-resize; }
+  .divider-h { height: 7px; cursor: row-resize; }
+  .divider:hover, .divider.dragging { background: var(--border-muted); }
+
+  /* ---- panel chrome ---- */
+  .panel {
+    display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden;
+    border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--bg-offset);
+  }
+  .panel.grow { flex: 1 1 0; }
+  .panel:not(.grow) { flex: 0 0 auto; }
+  .panel.collapsed { flex: 0 0 auto; }
+  .panel.collapsed .panel-body { display: none; }
+  .panel.hidden { display: none; }
+  .panel-head {
+    flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 3px 6px 3px 8px;
+    border-bottom: 1px solid var(--border); background: var(--bg-nav);
+  }
+  .panel-head .ptitle-text {
+    flex: 1; font-family: var(--font-sans); font-size: 10px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: .08em; color: var(--text-faint);
+  }
+  .panel-head .pcollapse {
+    border: none; background: transparent; padding: 0 4px; font-size: 11px; line-height: 1;
+    color: var(--text-faint); cursor: pointer;
+  }
+  .panel-head .pcollapse:hover { color: var(--text); background: transparent; }
+  .panel-body {
+    flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
+    overflow: auto; padding: 6px 8px;
+  }
+  /* card-bearing bodies don't scroll the page — their card rows scale to fit */
+  .body-board, .body-hand, .body-stack { overflow: hidden; padding: 6px; }
+  .body-hand { height: clamp(120px, 18vh, 210px); }
+  .body-actions { max-height: 24vh; overflow: auto; }
+
+  /* ---- board panel ---- */
+  .board { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
   .player {
     flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
     border: 1px solid var(--border); border-radius: var(--radius-panel);
-    padding: 6px 12px; background: var(--bg-offset);
+    padding: 6px 12px; background: var(--bg);
   }
   .player.you { border-color: var(--border-muted); }
   .ptitle { flex: 0 0 auto; display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 2px; }
@@ -79,31 +152,75 @@
   .cards.fit .ac-card.tapped .ac-frame { left: 0; top: 0; transform: rotate(90deg) scale(.7); }
   .empty { color: var(--text-faint); font-size: 12px; font-style: italic; font-family: var(--font-serif); padding: 2px 0; }
 
-  /* ---- middle strip: stack + log (compact; both scroll internally) ---- */
-  .midrow { flex: 0 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; height: clamp(72px, 12vh, 150px); }
-  @media (max-width: 720px) { .midrow { grid-template-columns: 1fr; height: clamp(64px, 15vh, 130px); } }
-  .stackzone, .logzone {
-    border: 1px solid var(--border); border-radius: var(--radius-panel);
-    padding: 5px 10px; background: var(--bg-offset);
-    display: flex; flex-direction: column; min-height: 0; overflow: hidden;
-  }
-  .stackzone .cards { flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; }
+  /* ---- stack / log panels ---- */
+  #stack { flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; }
   #log { flex: 1; min-height: 0; font-size: 12px; overflow-y: auto; }
   #log .ln { line-height: 1.4; padding: 1px 0; }
   #log .you { color: var(--text); }
   #log .opp { color: var(--text-muted); }
   #log .sys { color: var(--text-faint); font-style: italic; }
 
-  /* ---- hand (own bottom region) ---- */
-  #handzone { flex: 0 0 auto; display: flex; flex-direction: column; height: clamp(120px, 19vh, 230px); }
+  /* ---- hand panel ---- */
+  #handzone { flex: 1; min-height: 0; height: 100%; display: flex; flex-direction: column; }
 
-  /* ---- combat / actions: bottom strips that scroll internally, never the page ---- */
-  #combat { flex: 0 0 auto; display: none; }
-  #combat.show {
-    display: flex; flex-direction: column; border: 1px solid var(--border-muted);
-    border-radius: var(--radius-panel); background: var(--bg-offset);
-    padding: 10px 14px; max-height: 36vh; overflow-y: auto;
+  /* ---- Eval panel (chess-style bar) ---- */
+  .evalwrap { display: flex; flex-direction: column; gap: 6px; }
+  .evalends { display: flex; justify-content: space-between; font-size: 10px;
+    text-transform: uppercase; letter-spacing: .08em; color: var(--text-faint); }
+  .evalbar {
+    position: relative; height: 22px; border: 1px solid var(--border);
+    border-radius: var(--radius-control); background: var(--bg); overflow: hidden;
   }
+  .evalbar-you { position: absolute; left: 0; top: 0; bottom: 0; background: var(--text);
+    transition: width var(--transition-medium); }
+  @media (prefers-reduced-motion: reduce) { .evalbar-you { transition: none; } }
+  .evalbar-mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--border-muted); }
+  .evalrow { display: flex; align-items: baseline; gap: 6px; }
+  .evalwin { font-family: var(--font-serif); font-weight: 600; font-size: 24px; font-variant-numeric: tabular-nums; }
+  .evalwin-lbl { font-size: 11px; color: var(--text-faint); }
+  .evalmeta { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+  /* ---- Draw-odds panel ---- */
+  .draw-total { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+  .draw-total b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .draw-sec { margin-bottom: 10px; }
+  .draw-sec-h { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--text-faint); margin-bottom: 4px; }
+  .draw-types { display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: 12px; }
+  .draw-types span b { font-variant-numeric: tabular-nums; }
+  .draw-cmc-row { display: flex; align-items: center; gap: 6px; font-size: 11px; margin: 2px 0; }
+  .draw-cmc-lbl { width: 26px; text-align: right; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .draw-cmc-track { flex: 1; min-width: 0; }
+  .draw-cmc-bar { height: 10px; background: var(--text-muted); border-radius: 2px; min-width: 1px; }
+  .draw-cmc-cnt { color: var(--text-faint); font-variant-numeric: tabular-nums; width: 22px; }
+  .draw-controls { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
+  .draw-controls input { width: 58px; padding: 3px 6px; font-variant-numeric: tabular-nums; }
+  .draw-odds-row { display: flex; align-items: baseline; gap: 8px; font-size: 12px; padding: 1px 0; }
+  .draw-odds-nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .draw-odds-k { color: var(--text-faint); font-variant-numeric: tabular-nums; }
+  .draw-odds-p { font-variant-numeric: tabular-nums; min-width: 52px; text-align: right; font-weight: 500; }
+
+  /* ---- deferred panel slots (registry placeholders) ---- */
+  .deferred-note { font-size: 12px; font-style: italic; font-family: var(--font-serif); color: var(--text-faint); }
+
+  /* ---- transient overlay (combat builder + mulligan bottoming) ----
+     The backdrop only DIMS — it does not capture pointer events, so the board
+     and hand behind stay clickable (click-to-declare attackers/blockers and
+     bottoming selection are preserved). Only the floating control card itself is
+     interactive, and it's anchored low so the board reads through the dim. */
+  #overlay {
+    position: fixed; inset: 0; z-index: 120; display: none; pointer-events: none;
+    flex-direction: column; align-items: center; justify-content: flex-end;
+    padding: 18px 18px 22px; background: rgba(8, 7, 6, .34);
+  }
+  #overlay.show { display: flex; }
+  .overlay-card {
+    pointer-events: auto; max-width: min(760px, 94vw); max-height: 72vh; overflow-y: auto;
+    background: var(--bg-offset); border: 1px solid var(--border-muted);
+    border-radius: var(--radius-panel); box-shadow: var(--shadow-float); padding: 12px 16px;
+  }
+  #combat { display: none; }
+  #combat.show { display: flex; flex-direction: column; }
   #combat .ctitle { font-family: var(--font-serif); font-weight: 600; font-size: 16px; margin-bottom: 4px; }
   #combat .hint { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; max-width: 70ch; }
   #combat .ctrls { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
@@ -117,7 +234,7 @@
   #combat .dmg-status { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
   #combat .dmg-status.bad { color: var(--text); font-weight: 500; }
 
-  #actionzone { flex: 0 0 auto; max-height: 22vh; overflow-y: auto; }
+  /* ---- actions panel ---- */
   .agroup { margin-bottom: 8px; }
   .agroup .gl { margin-bottom: 4px; }
   .agroup .btns, .control-row { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -133,10 +250,14 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><span class="mark">Arcana</span><span class="sub">play</span></div>
+    <div class="brand"><span class="mark">Arcana</span><span class="sub">cockpit</span></div>
     <div class="phasebar" id="phase"></div>
     <div class="spacer"></div>
     <a href="/deck">Deckbuilder →</a>
+    <div class="menu-wrap" id="panels-menu">
+      <button id="panelsbtn" class="ghost">Panels ▾</button>
+      <div class="menu-pop" id="panels-pop"></div>
+    </div>
     <button id="refresh" class="ghost">Refresh</button>
     <button id="new">New game</button>
     <span id="themeslot"></span>
@@ -144,31 +265,22 @@
 
   <div id="banner"></div>
 
-  <main class="board">
-    <section id="opponent" class="player"></section>
-
-    <div class="midrow">
-      <section class="stackzone">
-        <div class="meta-label">Stack</div>
-        <div id="stack" class="cards stack fit"></div>
-      </section>
-      <section class="logzone">
-        <div class="meta-label">Game log</div>
-        <div id="log"></div>
-      </section>
+  <!-- The dockable workspace: a 3-column dock row + a full-width bottom dock,
+       separated by draggable dividers. Panels are injected by the registry. -->
+  <div id="workspace">
+    <div id="docks-row">
+      <div class="dock" id="dock-left"></div>
+      <div class="divider divider-v" data-resize="left"></div>
+      <div class="dock" id="dock-center"></div>
+      <div class="divider divider-v" data-resize="right"></div>
+      <div class="dock" id="dock-right"></div>
     </div>
+    <div class="divider divider-h" data-resize="bottom"></div>
+    <div class="dock" id="dock-bottom"></div>
+  </div>
 
-    <section id="you" class="player you"></section>
-  </main>
-
-  <section id="handzone"></section>
-
-  <div id="combat"></div>
-
-  <section id="actionzone">
-    <div class="meta-label">Your actions</div>
-    <div id="actions"></div>
-  </section>
+  <!-- Transient combat / mulligan UI floats here (does not reflow the dock). -->
+  <div id="overlay"><div class="overlay-card"><div id="combat"></div></div></div>
 
 <script src="/app.js"></script>
 <script>
@@ -189,6 +301,10 @@ const G = {
   damage: new Map(),   // attackerId -> Map(blockerId -> amount)
   bottomSel: new Set(),// mulligan: hand card ids selected to put on the bottom
   busy: false,
+  // draw-odds panel: "next N draws" input + the last library snapshot (so the
+  // input can recompute odds without re-fetching /state).
+  drawN: 1,
+  lastLib: null,
 };
 
 // available-mana gauge: color key -> {pip class, symbol}
@@ -196,6 +312,318 @@ const MANA = {
   white: { cls: "w", sym: "W" }, blue: { cls: "u", sym: "U" }, black: { cls: "b", sym: "B" },
   red: { cls: "r", sym: "R" }, green: { cls: "g", sym: "G" }, colorless: { cls: "c", sym: "C" },
 };
+
+/* ===========================================================================
+   COCKPIT: panel registry + dockable workspace + layout persistence.
+
+   Each panel definition is { id, title, region, grow, defaultHidden?, build }.
+   `build(bodyEl)` constructs the panel's stable inner DOM ONCE (containing the
+   element IDs the game logic renders into, e.g. #opponent / #stack / #log), so
+   the existing render functions keep working untouched — the cockpit only moves
+   the containers around and adds the Eval + Draw-odds renderers.
+
+   Adding a deferred panel later (Suggested lines, Card power) is just one more
+   entry in this array. Full drag-to-redock is a noted follow-up; this pass gives
+   resize + collapse + show/hide + persistence.
+   ======================================================================== */
+const PANELS = [
+  { id: "eval",  title: "Eval",            region: "left",   grow: false, build: buildEvalPanel },
+  { id: "stack", title: "Stack",           region: "left",   grow: true,  build: buildStackPanel },
+  { id: "board", title: "Board",           region: "center", grow: true,  build: buildBoardPanel },
+  { id: "hand",  title: "Hand",            region: "center", grow: false, build: buildHandPanel },
+  { id: "actions", title: "Actions",       region: "center", grow: false, build: buildActionsPanel },
+  { id: "draw",  title: "Draw odds",       region: "right",  grow: true,  build: buildDrawPanel },
+  // deferred registry slots (hidden by default; reserve room in the right dock)
+  { id: "suggested", title: "Suggested lines", region: "right", grow: false, defaultHidden: true,
+    build: buildDeferred("Suggested lines — engine line suggestions. Deferred (registry slot reserved).") },
+  { id: "power", title: "Card power",       region: "right",  grow: false, defaultHidden: true,
+    build: buildDeferred("Card power — per-card power / value readout. Deferred (registry slot reserved).") },
+  { id: "log",   title: "Log",             region: "bottom", grow: true,  build: buildLogPanel },
+];
+
+const REGION_DOCK = { left: "dock-left", center: "dock-center", right: "dock-right", bottom: "dock-bottom" };
+
+// ---- panel body builders (construct stable inner DOM once) ----
+function buildEvalPanel(body) { body.innerHTML = '<div id="evalpanel" class="evalwrap"></div>'; }
+function buildStackPanel(body) { body.innerHTML = '<div id="stack" class="cards stack fit"></div>'; }
+function buildBoardPanel(body) {
+  body.innerHTML =
+    '<div class="board">' +
+      '<section id="opponent" class="player"></section>' +
+      '<section id="you" class="player you"></section>' +
+    "</div>";
+}
+function buildHandPanel(body) { body.innerHTML = '<section id="handzone"></section>'; }
+function buildActionsPanel(body) { body.innerHTML = '<div id="actions"></div>'; }
+function buildDrawPanel(body) { body.innerHTML = '<div id="drawpanel"></div>'; }
+function buildLogPanel(body) { body.innerHTML = '<div id="log"></div>'; }
+function buildDeferred(note) {
+  return (body) => { const d = document.createElement("div"); d.className = "deferred-note"; d.textContent = note; body.appendChild(d); };
+}
+
+// ---- layout state + persistence ----
+const LAYOUT_KEY = "arcana.cockpit.layout";
+let L = defaultLayout();
+
+function defaultLayout() {
+  const hidden = {};
+  for (const p of PANELS) if (p.defaultHidden) hidden[p.id] = true;
+  return { sizes: { left: 230, right: 290, bottom: 130 }, collapsed: {}, hidden };
+}
+function loadLayout() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(LAYOUT_KEY) || "null"); } catch (e) { saved = null; }
+  const base = defaultLayout();
+  if (!saved || typeof saved !== "object") return base;
+  return {
+    sizes: Object.assign(base.sizes, saved.sizes || {}),
+    collapsed: Object.assign({}, saved.collapsed || {}),
+    hidden: Object.assign({}, saved.hidden || base.hidden),
+  };
+}
+function saveLayout() { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(L)); } catch (e) { /* ignore */ } }
+function setVar(name, v) { document.documentElement.style.setProperty(name, typeof v === "number" ? v + "px" : v); }
+
+// Build every panel into its dock (once). Inner element IDs become live.
+function buildWorkspace() {
+  for (const dockId of Object.values(REGION_DOCK)) document.getElementById(dockId).innerHTML = "";
+  for (const p of PANELS) {
+    const dock = document.getElementById(REGION_DOCK[p.region]);
+    if (!dock) continue;
+    const panel = document.createElement("section");
+    panel.className = "panel" + (p.grow ? " grow" : "");
+    panel.id = "panel-" + p.id;
+
+    const head = document.createElement("header");
+    head.className = "panel-head";
+    const collapse = document.createElement("button");
+    collapse.className = "pcollapse"; collapse.type = "button"; collapse.title = "Collapse / expand";
+    collapse.textContent = "▾";
+    collapse.onclick = () => toggleCollapse(p.id);
+    const title = document.createElement("span");
+    title.className = "ptitle-text"; title.textContent = p.title;
+    head.append(collapse, title);
+
+    const bodyEl = document.createElement("div");
+    bodyEl.className = "panel-body body-" + p.id;
+    p.build(bodyEl);
+
+    panel.append(head, bodyEl);
+    dock.appendChild(panel);
+  }
+}
+
+// Reflect the layout state onto the DOM (sizes + collapsed + hidden).
+function applyLayout() {
+  setVar("--dock-left", L.sizes.left);
+  setVar("--dock-right", L.sizes.right);
+  setVar("--dock-bottom", L.sizes.bottom);
+  for (const p of PANELS) {
+    const el = document.getElementById("panel-" + p.id);
+    if (!el) continue;
+    el.classList.toggle("hidden", !!L.hidden[p.id]);
+    el.classList.toggle("collapsed", !!L.collapsed[p.id]);
+    const btn = el.querySelector(".pcollapse");
+    if (btn) btn.textContent = L.collapsed[p.id] ? "▸" : "▾";
+  }
+}
+
+function toggleCollapse(id) { L.collapsed[id] = !L.collapsed[id]; saveLayout(); applyLayout(); }
+function togglePanel(id, visible) { L.hidden[id] = !visible; saveLayout(); applyLayout(); }
+function resetLayout() { L = defaultLayout(); saveLayout(); applyLayout(); buildPanelsMenu(); }
+
+// ---- Panels menu (show/hide checkboxes + reset) ----
+function buildPanelsMenu() {
+  const pop = document.getElementById("panels-pop");
+  pop.innerHTML = "";
+  for (const p of PANELS) {
+    const item = document.createElement("label");
+    item.className = "menu-item";
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.checked = !L.hidden[p.id];
+    cb.onchange = () => togglePanel(p.id, cb.checked);
+    const span = document.createElement("span");
+    span.textContent = p.title;
+    item.append(cb, span);
+    pop.appendChild(item);
+  }
+  const sep = document.createElement("div"); sep.className = "menu-sep"; pop.appendChild(sep);
+  const reset = document.createElement("div");
+  reset.className = "menu-item"; reset.textContent = "Reset layout";
+  reset.onclick = resetLayout;
+  pop.appendChild(reset);
+}
+
+// ---- divider drag-resize (pointer events; clamps + persists) ----
+function initResizers() {
+  for (const d of document.querySelectorAll(".divider")) {
+    d.addEventListener("pointerdown", (e) => startResize(e, d, d.dataset.resize));
+  }
+}
+function startResize(e, div, which) {
+  e.preventDefault();
+  div.setPointerCapture(e.pointerId);
+  div.classList.add("dragging");
+  const row = document.getElementById("docks-row").getBoundingClientRect();
+  const ws = document.getElementById("workspace").getBoundingClientRect();
+  const move = (ev) => {
+    if (which === "left") {
+      let w = ev.clientX - row.left;
+      w = Math.max(150, Math.min(w, row.width - 260 - L.sizes.right));
+      L.sizes.left = Math.round(w); setVar("--dock-left", w);
+    } else if (which === "right") {
+      let w = row.right - ev.clientX;
+      w = Math.max(170, Math.min(w, row.width - 260 - L.sizes.left));
+      L.sizes.right = Math.round(w); setVar("--dock-right", w);
+    } else {
+      let h = ws.bottom - ev.clientY;
+      h = Math.max(44, Math.min(h, ws.height - 160));
+      L.sizes.bottom = Math.round(h); setVar("--dock-bottom", h);
+    }
+  };
+  const up = () => {
+    div.releasePointerCapture(e.pointerId);
+    div.classList.remove("dragging");
+    div.removeEventListener("pointermove", move);
+    div.removeEventListener("pointerup", up);
+    saveLayout();
+  };
+  div.addEventListener("pointermove", move);
+  div.addEventListener("pointerup", up);
+}
+
+/* ===========================================================================
+   NEW PANELS: Eval (chess-style bar) + Draw odds (hypergeometric).
+   ======================================================================== */
+function favLabel(v) { return v > 0.02 ? "favors you" : (v < -0.02 ? "favors opponent" : "roughly even"); }
+
+// Eval bar: fill proportional to value mapped from [-1,1] (your share of the
+// bar), plus the heuristic win% and the raw value.
+function renderEval(ev) {
+  const el = document.getElementById("evalpanel");
+  if (!el) return;
+  ev = ev || { value: 0, win_pct: 50 };
+  const v = Math.max(-1, Math.min(1, ev.value || 0));
+  const youFrac = (v + 1) / 2;            // 0 (all opp) .. 1 (all you)
+  const win = (ev.win_pct == null ? 50 : ev.win_pct);
+  el.innerHTML =
+    '<div class="evalends"><span>You</span><span>Opp</span></div>' +
+    '<div class="evalbar" title="Material eval — your share of the bar">' +
+      '<div class="evalbar-you" style="width:' + (youFrac * 100).toFixed(1) + '%"></div>' +
+      '<div class="evalbar-mid"></div>' +
+    "</div>" +
+    '<div class="evalrow">' +
+      '<span class="evalwin tnum">' + win.toFixed(0) + "%</span>" +
+      '<span class="evalwin-lbl">est. win — heuristic</span>' +
+    "</div>" +
+    '<div class="evalmeta">value ' + (v >= 0 ? "+" : "") + v.toFixed(3) + " · " + favLabel(v) + "</div>";
+}
+
+// Hypergeometric P(at least one target in N draws), product form (no factorials):
+//   P(none) = ∏_{i=0}^{N-1} (total - k - i) / (total - i)
+//   P(≥1)   = 1 - P(none)
+// where k = copies left of the target, total = library size. Once the
+// non-target pool runs out (numerator ≤ 0) the draw is guaranteed → P = 1.
+function pAtLeastOne(total, k, n) {
+  if (total <= 0 || k <= 0 || n <= 0) return 0;
+  n = Math.min(n, total);
+  let pNone = 1;
+  for (let i = 0; i < n; i++) {
+    const num = total - k - i;
+    if (num <= 0) return 1;
+    pNone *= num / (total - i);
+  }
+  return 1 - pNone;
+}
+
+function renderDraw(lib) {
+  const el = document.getElementById("drawpanel");
+  if (!el) return;
+  G.lastLib = lib = lib || { total: 0, by_type: [], by_cmc: [], by_name: [] };
+  el.innerHTML = "";
+
+  // total
+  const tot = document.createElement("div");
+  tot.className = "draw-total";
+  tot.innerHTML = "Library: <b class=\"tnum\">" + lib.total + "</b> cards";
+  el.appendChild(tot);
+
+  // by type
+  if (lib.by_type && lib.by_type.length) {
+    const sec = document.createElement("div"); sec.className = "draw-sec";
+    sec.innerHTML = '<div class="draw-sec-h">By type</div>';
+    const row = document.createElement("div"); row.className = "draw-types";
+    for (const [name, cnt] of lib.by_type) {
+      const s = document.createElement("span");
+      s.innerHTML = name + " <b class=\"tnum\">" + cnt + "</b>";
+      row.appendChild(s);
+    }
+    sec.appendChild(row); el.appendChild(sec);
+  }
+
+  // by cmc (small bar chart)
+  if (lib.by_cmc && lib.by_cmc.length) {
+    const sec = document.createElement("div"); sec.className = "draw-sec";
+    sec.innerHTML = '<div class="draw-sec-h">Mana curve</div>';
+    const max = lib.by_cmc.reduce((m, [, c]) => Math.max(m, c), 1);
+    for (const [cmc, cnt] of lib.by_cmc) {
+      const r = document.createElement("div"); r.className = "draw-cmc-row";
+      const lbl = document.createElement("span"); lbl.className = "draw-cmc-lbl"; lbl.textContent = cmc;
+      const track = document.createElement("span"); track.className = "draw-cmc-track";
+      const bar = document.createElement("div"); bar.className = "draw-cmc-bar";
+      bar.style.width = Math.max(2, (cnt / max) * 100) + "%";
+      track.appendChild(bar);
+      const c = document.createElement("span"); c.className = "draw-cmc-cnt tnum"; c.textContent = cnt;
+      r.append(lbl, track, c);
+      sec.appendChild(r);
+    }
+    el.appendChild(sec);
+  }
+
+  // draw-odds controls + readout
+  const oddsSec = document.createElement("div"); oddsSec.className = "draw-sec";
+  oddsSec.innerHTML = '<div class="draw-sec-h">Draw odds — P(≥1) in next N draws</div>';
+  const ctrls = document.createElement("div"); ctrls.className = "draw-controls";
+  const lbl = document.createElement("span"); lbl.textContent = "Next draws (N):";
+  const inp = document.createElement("input");
+  inp.type = "number"; inp.min = "1"; inp.max = String(Math.max(1, lib.total)); inp.value = String(G.drawN);
+  inp.oninput = () => {
+    let n = parseInt(inp.value, 10);
+    if (!Number.isFinite(n) || n < 1) n = 1;
+    G.drawN = n;
+    refreshOdds();
+  };
+  ctrls.append(lbl, inp);
+  oddsSec.appendChild(ctrls);
+  const odds = document.createElement("div"); odds.id = "draw-odds";
+  oddsSec.appendChild(odds);
+  el.appendChild(oddsSec);
+
+  refreshOdds();
+}
+
+// Recompute the per-name odds for the current N (top names, by copies-left).
+function refreshOdds() {
+  const box = document.getElementById("draw-odds");
+  if (!box) return;
+  const lib = G.lastLib || { total: 0, by_name: [] };
+  const n = G.drawN;
+  box.innerHTML = "";
+  if (!lib.total || !lib.by_name || !lib.by_name.length) {
+    const e = document.createElement("div"); e.className = "empty"; e.textContent = "(library empty)";
+    box.appendChild(e);
+    return;
+  }
+  for (const [name, k] of lib.by_name.slice(0, 16)) {
+    const p = pAtLeastOne(lib.total, k, n);
+    const row = document.createElement("div"); row.className = "draw-odds-row";
+    const nm = document.createElement("span"); nm.className = "draw-odds-nm"; nm.textContent = name; nm.title = name;
+    const kc = document.createElement("span"); kc.className = "draw-odds-k tnum"; kc.textContent = "×" + k;
+    const pc = document.createElement("span"); pc.className = "draw-odds-p tnum"; pc.textContent = (p * 100).toFixed(1) + "%";
+    row.append(nm, kc, pc);
+    box.appendChild(row);
+  }
+}
 
 // ----- card tiles (built on the shared component) --------------------------
 // decorate hand cards: playable ones are click-to-play (server auto-taps + casts/
@@ -372,16 +800,16 @@ function renderPlayer(container, p, isYou, cm) {
   grid.appendChild(mkZone("Creatures & permanents", others, "no permanents"));
   grid.appendChild(mkZone("Lands", lands, "no lands"));
   container.appendChild(grid);
-  // (the hand lives in its own bottom region — see renderHand)
+  // (the hand lives in its own panel — see renderHand)
 }
 
-// The human's hand, in the dedicated bottom region (so the board fits the viewport).
+// The human's hand, in its own panel (so the board fits the viewport).
 function renderHand(you) {
   const hz = document.getElementById("handzone");
   hz.innerHTML = "";
   const h = document.createElement("div");
   h.className = "meta-label zone-head";
-  h.textContent = "Your hand — click a highlighted card to play it (auto-taps mana)";
+  h.textContent = "Click a highlighted card to play it (auto-taps mana)";
   hz.appendChild(h);
   const hand = document.createElement("div");
   hand.className = "cards hand fit";
@@ -453,7 +881,12 @@ function renderActions(view) {
     root.appendChild(e);
     return;
   }
-  if (G.resp.combat || G.resp.bottom != null) return;
+  if (G.resp.combat || G.resp.bottom != null) {
+    const e = document.createElement("div");
+    e.className = "empty"; e.textContent = "Resolve the combat / mulligan prompt above.";
+    root.appendChild(e);
+    return;
+  }
 
   const order = ["Lands", "Spells", "Abilities", "Choices", "Other"];
   const groups = {}; let pass = null, concede = null;
@@ -510,8 +943,8 @@ function cardToughness(id) {
 }
 
 const COMBAT_HINTS = {
-  attackers: "Click your creatures to attack; if a planeswalker/battle is in play, click again to cycle which one they attack. Then confirm.",
-  blockers: "Click a creature to block with, then click the attacker it should block. Click again to clear.",
+  attackers: "Click your creatures on the board to attack; if a planeswalker/battle is in play, click again to cycle which one they attack. Then confirm.",
+  blockers: "Click a creature on the board to block with, then click the attacker it should block. Click again to clear.",
   orderblockers: "Each attacker is blocked by several creatures — set the order damage is assigned in (first takes lethal first).",
   assigndamage: "Distribute each attacker's combat damage. 'Auto' assigns lethal-first; for tramplers the unassigned remainder hits the opponent.",
 };
@@ -736,8 +1169,9 @@ async function confirmBottom() {
 
 function renderLog() {
   const log = document.getElementById("log");
+  if (!log) return;
   log.innerHTML = "";
-  for (const l of G.log.slice(-40)) {
+  for (const l of G.log.slice(-60)) {
     const d = document.createElement("div");
     d.className = "ln " + l.cls;
     d.textContent = l.text;
@@ -747,6 +1181,16 @@ function renderLog() {
 }
 
 function logLine(cls, text) { G.log.push({ cls, text }); renderLog(); }
+
+// Toggle the transient overlay (combat / mulligan) based on whether the combat
+// panel rendered content. The dimming backdrop is pointer-events:none, so the
+// board + hand behind stay clickable (declare / bottoming interactions intact).
+function syncOverlay() {
+  const combat = document.getElementById("combat");
+  const ov = document.getElementById("overlay");
+  if (!ov) return;
+  ov.classList.toggle("show", !!(combat && combat.classList.contains("show")));
+}
 
 function renderAll() {
   const resp = G.resp;
@@ -781,6 +1225,11 @@ function renderAll() {
   renderCards(document.getElementById("stack"), view.stack, "(stack empty)");
   if (resp.bottom != null) renderBottomPanel(); else renderCombatPanel();
   renderActions(view);
+
+  // new analyst panels
+  renderEval(resp.eval);
+  renderDraw(resp.library);
+  syncOverlay();
 
   // remember which battlefield ids we've now shown (so new ones pulse next time)
   G.seenBf = new Set();
@@ -856,9 +1305,24 @@ async function newGame() {
 }
 
 // ----- wire ----------------------------------------------------------------
+L = loadLayout();
+buildWorkspace();
+applyLayout();
+buildPanelsMenu();
+initResizers();
+
 Arcana.mountThemeSwitcher(document.getElementById("themeslot"));
 document.getElementById("new").onclick = newGame;
 document.getElementById("refresh").onclick = getState;
+
+// Panels menu open/close
+const panelsBtn = document.getElementById("panelsbtn");
+const panelsPop = document.getElementById("panels-pop");
+panelsBtn.onclick = (e) => { e.stopPropagation(); panelsPop.classList.toggle("show"); };
+document.addEventListener("click", (e) => {
+  if (!document.getElementById("panels-menu").contains(e.target)) panelsPop.classList.remove("show");
+});
+
 Arcana.loadGlossary();
 getState();
 </script>
