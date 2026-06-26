@@ -36,13 +36,16 @@
   .brand .mark { font-family: var(--font-serif); font-weight: 600; font-size: 19px; letter-spacing: .01em; }
   .brand .sub { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--text-faint); }
   .phasebar {
-    display: flex; align-items: baseline; gap: 10px;
-    padding: 4px 12px; border: 1px solid var(--border); border-radius: var(--radius-panel);
-    background: var(--bg-offset); font-size: 13px;
+    display: flex; align-items: baseline; gap: 12px;
+    padding: 5px 14px; border: 1px solid var(--border); border-left: 3px solid var(--border);
+    border-radius: var(--radius-panel); background: var(--bg-offset);
   }
-  .phasebar .turn { font-variant-numeric: tabular-nums; color: var(--text-muted); }
-  .phasebar .step { font-family: var(--font-serif); font-weight: 600; }
-  .phasebar .who { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: .06em; }
+  .phasebar.you-turn { border-left-color: var(--text); }
+  .phasebar .turn { font-variant-numeric: tabular-nums; color: var(--text-muted); font-size: 13px; }
+  .phasebar .step { font-family: var(--font-serif); font-weight: 600; font-size: 17px; color: var(--text); }
+  .phasebar .who { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
+  .phasebar .who.you { color: var(--text); }
+  .phasebar .who.opp { color: var(--text-faint); }
 
   /* ---- Panels menu (show/hide + reset) ---- */
   .menu-wrap { position: relative; }
@@ -226,9 +229,9 @@
   /* ---- stack / log panels ---- */
   #stack { flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; }
   #log { flex: 1; min-height: 0; font-size: 12px; overflow-y: auto; }
-  #log .ln { line-height: 1.4; padding: 1px 0; }
-  #log .you { color: var(--text); }
-  #log .opp { color: var(--text-muted); }
+  #log .ln { line-height: 1.4; padding: 1px 0 1px 8px; border-left: 2px solid transparent; }
+  #log .you { color: var(--text); border-left-color: var(--blk); }
+  #log .opp { color: var(--text-muted); border-left-color: var(--atk); }
   #log .sys { color: var(--text-faint); font-style: italic; }
 
   /* ---- Eval panel (chess-style bar) ---- */
@@ -308,6 +311,16 @@
   }
   .action-menu button { text-align: left; white-space: nowrap; }
 
+  /* combat highlight: red = attacking, blue = blocking — semantic colored rings
+     (override the monochrome selection rings) + solid colored badges for contrast. */
+  :root { --atk: #d4452f; --blk: #3b7dd8; }
+  .ac-card.atk .ac-frame { box-shadow: 0 0 0 3px var(--atk); border-color: var(--atk); }
+  .ac-card.blk .ac-frame { box-shadow: 0 0 0 3px var(--blk); border-color: var(--blk); }
+  .ac-card.atk.clickable:hover .ac-frame { box-shadow: 0 0 0 4px var(--atk); }
+  .ac-card.blk.clickable:hover .ac-frame { box-shadow: 0 0 0 4px var(--blk); }
+  .ac-card.atk .ac-badge { background: var(--atk); color: #fff; }
+  .ac-card.blk .ac-badge { background: var(--blk); color: #fff; }
+
   /* ---- transient overlay (combat builder + mulligan bottoming) ----
      The backdrop only DIMS — it does not capture pointer events, so the board
      and hand behind stay clickable (click-to-declare attackers/blockers and
@@ -316,7 +329,7 @@
   #overlay {
     position: fixed; inset: 0; z-index: 120; display: none; pointer-events: none;
     flex-direction: column; align-items: center; justify-content: flex-end;
-    padding: 18px 18px 22px; background: rgba(8, 7, 6, .34);
+    padding: 18px 18px 22px; background: transparent; /* no dim — keep cards readable */
   }
   #overlay.show { display: flex; }
   .overlay-card {
@@ -1191,8 +1204,8 @@ function combatDecor(c, isYou, cm) {
     const attacking = G.atk.has(c.id);
     const defenders = cm.atkOpts.get(c.id);
     return Object.assign(base, {
-      classes: attacking ? ["selected"] : ["selectable"],
-      badge: attacking ? ("Attacking → " + describeDefender(G.atk.get(c.id))) : "attack",
+      classes: attacking ? ["atk"] : ["selectable"],
+      badge: attacking ? ("→ " + describeDefender(G.atk.get(c.id))) : "attack",
       onClick: () => toggleAttacker(c.id, defenders),
     });
   }
@@ -1203,24 +1216,24 @@ function combatDecor(c, isYou, cm) {
       let badge = "block";
       if (assigned) {
         const tgt = G.cardById.get(G.blk.get(c.id));
-        badge = "Block → " + (tgt ? tgt.name : "#" + G.blk.get(c.id));
+        badge = "→ " + (tgt ? tgt.name : "#" + G.blk.get(c.id));
       } else if (pending) { badge = "pick attacker…"; }
       return Object.assign(base, {
-        classes: assigned ? ["selected"] : (pending ? ["pending"] : ["selectable"]),
+        classes: assigned ? ["blk"] : (pending ? ["pending"] : ["selectable"]),
         badge,
         onClick: () => clickBlocker(c.id),
       });
     }
     if (!isYou && cm.incoming.has(c.id)) {
       return Object.assign(base, {
-        classes: ["selectable"], badge: "attacking",
+        classes: ["atk"], badge: "attacking",
         onClick: () => clickAttacker(c.id, cm.blkOpts),
       });
     }
   }
   if (cm.mode === "orderblockers" || cm.mode === "assigndamage") {
-    if (cm.hiAtk.has(c.id)) return Object.assign(base, { classes: ["selected"], badge: "attacking" });
-    if (cm.hiBlk.has(c.id)) return Object.assign(base, { classes: ["pending"], badge: "blocking" });
+    if (cm.hiAtk.has(c.id)) return Object.assign(base, { classes: ["atk"], badge: "attacking" });
+    if (cm.hiBlk.has(c.id)) return Object.assign(base, { classes: ["blk"], badge: "blocking" });
   }
   return base;
 }
@@ -1641,10 +1654,14 @@ function renderAll() {
   G.cardById = new Map();
   for (const p of view.players) for (const c of p.battlefield) G.cardById.set(c.id, c);
 
-  document.getElementById("phase").innerHTML =
+  const yourTurn = view.active_player === me;
+  const phaseEl = document.getElementById("phase");
+  phaseEl.className = "phasebar" + (yourTurn ? " you-turn" : "");
+  phaseEl.innerHTML =
     '<span class="turn tnum">Turn ' + view.turn + "</span>" +
     '<span class="step">' + prettyPhase(view) + "</span>" +
-    '<span class="who">active P' + view.active_player + "</span>";
+    '<span class="who ' + (yourTurn ? "you" : "opp") + '">' +
+      (yourTurn ? "Your turn" : "Opponent's turn") + "</span>";
 
   const banner = document.getElementById("banner");
   if (view.game_over) {
