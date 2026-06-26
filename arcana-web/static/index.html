@@ -163,6 +163,9 @@
     flex: 0 0 auto; font-size: 10px; padding: 0 5px; border-radius: 999px;
     background: var(--bg-offset); color: var(--text-muted); border: 1px solid var(--border-muted);
   }
+  .land-chip .lc-pips { flex: 0 0 auto; font-size: 9px; letter-spacing: 1px; line-height: 1; }
+  .land-chip .lc-pips .on { color: var(--text); }
+  .land-chip .lc-pips .off { color: var(--text-faint); }
   .land-chip.tapped { color: var(--text-faint); border-color: var(--border-muted); font-style: italic; }
   .land-chip.clickable { cursor: pointer; }
   .land-chip.clickable:hover { background: var(--bg-offset); border-color: var(--text-muted); }
@@ -942,27 +945,53 @@ function renderLandStrip(lands, isYou, head) {
   z.appendChild(head);
   const wrap = document.createElement("div");
   wrap.className = "land-chips";
+  // Group by NAME (not tap state) so each land shows its untapped/tapped
+  // breakdown in one chip — pips: filled = untapped, hollow = tapped.
   const groups = new Map();
   for (const c of lands) {
-    const k = bfSig(c);
-    if (groups.has(k)) groups.get(k).push(c); else groups.set(k, [c]);
+    if (groups.has(c.name)) groups.get(c.name).push(c); else groups.set(c.name, [c]);
   }
-  for (const g of groups.values()) {
-    const rep = g[0];
+  for (const [name, g] of groups) {
+    const untapped = g.filter((c) => !c.tapped);
+    const nU = untapped.length, nT = g.length - nU;
     const chip = document.createElement("div");
-    chip.className = "land-chip" + (rep.tapped ? " tapped" : "");
-    chip.title = rep.name + (rep.tapped ? " (tapped)" : "");
+    chip.className = "land-chip" + (nU === 0 ? " tapped" : "");
+
     const nm = document.createElement("span");
-    nm.className = "lc-name"; nm.textContent = rep.name;
+    nm.className = "lc-name"; nm.textContent = name;
     chip.appendChild(nm);
+
     if (g.length > 1) {
       const n = document.createElement("span");
       n.className = "lc-n"; n.textContent = "×" + g.length;
       chip.appendChild(n);
     }
-    if (isYou && !rep.tapped) {
-      const acts = activateActionsFor(rep.id);
-      if (acts.length) { chip.classList.add("clickable"); chip.onclick = (ev) => onPermanentClick(acts, ev); }
+    // tap-state pips (numeric fallback past 8 so the chip stays compact)
+    const pips = document.createElement("span");
+    pips.className = "lc-pips";
+    if (g.length <= 8) {
+      pips.innerHTML =
+        '<span class="on">' + "●".repeat(nU) + "</span>" +
+        '<span class="off">' + "○".repeat(nT) + "</span>";
+    } else {
+      pips.textContent = nU + "/" + g.length;
+    }
+    chip.appendChild(pips);
+
+    chip.title = g.length + " " + name + " — " + nU + " untapped, " + nT + " tapped";
+    // Click taps ONE untapped land of this name (whichever has a mana ability) —
+    // click again to tap another; the pips show how many remain untapped.
+    if (isYou && nU > 0) {
+      let acts = null;
+      for (const c of untapped) {
+        const a = activateActionsFor(c.id);
+        if (a.length) { acts = a; break; }
+      }
+      if (acts) {
+        chip.classList.add("clickable");
+        chip.title += " · click to tap one";
+        chip.onclick = (ev) => onPermanentClick(acts, ev);
+      }
     }
     wrap.appendChild(chip);
   }
