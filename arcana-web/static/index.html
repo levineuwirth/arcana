@@ -83,6 +83,9 @@
   /* hand: playable this turn (cast/play if tapped out) vs not */
   .card.playable { border-color: #6bdc8a; box-shadow: 0 0 0 2px #6bdc8a55; }
   .card.unplayable { opacity: .58; }
+  /* mulligan: cards marked to go on the bottom */
+  .card.tobottom { opacity: .5; border-color: #c98; box-shadow: 0 0 0 2px #cc9988aa; }
+  body.busy #actions, body.busy #combat, body.busy .player { pointer-events: none; opacity: .75; }
   .card .badge {
     position: absolute; left: 0; top: 0; right: 0; font-size: 10px; font-weight: 700;
     padding: 2px 4px; text-align: center; background: rgba(0,0,0,.72);
@@ -172,6 +175,7 @@ const G = {
   pendingBlocker: null,
   order: new Map(),   // attackerId -> [blockerId,...] in chosen damage order
   damage: new Map(),  // attackerId -> Map(blockerId -> amount)
+  bottomSel: new Set(),// mulligan: hand card ids selected to put on the bottom
   busy: false,
 };
 
@@ -207,7 +211,17 @@ const MANA_COL = {
 // hand cards: green-glow the ones playable this turn and make them click-to-play
 // (the server auto-taps mana and casts/plays, or floats mana and surfaces the
 // cast variants if a choice remains). Dim the rest. `playable` is server-computed.
+// During a mulligan bottoming, hand clicks instead toggle bottom-selection.
 function handDecor(c) {
+  if (G.resp && G.resp.bottom != null) {
+    const sel = G.bottomSel.has(c.id);
+    return {
+      cls: sel ? ["tobottom"] : ["selectable"],
+      badge: sel ? "↓ bottom" : "keep",
+      badgeCls: "blk",
+      onclick: () => { if (G.bottomSel.has(c.id)) G.bottomSel.delete(c.id); else G.bottomSel.add(c.id); renderAll(); },
+    };
+  }
   if (c.playable) return { cls: ["playable"], onclick: () => sendAutoTap(c.id, c.name) };
   return { cls: ["unplayable"] };
 }
@@ -342,8 +356,19 @@ function describeDefender(d) {
 }
 
 function toggleAttacker(id, defenders) {
-  if (G.atk.has(id)) G.atk.delete(id);
-  else G.atk.set(id, defenders[0]); // default to the first (lone opponent) defender
+  if (defenders.length <= 1) {
+    // single defender (the lone opponent): plain on/off toggle
+    if (G.atk.has(id)) G.atk.delete(id); else G.atk.set(id, defenders[0]);
+  } else if (!G.atk.has(id)) {
+    // multiple defenders (a planeswalker/battle in play): start at the first
+    G.atk.set(id, defenders[0]);
+  } else {
+    // cycle through the remaining defenders, then off
+    const cur = JSON.stringify(G.atk.get(id));
+    const i = defenders.findIndex(d => JSON.stringify(d) === cur);
+    if (i >= 0 && i < defenders.length - 1) G.atk.set(id, defenders[i + 1]);
+    else G.atk.delete(id);
+  }
   renderAll();
 }
 
@@ -493,8 +518,9 @@ function renderActions(view) {
     root.appendChild(e);
     return;
   }
-  // when a rich combat builder is up, suppress the raw declaration buttons
-  if (G.resp.combat) return;
+  // when a rich combat builder or the mulligan bottoming UI is up, suppress the
+  // raw declaration/bottom buttons
+  if (G.resp.combat || G.resp.bottom != null) return;
 
   const order = ["Lands", "Spells", "Abilities", "Choices", "Other"];
   const groups = {}; let pass = null, concede = null;
@@ -552,7 +578,7 @@ function cardToughness(id) {
 }
 
 const COMBAT_HINTS = {
-  attackers: "Click your creatures (highlighted green) to send them in, then confirm.",
+  attackers: "Click your creatures (green) to attack; if a planeswalker/battle is in play, click again to cycle which one they attack. Then confirm.",
   blockers: "Click a creature to block with (green), then click the red attacker it should block. Click again to clear.",
   orderblockers: "Each attacker is blocked by several creatures — set the order damage is assigned in (first takes lethal first).",
   assigndamage: "Distribute each attacker's combat damage. 'Auto' assigns lethal-first; for tramplers the unassigned remainder hits the opponent.",
@@ -673,31 +699,50 @@ function buildDamagePanel(panel, cb) {
   for (const g of cb.damage) {
     if (!G.damage.has(g.attacker)) G.damage.set(g.attacker, autoLethal(g));
   }
+  let allValid = true;
   for (const g of cb.damage) {
     const m = G.damage.get(g.attacker);
-    const sum = [...m.values()].reduce((a, b) => a + b, 0);
+    const order = g.targets;
+    const amtOf = i => (m.get(order[i]) || 0);
+    const lethalOf = i => Math.max(1, cardToughness(order[i]));
+    const sum = order.reduce((s, t) => s + (m.get(t) || 0), 0);
+    // lethal-first: can only add to target i once every earlier target has its
+    // lethal; can only reduce target i if no later target depends on it being lethal.
+    const earlierAllLethal = i => order.slice(0, i).every((t, j) => (m.get(t) || 0) >= lethalOf(j));
+    const laterAnyNonzero = i => order.slice(i + 1).some(t => (m.get(t) || 0) > 0);
+
     const sec = document.createElement("div"); sec.className = "csec";
     const h = document.createElement("div"); h.className = "csec-h";
     h.textContent = cardLabel(g.attacker) + " — assign " + g.power + " damage:";
     sec.appendChild(h);
-    for (const tid of g.targets) {
+    order.forEach((tid, i) => {
       const row = document.createElement("div"); row.className = "dmg-row";
       const nm = document.createElement("span"); nm.className = "dmg-nm"; nm.textContent = cardLabel(tid);
       const minus = document.createElement("button"); minus.textContent = "−";
-      minus.onclick = () => setDmg(g.attacker, tid, (m.get(tid) || 0) - 1, g.power);
-      const amt = document.createElement("span"); amt.className = "dmg-amt"; amt.textContent = m.get(tid) || 0;
+      minus.disabled = !(amtOf(i) > 0 && (!laterAnyNonzero(i) || amtOf(i) - 1 >= lethalOf(i)));
+      minus.onclick = () => setDmg(g.attacker, tid, amtOf(i) - 1, g.power);
+      const amt = document.createElement("span"); amt.className = "dmg-amt"; amt.textContent = amtOf(i);
       const plus = document.createElement("button"); plus.textContent = "+";
-      plus.onclick = () => setDmg(g.attacker, tid, (m.get(tid) || 0) + 1, g.power);
+      plus.disabled = !(sum < g.power && earlierAllLethal(i));
+      plus.onclick = () => setDmg(g.attacker, tid, amtOf(i) + 1, g.power);
       row.append(nm, minus, amt, plus);
       sec.appendChild(row);
-    }
+    });
+    // legal iff all power is assigned, or (trample) every blocker has ≥ lethal and
+    // the remainder tramples over.
+    const allLethal = order.every((t, i) => (m.get(t) || 0) >= lethalOf(i));
+    const validG = sum === g.power || (g.trample && sum < g.power && allLethal);
+    allValid = allValid && validG;
+
     const status = document.createElement("div"); status.className = "dmg-status";
     let txt = "assigned " + sum + " / " + g.power;
     if (sum > g.power) txt += " — too much!";
-    else if (g.trample && sum < g.power) txt += " · " + (g.power - sum) + " tramples over";
+    else if (g.trample && sum < g.power) txt += allLethal
+      ? " · " + (g.power - sum) + " tramples over"
+      : " — assign lethal to each before trampling";
     else if (sum < g.power) txt += " — assign all " + g.power;
     status.textContent = txt;
-    status.classList.toggle("bad", sum > g.power || (!g.trample && sum !== g.power));
+    status.classList.toggle("bad", !validG);
     sec.appendChild(status);
     panel.appendChild(sec);
   }
@@ -705,6 +750,7 @@ function buildDamagePanel(panel, cb) {
   const auto = document.createElement("button"); auto.className = "pass"; auto.textContent = "Auto (lethal-first)";
   auto.onclick = () => { for (const g of cb.damage) G.damage.set(g.attacker, autoLethal(g)); renderAll(); };
   const go = document.createElement("button"); go.className = "action"; go.textContent = "Confirm damage";
+  go.disabled = !allValid;
   go.onclick = confirmDamage;
   ctrls.append(auto, go);
   panel.appendChild(ctrls);
@@ -722,6 +768,55 @@ async function confirmDamage() {
   });
   logLine("you", "Assign combat damage");
   await postCombat({ kind: "damage", distributions });
+}
+
+function renderBottomPanel() {
+  const panel = document.getElementById("combat");
+  const n = G.resp.bottom;
+  panel.className = "show"; panel.innerHTML = "";
+  const title = document.createElement("div");
+  title.className = "ctitle";
+  title.textContent = "Mulligan — put " + n + " card" + (n > 1 ? "s" : "") + " on the bottom";
+  panel.appendChild(title);
+  const hint = document.createElement("div");
+  hint.className = "hint";
+  hint.textContent = "Click " + n + " card" + (n > 1 ? "s" : "") +
+    " in your hand to bottom; the rest is your opening hand.";
+  panel.appendChild(hint);
+  const ctrls = document.createElement("div"); ctrls.className = "ctrls";
+  const sel = G.bottomSel.size;
+  const go = document.createElement("button"); go.className = "action";
+  go.textContent = "Confirm (" + sel + "/" + n + ")";
+  go.disabled = sel !== n;
+  go.onclick = confirmBottom;
+  ctrls.appendChild(go);
+  panel.appendChild(ctrls);
+}
+
+async function confirmBottom() {
+  const n = G.resp.bottom;
+  if (G.bottomSel.size !== n) return;
+  const ids = [...G.bottomSel];
+  logLine("you", "Bottom " + ids.length + " card" + (ids.length > 1 ? "s" : ""));
+  setBusy(true);
+  try {
+    const r = await fetch("/bottom", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({ error: r.statusText }));
+      logLine("sys", "✗ " + (e.error || r.status));
+      await getState();
+      return;
+    }
+    G.bottomSel.clear();
+    adopt(await r.json(), true);
+  } catch (e) {
+    logLine("sys", "request failed: " + e);
+  } finally {
+    setBusy(false);
+  }
 }
 
 function renderLog() {
@@ -771,14 +866,16 @@ function renderAll() {
   renderPlayer(document.getElementById("opponent"), opp, false, cm);
   renderPlayer(document.getElementById("you"), you, true, cm);
   renderCards(document.getElementById("stack"), view.stack, "(stack empty)");
-  renderCombatPanel();
+  if (resp.bottom != null) renderBottomPanel(); else renderCombatPanel();
   renderActions(view);
   setBusy(G.busy);
 }
 
 function setBusy(busy) {
   G.busy = busy;
-  for (const b of document.querySelectorAll("#actions button, #combat button")) b.disabled = busy;
+  // Busy disables interaction via CSS so per-button `disabled` stays free for
+  // semantic gating (lethal-first steppers, mulligan confirm count).
+  document.body.classList.toggle("busy", busy);
 }
 
 // ----- networking ----------------------------------------------------------
@@ -791,6 +888,7 @@ function adopt(resp, isAdvance) {
     G.atk.clear(); G.blk.clear(); G.pendingBlocker = null;
     G.order.clear(); G.damage.clear();
   }
+  if (resp.bottom == null) G.bottomSel.clear();
   if (isAdvance && resp.recent && resp.recent.length) {
     for (const r of resp.recent) logLine("opp", "Opponent: " + r.description);
   }

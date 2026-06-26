@@ -140,8 +140,15 @@ impl<'a> Session<'a> {
             };
 
             if let Some(action) = auto_action(&legal) {
-                self.apply_internal(action);
-                continue;
+                // A human's London-mulligan bottoming is offered as a single
+                // canonical BottomCards, but it's a real choice (which cards to
+                // keep) — surface it instead of auto-resolving. Bots auto-bottom.
+                let human_bottoming = matches!(self.seats[player as usize], Seat::Human)
+                    && matches!(action, Action::BottomCards(_));
+                if !human_bottoming {
+                    self.apply_internal(action);
+                    continue;
+                }
             }
 
             // MTGA-style auto-pass: for a human priority window with no

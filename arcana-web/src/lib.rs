@@ -137,8 +137,21 @@ pub enum CombatSubmission {
 pub struct StateResponse {
     pub view: ViewState,
     pub recent: Vec<RecentAction>,
-    /// `Some` only when the human must declare attackers or blockers.
+    /// `Some` only when the human faces a combat decision.
     pub combat: Option<CombatPrompt>,
+    /// `Some(n)` when the human must put `n` cards on the bottom of their
+    /// library after a London mulligan (they choose which `n` to bottom; the
+    /// rest is their opening hand).
+    pub bottom: Option<usize>,
+}
+
+/// The number of cards a London-mulligan bottoming asks for, or `None` if no
+/// bottoming is pending (derived from the canonical [`Action::BottomCards`]).
+fn bottom_prompt(legal: &[Action]) -> Option<usize> {
+    legal.iter().find_map(|a| match a {
+        Action::BottomCards(ids) => Some(ids.len()),
+        _ => None,
+    })
 }
 
 /// Build a [`CombatPrompt`] from the pending decision, or `None` if it isn't a
@@ -218,6 +231,9 @@ pub enum ApplyError {
     /// Auto-tap was asked to play a card that can't be cast/played this turn even
     /// tapping out (it shouldn't have been clickable).
     NotPlayable { id: ObjectId },
+    /// A London-mulligan bottom submission was malformed (wrong count, or an id
+    /// not in the human's hand). `owed` is how many must be bottomed.
+    IllegalBottom { owed: usize },
 }
 
 impl fmt::Display for ApplyError {
@@ -234,6 +250,9 @@ impl fmt::Display for ApplyError {
             }
             ApplyError::NotPlayable { id } => {
                 write!(f, "card {id} can't be played this turn")
+            }
+            ApplyError::IllegalBottom { owed } => {
+                write!(f, "choose exactly {owed} card(s) from your hand to bottom")
             }
         }
     }
@@ -317,7 +336,8 @@ impl GameCore {
             .map(|(p, d)| RecentAction { player: *p, description: d.clone() })
             .collect();
         let combat = combat_prompt(self.session.state(), &self.legal);
-        StateResponse { view, recent, combat }
+        let bottom = bottom_prompt(&self.legal);
+        StateResponse { view, recent, combat, bottom }
     }
 
     /// Apply the human's chosen action by its `index` into the legal list from
@@ -370,6 +390,31 @@ impl GameCore {
         for action in seq {
             self.session.apply(action);
         }
+        Ok(self.snapshot())
+    }
+
+    /// Apply a London-mulligan bottoming: put the chosen `ids` on the bottom of
+    /// the human's library (the rest is their opening hand). Validated against the
+    /// owed count and the human's hand — `apply_bottom_cards` panics on a bad
+    /// submission, so a malformed request is rejected as [`ApplyError::IllegalBottom`]
+    /// rather than reaching the engine.
+    pub fn bottom_cards(&mut self, ids: Vec<ObjectId>) -> Result<StateResponse, ApplyError> {
+        let owed = bottom_prompt(&self.legal).ok_or(ApplyError::NoPendingDecision)?;
+        let hand: std::collections::HashSet<ObjectId> = self
+            .session
+            .state()
+            .objects
+            .iter()
+            .filter(|o| o.zone == arcana_core::zones::Zone::Hand(HUMAN))
+            .map(|o| o.id)
+            .collect();
+        let mut seen = std::collections::HashSet::new();
+        let valid = ids.len() == owed
+            && ids.iter().all(|id| hand.contains(id) && seen.insert(*id));
+        if !valid {
+            return Err(ApplyError::IllegalBottom { owed });
+        }
+        self.session.apply(Action::BottomCards(ids));
         Ok(self.snapshot())
     }
 }
@@ -597,6 +642,36 @@ mod tests {
             }).unwrap_or(0);
             cur = core.apply_index(idx).expect("legal index applies");
         }
+    }
+
+    /// London-mulligan bottoming: after one mulligan + keep the human is asked to
+    /// bottom one card (their choice), and the choice is validated.
+    #[test]
+    fn mulligan_bottoming_surfaced_and_validated() {
+        let reg = leaked_catalog();
+        let mut core = GameCore::new(reg, 5);
+        let s = core.snapshot();
+        // Mulligan once.
+        let again = s.view.legal.iter()
+            .position(|a| a.label == "Mulligan (draw a new hand)").expect("can mulligan");
+        let s = core.apply_index(again).expect("mulligan applies");
+        // Keep the new hand.
+        let keep = s.view.legal.iter()
+            .position(|a| a.label == "Keep this hand").expect("can keep");
+        let s = core.apply_index(keep).expect("keep applies");
+
+        // The human must now choose ONE card to bottom — not auto-resolved.
+        assert_eq!(s.bottom, Some(1), "one mulligan + keep => bottom 1, surfaced to the human");
+        assert!(!s.view.players[0].hand.is_empty(), "the full kept hand is shown to choose from");
+
+        // Malformed submissions are rejected, not panicked.
+        assert!(matches!(core.bottom_cards(vec![]), Err(ApplyError::IllegalBottom { owed: 1 })));
+        assert!(matches!(core.bottom_cards(vec![u32::MAX]), Err(ApplyError::IllegalBottom { .. })));
+
+        // A valid choice (any one hand card) applies and clears the bottoming.
+        let card = s.view.players[0].hand[0].id;
+        let after = core.bottom_cards(vec![card]).expect("valid bottom applies");
+        assert_eq!(after.bottom, None, "bottoming resolved");
     }
 
     /// The StateResponse round-trips through JSON — the actual web transport.

@@ -174,7 +174,17 @@ fn render_choice_response(r: &ChoiceResponse, state: &GameState, registry: &Card
         ChoiceResponse::DistributeDamage { distribution }
         | ChoiceResponse::DistributeCounters { distribution } =>
             format!("Distribute {}", render_distribution(distribution, state, registry)),
-        other => format!("{other:?}"),
+        ChoiceResponse::ChooseTargets { selection } if selection.targets.is_empty() =>
+            "Choose no targets".to_string(),
+        ChoiceResponse::ChooseTargets { selection } => {
+            let names: Vec<String> = selection.targets.iter()
+                .map(|t| render_target(t, state, registry)).collect();
+            format!("Target {}", names.join(", "))
+        }
+        ChoiceResponse::PickPlayer { picked } => format!("Choose P{picked}"),
+        ChoiceResponse::ChooseColor { color } => format!("Choose {color:?}"),
+        ChoiceResponse::OrderCards { placements } =>
+            format!("Order {} card(s)", placements.len()),
     }
 }
 
