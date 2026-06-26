@@ -161,6 +161,18 @@
   .cards.hand.fit { flex: 0 0 auto; height: auto; align-items: flex-start; }
   .cards.hand.fit .ac-card { height: var(--hand-card-h); }
   .cards.hand.fit .ac-card.tapped { height: var(--hand-card-h); }
+
+  /* Forge-style pile: identical cards collapse to one tile with a ×N count badge
+     and the right edges of the cards behind fanned out. Horizontal-only offset
+     (the row clips vertically); margin keeps the fan clear of the next pile. */
+  .cards.battlefield.fit .ac-card.stacked { margin-right: 14px; }
+  .ac-card.stacked::before, .ac-card.stacked::after {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: -1;
+    border-radius: 5px; background: var(--bg-offset); box-shadow: 0 0 0 1px var(--border-muted);
+  }
+  .ac-card.stacked::before { transform: translateX(5px); }
+  .ac-card.stacked::after  { transform: translateX(10px); }
+
   .empty { color: var(--text-faint); font-size: 12px; font-style: italic; font-family: var(--font-serif); padding: 2px 0; }
 
   /* ---- consolidated player HUD (vitals on one line) ---- */
@@ -695,7 +707,12 @@ function manaGaugeHtml(p) {
   return s;
 }
 
-function renderCards(container, cards, emptyMsg, decorate) {
+// Render a card row. When `stackKey` is given, identical cards (same signature)
+// collapse into a single Forge-style pile — one representative card with a "×N"
+// count badge and a fanned stacked visual — saving space (especially lands).
+// The pile's click acts on the representative; pass null to disable (e.g. during
+// combat, when every creature must stay individually interactive).
+function renderCards(container, cards, emptyMsg, decorate, stackKey) {
   container.innerHTML = "";
   if (!cards || cards.length === 0) {
     const e = document.createElement("div");
@@ -703,12 +720,32 @@ function renderCards(container, cards, emptyMsg, decorate) {
     container.appendChild(e);
     return;
   }
-  for (const c of cards) {
-    const decor = decorate ? decorate(c) : {};
-    const el = Arcana.renderCard(c, decor);
+  let items;
+  if (stackKey) {
+    const groups = new Map();
+    for (const c of cards) {
+      const k = stackKey(c);
+      if (groups.has(k)) groups.get(k).push(c); else groups.set(k, [c]);
+    }
+    items = [...groups.values()].map((g) => ({ rep: g[0], n: g.length }));
+  } else {
+    items = cards.map((c) => ({ rep: c, n: 1 }));
+  }
+  for (const it of items) {
+    const decor = decorate ? decorate(it.rep) : {};
+    if (it.n > 1) decor.count = "×" + it.n;
+    const el = Arcana.renderCard(it.rep, decor);
+    if (it.n > 1) el.classList.add("stacked");
     if (decor && decor.pulse) el.classList.add("just-entered");
     container.appendChild(el);
   }
+}
+
+// Stack signature for battlefield cards: identical cards (same name, tapped
+// state, and live P/T) pile together. tapped is in the key so tapped vs untapped
+// lands stay distinct piles (you can see how many are still untapped).
+function bfSig(c) {
+  return [c.name, c.tapped ? "T" : "U", c.power, c.toughness].join("|");
 }
 
 // ----- combat helpers ------------------------------------------------------
@@ -824,18 +861,21 @@ function renderBattlefield(container, p, isYou, cm) {
   const grid = document.createElement("div");
   grid.className = "lands-creatures";
 
+  // Stack duplicates at rest; show every creature individually during combat.
+  const stackKey = (cm && cm.mode) ? null : bfSig;
   const mkZone = (label, cards, empty) => {
     const z = document.createElement("div");
     // empty columns collapse (hidden) so the populated one spans the band; a
-    // populated column's width is ∝ its card count → every card ~equal width.
+    // populated column's width is ∝ its number of PILES → every pile ~equal width.
     z.className = "zone" + (cards.length ? "" : " collapsed");
-    z.style.flexGrow = String(Math.max(1, cards.length));
+    const slots = stackKey ? new Set(cards.map(stackKey)).size : cards.length;
+    z.style.flexGrow = String(Math.max(1, slots));
     const h = document.createElement("div");
     h.className = "meta-label zone-head"; h.textContent = label;
     z.appendChild(h);
     const row = document.createElement("div");
     row.className = "cards battlefield fit";
-    renderCards(row, cards, empty, (c) => bfDecor(c, isYou, cm));
+    renderCards(row, cards, empty, (c) => bfDecor(c, isYou, cm), stackKey);
     z.appendChild(row);
     return z;
   };
