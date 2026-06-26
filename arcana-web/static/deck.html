@@ -78,6 +78,7 @@
     <span id="legality" class="muted"></span>
     <span class="spacer"></span>
     <span id="total" class="muted"></span>
+    <select id="opponent" title="opponent's deck"></select>
     <button id="play" class="primary">Play this deck</button>
   </header>
 
@@ -133,6 +134,7 @@ let glossary = {};
 let formats = [];
 let curFormat = null;
 let legalityTimer = null;
+let sampleDeck = [];   // the baseline opponent (card ids)
 
 function artUrl(name) {
   return "https://api.scryfall.com/cards/named?format=image&exact=" + encodeURIComponent(name);
@@ -291,9 +293,25 @@ function renderResults(results) {
 // ---- save / load (localStorage) ----
 function savedDecks() { try { return JSON.parse(localStorage.getItem("arcana.decks") || "{}"); } catch { return {}; } }
 function refreshLoadSelect() {
+  const names = Object.keys(savedDecks());
   const sel = document.getElementById("loadsel");
   sel.innerHTML = '<option value="">load…</option>';
-  for (const name of Object.keys(savedDecks())) { const o = document.createElement("option"); o.value = name; o.textContent = name; sel.appendChild(o); }
+  for (const name of names) { const o = document.createElement("option"); o.value = name; o.textContent = name; sel.appendChild(o); }
+  // opponent picker: Mirror / Sample / each saved deck
+  const opp = document.getElementById("opponent");
+  const prev = opp.value;
+  opp.innerHTML = "";
+  const add = (v, t) => { const o = document.createElement("option"); o.value = v; o.textContent = t; opp.appendChild(o); };
+  add("mirror", "vs Mirror");
+  add("sample", "vs Sample deck");
+  for (const name of names) add("saved:" + name, "vs " + name);
+  opp.value = prev || "mirror";
+}
+function deckIdsFromSaved(d) {
+  const m = Array.isArray(d) ? d : (d.main || []);
+  const ids = [];
+  for (const { info, count } of m) for (let i = 0; i < count; i++) ids.push(info.id);
+  return ids;
 }
 function loadEntries(m, arr) { m.clear(); for (const { info, count } of (arr || [])) m.set(info.id, { info, count }); }
 function saveDeck() {
@@ -362,7 +380,17 @@ async function playDeck() {
   const ids = [];
   for (const { info, count } of main.values()) for (let i = 0; i < count; i++) ids.push(info.id);
   if (ids.length < 7) { alert("Need at least 7 maindeck cards (40–60 recommended)."); return; }
-  const r = await fetch("/new", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ deck: ids }) });
+  const body = { deck: ids };
+  const sel = document.getElementById("opponent").value;
+  if (sel === "sample") body.opponent = sampleDeck;
+  else if (sel.startsWith("saved:")) {
+    const d = savedDecks()[sel.slice(6)];
+    if (d) body.opponent = deckIdsFromSaved(d);
+  } // "mirror" -> omit opponent (server mirrors)
+  if (body.opponent && body.opponent.length < 7) {
+    alert("Opponent deck has fewer than 7 cards; it will fall back to the sample deck.");
+  }
+  const r = await fetch("/new", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   if (r.ok) window.location = "/"; else alert("Could not start a game with this deck.");
 }
 
@@ -388,6 +416,7 @@ async function init() {
   const kwsel = document.getElementById("q-kw");
   for (const k of Object.keys(glossary).sort()) { const o = document.createElement("option"); o.textContent = k; kwsel.appendChild(o); }
   try { const r = await fetch("/formats"); if (r.ok) formats = await r.json(); } catch {}
+  try { const r = await fetch("/sample-deck"); if (r.ok) sampleDeck = await r.json(); } catch {}
   const fsel = document.getElementById("format");
   formats.forEach((f, i) => { const o = document.createElement("option"); o.value = i; o.textContent = f.name; fsel.appendChild(o); });
   curFormat = formats[0] || null;

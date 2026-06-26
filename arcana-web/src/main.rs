@@ -25,7 +25,9 @@
 //! * `POST /import` → body `{ "text": "<deck list>" }`, parse Arena/MTGO format →
 //!   resolved `ImportedDeck` (main/sideboard CardInfos + unresolved names).
 //! * `POST /legality`→ body `{ main, sideboard, spec }` → `LegalityReport`.
-//! * `POST /new`    → optional body `{ "seed": N }`, start a fresh game.
+//! * `GET  /sample-deck` → the baseline sample deck as `[CardId]` (opponent picker).
+//! * `POST /new`    → optional `{ seed, deck, opponent }`; human plays `deck`, bot
+//!   plays `opponent` (mirrors `deck` if absent). Invalid decks fall back to sample.
 //!
 //! ## Concurrency / lifetime note
 //! `Session<'a>` borrows the `CardRegistry`, and `Seat::Bot(Box<dyn StatePolicy>)`
@@ -74,7 +76,13 @@ enum Command {
         spec: FormatSpec,
         reply: oneshot::Sender<LegalityReport>,
     },
-    New { seed: Option<u64>, deck: Option<Vec<CardId>>, reply: oneshot::Sender<StateResponse> },
+    SampleDeck { reply: oneshot::Sender<Vec<CardId>> },
+    New {
+        seed: Option<u64>,
+        deck: Option<Vec<CardId>>,
+        opponent: Option<Vec<CardId>>,
+        reply: oneshot::Sender<StateResponse>,
+    },
 }
 
 /// Shared server state: a handle to the game worker. Cheap to clone (just an
@@ -116,9 +124,10 @@ struct LegalityRequest {
 #[derive(Debug, Default, Deserialize)]
 struct NewRequest {
     seed: Option<u64>,
-    /// Optional custom deck (card ids with repeats, from the deckbuilder). Both
-    /// seats play it. Ignored if too small or containing unregistered ids.
+    /// The human's deck (seat 0). Ignored if too small / has unregistered ids.
     deck: Option<Vec<CardId>>,
+    /// The opponent's deck (seat 1). If absent, the bot mirrors the human's deck.
+    opponent: Option<Vec<CardId>>,
 }
 
 /// A deck is playable if it can at least draw an opening hand and every id is a
@@ -182,11 +191,19 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>) {
             Command::Legality { main, sideboard, spec, reply } => {
                 let _ = reply.send(check_legality(&main, &sideboard, &spec, core.registry()));
             }
-            Command::New { seed, deck, reply } => {
+            Command::SampleDeck { reply } => {
+                let _ = reply.send(arcana_cards::sample_deck(reg, arcana_web::DECK_SEED));
+            }
+            Command::New { seed, deck, opponent, reply } => {
                 let seed = seed.unwrap_or_else(time_seed);
-                core = match deck {
-                    Some(d) if deck_is_valid(reg, &d) => GameCore::new_with_deck(reg, seed, d),
-                    _ => GameCore::new(reg, seed),
+                core = match deck.filter(|d| deck_is_valid(reg, d)) {
+                    Some(human) => {
+                        // Bot plays the chosen opponent deck, else mirrors the human.
+                        let bot = opponent.filter(|d| deck_is_valid(reg, d))
+                            .unwrap_or_else(|| human.clone());
+                        GameCore::new_with_decks(reg, seed, human, bot)
+                    }
+                    None => GameCore::new(reg, seed), // sample mirror
                 };
                 let _ = reply.send(core.snapshot());
             }
@@ -360,11 +377,24 @@ async fn post_search(State(app): State<AppState>, body: String) -> Response {
     }
 }
 
+async fn get_sample_deck(State(app): State<AppState>) -> Response {
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::SampleDeck { reply }).is_err() {
+        return worker_gone();
+    }
+    match rx.await {
+        Ok(ids) => Json(ids).into_response(),
+        Err(_) => worker_gone(),
+    }
+}
+
 async fn post_new(State(app): State<AppState>, body: String) -> Response {
     // Lenient: empty body is allowed (→ default → time-based seed, sample deck).
     let req: NewRequest = serde_json::from_str(&body).unwrap_or_default();
     let (reply, rx) = oneshot::channel();
-    if app.tx.send(Command::New { seed: req.seed, deck: req.deck, reply }).is_err() {
+    if app.tx.send(Command::New {
+        seed: req.seed, deck: req.deck, opponent: req.opponent, reply,
+    }).is_err() {
         return worker_gone();
     }
     match rx.await {
@@ -390,6 +420,7 @@ async fn main() {
         .route("/formats", get(get_formats))
         .route("/import", post(post_import))
         .route("/legality", post(post_legality))
+        .route("/sample-deck", get(get_sample_deck))
         .route("/glossary", get(get_glossary))
         .route("/state", get(get_state))
         .route("/action", post(post_action))

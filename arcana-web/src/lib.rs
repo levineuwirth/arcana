@@ -332,11 +332,19 @@ impl GameCore {
         Self::new_with_deck(reg, seed, arcana_cards::sample_deck(reg, DECK_SEED))
     }
 
-    /// Start a fresh game where both seats play `deck` (a list of card ids with
-    /// repeats — the deckbuilder's output). Human in seat 0, snappy bot in seat 1.
+    /// Start a fresh game where both seats play `deck` (a mirror match). Human in
+    /// seat 0, snappy bot in seat 1.
     pub fn new_with_deck(reg: &'static CardRegistry, seed: u64, deck: Vec<CardId>) -> Self {
+        Self::new_with_decks(reg, seed, deck.clone(), deck)
+    }
+
+    /// Start a fresh game where the human (seat 0) plays `human` and the bot
+    /// (seat 1) plays `opponent` — the deckbuilder's "play my deck vs X".
+    pub fn new_with_decks(
+        reg: &'static CardRegistry, seed: u64, human: Vec<CardId>, opponent: Vec<CardId>,
+    ) -> Self {
         let seats = vec![Seat::Human, Self::make_bot(seed)];
-        let session = Session::new(vec![deck.clone(), deck], reg, seats, seed);
+        let session = Session::new(vec![human, opponent], reg, seats, seed);
         Self { reg, session, legal: Vec::new() }
     }
 
@@ -728,6 +736,24 @@ mod tests {
             "the human's library + hand equal the custom deck size");
         assert!(s.view.game_over.is_none());
         assert!(!s.view.legal.is_empty());
+    }
+
+    /// Each seat plays its own deck: the human's and opponent's zones each
+    /// account for their distinct deck's cards.
+    #[test]
+    fn new_with_decks_gives_each_seat_its_deck() {
+        let reg = leaked_catalog();
+        let human = arcana_cards::sample_deck(reg, 3);
+        let mut opponent = arcana_cards::sample_deck(reg, 9);
+        opponent.truncate(opponent.len().saturating_sub(5)); // make the decks differ in size
+        assert_ne!(human.len(), opponent.len(), "decks should differ for the test");
+
+        let mut core = GameCore::new_with_decks(reg, 1, human.clone(), opponent.clone());
+        let s = core.snapshot();
+        let p0 = &s.view.players[0];
+        let p1 = &s.view.players[1];
+        assert_eq!(p0.library_count + p0.hand_count, human.len(), "seat 0 plays the human deck");
+        assert_eq!(p1.library_count + p1.hand_count, opponent.len(), "seat 1 plays the opponent deck");
     }
 
     /// The catalog query layer works over the real ~20k-card catalog: an
