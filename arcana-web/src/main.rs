@@ -49,6 +49,7 @@ use arcana_core::deck::{check_legality, builtin_formats, FormatSpec, LegalityRep
 use arcana_core::objects::ObjectId;
 use arcana_core::registry::CardRegistry;
 use arcana_core::types::CardId;
+use arcana_ai::session::AutoPass;
 use arcana_web::{resolve_import, CombatSubmission, GameCore, ImportedDeck, StateResponse, Suggestion};
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
@@ -74,6 +75,7 @@ enum Command {
     Combat { sub: CombatSubmission, reply: oneshot::Sender<Result<StateResponse, String>> },
     AutoTap { target: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
     Activate { source: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
+    SetAutoPass { level: AutoPass, reply: oneshot::Sender<StateResponse> },
     Bottom { ids: Vec<ObjectId>, reply: oneshot::Sender<Result<StateResponse, String>> },
     Search { query: CardQuery, reply: oneshot::Sender<Vec<CardInfo>> },
     Import { text: String, reply: oneshot::Sender<ImportedDeck> },
@@ -176,6 +178,9 @@ fn time_seed() -> u64 {
 fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>) {
     let reg: &'static CardRegistry = Box::leak(Box::new(arcana_cards::build_catalog()));
     let mut core = GameCore::new(reg, time_seed());
+    // Persists across `New` so the player's auto-pass choice survives a new game.
+    let mut auto_pass = AutoPass::default();
+    core.set_auto_pass(auto_pass);
 
     while let Some(cmd) = rx.blocking_recv() {
         match cmd {
@@ -197,6 +202,11 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>) {
             Command::Activate { source, reply } => {
                 let res = core.auto_tap_and_activate(source).map_err(|e| e.to_string());
                 let _ = reply.send(res);
+            }
+            Command::SetAutoPass { level, reply } => {
+                auto_pass = level;
+                core.set_auto_pass(level);
+                let _ = reply.send(core.snapshot());
             }
             Command::Bottom { ids, reply } => {
                 let res = core.bottom_cards(ids).map_err(|e| e.to_string());
@@ -228,6 +238,7 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>) {
                     }
                     None => GameCore::new(reg, seed), // sample mirror
                 };
+                core.set_auto_pass(auto_pass); // preserve the player's choice
                 let _ = reply.send(core.snapshot());
             }
         }
@@ -395,6 +406,36 @@ async fn post_autotap(State(app): State<AppState>, body: String) -> Response {
     }
 }
 
+#[derive(Debug, Deserialize)]
+struct AutoPassRequest {
+    level: String,
+}
+
+async fn post_autopass(State(app): State<AppState>, body: String) -> Response {
+    let req: AutoPassRequest = match serde_json::from_str(&body) {
+        Ok(r) => r,
+        Err(e) => {
+            return (StatusCode::BAD_REQUEST, err(format!("invalid /autopass body: {e}"))).into_response()
+        }
+    };
+    let level = match req.level.as_str() {
+        "none" => AutoPass::None,
+        "stops" => AutoPass::Stops,
+        "full" => AutoPass::Full,
+        other => {
+            return (StatusCode::BAD_REQUEST, err(format!("unknown auto-pass level: {other}"))).into_response()
+        }
+    };
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::SetAutoPass { level, reply }).is_err() {
+        return worker_gone();
+    }
+    match rx.await {
+        Ok(resp) => Json(resp).into_response(),
+        Err(_) => worker_gone(),
+    }
+}
+
 async fn post_activate(State(app): State<AppState>, body: String) -> Response {
     let req: AutoTapRequest = match serde_json::from_str(&body) {
         Ok(r) => r,
@@ -501,6 +542,7 @@ async fn main() {
         .route("/combat", post(post_combat))
         .route("/autotap", post(post_autotap))
         .route("/activate", post(post_activate))
+        .route("/autopass", post(post_autopass))
         .route("/bottom", post(post_bottom))
         .route("/search", post(post_search))
         .route("/new", post(post_new))

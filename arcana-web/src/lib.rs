@@ -459,6 +459,11 @@ impl GameCore {
         self.reg
     }
 
+    /// Set the human auto-pass level (none / middle-ground / full).
+    pub fn set_auto_pass(&mut self, level: arcana_ai::session::AutoPass) {
+        self.session.set_auto_pass(level);
+    }
+
     /// Drive the session through all bot + trivial decisions, then project the
     /// next human decision (or the finished game) into a [`StateResponse`].
     ///

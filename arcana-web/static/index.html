@@ -41,6 +41,13 @@
     border-radius: var(--radius-panel); background: var(--bg-offset);
   }
   .phasebar.you-turn { border-left-color: var(--text); }
+  .autopass-ctl { display: inline-flex; align-items: center; gap: 6px; font-size: 11px;
+    text-transform: uppercase; letter-spacing: .06em; color: var(--text-faint); }
+  .autopass-ctl select {
+    font-family: var(--font-sans); font-size: 12px; text-transform: none; letter-spacing: 0;
+    color: var(--text); background: var(--bg-offset); border: 1px solid var(--border);
+    border-radius: var(--radius-control); padding: 2px 6px;
+  }
   .phasebar .turn { font-variant-numeric: tabular-nums; color: var(--text-muted); font-size: 13px; }
   .phasebar .step { font-family: var(--font-serif); font-weight: 600; font-size: 17px; color: var(--text); }
   .phasebar .who { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
@@ -375,6 +382,14 @@
     <div class="brand"><span class="mark">Arcana</span><span class="sub">cockpit</span></div>
     <div class="phasebar" id="phase"></div>
     <div class="spacer"></div>
+    <label class="autopass-ctl" title="How much to auto-pass your dead priority windows">
+      <span>Auto-pass</span>
+      <select id="autopass">
+        <option value="none">None</option>
+        <option value="stops" selected>Default</option>
+        <option value="full">Full</option>
+      </select>
+    </label>
     <a href="/deck">Deckbuilder →</a>
     <div class="menu-wrap" id="panels-menu">
       <button id="panelsbtn" class="ghost">Panels ▾</button>
@@ -1825,6 +1840,20 @@ Arcana.mountThemeSwitcher(document.getElementById("themeslot"));
 document.getElementById("new").onclick = newGame;
 document.getElementById("refresh").onclick = getState;
 
+// Auto-pass level — persisted, and synced to the server on load (the worker
+// keeps it across new games, so we only need to push it when it changes / loads).
+const AUTOPASS_KEY = "arcana.autopass";
+const autopassSel = document.getElementById("autopass");
+let autopassLevel = "stops";
+try { autopassLevel = localStorage.getItem(AUTOPASS_KEY) || "stops"; } catch (e) { /* default */ }
+autopassSel.value = autopassLevel;
+autopassSel.onchange = async () => {
+  autopassLevel = autopassSel.value;
+  try { localStorage.setItem(AUTOPASS_KEY, autopassLevel); } catch (e) { /* ignore */ }
+  try { adopt(await Arcana.Api.autoPass(autopassLevel), true); }
+  catch (e) { logLine("sys", "auto-pass: " + e); }
+};
+
 // Panels menu open/close
 const panelsBtn = document.getElementById("panelsbtn");
 const panelsPop = document.getElementById("panels-pop");
@@ -1834,7 +1863,11 @@ document.addEventListener("click", (e) => {
 });
 
 Arcana.loadGlossary();
-getState();
+// Sync the saved auto-pass level to the server, then load the game.
+(async () => {
+  if (autopassLevel !== "stops") { try { await Arcana.Api.autoPass(autopassLevel); } catch (e) { /* ignore */ } }
+  getState();
+})();
 </script>
 </body>
 </html>
