@@ -1,0 +1,24 @@
+[package]
+name = "arcana-web"
+version = "0.1.0"
+edition = "2021"
+description = "Axum web/server GUI for human play against a bot — MVP web frontend."
+
+# Split into a lib (testable game-driving core) + a thin binary (HTTP wiring) so
+# the server logic can be exercised by `cargo test` without standing up a socket.
+[lib]
+name = "arcana_web"
+path = "src/lib.rs"
+
+[[bin]]
+name = "arcana-web"
+path = "src/main.rs"
+
+[dependencies]
+arcana-core = { path = "../arcana-core" }
+arcana-cards = { path = "../arcana-cards" }
+arcana-ai = { path = "../arcana-ai" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+axum = "0.8"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync"] }
