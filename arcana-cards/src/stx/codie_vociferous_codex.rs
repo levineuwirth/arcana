@@ -6,7 +6,9 @@
 //!  mana cost. Put each other card exiled this way on the bottom of your library in a
 //!  random order."
 //!
-//! The "can't cast permanent spells" static is GAP'd (no casting-restriction static).
+//! The "can't cast permanent spells" static is enforced via
+//! `CardDefinition::with_cant_cast(CastRestriction::Permanents)` (legal_actions
+//! won't enumerate a permanent spell as castable while Codie is in play).
 //! The activated ability adds {W}{U}{B}{R}{G}; its reflexive next-cast impulse rider
 //! is GAP'd. Because the ability carries that rider it is not a pure mana ability.
 
@@ -15,7 +17,7 @@ use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
-    CardDefinition, CardRegistry,
+    CardDefinition, CardRegistry, CastRestriction,
 };
 use arcana_core::state::GameState;
 use arcana_core::types::{CardId, ColorSet, ManaColor, PtValue, SubtypeSet, SupertypeSet, TypeLine};
@@ -40,11 +42,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    // GAP: static "You can't cast permanent spells." — a spell-casting restriction
-    // static is not expressible.
-
     reg.register(
         CardDefinition::new(name, chars)
+            // "You can't cast permanent spells." (CR 601.3e static restriction)
+            .with_cant_cast(CastRestriction::Permanents)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{4}, {T}: Add {W}{U}{B}{R}{G}. When you next cast a spell this turn, exile cards from the top of your library until you exile an instant or sorcery card with lesser mana value. Until end of turn, you may cast that card without paying its mana cost. Put each other card exiled this way on the bottom of your library in a random order.".into(),
                 cost: ActivationCost {

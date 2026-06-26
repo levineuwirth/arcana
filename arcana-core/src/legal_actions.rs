@@ -70,6 +70,21 @@ use crate::zones::Zone;
 /// ascending order and action families appear in a fixed sequence
 /// (pass → concede → play-land → casts). This matters for replay and
 /// test reproducibility.
+/// CR 601.3e — does any permanent `player` controls statically forbid casting a
+/// spell with type line `types`? (e.g. Codie, Vociferous Codex's "You can't cast
+/// permanent spells".) See [`crate::registry::CastRestriction`].
+fn cast_restricted(
+    state: &GameState, player: PlayerId, registry: &CardRegistry,
+    types: crate::types::TypeLine,
+) -> bool {
+    state.objects.objects_in_zone(Zone::Battlefield).any(|obj| {
+        obj.controller == player
+            && registry.get(obj.card_id)
+                .and_then(|d| d.cant_cast)
+                .is_some_and(|r| r.forbids(types))
+    })
+}
+
 pub fn legal_actions(state: &GameState, registry: &CardRegistry) -> Vec<Action> {
     if state.is_game_over() {
         return Vec::new();
@@ -927,6 +942,10 @@ fn legal_priority_actions(
             .unwrap_or(&obj.characteristics);
 
         let Some(printed_cost) = cast_chars.mana_cost.clone() else { continue; };
+        // CR 601.3e — static casting restrictions a permanent imposes on its
+        // controller (e.g. Codie, Vociferous Codex: "You can't cast permanent
+        // spells"). The spell simply isn't enumerated as castable.
+        if cast_restricted(state, player, registry, cast_chars.types) { continue; }
         // CR 601.2f — cost modifiers (Chill / Sphere of Resistance /
         // Arcane Melee class) adjust the generic component.
         let printed_cost = printed_cost.with_generic_delta(
@@ -3074,6 +3093,39 @@ mod tests {
         let actions = legal_actions(&s, &CardRegistry::new());
         assert!(actions.iter().any(|a|
             matches!(a, Action::CastSpell { object_id, .. } if *object_id == bolt)));
+    }
+
+    /// CR 601.3e — a permanent imposing `CastRestriction::Permanents` (Codie,
+    /// Vociferous Codex) makes permanent spells uncastable while it's in play,
+    /// but instants/sorceries stay castable.
+    #[test]
+    fn cast_restriction_blocks_permanent_spells() {
+        use crate::registry::{CardDefinition, CastRestriction};
+        let mut reg = CardRegistry::new();
+        let nm = reg.interner_mut().intern("TestCodex");
+        let codex_chars = Characteristics { types: TypeLine::ARTIFACT.into(), ..Default::default() };
+        let codex_id = reg.register(
+            CardDefinition::new(nm, codex_chars.clone())
+                .with_cant_cast(CastRestriction::Permanents));
+
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        // The restricting permanent on the battlefield (controller 0).
+        let oid = s.allocate_object_id();
+        let mut codex = GameObject::new(oid, 0, Zone::Battlefield, codex_id, codex_chars);
+        codex.controller = 0;
+        s.objects.insert(codex);
+        // A creature (permanent spell) and an instant in hand; plenty of mana.
+        let creature = put(&mut s, 0, Zone::Hand(0), creature_chars(2, 2));
+        let inst = put(&mut s, 0, Zone::Hand(0), instant_chars());
+        add_mana(&mut s, 0, ManaColor::Green, 5);
+        add_mana(&mut s, 0, ManaColor::Red, 5);
+
+        let actions = legal_actions(&s, &reg);
+        let castable = |q: ObjectId| actions.iter().any(|a|
+            matches!(a, Action::CastSpell { object_id, .. } if *object_id == q));
+        assert!(!castable(creature), "permanent spell must be uncastable under the restriction");
+        assert!(castable(inst), "instant must remain castable");
     }
 
     // --- PayOrDecline (Ward) affordability gate ----------------------------

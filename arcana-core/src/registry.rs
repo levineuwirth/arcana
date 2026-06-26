@@ -202,6 +202,36 @@ pub struct CardDefinition {
     /// `TriggeredAbilityDef` field) so the 1,800+ existing trigger
     /// literals stay stable. Empty = every trigger fires on any face.
     pub trigger_face_gates: Vec<(crate::types::TriggerId, u8)>,
+    /// A static casting RESTRICTION this permanent imposes on its controller
+    /// while on the battlefield (CR 601 permission) — e.g. Codie, Vociferous
+    /// Codex's "You can't cast permanent spells." `None` for the vast majority.
+    /// Enforced in `legal_actions` (the spell isn't enumerated as castable);
+    /// not a layer/characteristic effect.
+    pub cant_cast: Option<CastRestriction>,
+}
+
+/// A static "you can't cast …" restriction a permanent imposes on its
+/// controller (CR 601.3e). Checked against the would-be spell's type line when
+/// enumerating casts; see [`CardDefinition::cant_cast`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CastRestriction {
+    /// "You can't cast permanent spells." (Codie, Vociferous Codex)
+    Permanents,
+    /// "You can't cast creature spells."
+    Creatures,
+    /// "You can't cast noncreature spells."
+    Noncreature,
+}
+
+impl CastRestriction {
+    /// Does this restriction forbid casting a spell with type line `types`?
+    pub fn forbids(self, types: crate::types::TypeLine) -> bool {
+        match self {
+            CastRestriction::Permanents => types.is_permanent(),
+            CastRestriction::Creatures => types.is_creature(),
+            CastRestriction::Noncreature => !types.is_creature(),
+        }
+    }
 }
 
 impl CardDefinition {
@@ -220,7 +250,15 @@ impl CardDefinition {
             dynamic_x: Vec::new(),
             mode_effects: None,
             trigger_face_gates: Vec::new(),
+            cant_cast: None,
         }
+    }
+
+    /// Impose a static casting restriction on the controller while this
+    /// permanent is on the battlefield (e.g. Codie: `CastRestriction::Permanents`).
+    pub fn with_cant_cast(mut self, restriction: CastRestriction) -> Self {
+        self.cant_cast = Some(restriction);
+        self
     }
 
     /// Gate a triggered ability to a specific face (CR 712). `face` is
