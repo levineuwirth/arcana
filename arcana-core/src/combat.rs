@@ -54,6 +54,7 @@
 
 use serde::{Serialize, Deserialize};
 
+use crate::actions::Action;
 use crate::effects::KeywordAbility;
 use crate::events::GameEvent;
 use crate::objects::ObjectId;
@@ -209,6 +210,84 @@ pub enum DefendingEntity {
 pub struct BlockerDeclaration {
     pub blocker: ObjectId,
     pub blocking: ObjectId,
+}
+
+// =============================================================================
+// Incremental-combat helpers (for interactive frontends)
+// =============================================================================
+//
+// The engine offers combat as whole `DeclareAttackers` / `DeclareBlockers`
+// declarations (the enumerated legal combinations). Listing them is fine for a
+// bot but unusable for a human, who wants to build a declaration piece by piece.
+// These pure helpers derive the per-creature option set from the legal list,
+// and match a built declaration back to a legal one — so a frontend (CLI or
+// GUI) can offer "toggle each attacker / assign each blocker" and submit only a
+// legal action. All operate on `&[Action]` (the `legal` from a combat decision).
+
+/// Candidate attackers and, per attacker, the defenders it may attack, derived
+/// from the legal `DeclareAttackers` list. Insertion order is stable for display.
+pub fn attacker_options(legal: &[Action]) -> Vec<(ObjectId, Vec<DefendingEntity>)> {
+    let mut out: Vec<(ObjectId, Vec<DefendingEntity>)> = Vec::new();
+    for a in legal {
+        if let Action::DeclareAttackers { attackers } = a {
+            for d in attackers {
+                let entry = match out.iter_mut().find(|(id, _)| *id == d.attacker) {
+                    Some(e) => e,
+                    None => { out.push((d.attacker, Vec::new())); out.last_mut().unwrap() }
+                };
+                if !entry.1.contains(&d.defending) { entry.1.push(d.defending); }
+            }
+        }
+    }
+    out
+}
+
+/// Candidate blockers and, per blocker, the attackers it may block, derived
+/// from the legal `DeclareBlockers` list. Insertion order is stable for display.
+pub fn blocker_options(legal: &[Action]) -> Vec<(ObjectId, Vec<ObjectId>)> {
+    let mut out: Vec<(ObjectId, Vec<ObjectId>)> = Vec::new();
+    for a in legal {
+        if let Action::DeclareBlockers { blockers } = a {
+            for b in blockers {
+                let entry = match out.iter_mut().find(|(id, _)| *id == b.blocker) {
+                    Some(e) => e,
+                    None => { out.push((b.blocker, Vec::new())); out.last_mut().unwrap() }
+                };
+                if !entry.1.contains(&b.blocking) { entry.1.push(b.blocking); }
+            }
+        }
+    }
+    out
+}
+
+/// Find the legal `DeclareAttackers` whose attacker/defender set equals
+/// `chosen` (order-independent). `None` if no legal declaration matches — the
+/// built combination is illegal (must-attack, etc.) or was beyond the
+/// enumeration cap, and the frontend should re-prompt.
+pub fn match_attack(legal: &[Action], chosen: &[AttackerDeclaration]) -> Option<Action> {
+    use std::collections::HashSet;
+    let want: HashSet<(ObjectId, DefendingEntity)> =
+        chosen.iter().map(|d| (d.attacker, d.defending)).collect();
+    legal.iter().find(|a| match a {
+        Action::DeclareAttackers { attackers } =>
+            attackers.len() == want.len()
+                && attackers.iter().all(|d| want.contains(&(d.attacker, d.defending))),
+        _ => false,
+    }).cloned()
+}
+
+/// Find the legal `DeclareBlockers` whose blocker/attacker set equals `chosen`
+/// (order-independent). `None` if the combination is illegal / beyond the cap.
+pub fn match_block(legal: &[Action], chosen: &[BlockerDeclaration]) -> Option<Action> {
+    use std::collections::HashSet;
+    let want: HashSet<(ObjectId, ObjectId)> =
+        chosen.iter().map(|b| (b.blocker, b.blocking)).collect();
+    legal.iter().find(|a| match a {
+        Action::DeclareBlockers { blockers } =>
+            blockers.len() == want.len()
+                && blockers.iter().all(|b| want.contains(&(b.blocker, b.blocking))),
+        _ => false,
+    }).cloned()
 }
 
 /// CR-derived aggregate count constraints on how many blockers may be
@@ -3231,5 +3310,47 @@ mod tests {
         let atk_info = combat.attackers.iter().find(|a| a.object_id == atk).unwrap();
         assert!(atk_info.blocked_by.is_empty(),
             "a can't-be-blocked attacker takes no blockers");
+    }
+
+    // --- incremental-combat helpers ----------------------------------------
+
+    #[test]
+    fn attacker_options_and_match() {
+        let opp = DefendingEntity::Player(1);
+        let ad = |id| AttackerDeclaration { attacker: id, defending: opp };
+        let legal = vec![
+            Action::DeclareAttackers { attackers: vec![] },
+            Action::DeclareAttackers { attackers: vec![ad(1)] },
+            Action::DeclareAttackers { attackers: vec![ad(2)] },
+            Action::DeclareAttackers { attackers: vec![ad(2), ad(1)] }, // note: 2 then 1
+        ];
+        let opts = attacker_options(&legal);
+        assert_eq!(opts.len(), 2, "two candidate attackers");
+        assert!(opts.iter().all(|(_, defs)| defs == &vec![opp]));
+
+        // Order-independent match: we built {1,2}, legal lists it as {2,1}.
+        assert!(match_attack(&legal, &[ad(1), ad(2)]).is_some());
+        // Empty declaration is offered + matches.
+        assert!(match_attack(&legal, &[]).is_some());
+        // A combination never offered → no match (illegal build).
+        let bogus = AttackerDeclaration { attacker: 1, defending: DefendingEntity::Planeswalker(99) };
+        assert!(match_attack(&legal, &[bogus]).is_none());
+    }
+
+    #[test]
+    fn blocker_options_and_match() {
+        let bd = |blk, atk| BlockerDeclaration { blocker: blk, blocking: atk };
+        let legal = vec![
+            Action::DeclareBlockers { blockers: vec![] },
+            Action::DeclareBlockers { blockers: vec![bd(10, 1)] },
+            Action::DeclareBlockers { blockers: vec![bd(10, 2)] },
+        ];
+        let opts = blocker_options(&legal);
+        assert_eq!(opts.len(), 1);
+        assert_eq!(opts[0].0, 10);
+        assert_eq!(opts[0].1.len(), 2, "blocker 10 can block attacker 1 or 2");
+        assert!(match_block(&legal, &[bd(10, 2)]).is_some());
+        assert!(match_block(&legal, &[]).is_some());
+        assert!(match_block(&legal, &[bd(10, 99)]).is_none());
     }
 }

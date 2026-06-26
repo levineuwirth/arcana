@@ -107,6 +107,22 @@ pub fn render_for(state: &GameState, registry: &CardRegistry, perspective: Playe
     out
 }
 
+/// A brief label for one object: "Name P/T" (P/T only for creatures). For
+/// interactive combat menus (listing attackers/blockers). Public wrapper over
+/// the internal permanent renderer minus the tapped marker.
+pub fn render_object_brief(state: &GameState, registry: &CardRegistry,
+                           id: crate::objects::ObjectId) -> String {
+    let mut s = card_name(state, registry, id);
+    if let Some(obj) = state.objects.get(id) {
+        if obj.characteristics.types.is_creature() {
+            let p = state.computed_power(id).unwrap_or(0);
+            let t = state.computed_toughness(id).unwrap_or(0);
+            let _ = write!(s, " {p}/{t}");
+        }
+    }
+    s
+}
+
 /// A short, human-readable label for `action` — the menu text in human play.
 /// Resolves object ids to card names; common actions get friendly phrasing, the
 /// rest fall back to a compact debug form (improved incrementally). Shared by

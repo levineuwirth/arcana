@@ -189,6 +189,60 @@ mod tests {
         assert!(!session.record().actions.is_empty());
     }
 
+    /// A scripted human that DEVELOPS (plays lands/spells) and ATTACKS, building
+    /// its combat declarations via the `arcana_core::combat` incremental helpers
+    /// against the engine's real enumerated legal lists. Validates that a built
+    /// "attack with everything" declaration always matches a legal action, and
+    /// that block-with-nothing always matches — the combat-UX path end-to-end.
+    #[test]
+    fn scripted_human_develops_and_attacks() {
+        use arcana_core::actions::DecisionContext;
+        use arcana_core::combat::{attacker_options, match_attack, match_block, AttackerDeclaration};
+        let reg = arcana_cards::build_catalog();
+        let deck = arcana_cards::sample_deck(&reg, 7);
+        let seats = vec![Seat::Human, Seat::Bot(Box::new(RandomStatePolicy::new(5)))];
+        let mut session = Session::new(vec![deck.clone(), deck], &reg, seats, 11);
+
+        let mut attacks_declared = 0;
+        let mut guard = 0;
+        loop {
+            guard += 1;
+            assert!(guard < 200_000, "session failed to terminate");
+            let (legal, context) = match session.advance() {
+                Turn::GameOver(_) => break,
+                Turn::AwaitingHuman { legal, context, .. } => (legal, context),
+            };
+            let action = match context {
+                DecisionContext::DeclareAttackers => {
+                    // Build "attack with everything" (first legal defender each).
+                    let decls: Vec<AttackerDeclaration> = attacker_options(&legal).iter()
+                        .map(|(id, defs)| AttackerDeclaration { attacker: *id, defending: defs[0] })
+                        .collect();
+                    let action = match_attack(&legal, &decls)
+                        .expect("an attack-with-everything build must match a legal declaration");
+                    if !decls.is_empty() { attacks_declared += 1; }
+                    action
+                }
+                DecisionContext::DeclareBlockers => {
+                    match_block(&legal, &[]).expect("block-with-nothing must be legal")
+                }
+                _ => {
+                    // Develop: prefer a land, then a spell, else pass.
+                    legal.iter().find(|a| matches!(a, Action::PlayLand { .. }))
+                        .or_else(|| legal.iter().find(|a| matches!(a, Action::CastSpell { .. })))
+                        .or_else(|| legal.iter().find(|a| matches!(a, Action::MulliganKeep)))
+                        .or_else(|| legal.iter().find(|a| matches!(a, Action::PassPriority)))
+                        .or_else(|| legal.iter().find(|a| !a.is_concede()))
+                        .cloned().unwrap_or_else(|| legal[0].clone())
+                }
+            };
+            session.apply(action);
+        }
+        // The developing human should have reached combat with attackers at least
+        // once over a full game — exercising the build+match path for real.
+        assert!(attacks_declared > 0, "expected the human to declare attackers");
+    }
+
     /// All-bot seats: advance() runs the whole game with no human stop.
     #[test]
     fn all_bots_runs_to_completion() {

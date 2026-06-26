@@ -1,12 +1,19 @@
 //! Interactive human-play frontend — a thin CLI over the UI-agnostic
 //! [`arcana_ai::session::Session`]. All game logic lives in the session; this
-//! file only renders the view and reads a menu choice from stdin, so a future
-//! GUI can reuse the exact same core.
+//! file only renders the view and reads choices from stdin, so a future GUI can
+//! reuse the exact same core (and the same combat-builder helpers).
 
 use std::io::Write as _;
 
 use anyhow::{Context, Result};
-use arcana_core::render::{render, render_action, render_for};
+use arcana_core::actions::{Action, DecisionContext};
+use arcana_core::combat::{
+    attacker_options, blocker_options, match_attack, match_block, AttackerDeclaration,
+    BlockerDeclaration, DefendingEntity,
+};
+use arcana_core::registry::CardRegistry;
+use arcana_core::render::{render, render_action, render_for, render_object_brief};
+use arcana_core::state::GameState;
 use arcana_ai::search::{
     FlatMonteCarloPolicy, MaterialValue, PimcPolicy, RandomStatePolicy, ValueMcPolicy,
 };
@@ -62,36 +69,171 @@ pub fn play(args: &[String]) -> Result<()> {
             Turn::AwaitingHuman { player, view, legal, context } => {
                 println!("\n{}", render_for(&view.state, &reg, view.perspective));
                 println!("── P{player} to decide: {context:?} ──");
-                for (i, a) in legal.iter().enumerate() {
-                    println!("  [{i}] {}", render_action(a, &view.state, &reg));
-                }
-                let Some(choice) = read_choice(legal.len())? else {
+                let Some(action) = prompt_action(&view.state, &reg, &legal, &context)? else {
                     println!("(quit)");
                     return Ok(());
                 };
-                session.apply(legal[choice].clone());
+                session.apply(action);
             }
         }
     }
 }
 
-/// Prompt until a valid `0..len` index is entered. `Ok(None)` on EOF / `q`.
-fn read_choice(len: usize) -> Result<Option<usize>> {
-    let stdin = std::io::stdin();
+/// Present the decision and return the chosen action (`None` = quit). Combat
+/// declarations use an incremental builder; everything else is a numbered menu.
+fn prompt_action(
+    state: &GameState, reg: &CardRegistry, legal: &[Action], context: &DecisionContext,
+) -> Result<Option<Action>> {
+    match context {
+        DecisionContext::DeclareAttackers => choose_attackers(state, reg, legal),
+        DecisionContext::DeclareBlockers => choose_blockers(state, reg, legal),
+        _ => choose_from_menu(state, reg, legal),
+    }
+}
+
+/// Generic numbered menu over the legal actions.
+fn choose_from_menu(
+    state: &GameState, reg: &CardRegistry, legal: &[Action],
+) -> Result<Option<Action>> {
+    for (i, a) in legal.iter().enumerate() {
+        println!("  [{i}] {}", render_action(a, state, reg));
+    }
+    Ok(read_index(legal.len())?.map(|i| legal[i].clone()))
+}
+
+/// Incremental attacker declaration: pick which creatures attack (and, when an
+/// attacker has more than one legal defender, which one), then match to a legal
+/// declaration. Re-prompts on an illegal combination.
+fn choose_attackers(
+    state: &GameState, reg: &CardRegistry, legal: &[Action],
+) -> Result<Option<Action>> {
+    let opts = attacker_options(legal);
+    if opts.is_empty() {
+        return Ok(match_attack(legal, &[])); // nothing can attack
+    }
     loop {
-        print!("> ");
-        std::io::stdout().flush().ok();
-        let mut line = String::new();
-        if stdin.read_line(&mut line)? == 0 {
-            return Ok(None); // EOF
+        println!("Your creatures that can attack:");
+        for (i, (id, _)) in opts.iter().enumerate() {
+            println!("  [{i}] {}", render_object_brief(state, reg, *id));
         }
-        let t = line.trim();
-        if t == "q" || t == "quit" {
-            return Ok(None);
+        println!("Enter attacker numbers (space-separated; empty = attack with none):");
+        let Some(line) = read_line()? else { return Ok(None) };
+        let Some(picks) = parse_indices(&line, opts.len()) else {
+            println!("  invalid — use numbers 0..{}", opts.len() - 1);
+            continue;
+        };
+        let mut decls = Vec::new();
+        let mut quit = false;
+        for i in picks {
+            let (id, defs) = &opts[i];
+            let defending = if defs.len() == 1 {
+                defs[0]
+            } else {
+                match choose_defender(state, reg, *id, defs)? {
+                    Some(d) => d,
+                    None => { quit = true; break; }
+                }
+            };
+            decls.push(AttackerDeclaration { attacker: *id, defending });
         }
-        match t.parse::<usize>() {
-            Ok(i) if i < len => return Ok(Some(i)),
-            _ => println!("  enter a number 0..{} (or q to quit)", len - 1),
+        if quit { return Ok(None); }
+        match match_attack(legal, &decls) {
+            Some(action) => return Ok(Some(action)),
+            None => println!("  that attack isn't legal here — try again"),
         }
     }
+}
+
+/// When an attacker can attack more than one entity, pick which.
+fn choose_defender(
+    state: &GameState, reg: &CardRegistry, attacker: ObjectIdAlias, defs: &[DefendingEntity],
+) -> Result<Option<DefendingEntity>> {
+    println!("  {} can attack:", render_object_brief(state, reg, attacker));
+    for (j, d) in defs.iter().enumerate() {
+        println!("    [{j}] {}", defender_label(state, reg, d));
+    }
+    Ok(read_index(defs.len())?.map(|j| defs[j]))
+}
+
+fn defender_label(state: &GameState, reg: &CardRegistry, d: &DefendingEntity) -> String {
+    match d {
+        DefendingEntity::Player(p) => format!("Player P{p}"),
+        DefendingEntity::Planeswalker(id) => format!("PW {}", render_object_brief(state, reg, *id)),
+        DefendingEntity::Battle(id) => format!("Battle {}", render_object_brief(state, reg, *id)),
+    }
+}
+
+/// Incremental blocker declaration: for each of your creatures that can block,
+/// pick an attacker to block (or skip), then match to a legal declaration.
+fn choose_blockers(
+    state: &GameState, reg: &CardRegistry, legal: &[Action],
+) -> Result<Option<Action>> {
+    let opts = blocker_options(legal);
+    if opts.is_empty() {
+        return Ok(match_block(legal, &[])); // nothing can block
+    }
+    loop {
+        let mut decls = Vec::new();
+        let mut quit = false;
+        for (blocker, attackers) in &opts {
+            println!("{} can block:", render_object_brief(state, reg, *blocker));
+            for (j, atk) in attackers.iter().enumerate() {
+                println!("  [{j}] {}", render_object_brief(state, reg, *atk));
+            }
+            println!("  block which attacker? (number, or . to not block)");
+            let Some(line) = read_line()? else { quit = true; break };
+            let t = line.trim();
+            if t == "." || t.is_empty() { continue; }
+            match t.parse::<usize>() {
+                Ok(j) if j < attackers.len() =>
+                    decls.push(BlockerDeclaration { blocker: *blocker, blocking: attackers[j] }),
+                _ => { println!("  invalid — skipping this blocker"); }
+            }
+        }
+        if quit { return Ok(None); }
+        match match_block(legal, &decls) {
+            Some(action) => return Ok(Some(action)),
+            None => println!("  that block isn't legal here — try again"),
+        }
+    }
+}
+
+// --- input helpers ----------------------------------------------------------
+
+type ObjectIdAlias = arcana_core::objects::ObjectId;
+
+/// Read one line; `Ok(None)` on EOF or `q`/`quit`.
+fn read_line() -> Result<Option<String>> {
+    print!("> ");
+    std::io::stdout().flush().ok();
+    let mut line = String::new();
+    if std::io::stdin().read_line(&mut line)? == 0 {
+        return Ok(None);
+    }
+    let t = line.trim();
+    if t == "q" || t == "quit" { return Ok(None); }
+    Ok(Some(line))
+}
+
+/// Prompt until a valid `0..len` index is entered. `Ok(None)` on EOF / quit.
+fn read_index(len: usize) -> Result<Option<usize>> {
+    loop {
+        let Some(line) = read_line()? else { return Ok(None) };
+        match line.trim().parse::<usize>() {
+            Ok(i) if i < len => return Ok(Some(i)),
+            _ => println!("  enter a number 0..{} (or q to quit)", len.saturating_sub(1)),
+        }
+    }
+}
+
+/// Parse space-separated indices, all required to be `< len` and de-duplicated.
+/// Empty input → empty selection. `None` on any out-of-range / non-numeric token.
+fn parse_indices(line: &str, len: usize) -> Option<Vec<usize>> {
+    let mut out: Vec<usize> = Vec::new();
+    for tok in line.split_whitespace() {
+        let i: usize = tok.parse().ok()?;
+        if i >= len { return None; }
+        if !out.contains(&i) { out.push(i); }
+    }
+    Some(out)
 }
