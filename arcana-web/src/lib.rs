@@ -171,8 +171,10 @@ pub enum CombatSubmission {
 /// for the rich combat builder.
 /// A heuristic evaluation of the position from the human's seat — for the
 /// cockpit's eval bar. `value` is the material heuristic (~[-1, 1], terminal ±1);
-/// `win_pct` is a logistic map of it to 0..100 (a readable estimate, NOT a true
-/// win probability — a rollout-based number is a deferred enhancement).
+/// `win_pct` is the logistic map of it to 0..100, with the scale CALIBRATED
+/// against self-play outcomes (`arcana_ai::calibrate`), so it's a checked
+/// estimate (referee-relative, not perfect-play truth) rather than an arbitrary
+/// constant.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Eval {
     pub value: f32,
@@ -193,7 +195,7 @@ pub struct LibraryStats {
 
 fn eval_for(state: &GameState) -> Eval {
     let value = arcana_ai::search::value(state, HUMAN);
-    let win_pct = 100.0 / (1.0 + (-2.5 * value).exp());
+    let win_pct = 100.0 * arcana_ai::calibrate::win_probability(value);
     Eval { value, win_pct }
 }
 

@@ -11,3 +11,4 @@ pub mod learn;
 pub mod mlp;
 pub mod session;
 pub mod deckeval;
+pub mod calibrate;
