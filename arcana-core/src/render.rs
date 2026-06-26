@@ -5,8 +5,10 @@
 
 use std::fmt::Write as _;
 
+use crate::actions::Action;
 use crate::registry::CardRegistry;
 use crate::state::GameState;
+use crate::types::PlayerId;
 use crate::zones::Zone;
 
 fn card_name(state: &GameState, registry: &CardRegistry, id: crate::objects::ObjectId) -> String {
@@ -85,6 +87,66 @@ pub fn render(state: &GameState, registry: &CardRegistry) -> String {
         }
     }
     out
+}
+
+/// Like [`render`] but also lists `perspective`'s HAND contents (card names) —
+/// what a human player needs to see to choose. Plain [`render`] shows only hand
+/// counts (right for a spectator/log, not for the player to move). Hidden info
+/// is respected upstream: callers pass a perspective-projected state, so other
+/// players' hidden cards are already anonymized.
+pub fn render_for(state: &GameState, registry: &CardRegistry, perspective: PlayerId) -> String {
+    let mut out = render(state, registry);
+    let hand: Vec<String> = state.objects.objects_in_zone(Zone::Hand(perspective))
+        .map(|o| o.id)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .map(|id| card_name(state, registry, id))
+        .collect();
+    let _ = writeln!(out, "  P{perspective} hand: {}",
+        if hand.is_empty() { "(empty)".to_string() } else { hand.join(", ") });
+    out
+}
+
+/// A short, human-readable label for `action` — the menu text in human play.
+/// Resolves object ids to card names; common actions get friendly phrasing, the
+/// rest fall back to a compact debug form (improved incrementally). Shared by
+/// the CLI and any future GUI frontend.
+pub fn render_action(action: &Action, state: &GameState, registry: &CardRegistry) -> String {
+    match action {
+        Action::PassPriority => "Pass".to_string(),
+        Action::Concede => "Concede".to_string(),
+        Action::MulliganKeep => "Keep this hand".to_string(),
+        Action::MulliganAgain => "Mulligan (draw a new hand)".to_string(),
+        Action::PlayLand { object_id, mdfc_back } => {
+            let name = card_name(state, registry, *object_id);
+            if *mdfc_back { format!("Play {name} (back face)") } else { format!("Play {name}") }
+        }
+        Action::CastSpell { object_id, .. } =>
+            format!("Cast {}", card_name(state, registry, *object_id)),
+        Action::ActivateAbility { source, ability_index, .. } =>
+            format!("Activate {} [ability {ability_index}]", card_name(state, registry, *source)),
+        Action::DeclareAttackers { attackers } if attackers.is_empty() =>
+            "Attack with nothing".to_string(),
+        Action::DeclareAttackers { attackers } => {
+            let names: Vec<String> = attackers.iter()
+                .map(|a| card_name(state, registry, a.attacker)).collect();
+            format!("Attack with {}", names.join(", "))
+        }
+        Action::DeclareBlockers { blockers } if blockers.is_empty() =>
+            "Block with nothing".to_string(),
+        Action::DeclareBlockers { blockers } => {
+            let pairs: Vec<String> = blockers.iter()
+                .map(|b| format!("{} blocks {}",
+                    card_name(state, registry, b.blocker),
+                    card_name(state, registry, b.blocking)))
+                .collect();
+            format!("Block: {}", pairs.join("; "))
+        }
+        Action::BottomCards(ids) => format!("Bottom {} card(s)", ids.len()),
+        // OrderBlockers / AssignCombatDamage / MakeChoice / SubmitResolutionChoice
+        // get a debug fallback for now; friendlier phrasing is a polish pass.
+        other => format!("{other:?}"),
+    }
 }
 
 /// One-line summary (turn + each player's life) — for terse per-step logs.
