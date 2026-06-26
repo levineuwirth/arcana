@@ -26,6 +26,7 @@ use arcana_core::engine::{new_game, step, EngineYield};
 use arcana_core::registry::CardRegistry;
 use arcana_core::state::{GameResult, GameState};
 use arcana_core::types::{CardId, PlayerId};
+use arcana_core::zones::Zone;
 use rand::seq::SliceRandom;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
@@ -45,22 +46,52 @@ pub trait StatePolicy {
     ) -> Action;
 }
 
+/// A player's positional "material" score: life + board + card/mana advantage.
+/// The richer leaf signal that lets short rollouts SEE development — playing a
+/// land, casting a creature, attacking favorably all raise this immediately,
+/// long before the life total moves. Used only as a heuristic (terminal results
+/// dominate it; see [`value`]).
+fn material(state: &GameState, player: PlayerId) -> f32 {
+    // Life is the clock; weight it directly.
+    let mut score = state.player(player).life as f32;
+    for obj in state.objects.objects_in_zone(Zone::Battlefield) {
+        if obj.controller != player { continue; }
+        if obj.is_creature() {
+            // Power is the offensive clock; toughness is staying power.
+            let p = state.computed_power(obj.id).unwrap_or(0).max(0) as f32;
+            let t = state.computed_toughness(obj.id).unwrap_or(0).max(0) as f32;
+            score += 2.0 * p + t;
+        } else if obj.is_land() {
+            score += 1.0; // mana development (potential)
+        } else {
+            score += 2.0; // artifacts / enchantments / planeswalkers
+        }
+    }
+    // Card advantage — cards in hand are future plays.
+    score += state.objects.objects_in_zone(Zone::Hand(player)).count() as f32;
+    score
+}
+
 /// Terminal/heuristic value of `state` from `player`'s perspective, in
 /// roughly [-1, 1]. A decided game is ±1 / 0; an undecided (rollout-capped)
-/// state falls back to a squashed life differential, kept strictly inside
-/// ±1 so a real win always dominates a heuristic estimate.
+/// state falls back to a squashed [`material`] differential (life + board +
+/// card/mana advantage), kept strictly inside ±1 (via `tanh`) so a real win
+/// always dominates a heuristic estimate. Antisymmetric in 2-player games
+/// (`value(s, me) == -value(s, opp)`), which IS-MCTS negamax relies on.
 pub fn value(state: &GameState, player: PlayerId) -> f32 {
     match state.result {
         Some(GameResult::Win(p)) => if p == player { 1.0 } else { -1.0 },
         Some(GameResult::Draw) => 0.0,
         Some(GameResult::Eliminated(p)) => if p == player { -1.0 } else { 1.0 },
         None => {
-            let me = state.player(player).life as f32;
+            let me = material(state, player);
             let opp = state.opponents_of(player)
-                .map(|o| state.player(o).life)
-                .max()
-                .unwrap_or(0) as f32;
-            ((me - opp) / 40.0).clamp(-0.9, 0.9)
+                .map(|o| material(state, o))
+                .fold(f32::NEG_INFINITY, f32::max);
+            let opp = if opp.is_finite() { opp } else { 0.0 };
+            // tanh gives a smooth gradient that doesn't saturate as readily as a
+            // hard clamp; 0.9 keeps it strictly inside the terminal ±1.
+            0.9 * ((me - opp) / 30.0).tanh()
         }
     }
 }
@@ -91,9 +122,51 @@ fn progress_pick(legal: &[Action], rng: &mut ChaCha8Rng) -> usize {
     legal.iter().position(|a| !matches!(a, A::Concede)).unwrap_or(0)
 }
 
-/// Play `state`/`yld` forward with progress-biased random choices until the
-/// game is decided or `step_cap` steps elapse, returning the final state. The
-/// shared rollout engine for both flat-MC and IS-MCTS simulations.
+/// A development-biased rollout policy: like [`progress_pick`] but it (1) always
+/// plays a land when it can, (2) attacks with the most creatures offered, then
+/// (3) takes any other real action — so board / mana / tempo advantages actually
+/// CONVERT during a rollout and show up in [`material`], giving short rollouts a
+/// real signal. Still randomized within each tier so rollouts stay varied. Used
+/// by [`play_out`]; [`RandomStatePolicy`] keeps [`progress_pick`] (it is the
+/// baseline opponent, which must stay un-tuned).
+fn heuristic_pick(legal: &[Action], rng: &mut ChaCha8Rng) -> usize {
+    use arcana_core::actions::Action as A;
+    // Tier 1: keep a mulligan hand.
+    if let Some(i) = legal.iter().position(|a| matches!(a, A::MulliganKeep)) {
+        return i;
+    }
+    // Tier 2: develop mana — play a land (random among available land plays).
+    let lands: Vec<usize> = legal.iter().enumerate()
+        .filter(|(_, a)| matches!(a, A::PlayLand { .. })).map(|(i, _)| i).collect();
+    if let Some(&i) = lands.choose(rng) { return i; }
+    // Tier 3: attack — the declaration with the most attackers (aggression
+    // converts board presence into life pressure). Empty declarations skipped.
+    let mut best: Option<(usize, usize)> = None;
+    for (i, a) in legal.iter().enumerate() {
+        if let A::DeclareAttackers { attackers } = a {
+            let n = attackers.len();
+            if n > 0 && best.map_or(true, |(_, bn)| n > bn) { best = Some((i, n)); }
+        }
+    }
+    if let Some((i, _)) = best { return i; }
+    // Tier 4: any other real action (cast, activate, block, resolution choices).
+    let real: Vec<usize> = legal.iter().enumerate()
+        .filter(|(_, a)| !matches!(a,
+            A::PassPriority | A::Concede | A::MulliganAgain | A::DeclareAttackers { .. }))
+        .map(|(i, _)| i).collect();
+    if let Some(&i) = real.choose(rng) { return i; }
+    // Tier 5: pass priority.
+    if let Some(i) = legal.iter().position(|a| matches!(a, A::PassPriority)) {
+        return i;
+    }
+    // Fallback: first non-concede (e.g. an empty attack declaration), else 0.
+    legal.iter().position(|a| !matches!(a, A::Concede)).unwrap_or(0)
+}
+
+/// Play `state`/`yld` forward with the development-biased [`heuristic_pick`]
+/// rollout policy until the game is decided or `step_cap` steps elapse,
+/// returning the final state. The shared rollout engine for flat-MC, PIMC, and
+/// IS-MCTS simulations.
 fn play_out(mut state: GameState, mut yld: EngineYield, registry: &CardRegistry,
             step_cap: u32, rng: &mut ChaCha8Rng) -> GameState {
     let mut steps = 0u32;
@@ -102,7 +175,7 @@ fn play_out(mut state: GameState, mut yld: EngineYield, registry: &CardRegistry,
             EngineYield::GameOver(_) => break,
             EngineYield::PendingDecision { legal_actions, .. } => {
                 if steps >= step_cap || legal_actions.is_empty() { break; }
-                let i = progress_pick(&legal_actions, rng);
+                let i = heuristic_pick(&legal_actions, rng);
                 let (s, y) = step(state, legal_actions[i].clone(), registry);
                 state = s; yld = y; steps += 1;
             }
