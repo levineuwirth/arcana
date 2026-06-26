@@ -3,158 +3,307 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Arcana — Web Play (MVP)</title>
+<title>Arcana — Web Play</title>
 <style>
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
   body {
     margin: 0; font-family: system-ui, sans-serif; background: #14161b; color: #e7e9ee;
-    padding: 12px;
+    padding: 10px 14px 40px;
   }
-  h1 { font-size: 18px; margin: 0 0 8px; }
-  .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  h1 { font-size: 17px; margin: 0; font-weight: 700; }
+  h1 .sub { opacity: .5; font-weight: 400; font-size: 12px; }
+
+  .topbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  .topbar .spacer { flex: 1; }
+  .phase {
+    font-size: 13px; padding: 4px 10px; border-radius: 6px; background: #1c2330; border: 1px solid #2c3647;
+  }
+  .phase b { color: #8fb3ff; }
+
   button {
     background: #2a2f3a; color: #e7e9ee; border: 1px solid #3a4150; border-radius: 6px;
-    padding: 6px 10px; cursor: pointer; font-size: 13px;
+    padding: 6px 11px; cursor: pointer; font-size: 13px;
   }
-  button:hover { background: #353c4a; }
+  button:hover:not(:disabled) { background: #353c4a; }
+  button:disabled { opacity: .45; cursor: default; }
   button.action { background: #2d4263; border-color: #3f5d8a; }
-  button.action:hover { background: #375079; }
-  .meta { font-size: 13px; opacity: .85; }
+  button.action:hover:not(:disabled) { background: #375079; }
+  button.pass { background: #34502f; border-color: #4a6b41; font-weight: 600; }
+  button.pass:hover:not(:disabled) { background: #3f6038; }
+  button.concede { background: #4a2d2d; border-color: #6b4141; }
+  button.danger { background: #5a2d2d; border-color: #8a4f4f; font-weight: 600; }
+  button.danger:hover:not(:disabled) { background: #6e3838; }
+
+  /* layout: opponent top, your area bottom, stack + log in the middle */
   .player {
-    border: 1px solid #2a2f3a; border-radius: 8px; padding: 8px; margin-bottom: 10px;
+    border: 1px solid #2a2f3a; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px;
     background: #1a1d24;
   }
   .player.you { border-color: #3f5d8a; }
-  .ptitle { display: flex; gap: 12px; align-items: baseline; margin-bottom: 6px; }
-  .ptitle .name { font-weight: 600; }
-  .ptitle .life { font-size: 18px; font-weight: 700; }
-  .zone-label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; opacity: .6; margin: 6px 0 4px; }
-  .cards { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ptitle { display: flex; gap: 14px; align-items: baseline; margin-bottom: 4px; }
+  .ptitle .name { font-weight: 700; }
+  .ptitle .life { font-size: 20px; font-weight: 800; color: #ff8d8d; }
+  .ptitle .counts { font-size: 12px; opacity: .7; }
+
+  .zone-label { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; opacity: .55; margin: 7px 0 3px; }
+  .cards { display: flex; gap: 6px; flex-wrap: wrap; min-height: 8px; }
+
   .card {
-    width: 96px; border-radius: 6px; overflow: hidden; background: #20242d;
-    border: 1px solid #333a47; font-size: 11px; position: relative;
+    width: 92px; border-radius: 6px; overflow: hidden; background: #20242d;
+    border: 2px solid #333a47; font-size: 11px; position: relative; transition: transform .08s, border-color .08s;
   }
-  .card.tapped { transform: rotate(8deg); opacity: .85; }
+  .card.tapped { transform: rotate(90deg) scale(.86); }
   .card img { width: 100%; display: block; aspect-ratio: 488/680; object-fit: cover; background: #0c0d11; }
-  .card .nm { padding: 3px 4px; line-height: 1.2; }
+  .card .nm { padding: 3px 4px; line-height: 1.15; }
   .card .pt {
-    position: absolute; right: 3px; bottom: 22px; background: rgba(0,0,0,.75);
-    padding: 1px 5px; border-radius: 4px; font-weight: 700; font-size: 12px;
+    position: absolute; right: 3px; bottom: 22px; background: rgba(0,0,0,.78);
+    padding: 1px 5px; border-radius: 4px; font-weight: 800; font-size: 12px;
   }
   .card.fallback { padding: 6px 4px; min-height: 120px; display: flex; align-items: center; justify-content: center; text-align: center; }
-  #actions { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 12px; }
-  #log { font-size: 13px; min-height: 20px; color: #c6b27a; margin-bottom: 8px; }
-  #banner {
-    display: none; padding: 10px; border-radius: 8px; background: #3a2d2d; border: 1px solid #6b4a4a;
-    font-weight: 700; margin-bottom: 10px;
+
+  /* combat affordances */
+  .card.selectable { cursor: pointer; border-color: #6b8; }
+  .card.selectable:hover { border-color: #9d8; }
+  .card.attacking { border-color: #e0a24a; box-shadow: 0 0 0 2px #e0a24a55; }
+  .card.incoming { border-color: #e06a6a; box-shadow: 0 0 0 2px #e06a6a55; }
+  .card.pending { border-color: #f0d24a; box-shadow: 0 0 0 3px #f0d24a88; }
+  .card.blocking { border-color: #6ab0e0; box-shadow: 0 0 0 2px #6ab0e055; }
+  .card .badge {
+    position: absolute; left: 0; top: 0; right: 0; font-size: 10px; font-weight: 700;
+    padding: 2px 4px; text-align: center; background: rgba(0,0,0,.72);
   }
-  .stack { border: 1px dashed #4a4150; }
-  .empty { opacity: .4; font-size: 12px; padding: 4px; }
+  .card .badge.atk { color: #f0c070; }
+  .card .badge.blk { color: #8fc6f0; }
+
+  .stack { border: 1px dashed #4a4150; border-radius: 6px; padding: 4px; }
+
+  /* combat control panel */
+  #combat { display: none; border: 1px solid #5a4a2a; background: #221d12; border-radius: 8px; padding: 10px; margin: 8px 0; }
+  #combat.show { display: block; }
+  #combat .ctitle { font-weight: 700; margin-bottom: 4px; color: #e0c080; }
+  #combat .hint { font-size: 12px; opacity: .8; margin-bottom: 8px; }
+  #combat .ctrls { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* action groups */
+  #actions { margin: 8px 0; }
+  .agroup { margin-bottom: 8px; }
+  .agroup .gl { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; opacity: .5; margin-bottom: 3px; }
+  .agroup .btns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .control-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+
+  /* game log */
+  #log {
+    font-size: 12px; background: #12141a; border: 1px solid #242a36; border-radius: 6px;
+    padding: 6px 8px; max-height: 92px; overflow-y: auto; margin-bottom: 8px;
+  }
+  #log .you { color: #8fb3ff; }
+  #log .opp { color: #c6b27a; }
+  #log .sys { opacity: .6; }
+  #log .ln { line-height: 1.4; }
+
+  #banner {
+    display: none; padding: 11px; border-radius: 8px; background: #2d3a2d; border: 1px solid #4a6b4a;
+    font-weight: 800; margin-bottom: 8px; font-size: 15px;
+  }
+  .empty { opacity: .35; font-size: 12px; padding: 3px; }
 </style>
 </head>
 <body>
-  <h1>Arcana — Web Play <span style="opacity:.5;font-weight:400">(MVP)</span></h1>
-  <div class="bar">
-    <button id="new">New game</button>
+  <div class="topbar">
+    <h1>Arcana <span class="sub">web play</span></h1>
+    <div class="phase" id="phase"></div>
+    <div class="spacer"></div>
     <button id="refresh">Refresh</button>
-    <span class="meta" id="meta"></span>
+    <button id="new" class="danger">New game</button>
   </div>
 
   <div id="banner"></div>
-  <div id="log"></div>
 
   <div id="opponent" class="player"></div>
 
   <div class="zone-label">Stack</div>
   <div id="stack" class="cards stack"></div>
 
+  <div id="log"></div>
+
   <div id="you" class="player you"></div>
 
-  <div class="zone-label">Your legal actions</div>
+  <div id="combat"></div>
+
+  <div class="zone-label">Your actions</div>
   <div id="actions"></div>
 
 <script>
 "use strict";
 
-// Card art via Scryfall's "named" image endpoint. The browser caches the
-// redirect/image, which is enough politeness for an MVP. Falls back to a text
-// tile (handled by the <img> onerror) if the name doesn't resolve.
+// ----- module state --------------------------------------------------------
+const G = {
+  resp: null,
+  log: [],            // running game log lines: {cls, text}
+  cardById: new Map(),// id -> CardView (both battlefields), for combat display
+  // combat selection (reset when the prompt identity changes)
+  combatToken: null,
+  atk: new Map(),     // attackerId -> defending entity object
+  blk: new Map(),     // blockerId  -> attackerId
+  pendingBlocker: null,
+  busy: false,
+};
+
+// ----- card art / tiles ----------------------------------------------------
 function artUrl(name) {
   return "https://api.scryfall.com/cards/named?format=image&exact=" + encodeURIComponent(name);
 }
 
-function cardEl(c) {
+function cardEl(c, opts) {
+  opts = opts || {};
   const div = document.createElement("div");
   div.className = "card" + (c.tapped ? " tapped" : "");
   const name = c.name && c.name.length ? c.name : "(hidden)";
   if (c.name && c.name.length) {
     const img = document.createElement("img");
-    img.alt = name;
-    img.loading = "lazy";
-    img.src = artUrl(name);
-    // On any image error, swap the whole tile to a readable text fallback.
+    img.alt = name; img.loading = "lazy"; img.src = artUrl(name);
     img.onerror = () => {
       div.classList.add("fallback");
-      div.innerHTML = "";
-      const nm = document.createElement("div");
-      nm.className = "nm";
-      nm.textContent = name;
-      div.appendChild(nm);
+      // keep any badge we add below; just drop the broken <img>
+      img.remove();
     };
     div.appendChild(img);
   } else {
     div.classList.add("fallback");
   }
   const nm = document.createElement("div");
-  nm.className = "nm";
-  nm.textContent = name;
+  nm.className = "nm"; nm.textContent = name;
   div.appendChild(nm);
   if (c.power !== null && c.power !== undefined) {
     const pt = document.createElement("div");
-    pt.className = "pt";
-    pt.textContent = c.power + "/" + c.toughness;
+    pt.className = "pt"; pt.textContent = c.power + "/" + c.toughness;
     div.appendChild(pt);
   }
+  if (opts.badge) {
+    const b = document.createElement("div");
+    b.className = "badge " + (opts.badgeCls || "");
+    b.textContent = opts.badge;
+    div.appendChild(b);
+  }
+  if (opts.cls) div.classList.add(...opts.cls);
+  if (opts.onclick) div.onclick = opts.onclick;
   return div;
 }
 
-function renderCards(container, cards, emptyMsg) {
+function renderCards(container, cards, emptyMsg, decorate) {
   container.innerHTML = "";
   if (!cards || cards.length === 0) {
     const e = document.createElement("div");
-    e.className = "empty";
-    e.textContent = emptyMsg || "(empty)";
+    e.className = "empty"; e.textContent = emptyMsg || "(empty)";
     container.appendChild(e);
     return;
   }
-  for (const c of cards) container.appendChild(cardEl(c));
+  for (const c of cards) container.appendChild(cardEl(c, decorate ? decorate(c) : {}));
 }
 
-function renderPlayer(container, p, isYou) {
+// ----- combat helpers ------------------------------------------------------
+function combatMaps() {
+  // returns {mode, atkOpts: Map<id, defenders[]>, blkOpts: Map<id, canBlock[]>, incoming: Set}
+  const cb = G.resp && G.resp.combat;
+  if (!cb) return null;
+  if (cb.kind === "attackers") {
+    const m = new Map();
+    for (const o of cb.attackers) m.set(o.id, o.defenders);
+    return { mode: "attackers", atkOpts: m, blkOpts: new Map(), incoming: new Set() };
+  } else {
+    const m = new Map();
+    for (const o of cb.blockers) m.set(o.id, o.can_block);
+    return { mode: "blockers", atkOpts: new Map(), blkOpts: m, incoming: new Set(cb.incoming) };
+  }
+}
+
+function combatTokenOf(cb) {
+  if (!cb) return null;
+  const ids = cb.kind === "attackers"
+    ? cb.attackers.map(o => o.id) : cb.blockers.map(o => o.id);
+  return cb.kind + ":" + ids.slice().sort((a, b) => a - b).join(",");
+}
+
+function describeDefender(d) {
+  if (d.Player !== undefined) return "P" + d.Player;
+  const id = d.Planeswalker !== undefined ? d.Planeswalker : d.Battle;
+  const c = G.cardById.get(id);
+  return c ? c.name : ("#" + id);
+}
+
+function toggleAttacker(id, defenders) {
+  if (G.atk.has(id)) G.atk.delete(id);
+  else G.atk.set(id, defenders[0]); // default to the first (lone opponent) defender
+  renderAll();
+}
+
+function clickBlocker(id) {
+  if (G.blk.has(id)) {           // already assigned → clear it
+    G.blk.delete(id);
+    G.pendingBlocker = null;
+  } else {
+    G.pendingBlocker = (G.pendingBlocker === id) ? null : id;
+  }
+  renderAll();
+}
+
+function clickAttacker(attackerId, blkOpts) {
+  // assign the pending blocker to this attacker, if legal
+  if (G.pendingBlocker === null) return;
+  const can = blkOpts.get(G.pendingBlocker) || [];
+  if (!can.includes(attackerId)) return; // this blocker can't block that attacker
+  G.blk.set(G.pendingBlocker, attackerId);
+  G.pendingBlocker = null;
+  renderAll();
+}
+
+async function confirmAttackers() {
+  const attackers = [];
+  for (const [id, defending] of G.atk) attackers.push({ attacker: id, defending });
+  logLine("you", attackers.length
+    ? "Attack with " + attackers.length + " creature" + (attackers.length > 1 ? "s" : "")
+    : "Declare no attackers");
+  await postCombat({ kind: "attackers", attackers });
+}
+
+async function confirmBlockers() {
+  const blockers = [];
+  for (const [blocker, blocking] of G.blk) blockers.push({ blocker, blocking });
+  logLine("you", blockers.length
+    ? "Block with " + blockers.length + " creature" + (blockers.length > 1 ? "s" : "")
+    : "Declare no blockers");
+  await postCombat({ kind: "blockers", blockers });
+}
+
+// ----- rendering -----------------------------------------------------------
+function prettyPhase(view) {
+  const p = (view.phase || "").replace("/", " · ");
+  return p;
+}
+
+function renderPlayer(container, p, isYou, cm) {
   container.innerHTML = "";
   const title = document.createElement("div");
   title.className = "ptitle";
   title.innerHTML =
     '<span class="name">' + (isYou ? "You" : "Opponent") + " (P" + p.id + ')</span>' +
-    '<span class="life">&hearts; ' + p.life + "</span>" +
-    '<span class="meta">hand ' + p.hand_count + " · library " + p.library_count +
+    '<span class="life">' + p.life + " life</span>" +
+    '<span class="counts">hand ' + p.hand_count + " · library " + p.library_count +
       " · graveyard " + p.graveyard_count + "</span>";
   container.appendChild(title);
 
   const blab = document.createElement("div");
-  blab.className = "zone-label";
-  blab.textContent = "Battlefield";
+  blab.className = "zone-label"; blab.textContent = "Battlefield";
   container.appendChild(blab);
   const bf = document.createElement("div");
   bf.className = "cards";
-  renderCards(bf, p.battlefield, "no permanents");
+  renderCards(bf, p.battlefield, "no permanents", (c) => combatDecor(c, isYou, cm));
   container.appendChild(bf);
 
   if (isYou) {
     const hlab = document.createElement("div");
-    hlab.className = "zone-label";
-    hlab.textContent = "Your hand";
+    hlab.className = "zone-label"; hlab.textContent = "Your hand";
     container.appendChild(hlab);
     const hand = document.createElement("div");
     hand.className = "cards";
@@ -163,94 +312,299 @@ function renderPlayer(container, p, isYou) {
   }
 }
 
-function render(resp) {
+// decorate a battlefield card with combat affordances
+function combatDecor(c, isYou, cm) {
+  if (!cm) return {};
+  if (cm.mode === "attackers" && isYou && cm.atkOpts.has(c.id)) {
+    const attacking = G.atk.has(c.id);
+    const defenders = cm.atkOpts.get(c.id);
+    return {
+      cls: attacking ? ["attacking"] : ["selectable"],
+      badge: attacking ? ("ATK → " + describeDefender(G.atk.get(c.id))) : "attack",
+      badgeCls: "atk",
+      onclick: () => toggleAttacker(c.id, defenders),
+    };
+  }
+  if (cm.mode === "blockers") {
+    if (isYou && cm.blkOpts.has(c.id)) {
+      const assigned = G.blk.has(c.id);
+      const pending = G.pendingBlocker === c.id;
+      let badge = "block";
+      if (assigned) {
+        const tgt = G.cardById.get(G.blk.get(c.id));
+        badge = "BLK → " + (tgt ? tgt.name : "#" + G.blk.get(c.id));
+      } else if (pending) {
+        badge = "pick attacker…";
+      }
+      return {
+        cls: assigned ? ["blocking"] : (pending ? ["pending"] : ["selectable"]),
+        badge, badgeCls: "blk",
+        onclick: () => clickBlocker(c.id),
+      };
+    }
+    if (!isYou && cm.incoming.has(c.id)) {
+      return {
+        cls: ["incoming", "selectable"],
+        badge: "attacking",
+        badgeCls: "atk",
+        onclick: () => clickAttacker(c.id, cm.blkOpts),
+      };
+    }
+  }
+  return {};
+}
+
+// classify a legal action label into a group for tidier presentation
+function groupOf(label) {
+  if (label === "Pass" || label === "Pass priority") return "pass";
+  if (label === "Concede") return "concede";
+  if (label.startsWith("Play ")) return "Lands";
+  if (label.startsWith("Cast ")) return "Spells";
+  if (label.startsWith("Activate ")) return "Abilities";
+  if (/^(Choose|Yes|No|Pay|Decline|Pick|Distribute|Keep|Mulligan|Order|Assign|Select|Put|Scry)/.test(label))
+    return "Choices";
+  return "Other";
+}
+
+function renderActions(view) {
+  const root = document.getElementById("actions");
+  root.innerHTML = "";
+  if (view.game_over) {
+    const e = document.createElement("div");
+    e.className = "empty"; e.textContent = "No actions — start a new game.";
+    root.appendChild(e);
+    return;
+  }
+  // when a rich combat builder is up, suppress the raw declaration buttons
+  if (G.resp.combat) return;
+
+  const order = ["Lands", "Spells", "Abilities", "Choices", "Other"];
+  const groups = {}; let pass = null, concede = null;
+  for (const a of view.legal) {
+    const g = groupOf(a.label);
+    if (g === "pass") { pass = a; continue; }
+    if (g === "concede") { concede = a; continue; }
+    (groups[g] = groups[g] || []).push(a);
+  }
+  for (const g of order) {
+    if (!groups[g]) continue;
+    const wrap = document.createElement("div");
+    wrap.className = "agroup";
+    const gl = document.createElement("div");
+    gl.className = "gl"; gl.textContent = g;
+    wrap.appendChild(gl);
+    const btns = document.createElement("div");
+    btns.className = "btns";
+    for (const a of groups[g]) {
+      const btn = document.createElement("button");
+      btn.className = "action"; btn.textContent = a.label;
+      btn.onclick = () => sendAction(a.index, a.label);
+      btns.appendChild(btn);
+    }
+    wrap.appendChild(btns);
+    root.appendChild(wrap);
+  }
+  // control row: Pass (prominent) + Concede, always last
+  const ctrl = document.createElement("div");
+  ctrl.className = "control-row";
+  if (pass) {
+    const b = document.createElement("button");
+    b.className = "pass"; b.textContent = "Pass / next step";
+    b.onclick = () => sendAction(pass.index, "Pass");
+    ctrl.appendChild(b);
+  }
+  if (concede) {
+    const b = document.createElement("button");
+    b.className = "concede"; b.textContent = "Concede";
+    b.onclick = () => { if (confirm("Concede this game?")) sendAction(concede.index, "Concede"); };
+    ctrl.appendChild(b);
+  }
+  if (pass || concede) root.appendChild(ctrl);
+}
+
+function renderCombatPanel(view) {
+  const panel = document.getElementById("combat");
+  const cb = G.resp.combat;
+  if (!cb) { panel.className = ""; panel.innerHTML = ""; return; }
+  panel.className = "show";
+  panel.innerHTML = "";
+
+  const title = document.createElement("div");
+  title.className = "ctitle";
+  title.textContent = cb.kind === "attackers" ? "Declare attackers" : "Declare blockers";
+  panel.appendChild(title);
+
+  const hint = document.createElement("div");
+  hint.className = "hint";
+  hint.textContent = cb.kind === "attackers"
+    ? "Click your creatures (highlighted green) to send them in, then confirm."
+    : "Click a creature to block with (green), then click the red attacker it should block. Click again to clear.";
+  panel.appendChild(hint);
+
+  const ctrls = document.createElement("div");
+  ctrls.className = "ctrls";
+  if (cb.kind === "attackers") {
+    const n = G.atk.size;
+    const go = document.createElement("button");
+    go.className = "action";
+    go.textContent = n ? ("Confirm " + n + " attacker" + (n > 1 ? "s" : "")) : "Confirm attackers";
+    go.onclick = confirmAttackers;
+    ctrls.appendChild(go);
+    const none = document.createElement("button");
+    none.className = "pass"; none.textContent = "No attacks";
+    none.onclick = () => { G.atk.clear(); confirmAttackers(); };
+    ctrls.appendChild(none);
+  } else {
+    const n = G.blk.size;
+    const go = document.createElement("button");
+    go.className = "action";
+    go.textContent = n ? ("Confirm " + n + " block" + (n > 1 ? "s" : "")) : "Confirm blocks";
+    go.onclick = confirmBlockers;
+    ctrls.appendChild(go);
+    const none = document.createElement("button");
+    none.className = "pass"; none.textContent = "No blocks";
+    none.onclick = () => { G.blk.clear(); G.pendingBlocker = null; confirmBlockers(); };
+    ctrls.appendChild(none);
+  }
+  panel.appendChild(ctrls);
+}
+
+function renderLog() {
+  const log = document.getElementById("log");
+  log.innerHTML = "";
+  const lines = G.log.slice(-40);
+  for (const l of lines) {
+    const d = document.createElement("div");
+    d.className = "ln " + l.cls;
+    d.textContent = l.text;
+    log.appendChild(d);
+  }
+  log.scrollTop = log.scrollHeight;
+}
+
+function logLine(cls, text) {
+  G.log.push({ cls, text });
+  renderLog();
+}
+
+function renderAll() {
+  const resp = G.resp;
+  if (!resp) return;
   const view = resp.view;
   const me = view.perspective;
   const you = view.players.find(p => p.id === me);
   const opp = view.players.find(p => p.id !== me);
 
-  document.getElementById("meta").textContent =
-    "Turn " + view.turn + " · " + view.phase +
-    " · active P" + view.active_player + " · priority P" + view.priority_player;
+  // refresh the id->card lookup for combat display
+  G.cardById = new Map();
+  for (const p of view.players) for (const c of p.battlefield) G.cardById.set(c.id, c);
 
-  // Opponent action log.
-  const log = document.getElementById("log");
-  if (resp.recent && resp.recent.length) {
-    log.textContent = resp.recent.map(r => "Opponent: " + r.description).join("   |   ");
-  } else {
-    log.textContent = "";
-  }
+  document.getElementById("phase").innerHTML =
+    "Turn " + view.turn + " — <b>" + prettyPhase(view) + "</b>" +
+    " · active P" + view.active_player;
 
-  // Game-over banner.
   const banner = document.getElementById("banner");
   if (view.game_over) {
     banner.style.display = "block";
-    banner.textContent = "Game over — " + view.game_over;
+    const won = view.game_over.indexOf("P" + me) >= 0;
+    banner.textContent = (view.game_over.startsWith("Win") && won ? "You win! — " : "Game over — ") + view.game_over;
   } else {
     banner.style.display = "none";
   }
 
-  renderPlayer(document.getElementById("opponent"), opp, false);
-  renderPlayer(document.getElementById("you"), you, true);
+  const cm = combatMaps();
+  renderPlayer(document.getElementById("opponent"), opp, false, cm);
+  renderPlayer(document.getElementById("you"), you, true, cm);
   renderCards(document.getElementById("stack"), view.stack, "(stack empty)");
-
-  // Legal-action buttons.
-  const actions = document.getElementById("actions");
-  actions.innerHTML = "";
-  if (view.game_over) {
-    const e = document.createElement("div");
-    e.className = "empty";
-    e.textContent = "No actions — start a new game.";
-    actions.appendChild(e);
-    return;
-  }
-  for (const a of view.legal) {
-    const btn = document.createElement("button");
-    btn.className = "action";
-    btn.textContent = a.label;
-    btn.onclick = () => sendAction(a.index);
-    actions.appendChild(btn);
-  }
+  renderCombatPanel(view);
+  renderActions(view);
+  setBusy(G.busy);
 }
 
 function setBusy(busy) {
-  for (const b of document.querySelectorAll("#actions button")) b.disabled = busy;
+  G.busy = busy;
+  for (const b of document.querySelectorAll("#actions button, #combat button")) b.disabled = busy;
+}
+
+// ----- networking ----------------------------------------------------------
+// Adopt a fresh response: reset combat selections if the decision changed,
+// append the opponent's actions to the log (only on real advances).
+function adopt(resp, isAdvance) {
+  const newToken = combatTokenOf(resp.combat);
+  if (newToken !== G.combatToken) {
+    G.combatToken = newToken;
+    G.atk.clear(); G.blk.clear(); G.pendingBlocker = null;
+  }
+  if (isAdvance && resp.recent && resp.recent.length) {
+    for (const r of resp.recent) logLine("opp", "Opponent: " + r.description);
+  }
+  G.resp = resp;
+  renderAll();
 }
 
 async function getState() {
   const r = await fetch("/state");
-  render(await r.json());
+  adopt(await r.json(), false);
 }
 
-async function sendAction(index) {
+async function sendAction(index, label) {
+  if (G.busy) return;
   setBusy(true);
+  if (label && label !== "Pass") logLine("you", "You: " + label);
   try {
     const r = await fetch("/action", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ index }),
     });
     if (!r.ok) {
       const e = await r.json().catch(() => ({ error: r.statusText }));
-      alert("Action rejected: " + (e.error || r.status));
+      logLine("sys", "✗ " + (e.error || r.status));
       await getState();
       return;
     }
-    render(await r.json());
+    adopt(await r.json(), true);
   } catch (e) {
-    alert("Request failed: " + e);
+    logLine("sys", "request failed: " + e);
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function postCombat(body) {
+  if (G.busy) return;
+  setBusy(true);
+  try {
+    const r = await fetch("/combat", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({ error: r.statusText }));
+      logLine("sys", "✗ " + (e.error || r.status));
+      await getState();
+      return;
+    }
+    adopt(await r.json(), true);
+  } catch (e) {
+    logLine("sys", "request failed: " + e);
   } finally {
     setBusy(false);
   }
 }
 
 async function newGame() {
-  const r = await fetch("/new", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: "{}",
-  });
-  render(await r.json());
+  setBusy(true);
+  try {
+    const r = await fetch("/new", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
+    });
+    G.log = [];
+    G.combatToken = null;
+    logLine("sys", "— new game —");
+    adopt(await r.json(), false);
+  } finally {
+    setBusy(false);
+  }
 }
 
 document.getElementById("new").onclick = newGame;

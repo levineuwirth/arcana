@@ -9,6 +9,9 @@
 //!   [`ViewState`](arcana_core::view::ViewState) + the opponent action log.
 //! * `POST /action` → body `{ "index": N }`, apply `legal[N]`, advance, return
 //!   the new state. Out-of-range `N` → 400.
+//! * `POST /combat` → body `{ "kind":"attackers", "attackers":[…] }` or
+//!   `{ "kind":"blockers", "blockers":[…] }`, the incremental combat builder's
+//!   declaration; matched against the legal enumeration. Illegal set → 400.
 //! * `POST /new`    → optional body `{ "seed": N }`, start a fresh game.
 //!
 //! ## Concurrency / lifetime note
@@ -25,7 +28,7 @@ use std::net::SocketAddr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use arcana_core::registry::CardRegistry;
-use arcana_web::{GameCore, StateResponse};
+use arcana_web::{CombatSubmission, GameCore, StateResponse};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Response};
@@ -41,6 +44,7 @@ const INDEX_HTML: &str = include_str!("../static/index.html");
 enum Command {
     State(oneshot::Sender<StateResponse>),
     Action { index: usize, reply: oneshot::Sender<Result<StateResponse, String>> },
+    Combat { sub: CombatSubmission, reply: oneshot::Sender<Result<StateResponse, String>> },
     New { seed: Option<u64>, reply: oneshot::Sender<StateResponse> },
 }
 
@@ -94,6 +98,10 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>) {
                 let res = core.apply_index(index).map_err(|e| e.to_string());
                 let _ = reply.send(res);
             }
+            Command::Combat { sub, reply } => {
+                let res = core.apply_combat(sub).map_err(|e| e.to_string());
+                let _ = reply.send(res);
+            }
             Command::New { seed, reply } => {
                 core = GameCore::new(reg, seed.unwrap_or_else(time_seed));
                 let _ = reply.send(core.snapshot());
@@ -140,6 +148,24 @@ async fn post_action(State(app): State<AppState>, body: String) -> Response {
     }
 }
 
+async fn post_combat(State(app): State<AppState>, body: String) -> Response {
+    let sub: CombatSubmission = match serde_json::from_str(&body) {
+        Ok(s) => s,
+        Err(e) => {
+            return (StatusCode::BAD_REQUEST, err(format!("invalid /combat body: {e}"))).into_response()
+        }
+    };
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::Combat { sub, reply }).is_err() {
+        return worker_gone();
+    }
+    match rx.await {
+        Ok(Ok(resp)) => Json(resp).into_response(),
+        Ok(Err(msg)) => (StatusCode::BAD_REQUEST, err(msg)).into_response(),
+        Err(_) => worker_gone(),
+    }
+}
+
 async fn post_new(State(app): State<AppState>, body: String) -> Response {
     // Lenient: empty body is allowed (→ default → time-based seed).
     let req: NewRequest = serde_json::from_str(&body).unwrap_or_default();
@@ -168,6 +194,7 @@ async fn main() {
         .route("/", get(index))
         .route("/state", get(get_state))
         .route("/action", post(post_action))
+        .route("/combat", post(post_combat))
         .route("/new", post(post_new))
         .with_state(AppState { tx });
 

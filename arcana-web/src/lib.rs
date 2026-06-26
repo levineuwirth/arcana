@@ -20,6 +20,11 @@ use std::fmt;
 use arcana_ai::search::{MaterialValue, ValueMcPolicy};
 use arcana_ai::session::{Seat, Session, Turn};
 use arcana_core::actions::Action;
+use arcana_core::combat::{
+    attacker_options, blocker_options, match_attack, match_block, AttackerDeclaration,
+    BlockerDeclaration, DefendingEntity,
+};
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::CardRegistry;
 use arcana_core::state::GameResult;
 use arcana_core::types::PlayerId;
@@ -38,12 +43,102 @@ pub struct RecentAction {
     pub description: String,
 }
 
-/// The JSON payload both `/state` and `/action` return: the human's view of the
-/// game plus whatever the opponent did since the human last acted.
+/// Which kind of combat declaration the human is being asked for.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum CombatKind {
+    Attackers,
+    Blockers,
+}
+
+/// One of the human's creatures that may attack, plus the entities it could
+/// attack (usually just the lone opponent; a planeswalker/battle adds options).
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct AttackerOption {
+    pub id: ObjectId,
+    pub defenders: Vec<DefendingEntity>,
+}
+
+/// One of the human's creatures that may block, plus the attackers it can be
+/// declared against.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct BlockerOption {
+    pub id: ObjectId,
+    pub can_block: Vec<ObjectId>,
+}
+
+/// A pending combat declaration, expressed as per-creature option sets so the
+/// frontend can build the declaration one click at a time (instead of choosing
+/// from the engine's full enumeration of whole declarations, which is
+/// combinatorial). Derived from the cached legal list via the
+/// [`arcana_core::combat`] helpers, so no combat rules are duplicated client-side.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct CombatPrompt {
+    pub kind: CombatKind,
+    /// Populated when `kind == Attackers`.
+    pub attackers: Vec<AttackerOption>,
+    /// Populated when `kind == Blockers`.
+    pub blockers: Vec<BlockerOption>,
+    /// The attacking creatures the human is defending against (for display /
+    /// highlight). Populated when `kind == Blockers`.
+    pub incoming: Vec<ObjectId>,
+}
+
+/// The human's incremental combat declaration, sent back to `/combat`. The set
+/// of picks is matched against the engine's enumeration; an empty set means
+/// "declare no attackers / no blockers" (which is always legal).
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum CombatSubmission {
+    Attackers { attackers: Vec<AttackerDeclaration> },
+    Blockers { blockers: Vec<BlockerDeclaration> },
+}
+
+/// The JSON payload `/state`, `/action`, and `/combat` return: the human's view
+/// of the game, whatever the opponent did since the human last acted, and — when
+/// the pending decision is a combat declaration — the per-creature option sets
+/// for the rich combat builder.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct StateResponse {
     pub view: ViewState,
     pub recent: Vec<RecentAction>,
+    /// `Some` only when the human must declare attackers or blockers.
+    pub combat: Option<CombatPrompt>,
+}
+
+/// Build a [`CombatPrompt`] from a legal-action list, or `None` if the pending
+/// decision is not a combat declaration. Attackers take precedence (the two are
+/// never enumerated together).
+fn combat_prompt(legal: &[Action]) -> Option<CombatPrompt> {
+    let atk = attacker_options(legal);
+    if !atk.is_empty() {
+        return Some(CombatPrompt {
+            kind: CombatKind::Attackers,
+            attackers: atk
+                .into_iter()
+                .map(|(id, defenders)| AttackerOption { id, defenders })
+                .collect(),
+            blockers: Vec::new(),
+            incoming: Vec::new(),
+        });
+    }
+    let blk = blocker_options(legal);
+    if !blk.is_empty() {
+        let mut incoming: Vec<ObjectId> =
+            blk.iter().flat_map(|(_, atkrs)| atkrs.iter().copied()).collect();
+        incoming.sort_unstable();
+        incoming.dedup();
+        return Some(CombatPrompt {
+            kind: CombatKind::Blockers,
+            attackers: Vec::new(),
+            blockers: blk
+                .into_iter()
+                .map(|(id, can_block)| BlockerOption { id, can_block })
+                .collect(),
+            incoming,
+        });
+    }
+    None
 }
 
 /// Why an `apply_index` call could not be honored. Surfaced to the client as a
@@ -54,6 +149,10 @@ pub enum ApplyError {
     NoPendingDecision,
     /// The index was outside the current legal-action list.
     OutOfRange { index: usize, len: usize },
+    /// A submitted combat declaration didn't match any legal declaration (an
+    /// illegal set, or one beyond the engine's enumeration cap). The frontend
+    /// should re-prompt with the current options.
+    IllegalCombat,
 }
 
 impl fmt::Display for ApplyError {
@@ -64,6 +163,9 @@ impl fmt::Display for ApplyError {
             }
             ApplyError::OutOfRange { index, len } => {
                 write!(f, "action index {index} out of range (0..{len})")
+            }
+            ApplyError::IllegalCombat => {
+                write!(f, "that combat declaration is not legal — pick again")
             }
         }
     }
@@ -146,7 +248,8 @@ impl GameCore {
             .iter()
             .map(|(p, d)| RecentAction { player: *p, description: d.clone() })
             .collect();
-        StateResponse { view, recent }
+        let combat = combat_prompt(&self.legal);
+        StateResponse { view, recent, combat }
     }
 
     /// Apply the human's chosen action by its `index` into the legal list from
@@ -162,6 +265,25 @@ impl GameCore {
             .get(index)
             .cloned()
             .ok_or(ApplyError::OutOfRange { index, len: self.legal.len() })?;
+        self.session.apply(action);
+        Ok(self.snapshot())
+    }
+
+    /// Apply an incremental combat declaration built by the frontend. The picked
+    /// set is matched against the cached legal enumeration via the
+    /// [`arcana_core::combat`] matchers (so all combat rules — lethal ordering,
+    /// trample, the 1024-declaration cap — stay engine-side); an empty set is the
+    /// always-legal "no attacks / no blocks". Returns [`ApplyError::IllegalCombat`]
+    /// if the set isn't a legal declaration, so the frontend can re-prompt.
+    pub fn apply_combat(&mut self, sub: CombatSubmission) -> Result<StateResponse, ApplyError> {
+        if self.legal.is_empty() {
+            return Err(ApplyError::NoPendingDecision);
+        }
+        let action = match sub {
+            CombatSubmission::Attackers { attackers } => match_attack(&self.legal, &attackers),
+            CombatSubmission::Blockers { blockers } => match_block(&self.legal, &blockers),
+        };
+        let action = action.ok_or(ApplyError::IllegalCombat)?;
         self.session.apply(action);
         Ok(self.snapshot())
     }
@@ -237,6 +359,92 @@ mod tests {
         let reg = leaked_catalog();
         let mut core = GameCore::new(reg, 1);
         assert_eq!(core.apply_index(0), Err(ApplyError::NoPendingDecision));
+    }
+
+    /// The combat-prompt builder and the matcher agree, and a non-combat legal
+    /// list yields no prompt. Pure (no session) so it's deterministic.
+    #[test]
+    fn combat_prompt_and_matcher_are_consistent() {
+        // No legal actions / non-combat decisions produce no prompt.
+        assert!(combat_prompt(&[]).is_none());
+
+        let mk = || AttackerDeclaration { attacker: 5, defending: DefendingEntity::Player(1) };
+        let legal = vec![
+            Action::DeclareAttackers { attackers: vec![] }, // the always-legal "no attacks"
+            Action::DeclareAttackers { attackers: vec![mk()] },
+        ];
+        let prompt = combat_prompt(&legal).expect("an attacker prompt");
+        assert_eq!(prompt.kind, CombatKind::Attackers);
+        assert_eq!(prompt.attackers.len(), 1);
+        assert_eq!(prompt.attackers[0].id, 5);
+        assert_eq!(prompt.attackers[0].defenders, vec![DefendingEntity::Player(1)]);
+        assert!(prompt.blockers.is_empty());
+
+        // The matcher recovers the declaration the prompt advertised, and the
+        // empty set (declare no attackers) is always available here.
+        assert!(match_attack(&legal, &[mk()]).is_some());
+        assert!(match_attack(&legal, &[]).is_some());
+    }
+
+    /// End-to-end combat: play a real game and, whenever a combat prompt is
+    /// surfaced, push an actual legal declaration back through the
+    /// builder→matcher→apply path. Confirms the server combat wiring drives a
+    /// live session, not just a synthetic legal list.
+    #[test]
+    fn combat_prompt_and_apply_roundtrip_in_a_real_game() {
+        let reg = leaked_catalog();
+        let mut core = GameCore::new(reg, 11);
+        let mut cur = core.snapshot();
+        let mut saw_combat = false;
+        let mut decisions = 0;
+
+        while cur.view.game_over.is_none() && decisions < 600 {
+            decisions += 1;
+            if let Some(prompt) = cur.combat.clone() {
+                saw_combat = true;
+                // Replay an actual enumerated declaration through the public
+                // submission path (the field is in-module-visible to the test).
+                let sub = match prompt.kind {
+                    CombatKind::Attackers => {
+                        let attackers = core
+                            .legal
+                            .iter()
+                            .find_map(|a| match a {
+                                Action::DeclareAttackers { attackers } => Some(attackers.clone()),
+                                _ => None,
+                            })
+                            .expect("a DeclareAttackers is enumerated for an attacker prompt");
+                        CombatSubmission::Attackers { attackers }
+                    }
+                    CombatKind::Blockers => {
+                        let blockers = core
+                            .legal
+                            .iter()
+                            .find_map(|a| match a {
+                                Action::DeclareBlockers { blockers } => Some(blockers.clone()),
+                                _ => None,
+                            })
+                            .expect("a DeclareBlockers is enumerated for a blocker prompt");
+                        CombatSubmission::Blockers { blockers }
+                    }
+                };
+                cur = core.apply_combat(sub).expect("a real legal declaration applies");
+                continue;
+            }
+            // Non-combat: greedily take a developing action so we reach combat.
+            let idx = cur
+                .view
+                .legal
+                .iter()
+                .position(|a| {
+                    let l = a.label.as_str();
+                    l != "Pass" && l != "Concede" && l != "Mulligan (draw a new hand)"
+                })
+                .unwrap_or(0);
+            cur = core.apply_index(idx).expect("a legal index applies");
+        }
+
+        assert!(saw_combat, "expected at least one combat declaration in a full game");
     }
 
     /// The StateResponse round-trips through JSON — the actual web transport.
