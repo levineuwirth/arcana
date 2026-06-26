@@ -230,6 +230,24 @@ fn library_stats(state: &GameState, reg: &CardRegistry) -> LibraryStats {
     LibraryStats { total, by_type, by_cmc, by_name }
 }
 
+/// One ranked legal action for the cockpit's "suggested lines" panel: the human
+/// action `index` (the same index `/action` consumes), its readable `label`, the
+/// mean value-MC rollout `value` (~[-1, 1] from the human's seat) and its
+/// calibrated `win_pct`. Sorted by value descending; the top row is the bot's
+/// own pick (shared scoring kernel — see `arcana_ai::search::rank_actions`).
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct Suggestion {
+    pub index: usize,
+    pub label: String,
+    pub value: f32,
+    pub win_pct: f32,
+}
+
+/// Fixed RNG seed for [`GameCore::suggest`], so re-querying the SAME position
+/// returns the SAME ranking (a stable analyst panel); different positions differ
+/// naturally because the rolled-out state differs.
+const SUGGEST_SEED: u64 = 0x5066_E57E_D11E_5;
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct StateResponse {
     pub view: ViewState,
@@ -454,6 +472,36 @@ impl GameCore {
         let eval = eval_for(self.session.state());
         let library = library_stats(self.session.state(), self.reg);
         StateResponse { view, recent, eval, library, combat, bottom }
+    }
+
+    /// Rank the human's current legal actions by value-MC lookahead for the
+    /// cockpit's "suggested lines" panel (see `arcana_ai::search::rank_actions`).
+    /// Returns `[]` unless the human faces a real (≥2-way) choice. `deep` trades
+    /// a bigger rollout budget for a closer look (the panel's "deepen" control).
+    ///
+    /// Reads the cached `legal` from the last [`snapshot`](Self::snapshot) (same
+    /// invariant `/action` relies on) and the true [`session`](Session) state, so
+    /// rollouts are perfect-information from the human's seat — a documented
+    /// simplification (the rollout engine sees the opponent's hidden cards).
+    pub fn suggest(&self, deep: bool) -> Vec<Suggestion> {
+        if self.legal.len() <= 1 {
+            return Vec::new();
+        }
+        let state = self.session.state();
+        // Snappy auto budget vs a heavier "deepen" budget.
+        let (rollouts, cap, candidates) = if deep { (20, 40, 16) } else { (8, 30, 12) };
+        arcana_ai::search::rank_actions(
+            state, self.reg, HUMAN, &self.legal, &MaterialValue,
+            rollouts, cap, candidates, SUGGEST_SEED,
+        )
+        .into_iter()
+        .map(|s| Suggestion {
+            index: s.index,
+            label: arcana_core::render::render_action(&self.legal[s.index], state, self.reg),
+            value: s.value,
+            win_pct: s.win_pct,
+        })
+        .collect()
     }
 
     /// Apply the human's chosen action by its `index` into the legal list from

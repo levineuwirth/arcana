@@ -49,8 +49,8 @@ use arcana_core::deck::{check_legality, builtin_formats, FormatSpec, LegalityRep
 use arcana_core::objects::ObjectId;
 use arcana_core::registry::CardRegistry;
 use arcana_core::types::CardId;
-use arcana_web::{resolve_import, CombatSubmission, GameCore, ImportedDeck, StateResponse};
-use axum::extract::State;
+use arcana_web::{resolve_import, CombatSubmission, GameCore, ImportedDeck, StateResponse, Suggestion};
+use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Response};
 use axum::routing::{get, post};
@@ -83,6 +83,7 @@ enum Command {
         reply: oneshot::Sender<LegalityReport>,
     },
     SampleDeck { reply: oneshot::Sender<Vec<CardId>> },
+    Suggest { deep: bool, reply: oneshot::Sender<Vec<Suggestion>> },
     New {
         seed: Option<u64>,
         deck: Option<Vec<CardId>>,
@@ -116,6 +117,14 @@ struct BottomRequest {
 #[derive(Debug, Deserialize)]
 struct ImportRequest {
     text: String,
+}
+
+/// `/suggest` query: `?deep=true` runs the heavier "deepen" budget; omitted or
+/// `?deep=false` runs the snappy auto budget.
+#[derive(Debug, Deserialize)]
+struct SuggestQuery {
+    #[serde(default)]
+    deep: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -199,6 +208,9 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>) {
             }
             Command::SampleDeck { reply } => {
                 let _ = reply.send(arcana_cards::sample_deck(reg, arcana_web::DECK_SEED));
+            }
+            Command::Suggest { deep, reply } => {
+                let _ = reply.send(core.suggest(deep));
             }
             Command::New { seed, deck, opponent, reply } => {
                 let seed = seed.unwrap_or_else(time_seed);
@@ -305,6 +317,21 @@ async fn get_state(State(app): State<AppState>) -> Response {
     }
     match rx.await {
         Ok(resp) => Json(resp).into_response(),
+        Err(_) => worker_gone(),
+    }
+}
+
+/// Ranked suggested lines for the human's current decision (cockpit panel).
+/// Returns `[]` (200) when there is no real choice; the value-MC rollouts run on
+/// the worker thread, so a heavy `?deep=true` request briefly blocks other
+/// commands (acceptable for the single-user local cockpit; noted for multiplayer).
+async fn get_suggest(State(app): State<AppState>, Query(q): Query<SuggestQuery>) -> Response {
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::Suggest { deep: q.deep, reply }).is_err() {
+        return worker_gone();
+    }
+    match rx.await {
+        Ok(s) => Json(s).into_response(),
         Err(_) => worker_gone(),
     }
 }
@@ -446,6 +473,7 @@ async fn main() {
         .route("/sample-deck", get(get_sample_deck))
         .route("/glossary", get(get_glossary))
         .route("/state", get(get_state))
+        .route("/suggest", get(get_suggest))
         .route("/action", post(post_action))
         .route("/combat", post(post_combat))
         .route("/autotap", post(post_autotap))
