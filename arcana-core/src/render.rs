@@ -21,6 +21,23 @@ fn card_name(state: &GameState, registry: &CardRegistry, id: crate::objects::Obj
         .unwrap_or_else(|| "<hidden>".into())
 }
 
+/// The printed text of `source`'s activated ability `index`, trimmed to a
+/// readable length (so an action label is self-describing rather than
+/// "[ability N]"). `None` if the source/def/ability isn't found.
+fn ability_text(state: &GameState, registry: &CardRegistry,
+                source: crate::objects::ObjectId, index: usize) -> Option<String> {
+    let obj = state.objects.get(source)?;
+    let def = registry.get(obj.card_id)?;
+    let text = def.activated_abilities.get(index)?.text.trim();
+    if text.is_empty() { return None; }
+    const MAX: usize = 64;
+    Some(if text.chars().count() > MAX {
+        format!("{}…", text.chars().take(MAX - 1).collect::<String>().trim_end())
+    } else {
+        text.to_string()
+    })
+}
+
 /// One battlefield permanent: "Name P/T (tapped)" — P/T only for creatures.
 fn render_permanent(state: &GameState, registry: &CardRegistry,
                     id: crate::objects::ObjectId) -> String {
@@ -209,8 +226,14 @@ pub fn render_action(action: &Action, state: &GameState, registry: &CardRegistry
             s
         }
         Action::ActivateAbility { source, ability_index, targets, .. } => {
-            let mut s = format!("Activate {} [ability {ability_index}]",
-                card_name(state, registry, *source));
+            // Prefer the ability's own text ("{2}: Regenerate this creature.")
+            // over the opaque "[ability N]" so the player knows what they're
+            // activating / choosing a target for.
+            let name = card_name(state, registry, *source);
+            let mut s = match ability_text(state, registry, *source, *ability_index) {
+                Some(t) => format!("{name} — {t}"),
+                None => format!("Activate {name} [ability {ability_index}]"),
+            };
             s.push_str(&render_targets(targets, state, registry));
             s
         }

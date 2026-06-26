@@ -312,6 +312,8 @@
     border-radius: var(--radius-control); box-shadow: var(--shadow-float); padding: 4px;
   }
   .action-menu button { text-align: left; white-space: nowrap; }
+  .action-menu-head { font-size: 10px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--text-faint); padding: 2px 4px 4px; }
 
   /* combat highlight: red = attacking, blue = blocking — semantic colored rings
      (override the monochrome selection rings) + solid colored badges for contrast. */
@@ -1294,6 +1296,9 @@ function showActionMenu(ev, acts) {
   closeActionMenu();
   const menu = document.createElement("div");
   menu.id = "action-menu"; menu.className = "action-menu";
+  const head = document.createElement("div");
+  head.className = "action-menu-head"; head.textContent = "Choose an ability";
+  menu.appendChild(head);
   for (const a of acts) {
     const b = document.createElement("button");
     b.textContent = a.label;
