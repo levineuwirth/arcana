@@ -806,6 +806,19 @@ pub enum EntersWithSpec {
     /// Cultivator Colossus, etc. Applies after any counters but
     /// before summoning sickness is stamped.
     Tapped,
+    /// "CARDNAME enters the battlefield tapped UNLESS you control a
+    /// [filter]" — the check-land cycle (Glacial Fortress, Clifftop
+    /// Retreat: "unless you control a Plains or a Mountain") and the
+    /// fast-land "unless you control two or fewer other lands" shape.
+    /// As the permanent enters, it taps iff its controller does NOT
+    /// control any OTHER permanent matching `filter`. The entering
+    /// permanent itself is excluded from the check (CR 614.12 — the
+    /// land sees the rest of the battlefield as it enters), and only
+    /// permanents the controller controls count. Pre-build `filter`
+    /// with the interned subtype symbols (e.g.
+    /// `ObjectFilter::permanent().with_subtypes_any(vec![mountain,
+    /// plains])`); no registry lookup happens at resolution.
+    TappedUnlessControl { filter: crate::targets::ObjectFilter },
 }
 
 // =============================================================================

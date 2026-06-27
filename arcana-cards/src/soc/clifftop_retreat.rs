@@ -1,22 +1,25 @@
 //! Clifftop Retreat — nonbasic land (checkland).
 //! "This land enters tapped unless you control a Mountain or a Plains." and
 //! "{T}: Add {R} or {W}." The two-color mana choice is modeled as two
-//! separate mana abilities. The conditional enters-tapped clause is a GAP —
-//! `EntersWithSpec::Tapped` is unconditional, so the condition is noted and
-//! the land enters untapped.
+//! separate mana abilities. The conditional enters-tapped clause is wired
+//! via `EntersWithSpec::TappedUnlessControl` over a Mountain-or-Plains
+//! filter.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaUnit;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
-    CardDefinition, CardRegistry,
+    CardDefinition, CardRegistry, EntersWithSpec,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, ManaColor, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Clifftop Retreat");
+    let mountain = reg.interner_mut().intern("Mountain");
+    let plains = reg.interner_mut().intern("Plains");
     let chars = Characteristics {
         name,
         mana_cost: None,
@@ -24,11 +27,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::LAND.into(),
         ..Default::default()
     };
-    // GAP: "enters tapped unless you control a Mountain or a Plains" —
-    // conditional enters-tapped is not expressible (EntersWithSpec::Tapped is
-    // unconditional); the land enters untapped here.
+    // "Enters tapped unless you control a Mountain or a Plains."
+    let unless = ObjectFilter::permanent().with_subtypes_any(vec![mountain, plains]);
     reg.register(
         CardDefinition::new(name, chars)
+            .with_enters_with(EntersWithSpec::TappedUnlessControl { filter: unless })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Add {R}.".into(),
                 cost: ActivationCost::tap_only(),

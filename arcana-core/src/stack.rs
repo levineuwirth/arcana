@@ -907,6 +907,24 @@ pub(crate) fn apply_enters_with_clauses(
                     obj.tap();
                 }
             }
+            EntersWithSpec::TappedUnlessControl { filter } => {
+                // Check-land / fast-land: tap unless the controller
+                // controls another permanent matching `filter`. Read-only
+                // scan first (immutable borrow), then tap if needed.
+                let controller = state.objects.get(object_id).map(|o| o.controller);
+                if let Some(ctrl) = controller {
+                    let controls_match = state.objects
+                        .objects_in_zone(crate::zones::Zone::Battlefield)
+                        .any(|o| o.id != object_id
+                            && o.controller == ctrl
+                            && filter.matches(o, state, ctrl));
+                    if !controls_match {
+                        if let Some(obj) = state.objects.get_mut(object_id) {
+                            obj.tap();
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -1833,5 +1851,78 @@ mod tests {
         s.finalize_resolved_spell(entry);
         let new_id = only_battlefield_permanent(&s);
         assert!(s.objects.get(new_id).unwrap().is_tapped());
+    }
+
+    #[test]
+    fn enters_tapped_unless_control_matching_checkland() {
+        use crate::registry::{CardRegistry, EntersWithSpec};
+        use crate::targets::ObjectFilter;
+        use crate::types::SubtypeSet;
+        let mut reg = CardRegistry::new();
+        let mountain = reg.interner_mut().intern("Mountain");
+        let filter = ObjectFilter::permanent().with_subtypes_any(vec![mountain]);
+
+        // No Mountain controlled → the check-land enters TAPPED.
+        {
+            let mut s = GameState::new(2, 0);
+            let obj = put_object(&mut s, 0, Zone::Stack, creature_chars(2, 2));
+            let mut entry = StackEntry::new_spell(
+                obj, 0, 1, creature_chars(2, 2),
+                TargetSelection::new(), vec![], None,
+            );
+            entry.enters_with = vec![EntersWithSpec::TappedUnlessControl {
+                filter: filter.clone(),
+            }];
+            s.finalize_resolved_spell(entry);
+            let new_id = only_battlefield_permanent(&s);
+            assert!(s.objects.get(new_id).unwrap().is_tapped(),
+                "no Mountain controlled → check-land enters tapped");
+        }
+
+        // Control a Mountain → the check-land enters UNTAPPED.
+        {
+            let mut s = GameState::new(2, 0);
+            let mut mtn = creature_chars(0, 0);
+            mtn.subtypes = SubtypeSet::from_names(reg.interner_mut(), ["Mountain"]);
+            put_object(&mut s, 0, Zone::Battlefield, mtn);
+            let obj = put_object(&mut s, 0, Zone::Stack, creature_chars(2, 2));
+            let mut entry = StackEntry::new_spell(
+                obj, 0, 1, creature_chars(2, 2),
+                TargetSelection::new(), vec![], None,
+            );
+            entry.enters_with = vec![EntersWithSpec::TappedUnlessControl {
+                filter: filter.clone(),
+            }];
+            s.finalize_resolved_spell(entry);
+            let entering = s.objects
+                .objects_in_zone(Zone::Battlefield)
+                .find(|o| !o.characteristics.subtypes.contains(mountain))
+                .expect("the entering check-land");
+            assert!(!entering.is_tapped(),
+                "controlling a Mountain → check-land enters untapped");
+        }
+
+        // An OPPONENT's Mountain does NOT count (only you-control matches).
+        {
+            let mut s = GameState::new(2, 0);
+            let mut mtn = creature_chars(0, 0);
+            mtn.subtypes = SubtypeSet::from_names(reg.interner_mut(), ["Mountain"]);
+            put_object(&mut s, 1, Zone::Battlefield, mtn); // opponent controls it
+            let obj = put_object(&mut s, 0, Zone::Stack, creature_chars(2, 2));
+            let mut entry = StackEntry::new_spell(
+                obj, 0, 1, creature_chars(2, 2),
+                TargetSelection::new(), vec![], None,
+            );
+            entry.enters_with = vec![EntersWithSpec::TappedUnlessControl {
+                filter: filter.clone(),
+            }];
+            s.finalize_resolved_spell(entry);
+            let entering = s.objects
+                .objects_in_zone(Zone::Battlefield)
+                .find(|o| !o.characteristics.subtypes.contains(mountain))
+                .expect("the entering check-land");
+            assert!(entering.is_tapped(),
+                "an opponent's Mountain does not satisfy 'you control' → tapped");
+        }
     }
 }
