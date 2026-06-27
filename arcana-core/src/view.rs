@@ -189,8 +189,82 @@ pub struct ViewState {
     pub players: Vec<PlayerView>,
     pub stack: Vec<CardView>,
     pub legal: Vec<ActionView>,
+    /// A pending card-pick the perspective player must make (a library search /
+    /// tutor / reanimation), surfaced as a visual picker. `None` otherwise.
+    pub choice: Option<ChoiceView>,
     /// Set once the game is decided ("Win(0)" / "Draw" / …).
     pub game_over: Option<String>,
+}
+
+/// One pickable card in a [`ChoiceView`], paired with the `legal` index that
+/// selects it (so the frontend submits via the normal action path).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ChoiceCardOption {
+    pub card: CardView,
+    pub action: usize,
+}
+
+/// A pending "pick a card from a zone" choice (PickCards) rendered for a visual
+/// picker: the prompt, the pickable candidates (the applicable cards), the full
+/// searched zone with the candidates FIRST (so you see your whole library with
+/// the matches at the front), and the `legal` index of the "pick nothing"
+/// option when the choice is optional.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ChoiceView {
+    pub prompt: String,
+    pub min: u32,
+    pub max: u32,
+    pub options: Vec<ChoiceCardOption>,
+    /// Every card in the searched zone (candidates first), for visualization.
+    pub pool: Vec<CardView>,
+    /// `legal` index of "pick nothing" (present when min == 0).
+    pub decline: Option<usize>,
+}
+
+/// Build the visual-picker [`ChoiceView`] for a pending PickCards the
+/// perspective player owns. `legal` is the same action slice the frontend
+/// indexes, so each option carries the index that selects it.
+fn build_choice_view(
+    state: &GameState, registry: &CardRegistry, perspective: PlayerId, legal: &[Action],
+) -> Option<ChoiceView> {
+    use crate::actions::{ChoiceKind, ChoiceResponse};
+    let pc = state.pending_choice.as_ref()?;
+    if pc.choosing_player != perspective {
+        return None;
+    }
+    let ChoiceKind::PickCards { candidates, min, max } = &pc.kind else { return None; };
+
+    let pick_index = |id: ObjectId| legal.iter().position(|a| matches!(a,
+        Action::SubmitResolutionChoice { response: ChoiceResponse::PickCards { picked }, .. }
+            if picked.len() == 1 && picked[0] == id));
+    let decline = legal.iter().position(|a| matches!(a,
+        Action::SubmitResolutionChoice { response: ChoiceResponse::PickCards { picked }, .. }
+            if picked.is_empty()));
+
+    let options: Vec<ChoiceCardOption> = candidates.iter()
+        .filter_map(|&id| pick_index(id).map(|action| ChoiceCardOption {
+            card: card_view(state, registry, id), action,
+        }))
+        .collect();
+
+    // Pool = the full searched zone, candidates first.
+    let cand: std::collections::HashSet<ObjectId> = candidates.iter().copied().collect();
+    let zone = candidates.first().and_then(|&id| state.objects.get(id)).map(|o| o.zone);
+    let mut pool: Vec<CardView> = candidates.iter()
+        .map(|&id| card_view(state, registry, id)).collect();
+    if let Some(z) = zone {
+        for o in state.objects.objects_in_zone(z) {
+            if !cand.contains(&o.id) { pool.push(card_view(state, registry, o.id)); }
+        }
+    }
+    let prompt = match zone {
+        Some(crate::zones::Zone::Library(_)) => "Search your library".to_string(),
+        Some(crate::zones::Zone::Graveyard(_)) => "Choose a card from the graveyard".to_string(),
+        Some(crate::zones::Zone::Exile) => "Choose an exiled card".to_string(),
+        Some(crate::zones::Zone::Hand(_)) => "Choose a card from your hand".to_string(),
+        _ => "Choose a card".to_string(),
+    };
+    Some(ChoiceView { prompt, min: *min, max: *max, options, pool, decline })
 }
 
 fn card_view(state: &GameState, registry: &CardRegistry, id: ObjectId) -> CardView {
@@ -294,6 +368,10 @@ pub fn view_state(
         .map(|id| card_view(state, registry, id))
         .collect();
 
+    // Build the visual-picker choice from the raw action slice (its indices
+    // match the frontend's) BEFORE projecting `legal` into ActionViews.
+    let choice = build_choice_view(state, registry, perspective, legal);
+
     let legal = legal.iter().enumerate()
         .map(|(index, a)| ActionView {
             index,
@@ -319,6 +397,81 @@ pub fn view_state(
         players,
         stack,
         legal,
+        choice,
         game_over,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::actions::{ChoiceContext, ChoiceKind, ChoiceResponse};
+    use crate::objects::{Characteristics, GameObject};
+
+    /// A pending `PickCards` over a subset of the library projects into
+    /// `ViewState.choice` as a visual search: the matching candidates become
+    /// clickable options (each carrying a real legal action index), and the
+    /// pool exposes the whole searched zone with candidates listed first.
+    fn seed_library(s: &mut GameState, count: usize) -> Vec<ObjectId> {
+        let mut ids = Vec::new();
+        for _ in 0..count {
+            let id = s.allocate_object_id();
+            s.objects.insert(GameObject::new(
+                id, 0, Zone::Library(0), 1, Characteristics::default()));
+            ids.push(id);
+        }
+        s.player_mut(0).library_top_to_bottom = ids.clone();
+        ids
+    }
+
+    #[test]
+    fn pick_cards_surfaces_as_visual_search_choice() {
+        let mut s = GameState::new(2, 0);
+        let lib = seed_library(&mut s, 5);
+        // Search finds the first two of the five library cards.
+        let candidates = vec![lib[0], lib[1]];
+        s.push_pending_choice(
+            0, ChoiceContext::ResolvingStack(crate::objects::NULL_OBJECT_ID),
+            ChoiceKind::PickCards { candidates: candidates.clone(), min: 0, max: 1 });
+
+        let registry = CardRegistry::new();
+        let legal = crate::legal_actions::legal_actions(&s, &registry);
+        let view = view_state(&s, &registry, 0, &legal);
+
+        let ch = view.choice.expect("pending PickCards should surface as a choice");
+        // One option per candidate, each pointing at a real legal action that
+        // picks exactly that id.
+        assert_eq!(ch.options.len(), candidates.len());
+        for opt in &ch.options {
+            assert!(candidates.contains(&opt.card.id));
+            match &legal[opt.action] {
+                Action::SubmitResolutionChoice {
+                    response: ChoiceResponse::PickCards { picked }, ..
+                } => assert_eq!(picked, &vec![opt.card.id]),
+                other => panic!("option action is not a single-card pick: {other:?}"),
+            }
+        }
+        // min == 0 → "pick nothing" is offered and is itself a legal action.
+        let decline = ch.decline.expect("min 0 should offer a decline");
+        assert!(matches!(&legal[decline],
+            Action::SubmitResolutionChoice {
+                response: ChoiceResponse::PickCards { picked }, .. } if picked.is_empty()));
+        // Pool = the whole library, candidates first.
+        assert_eq!(ch.pool.len(), lib.len());
+        assert_eq!(ch.pool[0].id, lib[0]);
+        assert_eq!(ch.pool[1].id, lib[1]);
+    }
+
+    #[test]
+    fn choice_is_hidden_from_the_other_seat() {
+        let mut s = GameState::new(2, 0);
+        let lib = seed_library(&mut s, 3);
+        s.push_pending_choice(
+            0, ChoiceContext::ResolvingStack(crate::objects::NULL_OBJECT_ID),
+            ChoiceKind::PickCards { candidates: vec![lib[0]], min: 1, max: 1 });
+        let registry = CardRegistry::new();
+        let legal = crate::legal_actions::legal_actions(&s, &registry);
+        // Opponent's perspective: not their decision, so no picker.
+        assert!(view_state(&s, &registry, 1, &legal).choice.is_none());
     }
 }
