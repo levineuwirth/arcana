@@ -908,9 +908,9 @@ pub(crate) fn apply_enters_with_clauses(
                 }
             }
             EntersWithSpec::TappedUnlessControl { filter } => {
-                // Check-land / fast-land: tap unless the controller
-                // controls another permanent matching `filter`. Read-only
-                // scan first (immutable borrow), then tap if needed.
+                // Check-land: tap unless the controller controls another
+                // permanent matching `filter`. Read-only scan first
+                // (immutable borrow), then tap if needed.
                 let controller = state.objects.get(object_id).map(|o| o.controller);
                 if let Some(ctrl) = controller {
                     let controls_match = state.objects
@@ -922,6 +922,36 @@ pub(crate) fn apply_enters_with_clauses(
                         if let Some(obj) = state.objects.get_mut(object_id) {
                             obj.tap();
                         }
+                    }
+                }
+            }
+            EntersWithSpec::TappedUnlessControlCount { filter, min, max } => {
+                // Fast/slow land: tap unless the count of OTHER matching
+                // permanents the controller controls is within [min, max].
+                let controller = state.objects.get(object_id).map(|o| o.controller);
+                if let Some(ctrl) = controller {
+                    let count = state.objects
+                        .objects_in_zone(crate::zones::Zone::Battlefield)
+                        .filter(|o| o.id != object_id
+                            && o.controller == ctrl
+                            && filter.matches(o, state, ctrl))
+                        .count() as u32;
+                    let enters_untapped = count >= *min && count <= *max;
+                    if !enters_untapped {
+                        if let Some(obj) = state.objects.get_mut(object_id) {
+                            obj.tap();
+                        }
+                    }
+                }
+            }
+            EntersWithSpec::TappedUnlessAnyPlayerLifeAtMost { life } => {
+                // DSK surveil-land: tap unless some player is at `life` or
+                // less life.
+                let any_low = (0..state.num_players())
+                    .any(|p| state.player(p).life <= *life);
+                if !any_low {
+                    if let Some(obj) = state.objects.get_mut(object_id) {
+                        obj.tap();
                     }
                 }
             }
@@ -1924,5 +1954,73 @@ mod tests {
             assert!(entering.is_tapped(),
                 "an opponent's Mountain does not satisfy 'you control' → tapped");
         }
+    }
+
+    #[test]
+    fn enters_tapped_unless_control_count_fast_and_slow_lands() {
+        use crate::registry::EntersWithSpec;
+        use crate::targets::ObjectFilter;
+        use crate::types::TypeLine;
+
+        let land_chars = || crate::objects::Characteristics {
+            types: TypeLine::LAND.into(), ..Default::default() };
+
+        // Helper: resolve a land with `spec` while the controller already
+        // controls `other_lands` plain lands; return whether it entered tapped.
+        let entered_tapped = |spec: EntersWithSpec, other_lands: usize| -> bool {
+            let mut s = GameState::new(2, 0);
+            for _ in 0..other_lands {
+                put_object(&mut s, 0, Zone::Battlefield, land_chars());
+            }
+            let obj = put_object(&mut s, 0, Zone::Stack, land_chars());
+            let mut entry = StackEntry::new_spell(
+                obj, 0, 1, land_chars(), TargetSelection::new(), vec![], None);
+            entry.enters_with = vec![spec];
+            s.finalize_resolved_spell(entry);
+            // The entrant is the most recently created battlefield land.
+            let id = s.objects.objects_in_zone(Zone::Battlefield)
+                .map(|o| o.id).max().expect("a battlefield land");
+            s.objects.get(id).unwrap().is_tapped()
+        };
+
+        // land_chars() is a LAND, so the seeded permanents match a land filter.
+        let land = || ObjectFilter::permanent().with_types(TypeLine::LAND.into());
+
+        // Fast-land: untapped with ≤2 OTHER lands, tapped with ≥3.
+        let fast = || EntersWithSpec::TappedUnlessControlCount {
+            filter: land(), min: 0, max: 2 };
+        assert!(!entered_tapped(fast(), 0), "fast-land: 0 others → untapped");
+        assert!(!entered_tapped(fast(), 2), "fast-land: 2 others → untapped");
+        assert!(entered_tapped(fast(), 3), "fast-land: 3 others → tapped");
+
+        // Slow-land: tapped with <2 OTHER lands, untapped with ≥2.
+        let slow = || EntersWithSpec::TappedUnlessControlCount {
+            filter: land(), min: 2, max: u32::MAX };
+        assert!(entered_tapped(slow(), 1), "slow-land: 1 other → tapped");
+        assert!(!entered_tapped(slow(), 2), "slow-land: 2 others → untapped");
+    }
+
+    #[test]
+    fn enters_tapped_unless_any_player_life_at_most() {
+        use crate::registry::EntersWithSpec;
+        use crate::types::TypeLine;
+        let land_chars = || crate::objects::Characteristics {
+            types: TypeLine::LAND.into(), ..Default::default() };
+        let resolve = |life0: i32| -> bool {
+            let mut s = GameState::new(2, 0);
+            s.player_mut(0).life = life0; // controller's life
+            // opponent stays at default (20) — "a player" = any player.
+            let obj = put_object(&mut s, 0, Zone::Stack, land_chars());
+            let mut entry = StackEntry::new_spell(
+                obj, 0, 1, land_chars(), TargetSelection::new(), vec![], None);
+            entry.enters_with =
+                vec![EntersWithSpec::TappedUnlessAnyPlayerLifeAtMost { life: 13 }];
+            s.finalize_resolved_spell(entry);
+            let id = only_battlefield_permanent(&s);
+            s.objects.get(id).unwrap().is_tapped()
+        };
+        assert!(resolve(20), "both players >13 life → enters tapped");
+        assert!(!resolve(13), "a player at exactly 13 life → enters untapped");
+        assert!(!resolve(5), "a player ≤13 life → enters untapped");
     }
 }

@@ -819,6 +819,28 @@ pub enum EntersWithSpec {
     /// `ObjectFilter::permanent().with_subtypes_any(vec![mountain,
     /// plains])`); no registry lookup happens at resolution.
     TappedUnlessControl { filter: crate::targets::ObjectFilter },
+    /// "Enters tapped UNLESS you control [min..=max] OTHER permanents
+    /// matching `filter`" — the count-threshold land cycles. The entering
+    /// permanent enters UNTAPPED iff the number of OTHER permanents its
+    /// controller controls matching `filter` is in `min..=max` (inclusive);
+    /// otherwise tapped. Self is excluded; only you-controlled permanents
+    /// count. Use `u32::MAX` for an open upper bound.
+    ///
+    /// * Fast-land ("unless you control two or fewer OTHER lands"):
+    ///   `filter = land`, `min = 0`, `max = 2`.
+    /// * Slow-land ("unless you control two or more other lands"):
+    ///   `filter = land`, `min = 2`, `max = u32::MAX`.
+    /// * "unless you control three or more other Forests":
+    ///   `filter = Forest subtype`, `min = 3`, `max = u32::MAX`.
+    TappedUnlessControlCount {
+        filter: crate::targets::ObjectFilter,
+        min: u32,
+        max: u32,
+    },
+    /// "Enters tapped UNLESS a player has `life` or less life" — the DSK
+    /// surveil-land cycle. Enters UNTAPPED iff ANY player's life total is
+    /// `<= life`; otherwise tapped. A pure life-total check, no board state.
+    TappedUnlessAnyPlayerLifeAtMost { life: i32 },
 }
 
 // =============================================================================
