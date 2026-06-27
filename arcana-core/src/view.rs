@@ -224,15 +224,32 @@ pub struct ChoiceView {
 /// Build the visual-picker [`ChoiceView`] for a pending PickCards the
 /// perspective player owns. `legal` is the same action slice the frontend
 /// indexes, so each option carries the index that selects it.
-fn build_choice_view(
+///
+/// Pass the *authoritative* (un-anonymized) state: a library lives in a hidden
+/// zone, so an information-set projection blanks the very cards a search needs
+/// to reveal. The web layer recomputes this from `Session::state()` for that
+/// reason.
+///
+/// Scoped to SEARCHABLE card zones (library / graveyard / exile). Battlefield
+/// and hand picks (sacrifice, discard, enlist, …) stay as on-board / text
+/// choices — a full-screen card grid there would hijack their existing UI.
+pub fn build_choice_view(
     state: &GameState, registry: &CardRegistry, perspective: PlayerId, legal: &[Action],
 ) -> Option<ChoiceView> {
-    use crate::actions::{ChoiceKind, ChoiceResponse};
+    use crate::actions::{ChoiceFollowUp, ChoiceKind, ChoiceResponse};
+    use crate::zones::Zone;
     let pc = state.pending_choice.as_ref()?;
     if pc.choosing_player != perspective {
         return None;
     }
     let ChoiceKind::PickCards { candidates, min, max } = &pc.kind else { return None; };
+
+    // The searched zone is wherever the candidates live; only show the visual
+    // picker for zones a player searches/browses through a grid.
+    let zone = match candidates.first().and_then(|&id| state.objects.get(id)).map(|o| o.zone) {
+        Some(z @ (Zone::Library(_) | Zone::Graveyard(_) | Zone::Exile)) => z,
+        _ => return None,
+    };
 
     let pick_index = |id: ObjectId| legal.iter().position(|a| matches!(a,
         Action::SubmitResolutionChoice { response: ChoiceResponse::PickCards { picked }, .. }
@@ -247,23 +264,27 @@ fn build_choice_view(
         }))
         .collect();
 
-    // Pool = the full searched zone, candidates first.
+    // Pool = the searched zone, matching candidates first. A true search lets
+    // you look at the WHOLE zone (CR 701.19); but a "look at the top N" effect
+    // (DigTopN) only reveals the cards looked at — don't leak the rest of the
+    // library, so its pool stays the candidates alone.
     let cand: std::collections::HashSet<ObjectId> = candidates.iter().copied().collect();
-    let zone = candidates.first().and_then(|&id| state.objects.get(id)).map(|o| o.zone);
     let mut pool: Vec<CardView> = candidates.iter()
         .map(|&id| card_view(state, registry, id)).collect();
-    if let Some(z) = zone {
-        for o in state.objects.objects_in_zone(z) {
+    let look_at_whole_zone = !matches!(
+        state.pending_choice_follow_up.as_ref(),
+        Some(ChoiceFollowUp::DigTopFinish { .. }));
+    if look_at_whole_zone {
+        for o in state.objects.objects_in_zone(zone) {
             if !cand.contains(&o.id) { pool.push(card_view(state, registry, o.id)); }
         }
     }
     let prompt = match zone {
-        Some(crate::zones::Zone::Library(_)) => "Search your library".to_string(),
-        Some(crate::zones::Zone::Graveyard(_)) => "Choose a card from the graveyard".to_string(),
-        Some(crate::zones::Zone::Exile) => "Choose an exiled card".to_string(),
-        Some(crate::zones::Zone::Hand(_)) => "Choose a card from your hand".to_string(),
-        _ => "Choose a card".to_string(),
-    };
+        Zone::Library(_) => "Search your library",
+        Zone::Graveyard(_) => "Choose a card from the graveyard",
+        Zone::Exile => "Choose an exiled card",
+        _ => "Choose a card",
+    }.to_string();
     Some(ChoiceView { prompt, min: *min, max: *max, options, pool, decline })
 }
 
@@ -460,6 +481,42 @@ mod tests {
         assert_eq!(ch.pool.len(), lib.len());
         assert_eq!(ch.pool[0].id, lib[0]);
         assert_eq!(ch.pool[1].id, lib[1]);
+    }
+
+    #[test]
+    fn battlefield_picks_do_not_open_the_search_modal() {
+        // Sacrifice / destroy / enlist etc. are PickCards too, but they're
+        // chosen on the board — a full-screen card grid would hijack that UI.
+        let mut s = GameState::new(2, 0);
+        let id = s.allocate_object_id();
+        s.objects.insert(GameObject::new(
+            id, 0, Zone::Battlefield, 1, Characteristics::default()));
+        s.push_pending_choice(
+            0, ChoiceContext::ResolvingStack(crate::objects::NULL_OBJECT_ID),
+            ChoiceKind::PickCards { candidates: vec![id], min: 1, max: 1 });
+        let registry = CardRegistry::new();
+        let legal = crate::legal_actions::legal_actions(&s, &registry);
+        assert!(view_state(&s, &registry, 0, &legal).choice.is_none());
+    }
+
+    #[test]
+    fn dig_top_n_reveals_only_the_cards_looked_at() {
+        // "Look at the top N" lets you see only those N — the picker must NOT
+        // expand its pool to the rest of the library (information leak).
+        use crate::actions::ChoiceFollowUp;
+        use crate::effects::DigRest;
+        let mut s = GameState::new(2, 0);
+        let lib = seed_library(&mut s, 6);
+        let looked = vec![lib[0], lib[1]];
+        s.pending_choice_follow_up = Some(ChoiceFollowUp::DigTopFinish {
+            player: 0, looked_at: looked.clone(), rest: DigRest::BottomRandom });
+        s.push_pending_choice(
+            0, ChoiceContext::ResolvingStack(crate::objects::NULL_OBJECT_ID),
+            ChoiceKind::PickCards { candidates: looked.clone(), min: 0, max: 1 });
+        let registry = CardRegistry::new();
+        let legal = crate::legal_actions::legal_actions(&s, &registry);
+        let ch = view_state(&s, &registry, 0, &legal).choice.expect("dig picker");
+        assert_eq!(ch.pool.len(), looked.len(), "dig pool must not leak the library");
     }
 
     #[test]

@@ -34,7 +34,7 @@ use arcana_core::state::GameState;
 use arcana_core::registry::CardRegistry;
 use arcana_core::state::GameResult;
 use arcana_core::types::{CardId, ColorSet, PlayerId};
-use arcana_core::view::{view_state, ViewState};
+use arcana_core::view::{build_choice_view, view_state, ViewState};
 use serde::{Deserialize, Serialize};
 
 /// The human always sits in seat 0; the bot in seat 1.
@@ -874,7 +874,14 @@ impl GameCore {
     pub fn snapshot(&mut self) -> StateResponse {
         let view = match self.session.advance() {
             Turn::AwaitingHuman { player, view, legal, .. } => {
-                let vs = view_state(&view.state, self.reg, player, &legal);
+                let mut vs = view_state(&view.state, self.reg, player, &legal);
+                // `view.state` is the information-set projection: hidden zones
+                // (your library) are anonymized, so the search picker built from
+                // it would show blank cards. A search lets the searching player
+                // see the real cards, so recompute the picker from the
+                // authoritative state — project() preserves object ids, so the
+                // `legal` action indices still line up.
+                vs.choice = build_choice_view(self.session.state(), self.reg, player, &legal);
                 self.legal = legal;
                 vs
             }

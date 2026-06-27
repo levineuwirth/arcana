@@ -783,4 +783,45 @@ mod tests {
         let (state, _ids) = fixture_state();
         let _ = project(&state, 5);
     }
+
+    /// The reason the web layer builds the search picker from the AUTHORITATIVE
+    /// state, not the information-set projection: a library is a hidden zone, so
+    /// `project` anonymizes it — building the picker from the projection would
+    /// show blank cards (the "every card is blank/Aura" bug). `project`
+    /// anonymizes IN PLACE (object ids preserved), so the same `legal` slice
+    /// indexes both states.
+    #[test]
+    fn search_picker_needs_the_authoritative_state_not_the_projection() {
+        use arcana_core::actions::{ChoiceContext, ChoiceKind};
+        use arcana_core::objects::{Characteristics, GameObject, NULL_OBJECT_ID};
+        use arcana_core::registry::CardRegistry;
+        use arcana_core::view::build_choice_view;
+
+        let mut reg = CardRegistry::new();
+        let name = reg.interner_mut().intern("Scalding Tarn");
+
+        let mut state = GameState::new(2, 0);
+        let id = state.allocate_object_id();
+        let mut chars = Characteristics::default();
+        chars.name = name;
+        state.objects.insert(GameObject::new(id, 0, Zone::Library(0), 1, chars));
+        state.player_mut(0).library_top_to_bottom = vec![id];
+        state.push_pending_choice(
+            0, ChoiceContext::ResolvingStack(NULL_OBJECT_ID),
+            ChoiceKind::PickCards { candidates: vec![id], min: 1, max: 1 });
+
+        let legal = arcana_core::legal_actions::legal_actions(&state, &reg);
+
+        // Authoritative state → the real card name surfaces.
+        let ch = build_choice_view(&state, &reg, 0, &legal).expect("picker");
+        assert_eq!(ch.options.len(), 1);
+        assert_eq!(ch.options[0].card.name, "Scalding Tarn");
+
+        // The projection anonymizes the searcher's own (hidden) library, so the
+        // same picker built from it loses the name — what the bug looked like.
+        let projected = project(&state, 0);
+        assert!(projected.is_anonymous(id), "own library is hidden → anonymized");
+        let ch2 = build_choice_view(&projected.state, &reg, 0, &legal).expect("picker");
+        assert_ne!(ch2.options[0].card.name, "Scalding Tarn");
+    }
 }
