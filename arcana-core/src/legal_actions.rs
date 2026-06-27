@@ -2592,14 +2592,114 @@ pub fn playable_cards(
     player: PlayerId,
     registry: &CardRegistry,
 ) -> Vec<ObjectId> {
-    potential_actions(state, player, registry)
-        .iter()
-        .filter_map(|a| match a {
-            Action::CastSpell { object_id, .. } => Some(*object_id),
-            Action::PlayLand { object_id, .. } => Some(*object_id),
-            _ => None,
-        })
-        .collect()
+    let mut set: std::collections::HashSet<ObjectId> =
+        potential_actions(state, player, registry)
+            .iter()
+            .filter_map(|a| match a {
+                Action::CastSpell { object_id, .. } => Some(*object_id),
+                Action::PlayLand { object_id, .. } => Some(*object_id),
+                _ => None,
+            })
+            .collect();
+    // Flexible-source fallback (dual lands). `available_mana` colors each
+    // source by its FIRST mana ability, so a card payable only via a dual
+    // land's OTHER color (Clifftop Retreat → White) is missed above. The
+    // per-card `auto_tap_sequence` is cost-aware and finds the right color,
+    // but it's a clone+simulate per card, so only run it when the player
+    // actually controls a flexible source — otherwise the cheap pass is
+    // already complete. `auto_tap_sequence` never produces a FALSE positive
+    // (it only returns a line the engine can really play), so the union is
+    // sound.
+    if player_has_flexible_mana_source(state, player, registry) {
+        let hand: Vec<ObjectId> = state.objects
+            .objects_in_zone(Zone::Hand(player))
+            .map(|o| o.id)
+            .collect();
+        for id in hand {
+            if !set.contains(&id)
+                && auto_tap_sequence(state, registry, player, id).is_some()
+            {
+                set.insert(id);
+            }
+        }
+    }
+    set.into_iter().collect()
+}
+
+/// Number of mana abilities on `obj` (registry-declared + intrinsic). A
+/// permanent with ≥2 is "flexible" — a dual land that can tap for more than
+/// one color, which `available_mana`'s deterministic first-ability coloring
+/// can't represent.
+fn count_mana_abilities(
+    obj: &crate::objects::GameObject,
+    registry: &CardRegistry,
+) -> usize {
+    let reg_n = registry.get(obj.card_id).map_or(0, |d|
+        d.activated_abilities.iter().filter(|a| a.is_mana_ability).count());
+    let intr_n = obj.intrinsic_activated_abilities.iter()
+        .filter(|a| a.is_mana_ability).count();
+    reg_n + intr_n
+}
+
+/// Does `player` control an UNTAPPED flexible mana source (≥2 mana
+/// abilities)? Gates the cost-aware castability fallback so the common
+/// no-dual-land board pays nothing extra.
+fn player_has_flexible_mana_source(
+    state: &GameState,
+    player: PlayerId,
+    registry: &CardRegistry,
+) -> bool {
+    state.objects.objects_in_zone(Zone::Battlefield)
+        .filter(|o| o.controller == player && !o.is_tapped())
+        .any(|o| count_mana_abilities(o, registry) >= 2)
+}
+
+/// Does `obj` have any NON-mana activated ability (registry / intrinsic /
+/// granted)? Pre-filter so the flexible-source activation fallback doesn't
+/// waste an `auto_tap_activate_sequence` simulation on pure mana-dorks.
+fn has_nonmana_activated_ability(
+    state: &GameState,
+    obj: &crate::objects::GameObject,
+    registry: &CardRegistry,
+) -> bool {
+    registry.get(obj.card_id).is_some_and(|d|
+        d.activated_abilities.iter().any(|a| !a.is_mana_ability))
+        || obj.intrinsic_activated_abilities.iter().any(|a| !a.is_mana_ability)
+        || state.granted_activated_for(obj.id).iter().any(|a| !a.is_mana_ability)
+}
+
+/// Permanents `player` controls that could ACTIVATE a non-mana ability this
+/// turn, accounting for dual-land mana flexibility (see [`playable_cards`]).
+/// The cheap [`potential_actions`] pass plus a cost-aware
+/// [`auto_tap_activate_sequence`] fallback gated on a flexible source.
+pub fn activatable_sources(
+    state: &GameState,
+    player: PlayerId,
+    registry: &CardRegistry,
+) -> std::collections::HashSet<ObjectId> {
+    let mut set: std::collections::HashSet<ObjectId> =
+        potential_actions(state, player, registry)
+            .into_iter()
+            .filter_map(|a| match a {
+                Action::ActivateAbility { source, .. } => Some(source),
+                _ => None,
+            })
+            .collect();
+    if player_has_flexible_mana_source(state, player, registry) {
+        let candidates: Vec<ObjectId> = state.objects
+            .objects_in_zone(Zone::Battlefield)
+            .filter(|o| o.controller == player
+                && !set.contains(&o.id)
+                && has_nonmana_activated_ability(state, o, registry))
+            .map(|o| o.id)
+            .collect();
+        for id in candidates {
+            if auto_tap_activate_sequence(state, registry, player, id).is_some() {
+                set.insert(id);
+            }
+        }
+    }
+    set
 }
 
 /// True if `player` has any non-trivial play available now or after tapping out
@@ -2614,7 +2714,7 @@ pub fn has_meaningful_play(
     player: PlayerId,
     registry: &CardRegistry,
 ) -> bool {
-    potential_actions(state, player, registry).iter().any(|a| match a {
+    let cheap = potential_actions(state, player, registry).iter().any(|a| match a {
         Action::PassPriority | Action::Concede => false,
         Action::ActivateAbility { source, ability_index, .. } => {
             state.objects.get(*source)
@@ -2622,7 +2722,34 @@ pub fn has_meaningful_play(
                 .map_or(true, |ab| !ab.is_mana_ability)
         }
         _ => true,
-    })
+    });
+    if cheap {
+        return true;
+    }
+    // Flexible-source fallback (dual lands): a play that's only payable under
+    // a non-default mana color assignment is invisible to the
+    // `available_mana`-based cheap pass. Mirror the [`playable_cards`] /
+    // [`activatable_sources`] cost-aware checks, gated on a flexible source
+    // so non-dual boards stay cheap. This must agree with those two — else
+    // the UI would offer a play the auto-pass heuristic skips past.
+    if !player_has_flexible_mana_source(state, player, registry) {
+        return false;
+    }
+    let hand: Vec<ObjectId> = state.objects
+        .objects_in_zone(Zone::Hand(player)).map(|o| o.id).collect();
+    if hand.iter().any(|&id|
+        auto_tap_sequence(state, registry, player, id).is_some())
+    {
+        return true;
+    }
+    let ability_sources: Vec<ObjectId> = state.objects
+        .objects_in_zone(Zone::Battlefield)
+        .filter(|o| o.controller == player
+            && has_nonmana_activated_ability(state, o, registry))
+        .map(|o| o.id)
+        .collect();
+    ability_sources.iter().any(|&id|
+        auto_tap_activate_sequence(state, registry, player, id).is_some())
 }
 
 // --- auto-tap ---------------------------------------------------------------
@@ -5371,5 +5498,96 @@ mod tests {
         obj.controller = owner;
         state.objects.insert(obj);
         id
+    }
+
+    /// A dual land (two mana abilities, R and W) makes an off-color {W}
+    /// spell `playable`, where a mono-red source does not. Regression for
+    /// the flexible-mana-source castability fallback: `available_mana`
+    /// colors each source by its FIRST mana ability, so without the
+    /// fallback the {W} spell would be invisible behind a Red-only pool.
+    #[test]
+    fn dual_land_enables_offcolor_spell_in_playable_cards() {
+        use crate::registry::{
+            ActivatedAbilityDef, ActivationContext, ActivationCost,
+            ActivationZone, CardDefinition,
+        };
+        use crate::mana::{ManaCost, ManaUnit};
+        use crate::effects::Effect;
+        use crate::types::{ColorSet, ManaColor, PtValue};
+
+        fn add_red(
+            _s: &GameState, ctx: &ActivationContext, _: &CardRegistry,
+        ) -> Vec<Effect> {
+            vec![Effect::AddMana { player: ctx.controller,
+                mana: vec![ManaUnit::plain(ManaColor::Red, ctx.source)] }]
+        }
+        fn add_white(
+            _s: &GameState, ctx: &ActivationContext, _: &CardRegistry,
+        ) -> Vec<Effect> {
+            vec![Effect::AddMana { player: ctx.controller,
+                mana: vec![ManaUnit::plain(ManaColor::White, ctx.source)] }]
+        }
+        let mana_ability = |effect: crate::registry::ActivatedEffectFn| ActivatedAbilityDef {
+            text: String::new(),
+            cost: ActivationCost::tap_only(),
+            target_requirements: vec![],
+            is_mana_ability: true,
+            is_loyalty_ability: false,
+            activation_zone: ActivationZone::Battlefield,
+            is_instant_speed: false,
+            face_gate: None,
+            effect,
+        };
+
+        let mut reg = CardRegistry::new();
+        // Dual land: {T}: Add {R}; {T}: Add {W}.
+        let dual_name = reg.interner_mut().intern("Test Dual");
+        let dual_cid = reg.register(
+            CardDefinition::new(dual_name, land_chars())
+                .with_activated_ability(mana_ability(add_red))
+                .with_activated_ability(mana_ability(add_white)));
+        // Mono-red land: {T}: Add {R}.
+        let mono_name = reg.interner_mut().intern("Test Mountain");
+        let mono_cid = reg.register(
+            CardDefinition::new(mono_name, land_chars())
+                .with_activated_ability(mana_ability(add_red)));
+        // A {W} creature spell (permanent spell — no spell ability needed).
+        let spell_name = reg.interner_mut().intern("White Bear");
+        let spell_chars = Characteristics {
+            name: spell_name,
+            mana_cost: Some(ManaCost::parse("{W}").unwrap()),
+            colors: ColorSet::white(),
+            types: TypeLine::CREATURE.into(),
+            power: Some(PtValue::Fixed(2)),
+            toughness: Some(PtValue::Fixed(2)),
+            ..Default::default()
+        };
+        let spell_cid = reg.register(CardDefinition::new(spell_name, spell_chars.clone()));
+
+        // With a dual land controlled → the {W} spell is playable.
+        {
+            let mut s = GameState::new(2, 0);
+            set_main_phase(&mut s);
+            state_put_with_card(&mut s, 0, Zone::Battlefield, land_chars(), dual_cid);
+            let spell = state_put_with_card(
+                &mut s, 0, Zone::Hand(0), spell_chars.clone(), spell_cid);
+            assert!(player_has_flexible_mana_source(&s, 0, &reg),
+                "a two-ability dual land is a flexible source");
+            assert!(playable_cards(&s, 0, &reg).contains(&spell),
+                "dual land's White half makes the {{W}} spell playable");
+        }
+
+        // With only a mono-red land → the {W} spell is NOT playable.
+        {
+            let mut s = GameState::new(2, 0);
+            set_main_phase(&mut s);
+            state_put_with_card(&mut s, 0, Zone::Battlefield, land_chars(), mono_cid);
+            let spell = state_put_with_card(
+                &mut s, 0, Zone::Hand(0), spell_chars.clone(), spell_cid);
+            assert!(!player_has_flexible_mana_source(&s, 0, &reg),
+                "a single-ability land is not flexible");
+            assert!(!playable_cards(&s, 0, &reg).contains(&spell),
+                "a Red-only source can't pay {{W}} — spell not playable");
+        }
     }
 }

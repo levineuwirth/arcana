@@ -192,9 +192,16 @@ impl<'a> Session<'a> {
             {
                 let skip = match self.auto_pass {
                     AutoPass::None => false,
-                    // Quiet window only: nothing on the stack to respond to and no
-                    // notable opponent action this advance to acknowledge.
-                    AutoPass::Stops => self.state.stack.is_empty() && self.log.is_empty(),
+                    // Nothing NEW to acknowledge this advance (`log` empty) and —
+                    // checked above — no meaningful play. A non-empty stack does
+                    // NOT force a stop: the player's own spell resolving (no
+                    // response available) shouldn't demand a manual pass, and any
+                    // notable opponent action (a spell they might answer) lands in
+                    // `log`, which keeps the window surfaced. This is what lets a
+                    // cast/activation with no opponent interaction resolve without
+                    // an extra "pass" click (MTGA-style auto-yield through your own
+                    // stack).
+                    AutoPass::Stops => self.log.is_empty(),
                     AutoPass::Full => true,
                 };
                 if skip {

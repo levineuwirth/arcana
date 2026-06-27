@@ -255,13 +255,7 @@ pub fn view_state(
     // out (potential, mana-floated) — sources of activate actions in the
     // mana-floated enumeration. Lets the UI offer auto-tap activation (Codie).
     let activatable: std::collections::HashSet<ObjectId> =
-        crate::legal_actions::potential_actions(state, perspective, registry)
-            .into_iter()
-            .filter_map(|a| match a {
-                Action::ActivateAbility { source, .. } => Some(source),
-                _ => None,
-            })
-            .collect();
+        crate::legal_actions::activatable_sources(state, perspective, registry);
 
     let players = (0..state.num_players()).map(|p| {
         PlayerView {
