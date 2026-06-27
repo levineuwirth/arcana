@@ -226,6 +226,32 @@
   .phud .gauge .floating { color: var(--text-faint); }
   .phud .spacer { flex: 1; }
   .phud .counts { display: flex; gap: 12px; font-variant-numeric: tabular-nums; }
+  .phud .counts .zc { border-radius: var(--radius-control); padding: 0 4px; }
+  .phud .counts .zc.clickable { cursor: pointer; }
+  .phud .counts .zc.clickable:hover { background: var(--bg); color: var(--text); }
+
+  /* zone viewer modal (browse graveyard / exile / library / hand) */
+  .zoneviewer {
+    position: fixed; inset: 0; z-index: 150; display: flex; align-items: center; justify-content: center;
+    background: rgba(8, 7, 6, .5); padding: 24px;
+  }
+  .zv-box {
+    display: flex; flex-direction: column; min-height: 0; max-height: 86vh; max-width: min(1100px, 94vw);
+    background: var(--bg-offset); border: 1px solid var(--border-muted);
+    border-radius: var(--radius-panel); box-shadow: var(--shadow-float); padding: 12px 16px;
+  }
+  .zv-head { flex: 0 0 auto; display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+    font-family: var(--font-serif); font-weight: 600; font-size: 16px; margin-bottom: 10px; }
+  .zv-head .zv-n { color: var(--text-faint); font-weight: 400; font-size: 13px; }
+  .zv-close { font-size: 14px; line-height: 1; padding: 2px 8px; }
+  .zv-grid { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; }
+  .zv-back {
+    width: var(--card-w); height: var(--card-h); flex: 0 0 auto;
+    border-radius: 6px; border: 1px solid var(--border-muted);
+    background: linear-gradient(145deg, var(--bg) 0%, var(--bg-offset) 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-serif); font-size: 13px; color: var(--text-faint); letter-spacing: .08em;
+  }
   .phud.opp { border-bottom: 1px solid var(--border); margin-bottom: 2px; }
 
   /* ---- Play strip: your HUD + hand + minimal action controls ---- */
@@ -1080,16 +1106,82 @@ function prettyPhase(view) { return (view.phase || "").replace("/", " · "); }
 // yours in the Play strip. Replaces the old per-player board header.
 function renderHud(el, p, isYou) {
   if (!el) return;
-  el.innerHTML =
-    '<span class="who">' + (isYou ? "You" : "Opponent") + " · P" + p.id + "</span>" +
-    '<span class="life tnum">' + p.life + '<span class="unit">life</span></span>' +
-    '<span class="gauge">' + manaGaugeHtml(p) + "</span>" +
-    '<span class="spacer"></span>' +
-    '<span class="counts">' +
-      '<span>hand <b class="tnum">' + p.hand_count + "</b></span>" +
-      '<span>library <b class="tnum">' + p.library_count + "</b></span>" +
-      '<span>graveyard <b class="tnum">' + p.graveyard_count + "</b></span>" +
-    "</span>";
+  el.innerHTML = "";
+  const who = document.createElement("span");
+  who.className = "who"; who.textContent = (isYou ? "You" : "Opponent") + " · P" + p.id;
+  const life = document.createElement("span");
+  life.className = "life tnum"; life.innerHTML = p.life + '<span class="unit">life</span>';
+  const gauge = document.createElement("span");
+  gauge.className = "gauge"; gauge.innerHTML = manaGaugeHtml(p);
+  const spacer = document.createElement("span"); spacer.className = "spacer";
+  // Zone counts — click to browse the zone. Graveyard/exile hidden when empty.
+  const counts = document.createElement("span"); counts.className = "counts";
+  counts.appendChild(zoneCount("hand", p.hand_count, () => openZone(p, "hand")));
+  counts.appendChild(zoneCount("library", p.library_count, () => openZone(p, "library")));
+  if (p.graveyard_count) counts.appendChild(zoneCount("graveyard", p.graveyard_count, () => openZone(p, "graveyard")));
+  if (p.exile_count) counts.appendChild(zoneCount("exile", p.exile_count, () => openZone(p, "exile")));
+  el.append(who, life, gauge, spacer, counts);
+}
+
+function zoneCount(label, n, onClick) {
+  const s = document.createElement("span");
+  s.className = "zc clickable";
+  s.innerHTML = label + ' <b class="tnum">' + n + "</b>";
+  s.title = "Browse " + label;
+  s.onclick = onClick;
+  return s;
+}
+
+// ----- zone viewer (browse graveyard / exile / library / hand) -------------
+function openZone(p, kind) {
+  const mine = G.resp && p.id === G.resp.view.perspective;
+  const who = mine ? "Your" : "Opponent's";
+  if (kind === "graveyard") return showZoneViewer(who + " Graveyard", p.graveyard || [], 0);
+  if (kind === "exile") return showZoneViewer(who + " Exile", p.exile || [], 0);
+  if (kind === "hand") {
+    return mine
+      ? showZoneViewer("Your Hand", p.hand || [], 0)
+      : showZoneViewer("Opponent's Hand", [], p.hand_count); // hidden → backs
+  }
+  if (kind === "library") return showZoneViewer(who + " Library", [], p.library_count); // order hidden → backs
+}
+
+// A dimmed modal browsing a zone's cards (face-up) or N face-down backs.
+function showZoneViewer(title, cards, backCount) {
+  closeZoneViewer();
+  const modal = document.createElement("div");
+  modal.id = "zoneviewer"; modal.className = "zoneviewer";
+  const box = document.createElement("div"); box.className = "zv-box";
+  const head = document.createElement("div"); head.className = "zv-head";
+  const n = cards.length || backCount || 0;
+  const ttl = document.createElement("span");
+  ttl.innerHTML = title + ' <span class="zv-n">(' + n + ")</span>";
+  const close = document.createElement("button"); close.className = "zv-close"; close.textContent = "✕";
+  close.onclick = closeZoneViewer;
+  head.append(ttl, close);
+  const grid = document.createElement("div"); grid.className = "zv-grid";
+  if (cards.length) {
+    for (const c of cards) grid.appendChild(Arcana.renderCard(c, {}));
+  } else if (backCount) {
+    for (let i = 0; i < backCount; i++) {
+      const b = document.createElement("div"); b.className = "zv-back"; b.textContent = "Arcana";
+      grid.appendChild(b);
+    }
+  } else {
+    const e = document.createElement("div"); e.className = "empty"; e.textContent = "(empty)";
+    grid.appendChild(e);
+  }
+  box.append(head, grid);
+  modal.appendChild(box);
+  modal.onclick = (e) => { if (e.target === modal) closeZoneViewer(); };
+  document.body.appendChild(modal);
+  document.addEventListener("keydown", zoneEsc);
+}
+function zoneEsc(e) { if (e.key === "Escape") closeZoneViewer(); }
+function closeZoneViewer() {
+  const m = document.getElementById("zoneviewer");
+  if (m) m.remove();
+  document.removeEventListener("keydown", zoneEsc);
 }
 
 // The battlefield only — no header (vitals live in the HUD). Cards stay

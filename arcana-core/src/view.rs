@@ -101,6 +101,8 @@ pub struct PlayerView {
     pub hand_count: usize,
     pub library_count: usize,
     pub graveyard_count: usize,
+    /// Cards in this player's exile (owner-filtered; Exile is a shared zone).
+    pub exile_count: usize,
     /// Floating (unspent) mana in this player's pool — usually 0 between
     /// decisions, non-zero mid-cast.
     pub mana_pool: usize,
@@ -112,6 +114,12 @@ pub struct PlayerView {
     /// Filled only for the perspective player (hidden information).
     pub hand: Vec<CardView>,
     pub battlefield: Vec<CardView>,
+    /// This player's graveyard contents (public — both players' are visible), for
+    /// the zone viewer. Order is the graveyard's iteration order.
+    pub graveyard: Vec<CardView>,
+    /// This player's exiled cards (public exile; face-down exile would need its
+    /// own treatment, not modeled here). For the zone viewer.
+    pub exile: Vec<CardView>,
 }
 
 /// A legal action plus its display label and stable index into the `legal`
@@ -202,6 +210,12 @@ pub fn view_state(
         let ids: Vec<ObjectId> = state.objects.objects_in_zone(zone).map(|o| o.id).collect();
         ids.into_iter().map(|id| card_view(state, registry, id)).collect()
     };
+    // Exile is a single shared zone — a player's exiled cards are those they own.
+    let exile_of = |p: PlayerId| -> Vec<CardView> {
+        let ids: Vec<ObjectId> = state.objects.objects_in_zone(Zone::Exile)
+            .filter(|o| o.owner == p).map(|o| o.id).collect();
+        ids.into_iter().map(|id| card_view(state, registry, id)).collect()
+    };
 
     // Which of the perspective player's hand cards are playable this turn (cast
     // or play if they tap out). Computed once; only that player's hand is shown.
@@ -228,6 +242,8 @@ pub fn view_state(
             hand_count: state.objects.objects_in_zone(Zone::Hand(p)).count(),
             library_count: state.objects.objects_in_zone(Zone::Library(p)).count(),
             graveyard_count: state.objects.objects_in_zone(Zone::Graveyard(p)).count(),
+            exile_count: state.objects.objects_in_zone(Zone::Exile)
+                .filter(|o| o.owner == p).count(),
             mana_pool: state.player(p).mana_pool.total(),
             available_mana: mana_counts(&crate::legal_actions::available_mana(state, p, registry)),
             hand: if p == perspective {
@@ -246,6 +262,8 @@ pub fn view_state(
                     c
                 }).collect()
             },
+            graveyard: cards_in(Zone::Graveyard(p)),
+            exile: exile_of(p),
         }
     }).collect();
 
