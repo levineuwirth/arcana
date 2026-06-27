@@ -1242,7 +1242,8 @@ function renderBattlefield(container, p, isYou, cm) {
     return h;
   };
   // a card column: width ∝ pile count; empty collapses so the other spans the band.
-  const mkCardZone = (head, cards, empty) => {
+  const side = isYou ? "you" : "opp";
+  const mkCardZone = (head, cards, empty, key) => {
     const z = document.createElement("div");
     z.className = "zone" + (cards.length ? "" : " collapsed");
     const slots = stackKey ? new Set(cards.map(stackKey)).size : cards.length;
@@ -1250,6 +1251,9 @@ function renderBattlefield(container, p, isYou, cm) {
     z.appendChild(head);
     const row = document.createElement("div");
     row.className = "cards battlefield fit";
+    // Stable key so renderAll can restore horizontal scroll after a rebuild
+    // (e.g. clicking an attacker in a long, scrolled row).
+    if (key) row.dataset.scrollkey = side + "-" + key;
     renderCards(row, cards, empty, (c) => bfDecor(c, isYou, cm), stackKey);
     z.appendChild(row);
     return z;
@@ -1270,10 +1274,10 @@ function renderBattlefield(container, p, isYou, cm) {
   } else {
     const head = (lands.length && !inCombat)
       ? mkHead("Lands", toggleLands, "collapse ▾") : mkHead("Lands");
-    grid.appendChild(mkCardZone(head, lands, "no lands"));
+    grid.appendChild(mkCardZone(head, lands, "no lands", "lands"));
   }
   // Creatures / permanents (right): full card view.
-  grid.appendChild(mkCardZone(mkHead("Creatures & permanents"), others, "no permanents"));
+  grid.appendChild(mkCardZone(mkHead("Creatures & permanents"), others, "no permanents", "creatures"));
   container.appendChild(grid);
 }
 
@@ -1683,12 +1687,34 @@ function buildDeclarePanel(panel, word) {
   go.className = "primary";
   go.textContent = n ? ("Confirm " + n + " " + word + (n > 1 ? "s" : "")) : ("Confirm " + word + "s");
   go.onclick = isAtk ? confirmAttackers : confirmBlockers;
+  ctrls.append(go);
+  // "All attack": select every creature able to attack (each at its first/
+  // default defender), then re-render. Only meaningful for the attacker step.
+  if (isAtk) {
+    const cb = G.resp.combat;
+    const total = (cb && cb.attackers) ? cb.attackers.length : 0;
+    const allSelected = total > 0 && G.atk.size >= total;
+    const all = document.createElement("button");
+    all.textContent = allSelected ? "Clear all" : "All attack";
+    all.disabled = total === 0;
+    all.onclick = () => {
+      if (allSelected) {
+        G.atk.clear();
+      } else {
+        for (const o of cb.attackers) {
+          if (!G.atk.has(o.id) && o.defenders.length) G.atk.set(o.id, o.defenders[0]);
+        }
+      }
+      renderAll();
+    };
+    ctrls.append(all);
+  }
   const none = document.createElement("button");
   none.textContent = isAtk ? "No attacks" : "No blocks";
   none.onclick = isAtk
     ? () => { G.atk.clear(); confirmAttackers(); }
     : () => { G.blk.clear(); G.pendingBlocker = null; confirmBlockers(); };
-  ctrls.append(go, none);
+  ctrls.append(none);
   panel.appendChild(ctrls);
 }
 
@@ -1948,6 +1974,14 @@ function drawTargetingArrows(_layer) {}
 function renderAll() {
   const resp = G.resp;
   if (!resp) return;
+  // Preserve horizontal scroll of card rows across the full rebuild below, so
+  // clicking a card (e.g. declaring one of many attackers) doesn't jump the
+  // row back to the left. Keyed by the stable data-scrollkey set in
+  // renderBattlefield; restored at the end once the new rows exist.
+  const savedScroll = new Map();
+  for (const e of document.querySelectorAll("[data-scrollkey]")) {
+    if (e.scrollLeft) savedScroll.set(e.dataset.scrollkey, e.scrollLeft);
+  }
   const view = resp.view;
   const me = view.perspective;
   const you = view.players.find((p) => p.id === me);
@@ -1994,6 +2028,14 @@ function renderAll() {
   renderTargetBanner();
   syncOverlay();
   renderArrows();
+
+  // Restore horizontal scroll captured before the rebuild (see top of fn).
+  if (savedScroll.size) {
+    for (const e of document.querySelectorAll("[data-scrollkey]")) {
+      const x = savedScroll.get(e.dataset.scrollkey);
+      if (x) e.scrollLeft = x;
+    }
+  }
 
   // remember which battlefield ids we've now shown (so new ones pulse next time)
   G.seenBf = new Set();
