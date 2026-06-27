@@ -20,6 +20,13 @@
 //! * [`card_contributions`] — a SIMPLE, honest first-cut per-card signal: the
 //!   average win-rate of the decks that contain the card (co-occurrence
 //!   weighting). See the confound note on [`card_contributions`].
+//! * [`marginal_card_power`] / [`rank_cards_marginal`] — the CAUSAL upgrade that
+//!   the [`card_contributions`] confound note asks for. Swap exactly ONE deck
+//!   slot (a neutral `filler`) for the card under test, re-measure the deck's
+//!   win-rate against a fixed gauntlet, and report the delta. Changing one card
+//!   and re-measuring ISOLATES that card's marginal contribution (no
+//!   co-occurrence confound), at the cost of a measurement that is relative to
+//!   the chosen baseline + filler + gauntlet + referee policy. See its docs.
 //!
 //! # The fixed policy
 //!
@@ -438,6 +445,249 @@ pub fn card_contributions(
 }
 
 // =============================================================================
+// MARGINAL (causal) per-card power — the "real suggested cards" foundation
+// =============================================================================
+//
+// `card_contributions` above is a co-occurrence statistic: a card inherits the
+// win-rate of whatever decks it happens to be in, so cards inside one deck are
+// indistinguishable and a card's number reflects its company, not itself. The
+// functions below are the experiment its confound note calls for — an A/B swap.
+//
+// THE METHOD. Fix a `baseline` deck, a `filler` slot in it (a card we treat as
+// near-neutral, e.g. a basic land), and a `gauntlet` of opponents. Build
+// `deck_with` = baseline with ONE copy of `filler` replaced by the card under
+// test, keeping the deck size constant. Measure both decks' win-rate against the
+// whole gauntlet under the SAME referee policy, and report
+// `win_rate(deck_with) − win_rate(baseline)`. Because exactly one slot changed,
+// the delta is attributable to that one card: it is a marginal / causal estimate
+// of "what does adding this card (in place of the filler) do to my win-rate?".
+//
+// HONEST LIMITATIONS (this is inherent to marginal measurement, not a bug):
+//   * BASELINE-RELATIVE. The number answers "how much does this card help THIS
+//     deck?", not "how good is this card in the abstract". A red bomb measured
+//     against a mono-green baseline (whose Forests can't cast it) will look
+//     terrible — correctly, for that baseline. Pick a baseline whose mana/curve
+//     can actually support the candidates you compare, or compare candidates
+//     that share the baseline's colors.
+//   * FILLER-RELATIVE. The delta is "card MINUS filler". A basic-land filler
+//     also means the swap removes one land, so the measured effect bundles the
+//     card's value with losing a mana source. That is a legitimate question
+//     ("is this card worth a land slot?") but it is a different question from a
+//     spell-for-spell swap; choose the filler to match the question you mean.
+//   * GAUNTLET- and REFEREE-RELATIVE. Same caveats as the rest of this harness
+//     ([`fixed_policy`] is a small-budget ValueMc(Material) bot): a card that
+//     shines only against control, or only under a stronger pilot, won't show
+//     here. The gauntlet and policy define the metagame you are measuring in.
+//   * VARIANCE + COST. Win-rate is noisy; small deltas are noise. This is the
+//     expensive measurement (O(candidates × gauntlet × games_per_pair) FULL
+//     games), so keep `games_per_pair` and the gauntlet sized to your budget and
+//     read only sizeable, repeated deltas as signal.
+
+/// Default neutral filler slot for marginal measurement: a basic land. Swapping
+/// the card under test in for a land asks "is this card worth a land slot in the
+/// baseline?" — see the FILLER-RELATIVE caveat on this module.
+pub const DEFAULT_FILLER: &str = "Forest";
+
+/// A sensible default baseline for marginal measurement: the mono-green creature
+/// deck from [`mono_color_creature_deck`] (22 cheap green creatures + 18
+/// Forests). Forest — the [`DEFAULT_FILLER`] — is abundant in it, so the
+/// one-slot swap is always well-defined. Caveat: green/low-cost candidates are
+/// measured fairly here; off-color or expensive candidates are measured against
+/// a mana base that can't support them (the BASELINE-RELATIVE caveat).
+pub fn default_marginal_baseline(reg: &CardRegistry) -> Deck {
+    mono_color_creature_deck(reg, 'G', 11, 22, 18, 4)
+}
+
+/// One card's marginal (causal) power score from a swap experiment: the win-rate
+/// delta `deck_with − baseline` against the gauntlet. See the module docs for
+/// the method and its baseline/filler/gauntlet/referee caveats.
+#[derive(Clone, Debug)]
+pub struct CardMarginal {
+    pub id: CardId,
+    pub name: String,
+    /// Win-rate delta in `[-1, 1]`: the gauntlet win-rate of the baseline with
+    /// one `filler` slot replaced by this card, MINUS the baseline's own
+    /// gauntlet win-rate. Positive = the card outperformed the filler slot.
+    pub delta: f32,
+}
+
+/// Build a copy of `baseline` with ONE copy of `filler` replaced by `card`,
+/// keeping the deck size constant. If no copy of `filler` is present, the LAST
+/// card is replaced instead (documented fallback); an empty baseline is returned
+/// unchanged (nothing to swap). Swapping a card in for itself (`card == filler`)
+/// returns an unchanged decklist — the natural zero point.
+pub fn swap_one(baseline: &[CardId], filler: CardId, card: CardId) -> Vec<CardId> {
+    let mut deck = baseline.to_vec();
+    if let Some(pos) = deck.iter().position(|&c| c == filler) {
+        deck[pos] = card;
+    } else if let Some(last) = deck.last_mut() {
+        *last = card;
+    }
+    deck
+}
+
+/// Pooled win-rate (in `[0, 1]`) of `deck` against an entire `gauntlet`: every
+/// opponent plays `games_per_pair` games via [`win_rate`] (which alternates
+/// seats to cancel first-player bias, both seats using `mk`), and ALL games are
+/// pooled into one rate (so each game weighs equally and draws count as
+/// non-wins, matching [`DeckRanking::win_pct`]). An empty gauntlet yields `0.0`.
+fn deck_win_rate_vs_gauntlet(
+    deck: &[CardId],
+    gauntlet: &[Deck],
+    registry: &CardRegistry,
+    games_per_pair: u32,
+    max_steps: u32,
+    mk: &dyn Fn(u64) -> Box<dyn StatePolicy>,
+) -> f32 {
+    let mut wins = 0u32;
+    let mut games = 0u32;
+    for opp in gauntlet {
+        let (w, _opp_wins, _draws) =
+            win_rate(deck, &opp.cards, registry, games_per_pair, max_steps, mk, mk);
+        wins += w;
+        games += games_per_pair;
+    }
+    if games == 0 {
+        0.0
+    } else {
+        wins as f32 / games as f32
+    }
+}
+
+/// Marginal (causal) power of a single `card` in a given `baseline`, under the
+/// FIXED policy ([`fixed_policy`]): see [`marginal_card_power_with`] and the
+/// module docs. Measures TWO full gauntlet sweeps (baseline + deck_with); prefer
+/// [`rank_cards_marginal`] when scoring several cards against one baseline, as it
+/// measures the shared baseline arm only once.
+pub fn marginal_card_power(
+    card: CardId,
+    baseline: &[CardId],
+    filler: CardId,
+    gauntlet: &[Deck],
+    registry: &CardRegistry,
+    games_per_pair: u32,
+    max_steps: u32,
+) -> f32 {
+    marginal_card_power_with(
+        card,
+        baseline,
+        filler,
+        gauntlet,
+        registry,
+        games_per_pair,
+        max_steps,
+        &fixed_policy,
+    )
+}
+
+/// [`marginal_card_power`] with a caller-supplied policy maker (used by the fast
+/// unit tests, which swap in [`crate::search::RandomStatePolicy`]). Builds
+/// `deck_with` = `baseline` with one `filler` slot replaced by `card`
+/// ([`swap_one`]), then returns its gauntlet win-rate MINUS the baseline's
+/// gauntlet win-rate. The result is the card's marginal contribution IN THIS
+/// CONTEXT — see the module docs for the baseline/filler/gauntlet/referee
+/// caveats and the variance/cost note.
+#[allow(clippy::too_many_arguments)]
+pub fn marginal_card_power_with(
+    card: CardId,
+    baseline: &[CardId],
+    filler: CardId,
+    gauntlet: &[Deck],
+    registry: &CardRegistry,
+    games_per_pair: u32,
+    max_steps: u32,
+    mk: &dyn Fn(u64) -> Box<dyn StatePolicy>,
+) -> f32 {
+    let deck_with = swap_one(baseline, filler, card);
+    let with =
+        deck_win_rate_vs_gauntlet(&deck_with, gauntlet, registry, games_per_pair, max_steps, mk);
+    let base =
+        deck_win_rate_vs_gauntlet(baseline, gauntlet, registry, games_per_pair, max_steps, mk);
+    with - base
+}
+
+/// Rank a slate of `candidates` by marginal power against one `baseline`/`filler`
+/// /`gauntlet` under the FIXED policy ([`fixed_policy`]). Sorted by delta
+/// descending. See [`rank_cards_marginal_with`] and the module docs.
+pub fn rank_cards_marginal(
+    candidates: &[CardId],
+    baseline: &[CardId],
+    filler: CardId,
+    gauntlet: &[Deck],
+    registry: &CardRegistry,
+    games_per_pair: u32,
+    max_steps: u32,
+) -> Vec<CardMarginal> {
+    rank_cards_marginal_with(
+        candidates,
+        baseline,
+        filler,
+        gauntlet,
+        registry,
+        games_per_pair,
+        max_steps,
+        &fixed_policy,
+    )
+}
+
+/// [`rank_cards_marginal`] with a caller-supplied policy maker (used by the fast
+/// unit tests). For each candidate, swaps it into the `filler` slot and measures
+/// the deck's gauntlet win-rate, then subtracts the baseline's gauntlet win-rate
+/// to get the marginal delta. The result is sorted by delta descending (ties
+/// broken by name), so the front of the list is the "most suggested" card FOR
+/// THIS BASELINE (see the module caveats).
+///
+/// EFFICIENCY: the baseline arm is the SAME for every candidate, so it is
+/// measured exactly ONCE and shared. The per-candidate cost is then a single
+/// `deck_with` gauntlet sweep — i.e. one + `candidates.len()` sweeps total, not
+/// two per candidate.
+#[allow(clippy::too_many_arguments)]
+pub fn rank_cards_marginal_with(
+    candidates: &[CardId],
+    baseline: &[CardId],
+    filler: CardId,
+    gauntlet: &[Deck],
+    registry: &CardRegistry,
+    games_per_pair: u32,
+    max_steps: u32,
+    mk: &dyn Fn(u64) -> Box<dyn StatePolicy>,
+) -> Vec<CardMarginal> {
+    // The control arm (baseline vs gauntlet) is candidate-independent — measure
+    // it once and reuse it for every delta.
+    let base =
+        deck_win_rate_vs_gauntlet(baseline, gauntlet, registry, games_per_pair, max_steps, mk);
+    let mut out: Vec<CardMarginal> = candidates
+        .iter()
+        .map(|&card| {
+            let deck_with = swap_one(baseline, filler, card);
+            let with = deck_win_rate_vs_gauntlet(
+                &deck_with,
+                gauntlet,
+                registry,
+                games_per_pair,
+                max_steps,
+                mk,
+            );
+            let name = catalog::card_info(registry, card)
+                .map(|ci| ci.name)
+                .unwrap_or_else(|| format!("#{card}"));
+            CardMarginal {
+                id: card,
+                name,
+                delta: with - base,
+            }
+        })
+        .collect();
+    out.sort_by(|a, b| {
+        b.delta
+            .partial_cmp(&a.delta)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(a.name.cmp(&b.name))
+    });
+    out
+}
+
+// =============================================================================
 // tests
 // =============================================================================
 
@@ -569,6 +819,138 @@ mod tests {
         assert!((m.score - expected).abs() < 1e-6);
     }
 
+    // -------------------------------------------------------------------------
+    // Marginal (causal) per-card power
+    // -------------------------------------------------------------------------
+
+    /// A couple of green creatures from the catalog to use as marginal-test
+    /// candidates (deterministic: `query` returns sorted by mana value, name).
+    fn green_creature_candidates(reg: &CardRegistry, n: usize) -> Vec<CardId> {
+        catalog::query(
+            reg,
+            &CardQuery {
+                colors: Some(vec!['G']),
+                types: Some(vec!["creature".into()]),
+                cmc_min: Some(1),
+                cmc_max: Some(4),
+                limit: Some(n),
+                ..Default::default()
+            },
+        )
+        .into_iter()
+        .map(|ci| ci.id)
+        .collect()
+    }
+
+    /// `swap_one` keeps the deck size constant, replaces exactly one filler copy
+    /// with the card, falls back to the last slot when the filler is absent, and
+    /// is a no-op when swapping a card in for itself.
+    #[test]
+    fn swap_one_keeps_size_and_swaps_one_slot() {
+        let baseline: Vec<CardId> = vec![10, 20, 20, 30];
+        // Filler present: exactly one copy (the first) becomes the card.
+        let d = swap_one(&baseline, 20, 99);
+        assert_eq!(d.len(), baseline.len(), "deck size must stay constant");
+        assert_eq!(d, vec![10, 99, 20, 30]);
+        // Filler absent: the LAST slot is replaced instead.
+        let d2 = swap_one(&baseline, 77, 99);
+        assert_eq!(d2.len(), baseline.len());
+        assert_eq!(d2, vec![10, 20, 20, 99]);
+        // Card == filler: unchanged (the natural zero point).
+        let d3 = swap_one(&baseline, 20, 20);
+        assert_eq!(d3, baseline);
+        // Empty baseline: nothing to swap.
+        assert!(swap_one(&[], 1, 2).is_empty());
+    }
+
+    /// `marginal_card_power_with` runs under the cheap random policy and returns
+    /// a finite delta in `[-1, 1]`; deck size is preserved by the swap. No
+    /// win-rate value asserted (high variance).
+    #[test]
+    fn marginal_power_runs_and_is_finite() {
+        let reg = arcana_cards::build_catalog();
+        let baseline = mono_color_creature_deck(&reg, 'G', 4, 8, 10, 4); // 18 cards
+        let gauntlet = vec![mono_color_creature_deck(&reg, 'R', 4, 8, 10, 4)];
+        let filler = reg.card_id_by_name("Forest").expect("Forest in catalog");
+        let card = green_creature_candidates(&reg, 1)[0];
+
+        // The swap preserves deck size (the property marginal measurement needs).
+        assert_eq!(swap_one(&baseline.cards, filler, card).len(), baseline.cards.len());
+
+        let delta = marginal_card_power_with(
+            card,
+            &baseline.cards,
+            filler,
+            &gauntlet,
+            &reg,
+            2,
+            4000,
+            &rnd,
+        );
+        assert!(delta.is_finite(), "delta must be finite");
+        assert!((-1.0..=1.0).contains(&delta), "delta {delta} out of range");
+    }
+
+    /// Swapping the FILLER in for itself is a deterministic exact zero: the
+    /// `deck_with` decklist equals the baseline and `win_rate` is deterministic
+    /// in its seeds, so both gauntlet arms produce identical results. (This pins
+    /// the "natural zero point" of the marginal scale.)
+    #[test]
+    fn marginal_of_filler_itself_is_exactly_zero() {
+        let reg = arcana_cards::build_catalog();
+        let baseline = mono_color_creature_deck(&reg, 'G', 4, 8, 10, 4);
+        let gauntlet = vec![mono_color_creature_deck(&reg, 'R', 4, 8, 10, 4)];
+        let filler = reg.card_id_by_name("Forest").unwrap();
+        let delta = marginal_card_power_with(
+            filler,
+            &baseline.cards,
+            filler,
+            &gauntlet,
+            &reg,
+            2,
+            4000,
+            &rnd,
+        );
+        assert_eq!(delta, 0.0, "swapping filler for itself must be exactly 0");
+    }
+
+    /// `rank_cards_marginal_with` returns one entry per candidate, sorted by
+    /// delta descending, with finite deltas and resolved names. No specific
+    /// ordering of real cards asserted (variance).
+    #[test]
+    fn rank_cards_marginal_is_sorted_and_complete() {
+        let reg = arcana_cards::build_catalog();
+        let baseline = mono_color_creature_deck(&reg, 'G', 4, 8, 10, 4);
+        let gauntlet = vec![mono_color_creature_deck(&reg, 'R', 4, 8, 10, 4)];
+        let filler = reg.card_id_by_name("Forest").unwrap();
+        // Candidates: two green creatures + the filler itself (its delta is 0).
+        let mut candidates = green_creature_candidates(&reg, 2);
+        candidates.push(filler);
+
+        let ranked = rank_cards_marginal_with(
+            &candidates,
+            &baseline.cards,
+            filler,
+            &gauntlet,
+            &reg,
+            2,
+            4000,
+            &rnd,
+        );
+        assert_eq!(ranked.len(), candidates.len(), "one entry per candidate");
+        for w in ranked.windows(2) {
+            assert!(w[0].delta >= w[1].delta, "not sorted descending");
+        }
+        for m in &ranked {
+            assert!(m.delta.is_finite());
+            assert!(candidates.contains(&m.id));
+            assert!(!m.name.is_empty());
+        }
+        // The filler-vs-itself candidate must score an exact 0 (deterministic).
+        let f = ranked.iter().find(|m| m.id == filler).unwrap();
+        assert_eq!(f.delta, 0.0);
+    }
+
     /// MEASUREMENT (non-asserting): rank the standard deck set under the FIXED
     /// ValueMc(Material) policy and print the deck ranking + the top/bottom
     /// cards by contribution. Slow (hundreds of full games with value-MC on
@@ -621,6 +1003,107 @@ mod tests {
                 c.n_decks,
                 c.name
             );
+        }
+    }
+
+    /// MEASUREMENT (non-asserting): rank a handful of REAL catalog cards by
+    /// MARGINAL (causal) power under the FIXED ValueMc(Material) policy — the
+    /// honest answer the `card_contributions` confound note asks for. Each card
+    /// is swapped into one Forest slot of the mono-green baseline and the deck is
+    /// re-measured against the gauntlet; the printed delta is win-rate(with) −
+    /// win-rate(baseline). Expect a strong green creature to land above a weak
+    /// one, and a Forest (the filler) to land near 0.0 (the control). Slow (each
+    /// candidate is a full gauntlet sweep with value-MC on both seats);
+    /// `#[ignore]`, run in release:
+    ///   cargo test -p arcana-ai --release --lib \
+    ///     deckeval::tests::marginal_card_power_measurement -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn marginal_card_power_measurement() {
+        use std::time::Instant;
+        const GAMES_PER_PAIR: u32 = 6;
+
+        let reg = arcana_cards::build_catalog();
+        let baseline = default_marginal_baseline(&reg);
+        let filler = reg.card_id_by_name(DEFAULT_FILLER).expect("filler in catalog");
+        // A small, varied gauntlet (a couple off-color creature decks).
+        let gauntlet = vec![
+            mono_color_creature_deck(&reg, 'R', 11, 22, 18, 4),
+            mono_color_creature_deck(&reg, 'U', 11, 22, 18, 4),
+        ];
+
+        // Candidate slate: a strong-ish green beater, a weak green creature, and
+        // the filler itself (the 0.0 control). Resolved by name with a graceful
+        // fallback so the test stays robust to catalog churn; unknown names are
+        // skipped. Tune these names to whatever the catalog actually carries.
+        let wanted = [
+            "Tarmogoyf",
+            "Llanowar Elves",
+            "Grizzly Bears",
+            "Craw Wurm",
+            DEFAULT_FILLER, // control: should score ~0
+        ];
+        let mut candidates: Vec<CardId> = wanted
+            .iter()
+            .filter_map(|n| reg.card_id_by_name(n))
+            .collect();
+        // Top up from the green creature pool if too few names resolved, so the
+        // measurement always has something to rank.
+        if candidates.len() < 3 {
+            let pool: Vec<CardId> = catalog::query(
+                &reg,
+                &CardQuery {
+                    colors: Some(vec!['G']),
+                    types: Some(vec!["creature".into()]),
+                    cmc_min: Some(1),
+                    cmc_max: Some(6),
+                    limit: Some(5),
+                    ..Default::default()
+                },
+            )
+            .into_iter()
+            .map(|ci| ci.id)
+            .collect();
+            for id in pool {
+                if !candidates.contains(&id) {
+                    candidates.push(id);
+                }
+            }
+            if !candidates.contains(&filler) {
+                candidates.push(filler);
+            }
+        }
+
+        let t0 = Instant::now();
+        let ranked = rank_cards_marginal(
+            &candidates,
+            &baseline.cards,
+            filler,
+            &gauntlet,
+            &reg,
+            GAMES_PER_PAIR,
+            4000,
+        );
+        let elapsed = t0.elapsed();
+
+        println!(
+            "Marginal card power — swap ONE '{}' slot in baseline '{}' \
+             (size {}), re-measure vs {}-deck gauntlet, fixed ValueMc(Material) \
+             [rollouts={FIXED_ROLLOUTS} cap={FIXED_ROLLOUT_CAP} \
+             cand={FIXED_MAX_CANDIDATES}], {GAMES_PER_PAIR} games/pair, {:.1}s.",
+            DEFAULT_FILLER,
+            baseline.name,
+            baseline.cards.len(),
+            gauntlet.len(),
+            elapsed.as_secs_f32()
+        );
+        println!(
+            "delta = win-rate(baseline w/ card) − win-rate(baseline). \
+             CAUSAL but baseline/filler/gauntlet/referee-RELATIVE — see docs.\n\
+             rank   delta   card"
+        );
+        for (i, m) in ranked.iter().enumerate() {
+            println!("  {:>2}  {:>+6.1}%   {}", i + 1, m.delta * 100.0, m.name);
         }
     }
 }
