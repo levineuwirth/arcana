@@ -302,13 +302,21 @@ fn card_view(state: &GameState, registry: &CardRegistry, id: ObjectId) -> CardVi
         };
     };
     let c = &o.characteristics;
-    let name = registry.interner().resolve(c.name)
+    let mut name = registry.interner().resolve(c.name)
         .filter(|s| !s.is_empty())
         .map(|s| s.to_string())
         .unwrap_or_default();
     let mana_cost = c.mana_cost.as_ref().map(|mc| mc.to_string());
     let mana_value = c.mana_value();
-    let type_line = crate::catalog::card_type_line(c, registry);
+    let mut type_line = crate::catalog::card_type_line(c, registry);
+    // Commodity tokens (Treasure / Clue / Food / …) are minted without an
+    // interned name; render their kind so they don't show up blank.
+    if let Some(kind) = o.commodity {
+        if name.is_empty() { name = kind.display_name().to_string(); }
+        if !type_line.contains('—') {
+            type_line = format!("{type_line} — {}", kind.display_name());
+        }
+    }
     let is_land = c.types.is_land();
     let (power, toughness) = if c.types.is_creature() {
         (state.computed_power(id), state.computed_toughness(id))
@@ -551,6 +559,27 @@ mod tests {
         assert!(p0.contains(&mine) && !p0.contains(&theirs), "you see your own exile");
         assert!(p1.contains(&theirs) && !p1.contains(&mine), "owner-filtered");
         assert_eq!(view.players[0].exile_count, 1);
+    }
+
+    #[test]
+    fn commodity_token_renders_its_kind_name() {
+        // A Treasure token is minted name-less (no interner at resolution); the
+        // view must still show "Treasure" / "Artifact — Treasure", not blank.
+        let mut s = GameState::new(2, 0);
+        let id = s.allocate_object_id();
+        let mut chars = Characteristics::default();
+        chars.types = crate::types::TypeLine::ARTIFACT.into();
+        let mut o = GameObject::new(id, 0, Zone::Battlefield, 0, chars);
+        o.is_token = true;
+        o.commodity = Some(crate::effects::CommodityToken::Treasure);
+        s.objects.insert(o);
+        let reg = CardRegistry::new();
+        let legal = crate::legal_actions::legal_actions(&s, &reg);
+        let view = view_state(&s, &reg, 0, &legal);
+        let cv = view.players[0].battlefield.iter().find(|c| c.id == id)
+            .expect("token on the battlefield");
+        assert_eq!(cv.name, "Treasure");
+        assert!(cv.type_line.contains("Treasure"), "type line: {}", cv.type_line);
     }
 
     #[test]

@@ -1425,6 +1425,7 @@ impl Effect {
                         else { continue; };
                     if let Some(obj) = state.objects.get_mut(new_id) {
                         obj.intrinsic_activated_abilities = activations.clone();
+                        obj.commodity = Some(*kind); // for naming (built name-less)
                     }
                 }
             }
@@ -2464,7 +2465,7 @@ pub enum RevealDest {
 /// are listed alongside their CR / fidelity notes — anything labeled
 /// **FIDELITY GAP** mints correctly but resolves with a documented
 /// approximation pending more engine work.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum CommodityToken {
     /// CR 701.55 — Treasure. `{T}, Sacrifice this artifact: Add one
     /// mana of any color.` **FIDELITY GAP**: a color-choice prompt
@@ -2501,6 +2502,22 @@ pub enum CommodityToken {
     /// control explores. Activate only as a sorcery.` Fully wired via
     /// [`Effect::Explore`].
     Map,
+}
+
+impl CommodityToken {
+    /// The token's printed name (also its artifact subtype, e.g. "Artifact —
+    /// Treasure"). Used for rendering nameless-by-construction commodity tokens.
+    pub fn display_name(self) -> &'static str {
+        match self {
+            CommodityToken::Treasure => "Treasure",
+            CommodityToken::Clue => "Clue",
+            CommodityToken::Food => "Food",
+            CommodityToken::Powerstone => "Powerstone",
+            CommodityToken::Incubator => "Incubator",
+            CommodityToken::Blood => "Blood",
+            CommodityToken::Map => "Map",
+        }
+    }
 }
 
 /// Definition for [`Effect::CreateEmblem`]. Emblems are objects in

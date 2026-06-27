@@ -212,6 +212,11 @@ pub struct GameObject {
     /// - The CR 704.5d state-based action that removes tokens from
     ///   the arena when they aren't on the battlefield.
     pub is_token: bool,
+    /// For commodity tokens (Treasure / Clue / Food / …) minted by
+    /// [`crate::effects::Effect::CreateCommodityToken`]: which kind. These tokens
+    /// are built without an interned name (no interner at effect-resolution
+    /// time), so renderers read the display name / subtype from here.
+    pub commodity: Option<crate::effects::CommodityToken>,
     /// CR 715 — Adventure exile marker. Set when an Adventure spell
     /// (cast via [`crate::actions::CastModifier::Adventure`]) leaves
     /// the stack via resolution, counter, or fizzle — the card
@@ -308,6 +313,7 @@ impl GameObject {
             default_face_characteristics: None,
             back_face_characteristics: None,
             is_token: false,
+            commodity: None,
             colors_paid: ColorSet::new(),
             intrinsic_activated_abilities: Vec::new(),
             granted_triggered_abilities: Vec::new(),
