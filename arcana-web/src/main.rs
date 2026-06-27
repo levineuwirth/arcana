@@ -199,17 +199,52 @@ impl ArtCache {
         }
     }
 
-    /// Download Scryfall's bulk-data once and build a name→CDN-URL map, so we can
-    /// resolve every card without per-card API calls. Best-effort; returns false
-    /// on failure (callers then fall back to the API-resolve path).
+    /// Ensure the name→CDN-URL map is loaded: in-memory → a fresh on-disk copy →
+    /// download from Scryfall (and persist). Once loaded, ALL art (on-demand and
+    /// the full download) resolves from the CDN, so the rate-limited API is only a
+    /// last-resort fallback. Best-effort; returns false on failure.
     async fn ensure_bulk(&self) -> bool {
         if self.bulk.read().await.is_some() {
             return true;
         }
+        if let Some(map) = self.load_bulk_from_disk().await {
+            *self.bulk.write().await = Some(map);
+            return true;
+        }
         match self.load_bulk().await {
-            Some(map) => { *self.bulk.write().await = Some(map); true }
+            Some(map) => {
+                self.save_bulk_to_disk(&map).await;
+                *self.bulk.write().await = Some(map);
+                true
+            }
             None => false,
         }
+    }
+
+    fn map_path(&self) -> PathBuf { self.dir.join("bulk-map.tsv") }
+
+    /// Load the cached name→URL map if present and < 14 days old (TSV: name\tURL).
+    async fn load_bulk_from_disk(&self) -> Option<std::collections::HashMap<String, String>> {
+        let p = self.map_path();
+        let age = tokio::fs::metadata(&p).await.ok()?.modified().ok()?.elapsed().ok()?;
+        if age > Duration::from_secs(14 * 24 * 3600) {
+            return None; // stale — re-download so newly-added cards get URLs
+        }
+        let data = tokio::fs::read_to_string(&p).await.ok()?;
+        let mut map = std::collections::HashMap::new();
+        for line in data.lines() {
+            if let Some((n, u)) = line.split_once('\t') {
+                map.insert(n.to_string(), u.to_string());
+            }
+        }
+        (!map.is_empty()).then_some(map)
+    }
+    async fn save_bulk_to_disk(&self, map: &std::collections::HashMap<String, String>) {
+        let mut s = String::with_capacity(map.len() * 80);
+        for (n, u) in map {
+            s.push_str(n); s.push('\t'); s.push_str(u); s.push('\n');
+        }
+        let _ = tokio::fs::write(self.map_path(), s).await;
     }
     async fn load_bulk(&self) -> Option<std::collections::HashMap<String, String>> {
         // 1) bulk-data index → the oracle_cards download URI (on the CDN).
@@ -821,6 +856,15 @@ async fn main() {
         .spawn(move || run_worker(rx))
         .expect("spawn game worker");
 
+    let state = AppState { tx, art: Arc::new(ArtCache::new()) };
+    // Warm the bulk name→CDN-URL map in the background so on-demand art resolves
+    // from the (unthrottled) CDN instead of the rate-limited API. Instant once
+    // the map is cached to disk; ~30–60s the very first time.
+    {
+        let art = state.art.clone();
+        tokio::spawn(async move { art.ensure_bulk().await; });
+    }
+
     let app = Router::new()
         .route("/", get(index))
         .route("/deck", get(deckbuilder))
@@ -845,7 +889,7 @@ async fn main() {
         .route("/art/warm", post(post_art_warm))
         .route("/art/warm-all", post(post_art_warm_all))
         .route("/art/warm-status", get(get_art_warm_status))
-        .with_state(AppState { tx, art: Arc::new(ArtCache::new()) });
+        .with_state(state);
 
     // Port is overridable via PORT for convenience; defaults to 8080.
     let port: u16 = std::env::var("PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8080);
