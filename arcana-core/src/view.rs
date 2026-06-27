@@ -197,6 +197,11 @@ pub struct ViewState {
     /// A pending card-pick the perspective player must make (a library search /
     /// tutor / reanimation), surfaced as a visual picker. `None` otherwise.
     pub choice: Option<ChoiceView>,
+    /// A one-line description of the decision the perspective player faces when
+    /// it isn't a visual picker (e.g. "Choose a target for Guide of Souls"),
+    /// shown as a header above the action buttons so it's clear what they're
+    /// answering. `None` when there's no special pending decision.
+    pub prompt: Option<String>,
     /// Set once the game is decided ("Win(0)" / "Draw" / …).
     pub game_over: Option<String>,
 }
@@ -291,6 +296,42 @@ pub fn build_choice_view(
         _ => "Choose a card",
     }.to_string();
     Some(ChoiceView { prompt, min: *min, max: *max, options, pool, decline })
+}
+
+/// A one-line description of the pending decision for `perspective`, so the UI
+/// can show "what am I answering?" above the action buttons. Returns `None` for
+/// PickCards (the visual picker carries its own prompt) and when there's no
+/// special pending decision.
+fn build_decision_prompt(
+    state: &GameState, registry: &CardRegistry, perspective: PlayerId,
+) -> Option<String> {
+    use crate::actions::ChoiceKind;
+    let pc = state.pending_choice.as_ref()?;
+    if pc.choosing_player != perspective {
+        return None;
+    }
+    let name_of = |id: ObjectId| -> Option<String> {
+        let o = state.objects.get(id)?;
+        registry.interner().resolve(o.characteristics.name)
+            .filter(|s| !s.is_empty()).map(|s| s.to_string())
+    };
+    match &pc.kind {
+        // "Target X" buttons are otherwise context-free — name the source whose
+        // ability is asking (the stack entry's source permanent).
+        ChoiceKind::ChooseTargets { source } => {
+            let who = state.stack.iter().find(|e| e.id == *source)
+                .and_then(|e| name_of(e.source));
+            Some(match who {
+                Some(n) => format!("Choose a target for {n}"),
+                None => "Choose a target".to_string(),
+            })
+        }
+        ChoiceKind::PickPlayer { .. } => Some("Choose a player".to_string()),
+        ChoiceKind::ChooseColor => Some("Choose a color".to_string()),
+        // PickCards is shown by the visual picker (its own prompt); others have
+        // self-explanatory buttons (Yes/No, order, optional cost).
+        _ => None,
+    }
 }
 
 fn card_view(state: &GameState, registry: &CardRegistry, id: ObjectId) -> CardView {
@@ -415,6 +456,7 @@ pub fn view_state(
     // Build the visual-picker choice from the raw action slice (its indices
     // match the frontend's) BEFORE projecting `legal` into ActionViews.
     let choice = build_choice_view(state, registry, perspective, legal);
+    let prompt = build_decision_prompt(state, registry, perspective);
 
     let legal = legal.iter().enumerate()
         .map(|(index, a)| ActionView {
@@ -442,6 +484,7 @@ pub fn view_state(
         stack,
         legal,
         choice,
+        prompt,
         game_over,
     }
 }
@@ -559,6 +602,28 @@ mod tests {
         assert!(p0.contains(&mine) && !p0.contains(&theirs), "you see your own exile");
         assert!(p1.contains(&theirs) && !p1.contains(&mine), "owner-filtered");
         assert_eq!(view.players[0].exile_count, 1);
+    }
+
+    #[test]
+    fn pending_choices_surface_a_decision_prompt() {
+        // A non-picker pending decision surfaces a one-line prompt above the
+        // action buttons (so e.g. "Target X" buttons aren't context-free).
+        use crate::actions::{ChoiceContext, ChoiceKind};
+        let reg = CardRegistry::new();
+
+        let mut s = GameState::new(2, 0);
+        s.push_pending_choice(0, ChoiceContext::Sba, ChoiceKind::ChooseColor);
+        let legal = crate::legal_actions::legal_actions(&s, &reg);
+        assert_eq!(view_state(&s, &reg, 0, &legal).prompt.as_deref(), Some("Choose a color"));
+
+        let mut s = GameState::new(2, 0);
+        s.push_pending_choice(0, ChoiceContext::Sba,
+            ChoiceKind::PickPlayer { candidates: vec![0, 1] });
+        let legal = crate::legal_actions::legal_actions(&s, &reg);
+        assert_eq!(view_state(&s, &reg, 0, &legal).prompt.as_deref(), Some("Choose a player"));
+
+        // The other seat sees no prompt (not their decision).
+        assert_eq!(view_state(&s, &reg, 1, &legal).prompt, None);
     }
 
     #[test]

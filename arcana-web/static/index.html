@@ -362,6 +362,11 @@
 
   /* ---- card-driven actions: hint + multi-ability chooser popup ---- */
   .action-hint { margin: 2px 0 4px; }
+  .decision-prompt {
+    font-family: var(--font-serif); font-size: 15px; color: var(--link);
+    margin: 2px 0 8px; padding: 6px 12px; border-left: 3px solid var(--link);
+    background: color-mix(in srgb, var(--link) 10%, transparent); border-radius: 0 6px 6px 0;
+  }
   .action-menu {
     position: fixed; z-index: 140; display: flex; flex-direction: column; gap: 2px;
     background: var(--bg-offset); border: 1px solid var(--border-muted);
@@ -1717,6 +1722,15 @@ function renderActions(view) {
     e.className = "empty"; e.textContent = "Resolve the combat / mulligan prompt above.";
     root.appendChild(e);
     return;
+  }
+
+  // A pending decision (e.g. "Choose a target for Guide of Souls") — make it
+  // clear what the buttons below are answering.
+  if (view.prompt) {
+    const h = document.createElement("div");
+    h.className = "decision-prompt";
+    h.textContent = view.prompt;
+    root.appendChild(h);
   }
 
   // Lands / Spells / Abilities are CARD-DRIVEN (click a hand card to play/cast,
