@@ -37,3 +37,4 @@ pub mod lord_magnus;
 pub mod infernal_medusa;
 pub mod pixie_queen;
 pub mod wall_of_tombstones;
+pub mod ring_of_immortals;

@@ -112,3 +112,4 @@ pub mod ashen_ghoul;
 pub mod fire_dragon;
 pub mod thallid_devourer;
 pub mod conquer;
+pub mod phyrexian_portal;

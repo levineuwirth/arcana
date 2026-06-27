@@ -95,3 +95,4 @@ pub mod lo_and_li_royal_advisors;
 pub mod eel_hounds;
 pub mod aang_a_lot_to_learn;
 pub mod aang_air_nomad;
+pub mod bison_whistle;

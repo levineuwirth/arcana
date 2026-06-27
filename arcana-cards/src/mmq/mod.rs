@@ -166,3 +166,4 @@ pub mod aerial_caravan;
 pub mod cateran_overlord;
 pub mod rushwood_elemental;
 pub mod cho_manno_s_blessing;
+pub mod worry_beads;
