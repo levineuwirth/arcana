@@ -242,7 +242,7 @@
       info.appendChild(nm);
     }
     const meta = document.createElement("div"); meta.className = "pv-meta";
-    if (data.mana_cost) { const m = document.createElement("span"); m.innerHTML = Arcana.renderMana(data.mana_cost); meta.appendChild(m); }
+    if (data.mana_cost) { const m = document.createElement("span"); m.appendChild(Arcana.renderMana(data.mana_cost)); meta.appendChild(m); }
     if (data.type_line) { const t = document.createElement("span"); t.className = "pv-type"; t.textContent = data.type_line; meta.appendChild(t); }
     if (data.power !== null && data.power !== undefined) {
       const pt = document.createElement("span"); pt.className = "pv-pt tnum"; pt.textContent = data.power + "/" + data.toughness; meta.appendChild(pt);
