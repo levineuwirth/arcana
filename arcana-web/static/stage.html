@@ -129,6 +129,15 @@
     box-shadow: 0 0 44px color-mix(in srgb, var(--link) 65%, transparent); }
   .begin:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
   .begin-hint { margin-top: 10px; color: var(--text-faint); font-size: 12px; min-height: 1.2em; }
+  /* Duel-a-friend band */
+  .friend-band { gap: 18px; }
+  .friend-sep { color: var(--text-faint); font-size: 12px; text-transform: uppercase; letter-spacing: .2em; align-self: center; }
+  .friend-band .field { flex-direction: row; align-items: center; gap: 8px; }
+  .code-pill {
+    font-family: var(--font-serif); font-size: 22px; letter-spacing: .35em;
+    color: var(--link); padding: 4px 14px; border: 1px solid var(--border);
+    border-radius: var(--radius-pill); background: var(--bg-offset);
+  }
 
   .muted { color: var(--text-muted); }
   /* curtain transition into the duel */
@@ -222,6 +231,24 @@
         <button class="begin" id="begin" disabled>Enter the Duel</button>
         <div class="begin-hint" id="hint">Pick your deck and a rival to begin.</div>
       </div>
+    </section>
+
+    <!-- DUEL A FRIEND (networked) -->
+    <section>
+      <div class="section-label">…or Duel a Friend</div>
+      <div class="band friend-band">
+        <div class="field">
+          <button id="host-btn" class="ghost">Host a Match</button>
+        </div>
+        <div class="friend-sep">or</div>
+        <div class="field">
+          <label for="join-code">Join code</label>
+          <input type="text" id="join-code" maxlength="4" placeholder="ABCD"
+                 autocomplete="off" style="width:96px;text-transform:uppercase;letter-spacing:3px;text-align:center" />
+          <button id="join-btn" class="ghost">Join</button>
+        </div>
+      </div>
+      <div class="begin-hint" id="friend-hint">Plays with your selected deck. Host to get a code to share, or enter a friend's code to join.</div>
     </section>
   </main>
 
@@ -459,10 +486,78 @@
     }
   }
 
+  // ---- duel a friend (networked) ----
+  function playerName() { return document.getElementById("player-name").value.trim() || "You"; }
+  function errMsg(e) { return (e && e.message) ? e.message : "try again."; }
+  function setFriendHint(t) { document.getElementById("friend-hint").textContent = t || ""; }
+
+  // Navigate into the cockpit for a networked seat (code + seat + token).
+  function gotoMatch(cred) {
+    const qs = "?code=" + encodeURIComponent(cred.code) +
+               "&seat=" + cred.seat + "&token=" + encodeURIComponent(cred.token);
+    document.getElementById("curtain-text").textContent = "Entering the duel…";
+    document.getElementById("curtain").classList.add("up");
+    setTimeout(() => { window.location = "/duel" + qs; }, 500);
+  }
+
+  let hosting = false;
+  async function hostMatch() {
+    if (hosting) return;
+    if (!G.your) { setFriendHint("Pick your deck first."); return; }
+    hosting = true;
+    document.getElementById("host-btn").disabled = true;
+    saveProfileName(playerName());
+    try {
+      const cred = await A.Api.lobbyCreate({
+        profile: { name: playerName() }, identity: G.your.identity, deck: G.your.deck,
+      });
+      setFriendHint("");
+      const band = document.querySelector(".friend-band");
+      band.innerHTML = '<div class="field"><span class="muted">Share this code:</span> ' +
+                       '<span class="code-pill">' + cred.code + '</span></div>' +
+                       '<div class="field"><span class="muted" id="host-wait">Waiting for your opponent to join…</span></div>';
+      // Poll the lobby until the opponent joins, then drop into the duel.
+      const tick = async () => {
+        try {
+          const info = await A.Api.lobbyInfo(cred.code);
+          if (info && info.status === "active") { gotoMatch(cred); return; }
+        } catch (e) { /* transient — keep waiting */ }
+        setTimeout(tick, 1500);
+      };
+      tick();
+    } catch (e) {
+      hosting = false;
+      document.getElementById("host-btn").disabled = false;
+      setFriendHint("Could not host — " + errMsg(e));
+    }
+  }
+
+  async function joinMatch() {
+    if (!G.your) { setFriendHint("Pick your deck first."); return; }
+    const code = (document.getElementById("join-code").value || "").trim().toUpperCase();
+    if (code.length !== 4) { setFriendHint("Enter the 4-letter code your friend shared."); return; }
+    saveProfileName(playerName());
+    const btn = document.getElementById("join-btn"); btn.disabled = true;
+    try {
+      const cred = await A.Api.lobbyJoin({
+        code, profile: { name: playerName() }, identity: G.your.identity, deck: G.your.deck,
+      });
+      gotoMatch(cred);
+    } catch (e) {
+      btn.disabled = false;
+      setFriendHint("Could not join — " + errMsg(e));
+    }
+  }
+
   // ---- wire up ----
   document.getElementById("your-deck").onchange = loadYourDeck;
   document.getElementById("player-name").value = loadProfileName();
   document.getElementById("begin").onclick = begin;
+  document.getElementById("host-btn").onclick = hostMatch;
+  document.getElementById("join-btn").onclick = joinMatch;
+  document.getElementById("join-code").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") joinMatch();
+  });
 
   // ---- manual identity overrides (persisted per deck) ----
   document.getElementById("your-name-in").oninput = (e) => {

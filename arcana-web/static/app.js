@@ -313,20 +313,45 @@
     return r.json();
   }
 
+  /* ---- Networked-match context -------------------------------------------
+     When the cockpit is opened for a networked duel it carries (code, seat,
+     token) in the URL; we hold them here so the game Api routes to the
+     authenticated `/m/*` endpoints instead of the solo ones. A solo game leaves
+     this null and everything uses the original routes unchanged. */
+  Arcana.Match = {
+    ctx: null, // { code, seat, token } | null
+    set(ctx) { this.ctx = ctx || null; },
+    active() { return !!this.ctx; },
+    seat() { return this.ctx ? this.ctx.seat : 0; },
+    /// "?code=…&seat=…&token=…" (the /m/* routes take these as query params).
+    qs() {
+      const c = this.ctx; if (!c) return "";
+      return "?code=" + encodeURIComponent(c.code) +
+             "&seat=" + c.seat + "&token=" + encodeURIComponent(c.token);
+    },
+  };
+  const M = Arcana.Match;
+
   Arcana.Api = {
-    // game
-    state: () => call("GET", "/state"),
-    action: (index) => call("POST", "/action", { index }),
-    combat: (body) => call("POST", "/combat", body),
-    autotap: (objectId) => call("POST", "/autotap", { object_id: objectId }),
-    activate: (objectId) => call("POST", "/activate", { object_id: objectId }),
+    // game — routed to the per-seat /m/* endpoints during a networked duel.
+    state: () => M.active() ? call("GET", "/m/state" + M.qs()) : call("GET", "/state"),
+    action: (index) => M.active() ? call("POST", "/m/action" + M.qs(), { index }) : call("POST", "/action", { index }),
+    combat: (body) => M.active() ? call("POST", "/m/combat" + M.qs(), body) : call("POST", "/combat", body),
+    autotap: (objectId) => M.active() ? call("POST", "/m/autotap" + M.qs(), { object_id: objectId }) : call("POST", "/autotap", { object_id: objectId }),
+    activate: (objectId) => M.active() ? call("POST", "/m/activate" + M.qs(), { object_id: objectId }) : call("POST", "/activate", { object_id: objectId }),
     autoPass: (level) => call("POST", "/autopass", { level }),
     warmArt: (names) => call("POST", "/art/warm", { names }),
     warmAll: () => call("POST", "/art/warm-all"),
     warmStatus: () => call("GET", "/art/warm-status"),
-    bottom: (ids) => call("POST", "/bottom", { ids }),
-    suggest: (deep) => call("GET", "/suggest" + (deep ? "?deep=true" : "")),
+    bottom: (ids) => M.active() ? call("POST", "/m/bottom" + M.qs(), { ids }) : call("POST", "/bottom", { ids }),
+    suggest: (deep) => M.active()
+      ? call("GET", "/m/suggest" + M.qs() + (deep ? "&deep=true" : ""))
+      : call("GET", "/suggest" + (deep ? "?deep=true" : "")),
     newGame: (body) => call("POST", "/new", body || {}),
+    // networked lobby (host / join / poll)
+    lobbyCreate: (body) => call("POST", "/lobby/create", body),
+    lobbyJoin: (body) => call("POST", "/lobby/join", body),
+    lobbyInfo: (code) => call("GET", "/lobby/info?code=" + encodeURIComponent(code)),
     // catalog / deckbuilder
     search: (query) => call("POST", "/search", query),
     formats: () => call("GET", "/formats"),
