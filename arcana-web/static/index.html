@@ -230,6 +230,9 @@
   .phud .life { font-family: var(--font-serif); font-weight: 600; font-size: 20px; color: var(--text);
     font-variant-numeric: tabular-nums; line-height: 1; }
   .phud .life .unit { font-size: 10px; color: var(--text-faint); font-weight: 400; margin-left: 3px; }
+  .phud .energy { font-family: var(--font-serif); font-weight: 600; font-size: 16px; color: var(--mana-r, #d08a2a);
+    font-variant-numeric: tabular-nums; line-height: 1; }
+  .phud .energy .unit { font-size: 10px; color: var(--text-faint); font-weight: 400; margin-left: 3px; }
   .phud .gauge { display: flex; align-items: center; gap: 8px; }
   .phud .gauge .gpip { display: inline-flex; align-items: center; gap: 1px; font-variant-numeric: tabular-nums; }
   .phud .gauge .floating { color: var(--text-faint); }
@@ -1184,6 +1187,14 @@ function renderHud(el, p, isYou) {
   who.className = "who"; who.textContent = label + " · P" + p.id;
   const life = document.createElement("span");
   life.className = "life tnum"; life.innerHTML = p.life + '<span class="unit">life</span>';
+  // Energy counters ({E}) — only shown once you have some.
+  let energy = null;
+  if (p.energy > 0) {
+    energy = document.createElement("span");
+    energy.className = "energy tnum";
+    energy.innerHTML = '⚡' + p.energy + '<span class="unit">energy</span>';
+    energy.title = p.energy + " energy ({E})";
+  }
   const gauge = document.createElement("span");
   gauge.className = "gauge"; gauge.innerHTML = manaGaugeHtml(p);
   const spacer = document.createElement("span"); spacer.className = "spacer";
@@ -1197,7 +1208,9 @@ function renderHud(el, p, isYou) {
     const castable = isYou && (p.exile || []).some((c) => c.playable);
     counts.appendChild(zoneCount("exile", p.exile_count, () => openZone(p, "exile"), castable));
   }
-  el.append(who, life, gauge, spacer, counts);
+  el.append(who, life);
+  if (energy) el.append(energy);
+  el.append(gauge, spacer, counts);
 
   // Targeting: a player can be a legal target — make the HUD clickable.
   el.onclick = null;

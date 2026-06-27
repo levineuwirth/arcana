@@ -597,6 +597,10 @@ pub enum OptionalPaymentKind {
     /// payer has less than `amount` (CR 119.4 — can't pay life you don't
     /// have).
     Life(u32),
+    /// Pay N energy counters ({E}). Auto-deducted on pay; legal action
+    /// filtered when the payer has fewer than `amount` (CR 122 — energy is
+    /// spent like a cost).
+    Energy(u32),
     /// Sacrifice one permanent matching the filter (CR 701.17). The
     /// pay-branch posts the real sacrifice SELECTION (the chooser picks
     /// which permanent) then runs `then`; legal action filtered when the

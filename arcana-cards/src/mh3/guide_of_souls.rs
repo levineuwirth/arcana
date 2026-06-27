@@ -5,11 +5,12 @@
 //!  +1/+1 counters and a flying counter on target attacking creature.
 //!  It becomes an Angel in addition to its other types."
 //!
-//! GAP (energy cost): "you may pay {E}{E}{E}" — spending energy as a
-//! cost has no cost field. The reflexive effect (counters + Angel type)
-//! is wired on the attack trigger; the {E}{E}{E} payment gate is omitted
-//! (it fires unconditionally, a documented over-fire).
+//! The {E}{E}{E} payment is modeled with Effect::OptionalPayment {
+//! cost: Energy(3) } gating the +1/+1 + flying-counter buff (the target
+//! attacking creature is chosen as the trigger's target up front; the buff
+//! only lands if you pay). Residual GAP: "becomes an Angel" (subtype add).
 
+use arcana_core::actions::OptionalPaymentKind;
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
@@ -68,7 +69,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 target_requirements: vec![TargetRequirement {
-                    filter: TargetFilter::Creature,
+                    // "target attacking creature" — restrict to attackers.
+                    filter: TargetFilter::Permanent(ObjectFilter::creature().attacking_only()),
                     count: TargetCount::Exactly(1),
                     controller: None,
                 }],
@@ -100,19 +102,19 @@ fn buff_attacker(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) 
     let TargetChoice::Object(id) = target else {
         return Vec::new();
     };
+    let id = *id;
     let flying = reg.interner().lookup("flying").unwrap_or_default();
-    vec![
-        Effect::AddCounters {
-            target: *id,
-            kind: CounterKind::PlusOnePlusOne,
-            count: 2,
-        },
-        // GAP: "becomes an Angel" is a subtype addition; AddType only
-        // adds card TYPES (Artifact/Creature/…), not creature subtypes.
-        Effect::AddCounters {
-            target: *id,
-            kind: CounterKind::Named(flying),
-            count: 1,
-        },
-    ]
+    // "you may pay {E}{E}{E}. When you do, put two +1/+1 counters and a flying
+    // counter on [it]." Gate the buff on paying 3 energy.
+    vec![Effect::OptionalPayment {
+        chooser: trig.controller,
+        cost: OptionalPaymentKind::Energy(3),
+        then: Box::new(Effect::Sequence(vec![
+            Effect::AddCounters { target: id, kind: CounterKind::PlusOnePlusOne, count: 2 },
+            // GAP: "becomes an Angel" is a subtype addition; AddType only adds
+            // card TYPES, not creature subtypes.
+            Effect::AddCounters { target: id, kind: CounterKind::Named(flying), count: 1 },
+        ])),
+        else_effect: None,
+    }]
 }

@@ -1424,9 +1424,10 @@ pub(crate) fn apply_resolution_choice(
                 use crate::actions::OptionalPaymentKind;
                 let chooser = pending.choosing_player;
                 match cost {
-                    // Mana / life deduct deterministically, then `then`.
+                    // Mana / life / energy deduct deterministically, then `then`.
                     OptionalPaymentKind::Mana(_)
-                    | OptionalPaymentKind::Life(_) => {
+                    | OptionalPaymentKind::Life(_)
+                    | OptionalPaymentKind::Energy(_) => {
                         apply_optional_cost_payment(state, chooser, cost);
                         execute_optional_branch(state, then_eff);
                     }
@@ -1786,6 +1787,10 @@ fn apply_optional_cost_payment(
         }
         OptionalPaymentKind::Life(amount) => {
             crate::effects::lose_life(state, player, *amount);
+        }
+        OptionalPaymentKind::Energy(amount) => {
+            let e = &mut state.player_mut(player).energy;
+            *e = e.saturating_sub(*amount);
         }
         // Sacrifice / discard are routed through execute_optional_branch
         // in the OptionalCost dispatch (they post a selection), never
@@ -5721,6 +5726,58 @@ mod resolution_choice_framework_tests {
             "mana was auto-deducted");
         assert!(s.pending_choice.is_none());
         assert!(s.pending_choice_follow_up.is_none());
+    }
+
+    /// Paying an energy OptionalPayment deducts the energy and runs `then`;
+    /// "pay" is only offered when the player has enough (Guide of Souls' {E}{E}{E}).
+    #[test]
+    fn optional_payment_energy_pays_and_runs_then() {
+        use crate::actions::{
+            Action, ChoiceContext, ChoiceFollowUp, ChoiceKind, ChoiceResponse, OptionalPaymentKind,
+        };
+        let mut s = GameState::new(2, 0);
+        s.player_mut(0).energy = 3;
+        let prev_life = s.player(0).life;
+        let dummy = 999;
+        s.currently_resolving = Some(dummy);
+        s.pending_choice_follow_up = Some(ChoiceFollowUp::OptionalPaymentBranch {
+            then: crate::effects::Effect::GainLife { player: 0, amount: 2 },
+            else_effect: None,
+        });
+        let pc = s.push_pending_choice(0, ChoiceContext::ResolvingStack(dummy),
+            ChoiceKind::OptionalCost { cost: OptionalPaymentKind::Energy(3) });
+        // With 3 energy, "pay" is a legal answer.
+        let legal = crate::legal_actions::legal_actions(&s, &CardRegistry::new());
+        assert!(legal.iter().any(|a| matches!(a, Action::SubmitResolutionChoice {
+            response: ChoiceResponse::OptionalCost { pay: true }, .. })), "pay offered");
+
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc,
+            ChoiceResponse::OptionalCost { pay: true });
+        assert_eq!(s.player(0).energy, 0, "3 energy spent");
+        assert_eq!(s.player(0).life, prev_life + 2, "then-effect ran");
+    }
+
+    /// "Pay" is withheld (only decline offered) when the player is short on energy.
+    #[test]
+    fn optional_payment_energy_pay_withheld_when_short() {
+        use crate::actions::{
+            Action, ChoiceContext, ChoiceFollowUp, ChoiceKind, ChoiceResponse, OptionalPaymentKind,
+        };
+        let mut s = GameState::new(2, 0);
+        s.player_mut(0).energy = 2; // < 3
+        let dummy = 999;
+        s.currently_resolving = Some(dummy);
+        s.pending_choice_follow_up = Some(ChoiceFollowUp::OptionalPaymentBranch {
+            then: crate::effects::Effect::GainLife { player: 0, amount: 2 },
+            else_effect: None,
+        });
+        s.push_pending_choice(0, ChoiceContext::ResolvingStack(dummy),
+            ChoiceKind::OptionalCost { cost: OptionalPaymentKind::Energy(3) });
+        let legal = crate::legal_actions::legal_actions(&s, &CardRegistry::new());
+        assert!(!legal.iter().any(|a| matches!(a, Action::SubmitResolutionChoice {
+            response: ChoiceResponse::OptionalCost { pay: true }, .. })), "pay NOT offered");
+        assert!(legal.iter().any(|a| matches!(a, Action::SubmitResolutionChoice {
+            response: ChoiceResponse::OptionalCost { pay: false }, .. })), "decline still offered");
     }
 
     #[test]

@@ -239,6 +239,9 @@ fn legal_resolution_choice_actions(state: &GameState) -> Vec<Action> {
                     state.player(pending.choosing_player).life
                         >= *amount as i32
                 }
+                crate::actions::OptionalPaymentKind::Energy(amount) => {
+                    state.player(pending.choosing_player).energy >= *amount
+                }
                 // Same candidate predicate as push_sacrifice_choice, so
                 // "pay" is offered iff the sacrifice will find a target.
                 crate::actions::OptionalPaymentKind::Sacrifice(sf) => {

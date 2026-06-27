@@ -106,6 +106,8 @@ pub struct PlayerView {
     /// Floating (unspent) mana in this player's pool — usually 0 between
     /// decisions, non-zero mid-cast.
     pub mana_pool: usize,
+    /// This player's energy counters ({E}) — public. Shown in the HUD when > 0.
+    pub energy: u32,
     /// Mana this player could produce right now (floating pool + everything
     /// their untapped mana abilities can still make), by color. Drives the
     /// "available mana" gauge. See [`crate::legal_actions::available_mana`] for
@@ -362,6 +364,7 @@ pub fn view_state(
             exile_count: state.objects.objects_in_zone(Zone::Exile)
                 .filter(|o| o.owner == p).count(),
             mana_pool: state.player(p).mana_pool.total(),
+            energy: state.player(p).energy,
             available_mana: mana_counts(&crate::legal_actions::available_mana(state, p, registry)),
             hand: if p == perspective {
                 let mut h = cards_in(Zone::Hand(p));
