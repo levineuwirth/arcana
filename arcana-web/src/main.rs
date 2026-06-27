@@ -51,11 +51,13 @@ use arcana_core::catalog::{CardInfo, CardQuery};
 use arcana_core::deck::{check_legality, builtin_formats, FormatSpec, LegalityReport};
 use arcana_core::objects::ObjectId;
 use arcana_core::registry::CardRegistry;
-use arcana_core::types::CardId;
+use arcana_core::types::{CardId, PlayerId};
 use arcana_ai::session::AutoPass;
+use arcana_web::matchmaking::{LobbyInfo, Matches, SeatCredentials};
 use arcana_web::{
-    deck_identity_view, personalities, resolve_import, CombatSubmission, DeckIdentityView,
-    GameCore, ImportedDeck, MatchConfig, Personality, StateResponse, Suggestion,
+    deck_identity_view, personalities, resolve_import, CombatSubmission, DeckIdentity,
+    DeckIdentityView, GameCore, ImportedDeck, MatchConfig, Personality, PlayerProfile,
+    StateResponse, Suggestion,
 };
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
@@ -109,6 +111,44 @@ enum Command {
         config: Option<MatchConfig>,
         reply: oneshot::Sender<Result<StateResponse, String>>,
     },
+
+    // ---- Networked matches (the lobby + a shared two-human game) -----------
+    /// Host a new networked match (open a lobby, take seat 0).
+    CreateMatch {
+        profile: PlayerProfile,
+        identity: DeckIdentity,
+        deck: Vec<CardId>,
+        reply: oneshot::Sender<Result<SeatCredentials, String>>,
+    },
+    /// Join an open lobby by code (take seat 1, start the game).
+    JoinMatch {
+        code: String,
+        profile: PlayerProfile,
+        identity: DeckIdentity,
+        deck: Vec<CardId>,
+        reply: oneshot::Sender<Result<SeatCredentials, String>>,
+    },
+    /// Public lobby info (status + seat presentation) for the waiting poll.
+    MatchLobby { code: String, reply: oneshot::Sender<Option<LobbyInfo>> },
+    /// Per-seat play commands. All carry `(code, seat, token)`; the worker
+    /// authenticates before touching the shared game.
+    MatchState { at: MatchRef, reply: oneshot::Sender<Result<StateResponse, String>> },
+    MatchAction { at: MatchRef, index: usize, reply: oneshot::Sender<Result<StateResponse, String>> },
+    MatchCombat { at: MatchRef, sub: CombatSubmission, reply: oneshot::Sender<Result<StateResponse, String>> },
+    MatchAutoTap { at: MatchRef, target: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
+    MatchActivate { at: MatchRef, source: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
+    MatchBottom { at: MatchRef, ids: Vec<ObjectId>, reply: oneshot::Sender<Result<StateResponse, String>> },
+    MatchSuggest { at: MatchRef, deep: bool, reply: oneshot::Sender<Vec<Suggestion>> },
+}
+
+/// Identifies a seat in a networked match: the join code, the seat index, and
+/// the secret token that authorizes acting as that seat. Extracted from query
+/// params on every `/m/*` request.
+#[derive(Debug, Clone, Deserialize)]
+struct MatchRef {
+    code: String,
+    seat: PlayerId,
+    token: String,
 }
 
 /// Shared server state: a handle to the game worker. Cheap to clone (just an
@@ -435,6 +475,42 @@ fn deck_is_valid(reg: &CardRegistry, deck: &[CardId]) -> bool {
     deck.len() >= 7 && deck.iter().all(|&id| reg.get(id).is_some())
 }
 
+/// `POST /lobby/create` body — host a networked match with your deck/identity.
+#[derive(Debug, Deserialize)]
+struct CreateMatchRequest {
+    #[serde(default)]
+    profile: PlayerProfile,
+    #[serde(default)]
+    identity: DeckIdentity,
+    deck: Vec<CardId>,
+}
+
+/// `POST /lobby/join` body — join an open lobby by code with your deck/identity.
+#[derive(Debug, Deserialize)]
+struct JoinMatchRequest {
+    code: String,
+    #[serde(default)]
+    profile: PlayerProfile,
+    #[serde(default)]
+    identity: DeckIdentity,
+    deck: Vec<CardId>,
+}
+
+/// `GET /lobby/info?code=XXXX` query.
+#[derive(Debug, Deserialize)]
+struct LobbyQuery {
+    code: String,
+}
+
+/// `GET /m/suggest` query — a [`MatchRef`] plus the `deep` flag.
+#[derive(Debug, Deserialize)]
+struct MatchSuggestQuery {
+    #[serde(flatten)]
+    at: MatchRef,
+    #[serde(default)]
+    deep: bool,
+}
+
 #[derive(Debug, Serialize)]
 struct ErrorBody {
     error: String,
@@ -461,6 +537,8 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>) {
     // Persists across `New` so the player's auto-pass choice survives a new game.
     let mut auto_pass = AutoPass::default();
     core.set_auto_pass(auto_pass);
+    // Networked matches live alongside the solo `core`, keyed by join code.
+    let mut matches = Matches::new(reg, time_seed());
 
     while let Some(cmd) = rx.blocking_recv() {
         match cmd {
@@ -555,6 +633,38 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>) {
                     // Keep the prior game on a bad config; report the error.
                     Err(e) => { let _ = reply.send(Err(e)); }
                 }
+            }
+
+            // ---- Networked matches --------------------------------------
+            Command::CreateMatch { profile, identity, deck, reply } => {
+                let _ = reply.send(matches.create(profile, identity, deck));
+            }
+            Command::JoinMatch { code, profile, identity, deck, reply } => {
+                let _ = reply.send(matches.join(&code, profile, identity, deck));
+            }
+            Command::MatchLobby { code, reply } => {
+                let _ = reply.send(matches.info(&code));
+            }
+            Command::MatchState { at, reply } => {
+                let _ = reply.send(matches.snapshot(&at.code, at.seat, &at.token));
+            }
+            Command::MatchAction { at, index, reply } => {
+                let _ = reply.send(matches.action(&at.code, at.seat, &at.token, index));
+            }
+            Command::MatchCombat { at, sub, reply } => {
+                let _ = reply.send(matches.combat(&at.code, at.seat, &at.token, sub));
+            }
+            Command::MatchAutoTap { at, target, reply } => {
+                let _ = reply.send(matches.auto_tap(&at.code, at.seat, &at.token, target));
+            }
+            Command::MatchActivate { at, source, reply } => {
+                let _ = reply.send(matches.activate(&at.code, at.seat, &at.token, source));
+            }
+            Command::MatchBottom { at, ids, reply } => {
+                let _ = reply.send(matches.bottom(&at.code, at.seat, &at.token, ids));
+            }
+            Command::MatchSuggest { at, deep, reply } => {
+                let _ = reply.send(matches.suggest(&at.code, at.seat, &at.token, deep));
             }
         }
     }
@@ -660,6 +770,151 @@ async fn get_state(State(app): State<AppState>) -> Response {
     }
     match rx.await {
         Ok(resp) => Json(resp).into_response(),
+        Err(_) => worker_gone(),
+    }
+}
+
+// ---- Networked match endpoints ------------------------------------------
+// The lobby (host/join/info) and the per-seat play routes (`/m/*`). They share
+// the worker's `Matches` registry; the solo `/state`, `/action`, … routes are
+// untouched. Every `/m/*` request carries `(code, seat, token)` query params
+// (a `MatchRef`) which the worker authenticates before touching the game.
+
+/// Await a worker reply that is a `Result<StateResponse, String>` (the shape all
+/// match play commands use) and turn it into an HTTP response.
+async fn match_state_reply(
+    rx: oneshot::Receiver<Result<StateResponse, String>>,
+) -> Response {
+    match rx.await {
+        Ok(Ok(resp)) => Json(resp).into_response(),
+        Ok(Err(msg)) => (StatusCode::BAD_REQUEST, err(msg)).into_response(),
+        Err(_) => worker_gone(),
+    }
+}
+
+async fn lobby_create(State(app): State<AppState>, body: String) -> Response {
+    let req: CreateMatchRequest = match serde_json::from_str(&body) {
+        Ok(r) => r,
+        Err(e) => return (StatusCode::BAD_REQUEST, err(format!("invalid /lobby/create body: {e}"))).into_response(),
+    };
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::CreateMatch {
+        profile: req.profile, identity: req.identity, deck: req.deck, reply,
+    }).is_err() {
+        return worker_gone();
+    }
+    match rx.await {
+        Ok(Ok(cred)) => Json(cred).into_response(),
+        Ok(Err(msg)) => (StatusCode::BAD_REQUEST, err(msg)).into_response(),
+        Err(_) => worker_gone(),
+    }
+}
+
+async fn lobby_join(State(app): State<AppState>, body: String) -> Response {
+    let req: JoinMatchRequest = match serde_json::from_str(&body) {
+        Ok(r) => r,
+        Err(e) => return (StatusCode::BAD_REQUEST, err(format!("invalid /lobby/join body: {e}"))).into_response(),
+    };
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::JoinMatch {
+        code: req.code, profile: req.profile, identity: req.identity, deck: req.deck, reply,
+    }).is_err() {
+        return worker_gone();
+    }
+    match rx.await {
+        Ok(Ok(cred)) => Json(cred).into_response(),
+        Ok(Err(msg)) => (StatusCode::BAD_REQUEST, err(msg)).into_response(),
+        Err(_) => worker_gone(),
+    }
+}
+
+async fn lobby_info(State(app): State<AppState>, Query(q): Query<LobbyQuery>) -> Response {
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::MatchLobby { code: q.code, reply }).is_err() {
+        return worker_gone();
+    }
+    match rx.await {
+        Ok(Some(info)) => Json(info).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, err("no match with that code")).into_response(),
+        Err(_) => worker_gone(),
+    }
+}
+
+async fn match_state(State(app): State<AppState>, Query(at): Query<MatchRef>) -> Response {
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::MatchState { at, reply }).is_err() {
+        return worker_gone();
+    }
+    match_state_reply(rx).await
+}
+
+async fn match_action(State(app): State<AppState>, Query(at): Query<MatchRef>, body: String) -> Response {
+    let req: ActionRequest = match serde_json::from_str(&body) {
+        Ok(r) => r,
+        Err(e) => return (StatusCode::BAD_REQUEST, err(format!("invalid /m/action body: {e}"))).into_response(),
+    };
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::MatchAction { at, index: req.index, reply }).is_err() {
+        return worker_gone();
+    }
+    match_state_reply(rx).await
+}
+
+async fn match_combat(State(app): State<AppState>, Query(at): Query<MatchRef>, body: String) -> Response {
+    let sub: CombatSubmission = match serde_json::from_str(&body) {
+        Ok(s) => s,
+        Err(e) => return (StatusCode::BAD_REQUEST, err(format!("invalid /m/combat body: {e}"))).into_response(),
+    };
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::MatchCombat { at, sub, reply }).is_err() {
+        return worker_gone();
+    }
+    match_state_reply(rx).await
+}
+
+async fn match_autotap(State(app): State<AppState>, Query(at): Query<MatchRef>, body: String) -> Response {
+    let req: AutoTapRequest = match serde_json::from_str(&body) {
+        Ok(r) => r,
+        Err(e) => return (StatusCode::BAD_REQUEST, err(format!("invalid /m/autotap body: {e}"))).into_response(),
+    };
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::MatchAutoTap { at, target: req.object_id, reply }).is_err() {
+        return worker_gone();
+    }
+    match_state_reply(rx).await
+}
+
+async fn match_activate(State(app): State<AppState>, Query(at): Query<MatchRef>, body: String) -> Response {
+    let req: AutoTapRequest = match serde_json::from_str(&body) {
+        Ok(r) => r,
+        Err(e) => return (StatusCode::BAD_REQUEST, err(format!("invalid /m/activate body: {e}"))).into_response(),
+    };
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::MatchActivate { at, source: req.object_id, reply }).is_err() {
+        return worker_gone();
+    }
+    match_state_reply(rx).await
+}
+
+async fn match_bottom(State(app): State<AppState>, Query(at): Query<MatchRef>, body: String) -> Response {
+    let req: BottomRequest = match serde_json::from_str(&body) {
+        Ok(r) => r,
+        Err(e) => return (StatusCode::BAD_REQUEST, err(format!("invalid /m/bottom body: {e}"))).into_response(),
+    };
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::MatchBottom { at, ids: req.ids, reply }).is_err() {
+        return worker_gone();
+    }
+    match_state_reply(rx).await
+}
+
+async fn match_suggest(State(app): State<AppState>, Query(q): Query<MatchSuggestQuery>) -> Response {
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::MatchSuggest { at: q.at, deep: q.deep, reply }).is_err() {
+        return worker_gone();
+    }
+    match rx.await {
+        Ok(s) => Json(s).into_response(),
         Err(_) => worker_gone(),
     }
 }
@@ -1034,6 +1289,17 @@ async fn main() {
         .route("/bottom", post(post_bottom))
         .route("/search", post(post_search))
         .route("/new", post(post_new))
+        // Networked-match lobby + per-seat play (see the `/m/*` handlers).
+        .route("/lobby/create", post(lobby_create))
+        .route("/lobby/join", post(lobby_join))
+        .route("/lobby/info", get(lobby_info))
+        .route("/m/state", get(match_state))
+        .route("/m/action", post(match_action))
+        .route("/m/combat", post(match_combat))
+        .route("/m/autotap", post(match_autotap))
+        .route("/m/activate", post(match_activate))
+        .route("/m/bottom", post(match_bottom))
+        .route("/m/suggest", get(match_suggest))
         .route("/art", get(get_art))
         .route("/art/warm", post(post_art_warm))
         .route("/art/warm-all", post(post_art_warm_all))
