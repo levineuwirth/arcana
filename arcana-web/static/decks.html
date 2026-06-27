@@ -72,6 +72,34 @@
 
   .empty { text-align: center; color: var(--text-faint); padding: 60px 0; }
   .muted { color: var(--text-muted); }
+
+  /* ---- inspector: version history + compare ---- */
+  .modal { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center;
+           background: color-mix(in srgb, var(--bg) 78%, transparent); padding: 24px; }
+  .modal[hidden] { display: none; }
+  .modal-card { width: min(960px, 96vw); max-height: 90vh; overflow: auto; background: var(--bg-offset);
+                border: 1px solid var(--border); border-radius: var(--radius-panel); box-shadow: var(--shadow-float); }
+  .modal-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--border-muted);
+                position: sticky; top: 0; background: var(--bg-offset); }
+  .modal-head b { font-family: var(--font-serif); font-size: 17px; }
+  .modal-head .spacer { flex: 1; }
+  .modal-body { display: grid; grid-template-columns: 1fr 300px; gap: 20px; padding: 18px; }
+  @media (max-width: 740px) { .modal-body { grid-template-columns: 1fr; } }
+  .section-label { font-family: var(--font-serif); text-transform: uppercase; letter-spacing: .22em; font-size: 12px;
+                   color: var(--text-muted); margin: 0 0 10px; }
+  .cmp-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .cmp-controls select { background: var(--bg-nav); color: var(--text); border: 1px solid var(--border);
+                         border-radius: var(--radius-control); padding: 7px 9px; max-width: 240px; }
+  .diffblock { margin-bottom: 16px; }
+  .diffgrid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  @media (max-width: 620px) { .diffgrid { grid-template-columns: 1fr; } }
+  .diffcol h4 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--text-faint); }
+  .diffcol .line { font-size: 13px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+  .diffcol.add .line { color: var(--mana-g); } .diffcol.rem .line { color: var(--mana-r); } .diffcol.chg .line { color: var(--text); }
+  .diffcol .none { color: var(--text-faint); font-size: 12px; font-style: italic; }
+  .ver { display: flex; align-items: baseline; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--border-muted); flex-wrap: wrap; }
+  .ver .vlabel { font-size: 13px; } .ver .spacer { flex: 1; }
+  .btn.sm { padding: 4px 9px; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -94,6 +122,31 @@
     </div>
     <div id="families"></div>
   </main>
+
+  <div class="modal" id="inspect" hidden>
+    <div class="modal-card">
+      <div class="modal-head">
+        <b id="ins-title">Deck</b>
+        <span class="spacer"></span>
+        <button class="btn ghost sm" id="ins-close">✕ Close</button>
+      </div>
+      <div class="modal-body">
+        <div>
+          <div class="section-label">Compare</div>
+          <div class="cmp-controls">
+            <label>Base <select id="cmp-a"></select></label>
+            <span class="muted">→</span>
+            <label>Compare <select id="cmp-b"></select></label>
+          </div>
+          <div id="cmp-result"></div>
+        </div>
+        <div>
+          <div class="section-label">Version history</div>
+          <div id="ins-versions"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="/app.js"></script>
   <script>
@@ -183,6 +236,7 @@
     actions.append(
       link("Open", () => { location.href = "/deck?deck=" + deck.id; }, "primary"),
       link("Play", () => { location.href = "/?deck=" + deck.id; }),
+      link("History", () => openInspect(deck)),
       link("Fork", () => doFork(deck, "fork")),
       link("Vary", () => doFork(deck, "variation")),
       link("Rename", () => doRename(deck)),
@@ -260,6 +314,112 @@
       wrap.appendChild(fam);
     }
   }
+
+  // ---- inspector: version history + compare ----
+  function rel(ts) {
+    const s = Math.max(0, (Date.now() - ts) / 1000);
+    if (s < 60) return "just now";
+    if (s < 3600) return Math.floor(s / 60) + "m ago";
+    if (s < 86400) return Math.floor(s / 3600) + "h ago";
+    return Math.floor(s / 86400) + "d ago";
+  }
+  const nm = (e) => (e.info ? e.info.name : e.id);
+
+  function contentFor(val) {
+    const i = val.indexOf("|");
+    const id = val.slice(0, i), vid = val.slice(i + 1);
+    if (vid) { const v = A.Decks.history(id).find((x) => x.vid === vid); return v ? { main: v.main, side: v.side } : { main: [], side: [] }; }
+    return A.Decks.content(id);
+  }
+  function compareOptions(deck) {
+    const opts = [{ v: deck.id + "|", l: "This deck — current" }];
+    const head = A.Decks.get(deck.id).head;
+    const vs = A.Decks.history(deck.id);
+    for (let i = vs.length - 1; i >= 0; i--) {
+      if (vs[i].vid !== head) opts.push({ v: deck.id + "|" + vs[i].vid, l: "This deck — " + (vs[i].label || "version") + " · " + rel(vs[i].ts) });
+    }
+    const others = A.Decks.list().filter((d) => d.id !== deck.id);
+    others.sort((a, b) => (b.id === deck.parent) - (a.id === deck.parent));
+    for (const d of others) opts.push({ v: d.id + "|", l: (d.id === deck.parent ? "(parent) " : "") + d.name + " — current" });
+    return opts;
+  }
+  function buildCompareSelectors(deck) {
+    const a = document.getElementById("cmp-a"), b = document.getElementById("cmp-b");
+    a.innerHTML = ""; b.innerHTML = "";
+    for (const o of compareOptions(deck)) { a.add(new Option(o.l, o.v)); b.add(new Option(o.l, o.v)); }
+    b.value = deck.id + "|"; // compare = this deck, current
+    if (deck.parent && A.Decks.get(deck.parent)) a.value = deck.parent + "|"; // base = parent
+    else { const vs = A.Decks.history(deck.id); a.value = vs.length >= 2 ? deck.id + "|" + vs[vs.length - 2].vid : deck.id + "|"; }
+    a.onchange = renderCompare; b.onchange = renderCompare;
+  }
+  function diffCol(title, cls, lines) {
+    const col = document.createElement("div"); col.className = "diffcol " + cls;
+    const h = document.createElement("h4"); h.textContent = title + (lines.length ? " (" + lines.length + ")" : ""); col.appendChild(h);
+    if (!lines.length) { const e = document.createElement("div"); e.className = "none"; e.textContent = "—"; col.appendChild(e); }
+    for (const t of lines) { const d = document.createElement("div"); d.className = "line"; d.textContent = t; col.appendChild(d); }
+    return col;
+  }
+  function diffBlock(label, aC, bC) {
+    const d = A.Decks.diff(aC, bC); // B relative to A
+    const wrap = document.createElement("div"); wrap.className = "diffblock";
+    const h = document.createElement("div"); h.className = "section-label"; h.textContent = label; wrap.appendChild(h);
+    if (!d.added.length && !d.removed.length && !d.changed.length) {
+      const e = document.createElement("div"); e.className = "muted"; e.textContent = "No differences."; wrap.appendChild(e); return wrap;
+    }
+    const grid = document.createElement("div"); grid.className = "diffgrid";
+    grid.appendChild(diffCol("Added", "add", d.added.map((e) => "+" + e.count + " " + nm(e))));
+    grid.appendChild(diffCol("Removed", "rem", d.removed.map((e) => "−" + e.count + " " + nm(e))));
+    grid.appendChild(diffCol("Changed", "chg", d.changed.map((e) => nm(e) + ": " + e.from + " → " + e.to)));
+    wrap.appendChild(grid); return wrap;
+  }
+  function renderCompare() {
+    const A_ = contentFor(document.getElementById("cmp-a").value);
+    const B_ = contentFor(document.getElementById("cmp-b").value);
+    const out = document.getElementById("cmp-result"); out.innerHTML = "";
+    out.appendChild(diffBlock("Maindeck", A_.main || [], B_.main || []));
+    if ((A_.side && A_.side.length) || (B_.side && B_.side.length)) out.appendChild(diffBlock("Sideboard", A_.side || [], B_.side || []));
+  }
+  function renderVersions(deck) {
+    const wrap = document.getElementById("ins-versions"); wrap.innerHTML = "";
+    const vs = A.Decks.history(deck.id); const head = A.Decks.get(deck.id).head;
+    for (let i = vs.length - 1; i >= 0; i--) {
+      const v = vs[i]; const isHead = v.vid === head;
+      let delta = "";
+      if (i > 0) {
+        const d = A.Decks.diff(vs[i - 1].main, v.main);
+        const add = d.added.reduce((n, e) => n + e.count, 0) + d.changed.reduce((n, e) => n + Math.max(0, e.to - e.from), 0);
+        const rem = d.removed.reduce((n, e) => n + e.count, 0) + d.changed.reduce((n, e) => n + Math.max(0, e.from - e.to), 0);
+        delta = (add || rem) ? (" · +" + add + " −" + rem) : " · no change";
+      }
+      const row = document.createElement("div"); row.className = "ver";
+      const lab = document.createElement("span"); lab.className = "vlabel"; lab.textContent = (isHead ? "● " : "") + (v.label || "version");
+      const meta = document.createElement("span"); meta.className = "muted"; meta.textContent = rel(v.ts) + delta;
+      const sp = document.createElement("span"); sp.className = "spacer";
+      row.append(lab, meta, sp);
+      if (!isHead) {
+        const b = document.createElement("button"); b.className = "btn ghost sm"; b.textContent = "Restore";
+        b.onclick = () => {
+          A.Decks.restore(deck.id, v.vid); identityCache.delete(deck.id);
+          const d2 = A.Decks.get(deck.id);
+          renderVersions(d2); buildCompareSelectors(d2); renderCompare(); refresh();
+        };
+        row.appendChild(b);
+      }
+      wrap.appendChild(row);
+    }
+  }
+  function openInspect(deck) {
+    document.getElementById("ins-title").textContent =
+      ((identityCache.get(deck.id) || {}).identity || {}).name || deck.name;
+    buildCompareSelectors(deck);
+    renderVersions(deck);
+    renderCompare();
+    document.getElementById("inspect").hidden = false;
+  }
+  function closeInspect() { document.getElementById("inspect").hidden = true; }
+  document.getElementById("ins-close").onclick = closeInspect;
+  document.getElementById("inspect").onclick = (e) => { if (e.target.id === "inspect") closeInspect(); };
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeInspect(); });
 
   document.getElementById("new").onclick = doNew;
   refresh();
