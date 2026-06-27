@@ -115,11 +115,49 @@ struct AppState {
 struct ArtCache {
     dir: PathBuf,
     client: reqwest::Client,
-    /// Serializes outbound Scryfall fetches to a minimum spacing (their API asks
-    /// for ~50–100ms between requests). Cache hits don't touch this.
+    /// Serializes outbound Scryfall API fetches to a minimum spacing (their API
+    /// asks for ~50–100ms between requests). Only the API-resolve fallback path
+    /// uses this; cache hits and CDN downloads (from the bulk map) don't.
     gate: tokio::sync::Mutex<Instant>,
+    /// Lowercased card name → Scryfall CDN image URL, from the one-time bulk-data
+    /// download. The CDN is NOT rate-limited, so once this is loaded we resolve
+    /// every card from it and can download images in parallel (no API, no
+    /// throttle). `None` until loaded.
+    bulk: tokio::sync::RwLock<Option<std::collections::HashMap<String, String>>>,
     /// Progress of a "download all art" background job (one at a time).
     warm: WarmState,
+}
+
+/// Minimal projection of a Scryfall bulk-data card object: just name + image URL
+/// (single-faced `image_uris`, or the first face's for DFCs). Unknown fields are
+/// ignored, so we don't pull the ~80 other fields per card into memory.
+#[derive(Deserialize)]
+struct BulkCard {
+    name: String,
+    #[serde(default)]
+    image_uris: Option<BulkImg>,
+    #[serde(default)]
+    card_faces: Option<Vec<BulkFace>>,
+}
+#[derive(Deserialize)]
+struct BulkImg {
+    #[serde(default)]
+    normal: Option<String>,
+    #[serde(default)]
+    large: Option<String>,
+}
+#[derive(Deserialize)]
+struct BulkFace {
+    #[serde(default)]
+    image_uris: Option<BulkImg>,
+}
+impl BulkCard {
+    fn best_image(self) -> Option<String> {
+        let pick = |i: Option<BulkImg>| i.and_then(|i| i.normal.or(i.large));
+        pick(self.image_uris).or_else(|| {
+            self.card_faces.into_iter().flatten().find_map(|f| pick(f.image_uris))
+        })
+    }
 }
 
 /// Live progress of the bulk art download (see `post_art_warm_all`).
@@ -152,7 +190,47 @@ impl ArtCache {
             .user_agent("Arcana/0.1 (card-art proxy)")
             .build()
             .expect("reqwest client");
-        Self { dir, client, gate: tokio::sync::Mutex::new(Instant::now()), warm: WarmState::default() }
+        Self {
+            dir,
+            client,
+            gate: tokio::sync::Mutex::new(Instant::now()),
+            bulk: tokio::sync::RwLock::new(None),
+            warm: WarmState::default(),
+        }
+    }
+
+    /// Download Scryfall's bulk-data once and build a name→CDN-URL map, so we can
+    /// resolve every card without per-card API calls. Best-effort; returns false
+    /// on failure (callers then fall back to the API-resolve path).
+    async fn ensure_bulk(&self) -> bool {
+        if self.bulk.read().await.is_some() {
+            return true;
+        }
+        match self.load_bulk().await {
+            Some(map) => { *self.bulk.write().await = Some(map); true }
+            None => false,
+        }
+    }
+    async fn load_bulk(&self) -> Option<std::collections::HashMap<String, String>> {
+        // 1) bulk-data index → the oracle_cards download URI (on the CDN).
+        let idx_bytes = self.client
+            .get("https://api.scryfall.com/bulk-data").send().await.ok()?
+            .bytes().await.ok()?;
+        let idx: serde_json::Value = serde_json::from_slice(&idx_bytes).ok()?;
+        let uri = idx.get("data")?.as_array()?.iter()
+            .find(|o| o.get("type").and_then(|t| t.as_str()) == Some("oracle_cards"))?
+            .get("download_uri")?.as_str()?.to_string();
+        // 2) the bulk JSON (one big CDN download), parsed into name→image URL.
+        let bytes = self.client.get(&uri).send().await.ok()?.bytes().await.ok()?;
+        let cards: Vec<BulkCard> = serde_json::from_slice(&bytes).ok()?;
+        let mut map = std::collections::HashMap::with_capacity(cards.len());
+        for c in cards {
+            let key = c.name.to_lowercase();
+            if let Some(url) = c.best_image() {
+                map.entry(key).or_insert(url);
+            }
+        }
+        Some(map)
     }
 
     fn warm_status(&self) -> WarmStatus {
@@ -178,27 +256,30 @@ impl ArtCache {
         if let Ok(bytes) = tokio::fs::read(&path).await {
             return Some(bytes);
         }
-        // Throttle outbound Scryfall requests (hold the gate across the spacing
-        // sleep so all fetches stay ≥90ms apart, ≤~11/s).
-        {
-            let mut last = self.gate.lock().await;
-            const MIN: Duration = Duration::from_millis(90);
-            let since = last.elapsed();
-            if since < MIN {
-                tokio::time::sleep(MIN - since).await;
+        // Prefer the bulk-data CDN URL (not rate-limited → parallel-safe).
+        let cdn = self.bulk.read().await.as_ref()
+            .and_then(|m| m.get(&name.to_lowercase()).cloned());
+        let bytes = if let Some(url) = cdn {
+            let resp = self.client.get(&url).send().await.ok()?;
+            if !resp.status().is_success() { return None; }
+            resp.bytes().await.ok()?.to_vec()
+        } else {
+            // Fallback: resolve via the rate-limited API (hold the gate across a
+            // ≥90ms spacing sleep so these stay ≤~11/s).
+            {
+                let mut last = self.gate.lock().await;
+                const MIN: Duration = Duration::from_millis(90);
+                let since = last.elapsed();
+                if since < MIN { tokio::time::sleep(MIN - since).await; }
+                *last = Instant::now();
             }
-            *last = Instant::now();
-        }
-        let resp = self.client
-            .get("https://api.scryfall.com/cards/named")
-            .query(&[("format", "image"), ("exact", name)])
-            .send()
-            .await
-            .ok()?;
-        if !resp.status().is_success() {
-            return None;
-        }
-        let bytes = resp.bytes().await.ok()?.to_vec();
+            let resp = self.client
+                .get("https://api.scryfall.com/cards/named")
+                .query(&[("format", "image"), ("exact", name)])
+                .send().await.ok()?;
+            if !resp.status().is_success() { return None; }
+            resp.bytes().await.ok()?.to_vec()
+        };
         let _ = tokio::fs::write(&path, &bytes).await;
         Some(bytes)
     }
@@ -583,12 +664,23 @@ async fn post_art_warm_all(State(app): State<AppState>) -> Response {
     app.art.warm.failed.store(0, Ordering::SeqCst);
     let art = app.art.clone();
     tokio::spawn(async move {
+        // One bulk-data download gives CDN URLs for every card, so the image
+        // pulls below go straight to the (unthrottled) CDN in parallel.
+        art.ensure_bulk().await;
+        let sem = Arc::new(tokio::sync::Semaphore::new(12));
+        let mut handles = Vec::with_capacity(names.len());
         for name in names {
-            if art.fetch(&name).await.is_none() {
-                art.warm.failed.fetch_add(1, Ordering::Relaxed);
-            }
-            art.warm.done.fetch_add(1, Ordering::Relaxed);
+            let art = art.clone();
+            let sem = sem.clone();
+            handles.push(tokio::spawn(async move {
+                let _permit = sem.acquire_owned().await;
+                if art.fetch(&name).await.is_none() {
+                    art.warm.failed.fetch_add(1, Ordering::Relaxed);
+                }
+                art.warm.done.fetch_add(1, Ordering::Relaxed);
+            }));
         }
+        for h in handles { let _ = h.await; }
         art.warm.running.store(false, Ordering::Relaxed);
     });
     Json(app.art.warm_status()).into_response()
