@@ -51,20 +51,42 @@
   .results-meta { color: var(--text-faint); font-size: 12px; margin-left: auto; }
 
   .grid { display: flex; gap: 10px; flex-wrap: wrap; --card-w: 122px; }
-  #deckstats .colors .ctile { display: inline-flex; align-items: center; gap: 1px;
-    font-variant-numeric: tabular-nums; }
 
   .muted { color: var(--text-muted); font-size: 12px; }
   .empty-note { color: var(--text-faint); font-style: italic; font-family: var(--font-serif); font-size: 13px; }
 
   #deckstats { font-size: 13px; margin-bottom: 10px; }
-  #deckstats .summary { font-family: var(--font-serif); margin-bottom: 8px; }
+  #deckstats .summary { font-family: var(--font-serif); margin-bottom: 2px; }
   #deckstats .summary .tnum { font-weight: 600; }
-  #deckstats .curve { display: flex; gap: 4px; align-items: flex-end; height: 52px; margin: 8px 0 22px; }
+  #deckstats .substat { color: var(--text-faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+
+  /* a labelled stats section: small-caps header + body */
+  #deckstats .statsec { margin-top: 13px; }
+  #deckstats .statsec > .meta-label { display: block; margin-bottom: 6px; }
+  #deckstats .empty-stat { color: var(--text-faint); font-style: italic; font-family: var(--font-serif); font-size: 12px; }
+
+  /* mana curve — count above the bar, mana value below */
+  #deckstats .curve { display: flex; gap: 4px; align-items: flex-end; height: 52px; margin: 18px 0 20px; }
   #deckstats .bar { flex: 1; background: var(--text-muted); border-radius: 2px 2px 0 0; min-height: 2px; position: relative; }
-  #deckstats .bar span { position: absolute; bottom: -17px; left: 0; right: 0; text-align: center;
+  #deckstats .bar.empty { background: var(--border); }
+  #deckstats .bar b { position: absolute; top: -15px; left: 0; right: 0; text-align: center;
+    font-size: 9px; font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  #deckstats .bar span { position: absolute; bottom: -16px; left: 0; right: 0; text-align: center;
     font-size: 9px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
-  #deckstats .colors { display: flex; gap: 5px; flex-wrap: wrap; }
+
+  /* labelled mini-bar rows (type breakdown + draw odds) */
+  #deckstats .srow { display: flex; align-items: center; gap: 8px; padding: 2px 0; font-size: 12px; }
+  #deckstats .srow .lbl { width: 82px; flex-shrink: 0; color: var(--text-muted); }
+  #deckstats .srow .track { flex: 1; height: 7px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 999px; overflow: hidden; }
+  #deckstats .srow .fill { height: 100%; background: var(--text-muted); border-radius: 999px; }
+  #deckstats .srow .val { min-width: 36px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+
+  /* colors: colored-pip requirement tiles */
+  #deckstats .colors { display: flex; gap: 9px; flex-wrap: wrap; }
+  #deckstats .colors .ctile { display: inline-flex; align-items: center; gap: 3px; font-variant-numeric: tabular-nums; }
+  #deckstats .colors .ctile .ac-sym { width: 14px; height: 14px; display: block; }
+  #deckstats .colors .ctile b { font-weight: 600; }
 
   .sectlabel { margin: 12px 0 5px; }
   #decklist .row { display: flex; gap: 6px; align-items: center; padding: 3px 0; font-size: 13px; }
@@ -200,6 +222,69 @@ function render() {
   scheduleLegality();
 }
 
+// ---- deck analytics ------------------------------------------------------
+// Primary-type buckets, derived from the CardInfo type booleans. A card is
+// counted under EVERY type it has (an Artifact Creature lands in both buckets).
+const TYPE_DEFS = [
+  ["Creatures", "is_creature"], ["Lands", "is_land"],
+  ["Instants", "is_instant"], ["Sorceries", "is_sorcery"],
+  ["Artifacts", "is_artifact"], ["Enchantments", "is_enchantment"],
+  ["Planeswalkers", "is_planeswalker"], ["Battles", "is_battle"],
+];
+
+// Colored mana pips (W/U/B/R/G) a cost string demands; generic, {X} and {C}
+// are not colored. Each colored letter in a token counts once, so "{1}{G}{G}"
+// → G:2 and a hybrid "{W/U}" counts toward BOTH colors it can be paid with.
+function coloredPips(cost) {
+  const out = { W: 0, U: 0, B: 0, R: 0, G: 0 };
+  const toks = (cost || "").match(/\{[^}]+\}/g) || [];
+  for (const tok of toks) {
+    const sym = tok.toUpperCase();
+    for (const c of ["W", "U", "B", "R", "G"]) if (sym.indexOf(c) >= 0) out[c]++;
+  }
+  return out;
+}
+
+// Lanczos log-gamma — lets the hypergeometric draws stay in log space so a
+// 60-card deck never overflows a factorial; one exp() at the end.
+function logGamma(z) {
+  const C = [0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+    771.32342877765313, -176.61502916214059, 12.507343278686905,
+    -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+  if (z < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * z)) - logGamma(1 - z);
+  z -= 1;
+  let x = C[0];
+  for (let i = 1; i < C.length; i++) x += C[i] / (z + i);
+  const t = z + 7.5;
+  return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+}
+function logChoose(n, k) {
+  if (k < 0 || k > n || n < 0) return -Infinity;
+  return logGamma(n + 1) - logGamma(k + 1) - logGamma(n - k + 1);
+}
+// P(exactly i of `successes` when drawing `draws` from `total`), hypergeometric.
+function pHyperExact(total, successes, draws, i) {
+  if (i < 0 || i > successes || draws - i < 0 || draws - i > total - successes) return 0;
+  return Math.exp(logChoose(successes, i) + logChoose(total - successes, draws - i) - logChoose(total, draws));
+}
+// P(>= k of `successes` in `draws` drawn without replacement from `total`).
+function pAtLeastK(total, successes, draws, k) {
+  if (total <= 0 || draws <= 0) return 0;
+  draws = Math.min(draws, total);
+  let p = 0;
+  const hi = Math.min(successes, draws);
+  for (let i = Math.max(0, k); i <= hi; i++) p += pHyperExact(total, successes, draws, i);
+  return Math.max(0, Math.min(1, p));
+}
+
+// One labelled mini-bar row (used by Types + Opening-hand odds).
+function statRow(label, fillPct, valText, title) {
+  return '<div class="srow"' + (title ? ' title="' + title + '"' : "") + ">" +
+    '<span class="lbl">' + label + "</span>" +
+    '<span class="track"><span class="fill" style="width:' + fillPct + '%"></span></span>' +
+    '<span class="val">' + valText + "</span></div>";
+}
+
 function sectionRows(container, m, isSide) {
   if (!m.size) {
     const e = document.createElement("div"); e.className = "empty-note";
@@ -231,26 +316,57 @@ function renderDeck() {
 
   const stats = document.getElementById("deckstats");
   const bins = [0, 0, 0, 0, 0, 0, 0, 0];
-  const colorCount = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
-  let lands = 0;
+  const pips = { W: 0, U: 0, B: 0, R: 0, G: 0 };
+  const typeCount = { is_creature: 0, is_land: 0, is_instant: 0, is_sorcery: 0,
+    is_artifact: 0, is_enchantment: 0, is_planeswalker: 0, is_battle: 0 };
+  let lands = 0, nonland = 0, mvSum = 0;
   for (const { info, count } of main.values()) {
     if (info.is_land) lands += count;
-    else bins[Math.min(info.mana_value, 7)] += count;
-    if (info.colors.length === 0) colorCount.C += count;
-    else for (const c of info.colors) colorCount[c] += count;
+    else { bins[Math.min(info.mana_value, 7)] += count; nonland += count; mvSum += info.mana_value * count; }
+    const cp = coloredPips(info.mana_cost);
+    for (const c of ["W", "U", "B", "R", "G"]) pips[c] += cp[c] * count;
+    for (const t in typeCount) if (info[t]) typeCount[t] += count;
   }
+
+  // mana curve — count above each bar, mana value below
   const maxBin = Math.max(1, ...bins);
-  const curve = bins.map((v, i) =>
-    '<div class="bar" style="height:' + Math.round(100 * v / maxBin) + '%" title="mv ' +
-    (i === 7 ? "7+" : i) + ": " + v + '"><span>' + (i === 7 ? "7+" : i) + "</span></div>").join("");
-  const colors = Object.entries(colorCount).filter(([, v]) => v > 0)
-    .map(([k, v]) => '<span class="ctile">' + v + Arcana.manaSymbolHtml(k) + "</span>").join("");
+  const curve = bins.map((v, i) => {
+    const lab = i === 7 ? "7+" : "" + i;
+    return '<div class="bar' + (v ? "" : " empty") + '" style="height:' + Math.round(100 * v / maxBin) +
+      '%" title="mv ' + lab + ": " + v + '">' + (v ? "<b>" + v + "</b>" : "") + "<span>" + lab + "</span></div>";
+  }).join("");
+
+  // type breakdown (mini-bars)
+  const maxType = Math.max(1, ...Object.values(typeCount));
+  const typeRows = TYPE_DEFS.filter(([, k]) => typeCount[k] > 0)
+    .map(([label, k]) => statRow(label, Math.round(100 * typeCount[k] / maxType), typeCount[k])).join("");
+
+  // color requirement — colored pips per color, with the real mana symbol
+  const colorTiles = ["W", "U", "B", "R", "G"].filter((c) => pips[c] > 0)
+    .map((c) => '<span class="ctile" title="' + pips[c] + " colored " + c + " pip" +
+      (pips[c] === 1 ? "" : "s") + '">' + Arcana.manaSymbolHtml(c) + "<b>" + pips[c] + "</b></span>").join("");
+
+  // opening-hand land odds (hypergeometric), for the current deck + land count
+  const hand = Math.min(7, total);
+  const oddsRows = total > 0 ? [2, 3, 4].map((k) => {
+    const p = pAtLeastK(total, lands, hand, k);
+    return statRow("≥" + k + " lands", Math.round(100 * p), Math.round(100 * p) + "%",
+      "P(" + k + "+ lands in opening " + hand + ")");
+  }).join("") : "";
+
+  const avgMv = nonland ? (mvSum / nonland).toFixed(2) : "—";
+  const landPct = total ? Math.round(100 * lands / total) : 0;
 
   stats.innerHTML =
-    '<div class="summary"><span class="tnum">' + total + "</span> cards · <span class=\"tnum\">" + lands +
-      '</span> lands · <span class="tnum">' + (total - lands) + "</span> spells</div>" +
-    '<div class="curve">' + curve + "</div>" +
-    '<div class="colors">' + (colors || '<span class="muted">—</span>') + "</div>";
+    '<div class="summary"><span class="tnum">' + total + '</span> cards · <span class="tnum">' + lands +
+      '</span> lands · <span class="tnum">' + nonland + "</span> nonland</div>" +
+    '<div class="substat">' + (total ? landPct + "% lands · avg nonland MV " + avgMv : "empty deck") + "</div>" +
+    '<div class="statsec"><span class="meta-label">Mana curve</span><div class="curve">' + curve + "</div></div>" +
+    '<div class="statsec"><span class="meta-label">Types</span>' + (typeRows || '<div class="empty-stat">—</div>') + "</div>" +
+    '<div class="statsec"><span class="meta-label">Color pips</span><div class="colors">' +
+      (colorTiles || '<span class="empty-stat">colorless</span>') + "</div></div>" +
+    '<div class="statsec"><span class="meta-label">Opening hand</span>' +
+      (oddsRows || '<div class="empty-stat">—</div>') + "</div>";
 
   const list = document.getElementById("decklist");
   list.innerHTML = "";
