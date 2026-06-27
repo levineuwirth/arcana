@@ -54,7 +54,7 @@ use arcana_core::registry::CardRegistry;
 use arcana_core::types::CardId;
 use arcana_ai::session::AutoPass;
 use arcana_web::{
-    derive_deck_identity, personalities, resolve_import, CombatSubmission, DeckIdentity,
+    deck_identity_view, personalities, resolve_import, CombatSubmission, DeckIdentityView,
     GameCore, ImportedDeck, MatchConfig, Personality, StateResponse, Suggestion,
 };
 use axum::extract::{Query, State};
@@ -67,6 +67,7 @@ use tokio::sync::{mpsc, oneshot};
 
 /// The single-page UI, embedded so the binary is self-contained.
 const INDEX_HTML: &str = include_str!("../static/index.html");
+const STAGE_HTML: &str = include_str!("../static/stage.html");
 /// The deckbuilder page (browse the catalog, build a deck, play it).
 const DECK_HTML: &str = include_str!("../static/deck.html");
 /// Shared design-token stylesheet (themes, type, mana palette, card component).
@@ -96,7 +97,7 @@ enum Command {
     DeckIdentity {
         deck: Vec<CardId>,
         name: Option<String>,
-        reply: oneshot::Sender<DeckIdentity>,
+        reply: oneshot::Sender<DeckIdentityView>,
     },
     Personalities { reply: oneshot::Sender<Vec<Personality>> },
     Suggest { deep: bool, reply: oneshot::Sender<Vec<Suggestion>> },
@@ -469,7 +470,7 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>) {
                 let _ = reply.send(arcana_cards::sample_deck(reg, arcana_web::DECK_SEED));
             }
             Command::DeckIdentity { deck, name, reply } => {
-                let _ = reply.send(derive_deck_identity(core.registry(), &deck, name));
+                let _ = reply.send(deck_identity_view(core.registry(), &deck, name));
             }
             Command::Personalities { reply } => {
                 let _ = reply.send(personalities(core.registry()));
@@ -519,6 +520,13 @@ fn worker_gone() -> Response {
     (StatusCode::INTERNAL_SERVER_ERROR, err("game worker is unavailable")).into_response()
 }
 
+/// The World Stage (front door): pick your deck + rival, then "Begin" drops
+/// into the duel at `/duel`.
+async fn stage() -> Html<&'static str> {
+    Html(STAGE_HTML)
+}
+
+/// The cockpit (in-game). Reachable at `/duel` once a match has begun.
 async fn index() -> Html<&'static str> {
     Html(INDEX_HTML)
 }
@@ -946,7 +954,8 @@ async fn main() {
     }
 
     let app = Router::new()
-        .route("/", get(index))
+        .route("/", get(stage))
+        .route("/duel", get(index))
         .route("/deck", get(deckbuilder))
         .route("/theme.css", get(theme_css))
         .route("/app.js", get(app_js))

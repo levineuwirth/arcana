@@ -437,7 +437,7 @@
       <div class="menu-pop" id="panels-pop"></div>
     </div>
     <button id="refresh" class="ghost">Refresh</button>
-    <button id="new">New game</button>
+    <button id="new" title="Set up a new duel on the Stage">New duel →</button>
     <span id="themeslot"></span>
   </header>
 
@@ -2138,7 +2138,8 @@ buildPanelsMenu();
 initResizers();
 
 Arcana.mountThemeSwitcher(document.getElementById("themeslot"));
-document.getElementById("new").onclick = newGame;
+// The Stage (front door at "/") is where a new duel is configured.
+document.getElementById("new").onclick = () => { window.location = "/"; };
 document.getElementById("refresh").onclick = getState;
 
 // Keep arrows aligned when the layout shifts (resize / internal panel scroll).

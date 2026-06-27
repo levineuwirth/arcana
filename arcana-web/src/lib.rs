@@ -577,11 +577,51 @@ fn color_combo_name(colors: ColorSet) -> String {
     name.to_string()
 }
 
+/// WUBRG letters present in a [`ColorSet`], in canonical order — for rendering
+/// color heraldry on the Stage (the frontend gets letters, not a raw bitmask).
+fn color_letters(colors: ColorSet) -> Vec<char> {
+    [('W', ColorSet::white()), ('U', ColorSet::blue()), ('B', ColorSet::black()),
+     ('R', ColorSet::red()), ('G', ColorSet::green())]
+        .iter()
+        .filter(|(_, cs)| colors.0 & cs.0 != 0)
+        .map(|(ch, _)| *ch)
+        .collect()
+}
+
+/// The portrait card's name (for art lookup), resolved from its id.
+fn portrait_name(reg: &CardRegistry, portrait: Option<CardId>) -> Option<String> {
+    portrait.and_then(|id| arcana_core::catalog::card_info(reg, id)).map(|ci| ci.name)
+}
+
+/// A [`DeckIdentity`] plus the display extras the Stage needs but the canonical
+/// type omits: the portrait card's NAME (for `/art`) and the color letters (for
+/// heraldry). The frontend posts back `identity`; the rest is render-only.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DeckIdentityView {
+    pub identity: DeckIdentity,
+    pub portrait_name: Option<String>,
+    pub colors: Vec<char>,
+}
+
+/// Derive a deck's identity and wrap it with the Stage's display extras.
+pub fn deck_identity_view(
+    reg: &CardRegistry, deck: &[CardId], name: Option<String>,
+) -> DeckIdentityView {
+    let identity = derive_deck_identity(reg, deck, name);
+    DeckIdentityView {
+        portrait_name: portrait_name(reg, identity.portrait),
+        colors: color_letters(identity.colors),
+        identity,
+    }
+}
+
 /// A preset AI rival shown on the World Stage — the Civ-leader gallery. A named
 /// opponent with a deck, an agenda (flavor), a difficulty, and a derived deck
 /// identity. Selecting one fills the opponent seat of a [`MatchConfig`] (as a
 /// [`SeatSpec::Bot`]); the "custom deck" slot produces the same Bot seat from a
-/// saved list, so personalities and custom decks share one code path.
+/// saved list, so personalities and custom decks share one code path. The
+/// `portrait_name` / `colors` are render-only display extras (see
+/// [`DeckIdentityView`]).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Personality {
     /// Stable key for the frontend (e.g. "pyromancer").
@@ -591,6 +631,8 @@ pub struct Personality {
     pub difficulty: Difficulty,
     pub deck: Vec<CardId>,
     pub identity: DeckIdentity,
+    pub portrait_name: Option<String>,
+    pub colors: Vec<char>,
 }
 
 /// The built-in roster of AI rivals. Each is a mono-color creature deck of a
@@ -616,6 +658,8 @@ pub fn personalities(reg: &CardRegistry) -> Vec<Personality> {
             profile: PlayerProfile { name: name.to_string() },
             agenda: agenda.to_string(),
             difficulty,
+            portrait_name: portrait_name(reg, identity.portrait),
+            colors: color_letters(identity.colors),
             deck,
             identity,
         }

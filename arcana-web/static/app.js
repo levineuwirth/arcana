@@ -329,6 +329,9 @@
     legality: (body) => call("POST", "/legality", body),
     sampleDeck: () => call("GET", "/sample-deck"),
     glossary: () => call("GET", "/glossary"),
+    // World Stage: derive a decklist's faction identity, and the rival roster.
+    deckIdentity: (deck, name) => call("POST", "/deck-identity", { deck, name }),
+    personalities: () => call("GET", "/personalities"),
   };
 
   window.Arcana = Arcana;
