@@ -1610,7 +1610,13 @@ function renderActions(view) {
     wrap.appendChild(gl);
     const btns = document.createElement("div");
     btns.className = "btns";
+    // Collapse equivalent choices that render identically — e.g. a library
+    // search that offers "Pick Mountain" once per copy. Same label ⇒ same
+    // visible outcome, so one representative button is clearer than 18.
+    const seen = new Set();
     for (const a of groups[g]) {
+      if (seen.has(a.label)) continue;
+      seen.add(a.label);
       const btn = document.createElement("button");
       btn.textContent = a.label;
       btn.onclick = () => sendAction(a.index, a.label);

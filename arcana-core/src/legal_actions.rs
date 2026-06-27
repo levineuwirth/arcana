@@ -144,16 +144,40 @@ fn legal_resolution_choice_actions(state: &GameState) -> Vec<Action> {
                 response: ChoiceResponse::OrderCards { placements },
             });
         }
-        ChoiceKind::PickCards { candidates, min, .. } => {
-            // Canonical answer: pick the lowest-id `min` candidates.
+        ChoiceKind::PickCards { candidates, min, max } => {
             let mut sorted = candidates.clone();
             sorted.sort();
-            let picked: Vec<ObjectId> = sorted.into_iter()
-                .take(*min as usize).collect();
-            out.push(Action::SubmitResolutionChoice {
-                id,
-                response: ChoiceResponse::PickCards { picked },
-            });
+            if *max <= 1 {
+                // Choose-one / up-to-one (tutors, fetchlands, reanimation):
+                // offer EACH candidate as its own pick, plus "pick none" when
+                // the choice is optional (min == 0). A human (and the web,
+                // which renders the legal-action list) must see the real
+                // candidates — the old single canonical "pick the lowest-id
+                // `min`" answer auto-resolved a min:0 search to picking
+                // NOTHING (the Arid Mesa "paid the cost, no search" bug).
+                for c in sorted {
+                    out.push(Action::SubmitResolutionChoice {
+                        id,
+                        response: ChoiceResponse::PickCards { picked: vec![c] },
+                    });
+                }
+                if *min == 0 {
+                    out.push(Action::SubmitResolutionChoice {
+                        id,
+                        response: ChoiceResponse::PickCards { picked: vec![] },
+                    });
+                }
+            } else {
+                // Multi-pick (max > 1): the combinatorial fan-out is pruned to
+                // the canonical lowest-id `min` answer; an agent submits its
+                // preferred set directly.
+                let picked: Vec<ObjectId> = sorted.into_iter()
+                    .take(*min as usize).collect();
+                out.push(Action::SubmitResolutionChoice {
+                    id,
+                    response: ChoiceResponse::PickCards { picked },
+                });
+            }
         }
         ChoiceKind::DistributeCounters { among, total, .. } => {
             // Canonical: all to first target.
@@ -3336,6 +3360,45 @@ mod tests {
             id: 7, response: crate::actions::ChoiceResponse::PayOrDecline { pay } };
         assert!(actions.contains(&pays(true)), "pay must be offered when affordable");
         assert!(actions.contains(&pays(false)), "decline is always available");
+    }
+
+    /// A choose-one PickCards (tutor / fetchland search) must offer EACH
+    /// candidate as its own pick — plus "pick nothing" when optional. The old
+    /// single-canonical "pick lowest-id `min`" answer auto-resolved a min:0
+    /// search to picking nothing (the Arid Mesa "paid the cost, no search"
+    /// bug) and never let a human choose WHICH card a min:1 tutor fetched.
+    #[test]
+    fn pick_cards_offers_each_candidate_and_optional_none() {
+        use crate::actions::{ChoiceContext, ChoiceKind, ChoiceResponse, PendingChoice};
+        let pending = |min: u32, max: u32| -> (GameState, ObjectId, ObjectId) {
+            let mut s = GameState::new(2, 0);
+            let a = put(&mut s, 0, Zone::Library(0), creature_chars(1, 1));
+            let b = put(&mut s, 0, Zone::Library(0), creature_chars(1, 1));
+            s.pending_choice = Some(PendingChoice {
+                id: 9,
+                choosing_player: 0,
+                context: ChoiceContext::ResolvingStack(0),
+                kind: ChoiceKind::PickCards { candidates: vec![a, b], min, max },
+            });
+            (s, a, b)
+        };
+        let pick = |ids: Vec<ObjectId>| Action::SubmitResolutionChoice {
+            id: 9, response: ChoiceResponse::PickCards { picked: ids } };
+
+        // Optional choose-one (fetchland / "you may search").
+        let (s, a, b) = pending(0, 1);
+        let acts = legal_actions(&s, &CardRegistry::new());
+        assert!(acts.contains(&pick(vec![a])), "offers picking candidate a");
+        assert!(acts.contains(&pick(vec![b])), "offers picking candidate b");
+        assert!(acts.contains(&pick(vec![])), "optional → offers picking nothing");
+
+        // Mandatory choose-one (tutor that must find a card if able).
+        let (s, a, b) = pending(1, 1);
+        let acts = legal_actions(&s, &CardRegistry::new());
+        assert!(acts.contains(&pick(vec![a])) && acts.contains(&pick(vec![b])),
+            "each candidate is offered");
+        assert!(!acts.contains(&pick(vec![])),
+            "mandatory pick → no pick-nothing option");
     }
 
     // --- Combat enumeration caps (anti-OOM) --------------------------------
