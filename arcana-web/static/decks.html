@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Arcana — My Decks</title>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("arcana.theme")||"dark";}catch(e){document.documentElement.dataset.theme="dark";}</script>
+<link rel="stylesheet" href="/theme.css" />
+<style>
+  html, body { height: 100%; }
+  body {
+    margin: 0; min-height: 100dvh; display: flex; flex-direction: column;
+    background:
+      radial-gradient(1100px 520px at 50% -10%, color-mix(in srgb, var(--link) 10%, transparent), transparent 70%),
+      var(--bg);
+    color: var(--text); font-family: var(--font-sans);
+  }
+  .hall { flex: 1; width: min(1180px, 94vw); margin: 0 auto; padding: 26px 0 48px; }
+  .hall-title { text-align: center; margin: 6px 0 22px; }
+  .hall-title h1 {
+    font-family: var(--font-serif); font-weight: 600; letter-spacing: .42em;
+    text-transform: uppercase; font-size: 24px; margin: 0;
+    text-shadow: 0 0 24px color-mix(in srgb, var(--link) 40%, transparent);
+  }
+  .hall-title p { color: var(--text-faint); margin: 6px 0 0; font-size: 13px; letter-spacing: .05em; }
+
+  .toolbar { display: flex; justify-content: center; gap: 12px; margin-bottom: 22px; }
+  .btn {
+    font: inherit; cursor: pointer; color: var(--text); background: var(--bg-offset);
+    border: 1px solid var(--border); border-radius: var(--radius-control); padding: 9px 16px;
+  }
+  .btn.primary { background: var(--link); color: var(--bg); border-color: var(--link); font-weight: 600; }
+  .btn:hover { border-color: var(--border-muted); }
+
+  /* a family: a root deck + its forks/variations */
+  .family { margin: 0 0 26px; }
+  .family-line { display: grid; grid-template-columns: 260px 1fr; gap: 18px; align-items: start; }
+  .children { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+  .children:empty::before { content: "No forks or variations yet."; color: var(--text-faint); font-size: 12px; font-style: italic; }
+
+  .deck {
+    background: var(--bg-offset); border: 1px solid var(--border); border-radius: var(--radius-panel);
+    overflow: hidden; display: flex; flex-direction: column; --faction: var(--link);
+  }
+  .deck.root { box-shadow: var(--shadow-float); }
+  .deck .banner { height: 4px; background: var(--faction); }
+  .deck .art { aspect-ratio: 1.5; background: var(--bg-nav); overflow: hidden; }
+  .deck .art img { width: 100%; height: 100%; object-fit: cover; }
+  .deck .art.ph { display: flex; align-items: center; justify-content: center; color: var(--text-faint); font-size: 12px; }
+  .deck .body { padding: 11px 13px 12px; display: flex; flex-direction: column; gap: 7px; }
+  .deck .nm { font-family: var(--font-serif); font-size: 17px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .deck.child .nm { font-size: 15px; }
+  .meta { display: flex; align-items: center; gap: 10px; color: var(--text-muted); font-size: 12px; flex-wrap: wrap; }
+  .pips { display: inline-flex; gap: 5px; }
+  .pip { width: 13px; height: 13px; border-radius: 50%; border: 1px solid rgba(0,0,0,.35);
+         box-shadow: inset 0 1px 2px rgba(255,255,255,.25), 0 0 6px currentColor; }
+  .pip.W{background:var(--mana-w);color:var(--mana-w);} .pip.U{background:var(--mana-u);color:var(--mana-u);}
+  .pip.B{background:var(--mana-b);color:var(--mana-b);} .pip.R{background:var(--mana-r);color:var(--mana-r);}
+  .pip.G{background:var(--mana-g);color:var(--mana-g);} .pip.C{background:var(--mana-c);color:var(--mana-c);}
+  .badge { text-transform: uppercase; letter-spacing: .1em; font-size: 9px; padding: 2px 7px; border-radius: var(--radius-pill);
+           border: 1px solid var(--border-muted); color: var(--text-faint); }
+  .badge.native { color: var(--link); border-color: color-mix(in srgb, var(--link) 50%, var(--border)); }
+  .badge.fork { color: var(--mana-r); } .badge.variation { color: var(--mana-u); }
+  .ddiff { font-size: 11px; color: var(--text-faint); }
+  .ddiff .add { color: var(--mana-g); } .ddiff .rem { color: var(--mana-r); }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 6px 10px; margin-top: 2px; }
+  .actions a { cursor: pointer; font-size: 12px; color: var(--text-muted); }
+  .actions a:hover { color: var(--link-hover); }
+  .actions a.primary { color: var(--link); font-weight: 600; }
+  .actions a.danger:hover { color: var(--mana-r); }
+
+  .empty { text-align: center; color: var(--text-faint); padding: 60px 0; }
+  .muted { color: var(--text-muted); }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="wordmark">Arc<b>ana</b></span><span class="sub">my decks</span>
+    <span class="spacer"></span>
+    <a class="ghost" href="/">Stage →</a>
+    <a class="ghost" href="/deck">Deckbuilder →</a>
+    <span id="themeslot"></span>
+  </div>
+
+  <main class="hall">
+    <div class="hall-title">
+      <h1>My Decks</h1>
+      <p>Your collection — fork a list, spin variations, and track the lineage.</p>
+    </div>
+    <div class="toolbar">
+      <button class="btn primary" id="new">+ New deck</button>
+      <a class="btn" href="/deck">Open the deckbuilder</a>
+    </div>
+    <div id="families"></div>
+  </main>
+
+  <script src="/app.js"></script>
+  <script>
+  const A = window.Arcana;
+  A.mountThemeSwitcher && A.mountThemeSwitcher(document.getElementById("themeslot"));
+
+  const MANA_VAR = { W:"--mana-w", U:"--mana-u", B:"--mana-b", R:"--mana-r", G:"--mana-g", C:"--mana-c" };
+  const identityCache = new Map(); // deckId -> view
+  let sampleEmpty = null;
+
+  function renderPips(letters) {
+    const span = document.createElement("span"); span.className = "pips";
+    for (const c of (letters && letters.length ? letters : ["C"])) {
+      const d = document.createElement("span"); d.className = "pip " + c; span.appendChild(d);
+    }
+    return span;
+  }
+
+  async function identityFor(deck) {
+    if (identityCache.has(deck.id)) return identityCache.get(deck.id);
+    const ids = A.Decks.ids(deck.id).main;
+    let view = { identity: { name: deck.name, archetype: "", colors: 0 }, colors: [], portrait_name: null };
+    if (ids.length) {
+      try { view = await A.Api.deckIdentity(ids, deck.name); } catch {}
+    }
+    // apply this deck's saved identity overrides
+    if (deck.identity) {
+      if (deck.identity.name) view.identity.name = deck.identity.name;
+      if (deck.identity.archetype) view.identity.archetype = deck.identity.archetype;
+      if (deck.identity.portrait != null) {
+        view.identity.portrait = deck.identity.portrait;
+        const c = (view.portrait_candidates || []).find((c) => c.id === deck.identity.portrait);
+        if (c) view.portrait_name = c.name;
+      }
+    }
+    identityCache.set(deck.id, view);
+    return view;
+  }
+
+  function countOf(deck) { return A.Decks.ids(deck.id).main.length; }
+
+  function deckCard(deck, isRoot) {
+    const view = identityCache.get(deck.id) || { identity: { name: deck.name }, colors: [] };
+    const el = document.createElement("div");
+    el.className = "deck " + (isRoot ? "root" : "child");
+    const f = (view.colors && view.colors[0]) ? "var(" + MANA_VAR[view.colors[0]] + ")" : "var(--link)";
+    el.style.setProperty("--faction", f);
+
+    const banner = document.createElement("div"); banner.className = "banner"; el.appendChild(banner);
+
+    const art = document.createElement("div"); art.className = "art";
+    if (view.portrait_name) {
+      const img = document.createElement("img"); img.src = A.artCrop(view.portrait_name); img.alt = view.portrait_name;
+      img.onerror = () => { img.onerror = null; img.src = A.art(view.portrait_name); };
+      art.appendChild(img);
+    } else { art.classList.add("ph"); art.textContent = "no cards yet"; }
+    el.appendChild(art);
+
+    const body = document.createElement("div"); body.className = "body";
+    const nm = document.createElement("div"); nm.className = "nm";
+    nm.appendChild(document.createTextNode(view.identity.name || deck.name));
+    const badge = document.createElement("span"); badge.className = "badge " + deck.relation; badge.textContent = deck.relation;
+    nm.appendChild(badge);
+    body.appendChild(nm);
+
+    const meta = document.createElement("div"); meta.className = "meta";
+    meta.appendChild(renderPips(view.colors));
+    const arch = (view.identity.archetype || "").trim();
+    meta.appendChild(document.createTextNode((arch ? arch + " · " : "") + countOf(deck) + " cards"));
+    body.appendChild(meta);
+
+    // diff vs parent (forks/variations) — a teaser of the compare view
+    if (deck.parent) {
+      const pc = A.Decks.content(deck.parent).main, cc = A.Decks.content(deck.id).main;
+      const d = A.Decks.diff(pc, cc);
+      const add = d.added.reduce((n, e) => n + e.count, 0) + d.changed.reduce((n, e) => n + Math.max(0, e.to - e.from), 0);
+      const rem = d.removed.reduce((n, e) => n + e.count, 0) + d.changed.reduce((n, e) => n + Math.max(0, e.from - e.to), 0);
+      const dd = document.createElement("div"); dd.className = "ddiff";
+      dd.innerHTML = (add || rem)
+        ? 'vs parent: <span class="add">+' + add + '</span> <span class="rem">−' + rem + '</span>'
+        : "identical to parent";
+      body.appendChild(dd);
+    }
+
+    const actions = document.createElement("div"); actions.className = "actions";
+    const link = (label, fn, cls) => { const a = document.createElement("a"); a.textContent = label; if (cls) a.className = cls; a.onclick = fn; return a; };
+    actions.append(
+      link("Open", () => { location.href = "/deck?deck=" + deck.id; }, "primary"),
+      link("Play", () => { location.href = "/?deck=" + deck.id; }),
+      link("Fork", () => doFork(deck, "fork")),
+      link("Vary", () => doFork(deck, "variation")),
+      link("Rename", () => doRename(deck)),
+      link("Duplicate", () => { A.Decks.duplicate(deck.id); refresh(); }),
+      link("Export", () => doExport(deck)),
+      link("Delete", () => doDelete(deck), "danger"),
+    );
+    body.appendChild(actions);
+    el.appendChild(body);
+    return el;
+  }
+
+  function doFork(deck, relation) {
+    const def = deck.name + (relation === "variation" ? " (variation)" : " (fork)");
+    const name = prompt(relation === "variation" ? "Name this variation:" : "Name this fork:", def);
+    if (name == null) return;
+    A.Decks.fork(deck.id, name.trim() || def, relation);
+    refresh();
+  }
+  function doRename(deck) {
+    const name = prompt("Rename deck:", deck.name);
+    if (name == null) return;
+    A.Decks.rename(deck.id, name.trim() || deck.name);
+    identityCache.delete(deck.id);
+    refresh();
+  }
+  function doDelete(deck) {
+    const kids = A.Decks.family(deck.id).length - 1;
+    const msg = kids > 0
+      ? "Delete \"" + deck.name + "\"? Its " + kids + " fork(s)/variation(s) will be kept and re-parented."
+      : "Delete \"" + deck.name + "\"?";
+    if (!confirm(msg)) return;
+    A.Decks.remove(deck.id); identityCache.delete(deck.id); refresh();
+  }
+  function doExport(deck) {
+    const c = A.Decks.content(deck.id);
+    const lines = [];
+    for (const e of c.main) lines.push(e.count + " " + (e.info ? e.info.name : e.id));
+    if (c.side && c.side.length) { lines.push("", "Sideboard"); for (const e of c.side) lines.push(e.count + " " + (e.info ? e.info.name : e.id)); }
+    const blob = new Blob([lines.join("\n") + "\n"], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = deck.name.replace(/[^\w.-]+/g, "_") + ".txt";
+    a.click(); URL.revokeObjectURL(a.href);
+  }
+  function doNew() {
+    const name = prompt("Name your new deck:", "New deck");
+    if (name == null) return;
+    const id = A.Decks.create(name.trim() || "New deck", [], []);
+    location.href = "/deck?deck=" + id; // open the empty deck to build it
+  }
+
+  async function refresh() {
+    const wrap = document.getElementById("families");
+    const decks = A.Decks.list();
+    if (!decks.length) {
+      wrap.innerHTML = '<div class="empty">No decks yet.<br>Create one, or build a list in the deckbuilder.</div>';
+      return;
+    }
+    // Warm identities (parallel) so cards paint with colors/portrait at once.
+    await Promise.all(decks.map(identityFor));
+    // Roots = decks with no (live) parent; each root owns a family block.
+    const byId = A.Decks.all();
+    const roots = decks.filter((d) => !d.parent || !byId[d.parent]);
+    wrap.innerHTML = "";
+    for (const root of roots) {
+      const fam = document.createElement("div"); fam.className = "family";
+      const line = document.createElement("div"); line.className = "family-line";
+      line.appendChild(deckCard(root, true));
+      const kids = document.createElement("div"); kids.className = "children";
+      for (const child of A.Decks.family(root.id).filter((d) => d.id !== root.id)) {
+        kids.appendChild(deckCard(child, false));
+      }
+      line.appendChild(kids);
+      fam.appendChild(line);
+      wrap.appendChild(fam);
+    }
+  }
+
+  document.getElementById("new").onclick = doNew;
+  refresh();
+  </script>
+</body>
+</html>

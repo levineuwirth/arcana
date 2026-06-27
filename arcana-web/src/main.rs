@@ -68,6 +68,7 @@ use tokio::sync::{mpsc, oneshot};
 /// The single-page UI, embedded so the binary is self-contained.
 const INDEX_HTML: &str = include_str!("../static/index.html");
 const STAGE_HTML: &str = include_str!("../static/stage.html");
+const DECKS_HTML: &str = include_str!("../static/decks.html");
 /// The deckbuilder page (browse the catalog, build a deck, play it).
 const DECK_HTML: &str = include_str!("../static/deck.html");
 /// Shared design-token stylesheet (themes, type, mana palette, card component).
@@ -575,6 +576,11 @@ async fn index() -> Html<&'static str> {
     Html(INDEX_HTML)
 }
 
+/// The deck collection / management page (lineage + version history).
+async fn decks() -> Html<&'static str> {
+    Html(DECKS_HTML)
+}
+
 async fn deckbuilder() -> Html<&'static str> {
     Html(DECK_HTML)
 }
@@ -1007,6 +1013,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(stage))
         .route("/duel", get(index))
+        .route("/decks", get(decks))
         .route("/deck", get(deckbuilder))
         .route("/theme.css", get(theme_css))
         .route("/app.js", get(app_js))

@@ -143,6 +143,7 @@
   <div class="topbar">
     <span class="wordmark">Arc<b>ana</b></span>
     <span class="spacer"></span>
+    <a class="ghost" href="/decks">My Decks →</a>
     <a class="ghost" href="/deck">Deckbuilder →</a>
     <span id="themeslot"></span>
   </div>
@@ -485,6 +486,9 @@
   (async function init() {
     try {
       await deckOptions();
+      // Preselect a deck if linked from My Decks (/?deck=<id>).
+      const wanted = new URLSearchParams(location.search).get("deck");
+      if (wanted && A.Decks.get(wanted)) document.getElementById("your-deck").value = "saved:" + wanted;
       await Promise.all([loadYourDeck(), loadFoes()]);
     } catch (e) {
       setHint("Failed to load the Stage. Is the server running?");

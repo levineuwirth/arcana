@@ -108,7 +108,8 @@
 <body>
   <header class="topbar">
     <span class="wordmark">Arc<b>ana</b></span><span class="sub">deckbuilder</span>
-    <a href="/">← Play</a>
+    <a class="ghost" href="/decks">My Decks</a>
+    <a class="ghost" href="/">Stage →</a>
     <span class="spacer"></span>
     <input id="deckname" placeholder="deck name" size="14" />
     <button id="save">Save</button>
@@ -639,6 +640,9 @@ async function init() {
   formats.forEach((f, i) => { const o = document.createElement("option"); o.value = i; o.textContent = f.name; fsel.appendChild(o); });
   curFormat = formats[0] || null;
   refreshLoadSelect();
+  // Open a specific deck if linked from My Decks (/deck?deck=<id>).
+  const wanted = new URLSearchParams(location.search).get("deck");
+  if (wanted && Arcana.Decks.get(wanted)) loadDeck(wanted);
   render();
   search(); // initial unconstrained page
 }
