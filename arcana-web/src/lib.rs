@@ -288,6 +288,11 @@ pub struct StateResponse {
     /// Per-permanent in-game card power for the human's board (cockpit panel),
     /// sorted by win% contribution descending.
     pub card_power: Vec<CardPower>,
+    /// Notable resolved game events since this seat last saw the state, as
+    /// ready-to-log lines from its perspective ("You gain 3 life", "Bolt deals 3
+    /// to Grizzly Bears", "Grizzly Bears dies") — enriches the play log with
+    /// effect outcomes, not just actions.
+    pub events: Vec<String>,
 }
 
 /// The number of cards a London-mulligan bottoming asks for, or `None` if no
@@ -818,6 +823,18 @@ pub struct GameCore {
     /// `GameCore`, a client may only act when it owns the pending decision; this
     /// is what `*_for(seat, …)` validates against (`ApplyError::NotYourTurn`).
     awaiting: Option<PlayerId>,
+    /// Per-seat cursor into `session.state().event_log`: how far each seat has
+    /// been shown. `snapshot_for(seat)` emits the new slice as log lines and
+    /// advances it. Seeded to the post-setup length so opening draws aren't
+    /// replayed; per-seat so two networked clients each get their own stream.
+    events_seen: Vec<usize>,
+}
+
+impl GameCore {
+    /// A fresh per-seat event cursor seeded past `session`'s setup events.
+    fn fresh_event_cursor(session: &Session<'static>) -> Vec<usize> {
+        vec![session.state().event_log.len(); 2]
+    }
 }
 
 impl GameCore {
@@ -876,7 +893,7 @@ impl GameCore {
         };
         let seats = vec![Seat::Human, Self::make_bot_with_difficulty(seed, difficulty)];
         let session = Session::new(vec![human_deck, opp_deck], reg, seats, seed);
-        Ok(Self { reg, session, legal: Vec::new(), awaiting: None })
+        Ok(Self { reg, events_seen: Self::fresh_event_cursor(&session), session, legal: Vec::new(), awaiting: None })
     }
 
     /// Start a fresh game. `seed` controls the shuffle/RNG (the deck list itself
@@ -898,7 +915,7 @@ impl GameCore {
     ) -> Self {
         let seats = vec![Seat::Human, Self::make_bot(seed)];
         let session = Session::new(vec![human, opponent], reg, seats, seed);
-        Self { reg, session, legal: Vec::new(), awaiting: None }
+        Self { reg, events_seen: Self::fresh_event_cursor(&session), session, legal: Vec::new(), awaiting: None }
     }
 
     /// Start a networked duel: BOTH seats are human (no bot). Seat 0 plays
@@ -909,7 +926,7 @@ impl GameCore {
     ) -> Self {
         let seats = vec![Seat::Human, Seat::Human];
         let session = Session::new(vec![deck0, deck1], reg, seats, seed);
-        Self { reg, session, legal: Vec::new(), awaiting: None }
+        Self { reg, events_seen: Self::fresh_event_cursor(&session), session, legal: Vec::new(), awaiting: None }
     }
 
     /// Read-only access to the registry (for callers that build a replacement
@@ -986,7 +1003,22 @@ impl GameCore {
         let eval = eval_for(self.session.state(), seat);
         let library = library_stats(self.session.state(), self.reg, seat);
         let card_power = card_power_for(self.session.state(), seat);
-        StateResponse { view, recent, eval, library, combat, bottom, card_power }
+        let events = self.drain_events(seat);
+        StateResponse { view, recent, eval, library, combat, bottom, card_power, events }
+    }
+
+    /// Notable resolved events since `seat` last saw the state, as log lines from
+    /// its perspective; advances that seat's cursor. Empty on a no-op poll.
+    fn drain_events(&mut self, seat: PlayerId) -> Vec<String> {
+        let idx = seat as usize;
+        let log_len = self.session.state().event_log.len();
+        while self.events_seen.len() <= idx { self.events_seen.push(log_len); }
+        let start = self.events_seen[idx].min(log_len);
+        self.events_seen[idx] = log_len;
+        let state = self.session.state();
+        state.event_log[start..].iter()
+            .filter_map(|e| arcana_core::render::describe_event(e, state, self.reg, seat))
+            .collect()
     }
 
     /// Rank the human's current legal actions by value-MC lookahead for the
@@ -1658,7 +1690,7 @@ mod tests {
         let deck = arcana_cards::sample_deck(reg, DECK_SEED);
         let seats = vec![Seat::Human, Seat::Human];
         let session = Session::new(vec![deck.clone(), deck], reg, seats, seed);
-        GameCore { reg, session, legal: Vec::new(), awaiting: None }
+        GameCore { reg, events_seen: GameCore::fresh_event_cursor(&session), session, legal: Vec::new(), awaiting: None }
     }
 
     /// With two human seats sharing one game, each seat's snapshot is from ITS

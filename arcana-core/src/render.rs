@@ -21,6 +21,65 @@ fn card_name(state: &GameState, registry: &CardRegistry, id: crate::objects::Obj
         .unwrap_or_else(|| "<hidden>".into())
 }
 
+/// A human-readable counter label ("+1/+1", "-1/-1", "loyalty", "verse", …).
+fn counter_label(kind: &crate::types::CounterKind, registry: &CardRegistry) -> String {
+    use crate::types::CounterKind::*;
+    match kind {
+        PlusOnePlusOne => "+1/+1".into(),
+        MinusOneMinusOne => "-1/-1".into(),
+        Named(sym) => registry.interner().resolve(*sym).unwrap_or("").to_string(),
+        other => format!("{other:?}").to_lowercase(),
+    }
+}
+
+/// A one-line, player-perspective description of a notable resolved game event,
+/// for the play log ("You gain 3 life", "Bolt deals 3 to Grizzly Bears",
+/// "Grizzly Bears dies"). `None` for structural/noisy events (phases, taps,
+/// spell-cast — casts are already logged as actions). `perspective` decides
+/// "You" vs "Opponent".
+pub fn describe_event(
+    event: &crate::events::GameEvent,
+    state: &GameState,
+    registry: &CardRegistry,
+    perspective: PlayerId,
+) -> Option<String> {
+    use crate::events::{DamageTarget, GameEvent::*};
+    let who = |p: PlayerId| if p == perspective { "You" } else { "Opponent" };
+    // subject + correctly-conjugated verb ("You gain" / "Opponent gains")
+    let act = |p: PlayerId, base: &str| {
+        if p == perspective { format!("You {base}") } else { format!("Opponent {base}s") }
+    };
+    // LTB events (discard / mill / dies) carry the PRE-move id, which is re-ided
+    // on the zone change (CR 400.7) — so fall back to a generic noun rather than
+    // the "?" / "<hidden>" placeholders.
+    let name = |id: ObjectId| {
+        let n = card_name(state, registry, id);
+        if n == "?" || n == "<hidden>" { "a card".to_string() } else { n }
+    };
+    Some(match event {
+        LifeGained { player, amount } => format!("{} {amount} life", act(*player, "gain")),
+        LifeLost { player, amount } => format!("{} {amount} life", act(*player, "lose")),
+        DamageDealt { source, target, amount, .. } => {
+            let tgt = match target {
+                DamageTarget::Object(id) => name(*id),
+                DamageTarget::Player(p) => who(*p).to_string(),
+            };
+            format!("{} deals {amount} to {tgt}", name(*source))
+        }
+        DrawCard { player, .. } => act(*player, "draw") + " a card",
+        Discarded { player, object_id } => format!("{} {}", act(*player, "discard"), name(*object_id)),
+        Milled { player, object_id } => format!("{} {}", act(*player, "mill"), name(*object_id)),
+        Dies { object_id } => format!("{} dies", name(*object_id)),
+        Sacrifice { player, object_id } => format!("{} {}", act(*player, "sacrifice"), name(*object_id)),
+        Exiled { object_id, .. } => format!("{} is exiled", name(*object_id)),
+        CounterAdded { object_id, kind, count } => format!(
+            "{} gets {count} {} counter{}",
+            name(*object_id), counter_label(kind, registry), if *count == 1 { "" } else { "s" }),
+        TokenCreated { object_id, controller } => format!("{} {}", act(*controller, "create"), name(*object_id)),
+        _ => return None,
+    })
+}
+
 /// The printed text of `source`'s activated ability `index`, trimmed to a
 /// readable length (so an action label is self-describing rather than
 /// "[ability N]"). `None` if the source/def/ability isn't found.
@@ -273,5 +332,31 @@ pub fn render_oneline(state: &GameState) -> String {
         state.turn.turn_number, state.turn.phase, state.turn.step, lives.join(" "))
 }
 
-// Tests live in arcana-ai (catalog access; see record.rs note on the dev-dep
-// type-unification gotcha).
+// Most render tests live in arcana-ai (catalog access; see record.rs note on
+// the dev-dep type-unification gotcha). `describe_event` needs no catalog, so it
+// is tested here directly.
+#[cfg(test)]
+mod tests {
+    use super::describe_event;
+    use crate::events::GameEvent;
+    use crate::registry::CardRegistry;
+    use crate::state::GameState;
+
+    #[test]
+    fn describe_event_renders_outcomes_from_perspective() {
+        let s = GameState::new(2, 0);
+        let reg = CardRegistry::new();
+        let d = |e: &GameEvent, p| describe_event(e, &s, &reg, p);
+        assert_eq!(d(&GameEvent::LifeGained { player: 0, amount: 3 }, 0).as_deref(),
+            Some("You gain 3 life"));
+        assert_eq!(d(&GameEvent::LifeLost { player: 1, amount: 2 }, 0).as_deref(),
+            Some("Opponent loses 2 life"));
+        assert_eq!(d(&GameEvent::DrawCard { player: 0, object_id: 1 }, 0).as_deref(),
+            Some("You draw a card"));
+        // Perspective flips for the other seat.
+        assert_eq!(d(&GameEvent::LifeGained { player: 0, amount: 3 }, 1).as_deref(),
+            Some("Opponent gains 3 life"));
+        // Structural / noisy events aren't logged.
+        assert_eq!(d(&GameEvent::Tapped { object_id: 1 }, 0), None);
+    }
+}

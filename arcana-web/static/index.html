@@ -289,6 +289,8 @@
   #log .you { color: var(--text); border-left-color: var(--blk); }
   #log .opp { color: var(--text-muted); border-left-color: var(--atk); }
   #log .sys { color: var(--text-faint); font-style: italic; }
+  /* effect outcomes (life/damage/draw/death) — subtle, indented under the action */
+  #log .evt { color: var(--text-muted); border-left-color: var(--border-muted); font-size: 11px; padding-left: 14px; }
 
   /* ---- Eval panel (chess-style bar) ---- */
   .evalwrap { display: flex; flex-direction: column; gap: 6px; }
@@ -2221,6 +2223,11 @@ function adopt(resp, isAdvance) {
     for (const r of resp.recent) {
       if (r.player !== me) logLine("opp", "Opponent: " + r.description);
     }
+  }
+  // Effect outcomes (life/damage/draw/death/…) since this seat last saw the
+  // state — the server cursor delivers each once, so log them whenever present.
+  if (resp.events && resp.events.length) {
+    for (const line of resp.events) logLine("evt", line);
   }
   G.resp = resp;
   renderAll();
