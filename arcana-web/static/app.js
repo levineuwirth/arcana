@@ -316,6 +316,7 @@
     autotap: (objectId) => call("POST", "/autotap", { object_id: objectId }),
     activate: (objectId) => call("POST", "/activate", { object_id: objectId }),
     autoPass: (level) => call("POST", "/autopass", { level }),
+    warmArt: (names) => call("POST", "/art/warm", { names }),
     bottom: (ids) => call("POST", "/bottom", { ids }),
     suggest: (deep) => call("GET", "/suggest" + (deep ? "?deep=true" : "")),
     newGame: (body) => call("POST", "/new", body || {}),

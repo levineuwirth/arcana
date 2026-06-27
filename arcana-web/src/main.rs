@@ -488,6 +488,38 @@ struct ArtRequest {
     name: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct WarmRequest {
+    names: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct WarmResponse {
+    requested: usize,
+    ok: usize,
+    failed: usize,
+}
+
+/// Pre-download (warm) the art cache for a batch of card names so the deckbuilder
+/// doesn't trickle images in. Cache hits are instant; misses fetch through the
+/// same throttle as `/art`. The client sends modest batches and shows progress.
+async fn post_art_warm(State(app): State<AppState>, body: String) -> Response {
+    let req: WarmRequest = match serde_json::from_str(&body) {
+        Ok(r) => r,
+        Err(e) => {
+            return (StatusCode::BAD_REQUEST, err(format!("invalid /art/warm body: {e}"))).into_response()
+        }
+    };
+    let mut ok = 0usize;
+    let requested = req.names.len().min(200); // bound work per request
+    for name in req.names.into_iter().take(200) {
+        if app.art.fetch(&name).await.is_some() {
+            ok += 1;
+        }
+    }
+    Json(WarmResponse { requested, ok, failed: requested - ok }).into_response()
+}
+
 /// Cached/proxied card art (see [`ArtCache`]). Long-lived cache headers so the
 /// browser also caches it; a miss/failure 404s and the client shows its fallback.
 async fn get_art(State(app): State<AppState>, Query(q): Query<ArtRequest>) -> Response {
@@ -640,6 +672,7 @@ async fn main() {
         .route("/search", post(post_search))
         .route("/new", post(post_new))
         .route("/art", get(get_art))
+        .route("/art/warm", post(post_art_warm))
         .with_state(AppState { tx, art: Arc::new(ArtCache::new()) });
 
     // Port is overridable via PORT for convenience; defaults to 8080.

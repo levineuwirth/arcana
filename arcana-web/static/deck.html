@@ -116,7 +116,9 @@
         <input id="q-cmin" type="number" min="0" placeholder="mv≥" style="width:64px" />
         <input id="q-cmax" type="number" min="0" placeholder="mv≤" style="width:64px" />
         <button type="submit">Search</button>
+        <button type="button" id="cacheart" class="ghost" title="Pre-download art for the results + deck so images don't trickle in">Cache art</button>
         <span id="results-meta" class="results-meta"></span>
+        <span id="cacheart-msg" class="muted"></span>
       </form>
       <div id="results" class="grid"><span class="empty-note">Search the catalog to add cards.</span></div>
     </section>
@@ -397,8 +399,38 @@ async function playDeck() {
   catch (e) { alert("Could not start a game with this deck."); }
 }
 
+// ---- pre-download art for the current results + deck (no trickle) ----
+async function cacheArt() {
+  const names = new Set();
+  for (const c of (window._lastResults || [])) names.add(c.name);
+  for (const { info } of main.values()) names.add(info.name);
+  for (const { info } of side.values()) names.add(info.name);
+  const list = [...names];
+  const btn = document.getElementById("cacheart");
+  const msg = document.getElementById("cacheart-msg");
+  if (!list.length) { msg.textContent = "nothing to cache"; return; }
+  btn.disabled = true;
+  let done = 0;
+  const BATCH = 24;
+  try {
+    for (let i = 0; i < list.length; i += BATCH) {
+      const batch = list.slice(i, i + BATCH);
+      await Arcana.Api.warmArt(batch);
+      done += batch.length;
+      msg.textContent = "Caching art… " + done + "/" + list.length;
+    }
+    msg.textContent = "Art cached (" + list.length + ")";
+    render(); // re-render so any fallback images reload from the now-warm cache
+  } catch (e) {
+    msg.textContent = "art cache failed";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 // ---- wire ----
 document.getElementById("search").onsubmit = (e) => { e.preventDefault(); search(); };
+document.getElementById("cacheart").onclick = cacheArt;
 document.getElementById("save").onclick = saveDeck;
 document.getElementById("clear").onclick = () => { if (confirm("Clear the deck?")) clearDeck(); };
 document.getElementById("loadsel").onchange = (e) => { if (e.target.value) loadDeck(e.target.value); };
