@@ -53,7 +53,10 @@ use arcana_core::objects::ObjectId;
 use arcana_core::registry::CardRegistry;
 use arcana_core::types::CardId;
 use arcana_ai::session::AutoPass;
-use arcana_web::{resolve_import, CombatSubmission, GameCore, ImportedDeck, StateResponse, Suggestion};
+use arcana_web::{
+    derive_deck_identity, resolve_import, CombatSubmission, DeckIdentity, GameCore,
+    ImportedDeck, StateResponse, Suggestion,
+};
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Response};
@@ -90,6 +93,11 @@ enum Command {
         reply: oneshot::Sender<LegalityReport>,
     },
     SampleDeck { reply: oneshot::Sender<Vec<CardId>> },
+    DeckIdentity {
+        deck: Vec<CardId>,
+        name: Option<String>,
+        reply: oneshot::Sender<DeckIdentity>,
+    },
     Suggest { deep: bool, reply: oneshot::Sender<Vec<Suggestion>> },
     New {
         seed: Option<u64>,
@@ -451,6 +459,9 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>) {
             }
             Command::SampleDeck { reply } => {
                 let _ = reply.send(arcana_cards::sample_deck(reg, arcana_web::DECK_SEED));
+            }
+            Command::DeckIdentity { deck, name, reply } => {
+                let _ = reply.send(derive_deck_identity(core.registry(), &deck, name));
             }
             Command::Suggest { deep, reply } => {
                 let _ = reply.send(core.suggest(deep));
@@ -830,6 +841,29 @@ async fn get_sample_deck(State(app): State<AppState>) -> Response {
     }
 }
 
+/// `POST /deck-identity` → derive the default presentation identity (colors,
+/// signature portrait, archetype, faction name) for a decklist. The Stage uses
+/// it to render a deck as a faction; the player can then override any field.
+/// Body: `{ "deck": [cardId,…], "name": "optional saved name" }`.
+async fn post_deck_identity(State(app): State<AppState>, body: String) -> Response {
+    #[derive(serde::Deserialize, Default)]
+    struct Req {
+        #[serde(default)]
+        deck: Vec<CardId>,
+        #[serde(default)]
+        name: Option<String>,
+    }
+    let req: Req = serde_json::from_str(&body).unwrap_or_default();
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::DeckIdentity { deck: req.deck, name: req.name, reply }).is_err() {
+        return worker_gone();
+    }
+    match rx.await {
+        Ok(identity) => Json(identity).into_response(),
+        Err(_) => worker_gone(),
+    }
+}
+
 async fn post_new(State(app): State<AppState>, body: String) -> Response {
     // Lenient: empty body is allowed (→ default → time-based seed, sample deck).
     let req: NewRequest = serde_json::from_str(&body).unwrap_or_default();
@@ -874,6 +908,7 @@ async fn main() {
         .route("/import", post(post_import))
         .route("/legality", post(post_legality))
         .route("/sample-deck", get(get_sample_deck))
+        .route("/deck-identity", post(post_deck_identity))
         .route("/glossary", get(get_glossary))
         .route("/state", get(get_state))
         .route("/suggest", get(get_suggest))

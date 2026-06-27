@@ -461,6 +461,122 @@ impl Default for DeckIdentity {
     }
 }
 
+/// Derive the DEFAULT presentation identity for a decklist — the values the
+/// player then overrides on the Stage. Operates on the full multiset (repeats
+/// matter for the curve); unknown ids are skipped.
+///
+/// * `colors`  — union of every card's colors (WUBRG heraldry).
+/// * `portrait`— the signature card: highest mana value among non-lands
+///   (tie-broken by name for determinism).
+/// * `archetype` — "aggro" / "midrange" / "control" from the non-land curve.
+/// * `name`    — the supplied saved name, else a faction-style default built
+///   from the color combo + archetype ("Boros Aggro", "Esper Control").
+pub fn derive_deck_identity(
+    reg: &CardRegistry, deck: &[CardId], name: Option<String>,
+) -> DeckIdentity {
+    use arcana_core::catalog::card_info;
+    let infos: Vec<_> = deck.iter().filter_map(|&id| card_info(reg, id)).collect();
+
+    let mut colors = ColorSet::default();
+    for ci in &infos {
+        for &c in &ci.colors {
+            colors = colors | color_from_char(c);
+        }
+    }
+
+    // Signature card: the biggest non-land bomb (deterministic tie-break).
+    let portrait = infos.iter()
+        .filter(|ci| !ci.is_land)
+        .max_by(|a, b| a.mana_value.cmp(&b.mana_value).then_with(|| b.name.cmp(&a.name)))
+        .map(|ci| ci.id);
+
+    let nonland: Vec<&arcana_core::catalog::CardInfo> =
+        infos.iter().filter(|ci| !ci.is_land).collect();
+    let archetype = derive_archetype(&nonland);
+
+    let name = name.filter(|n| !n.trim().is_empty()).unwrap_or_else(|| {
+        format!("{} {}", color_combo_name(colors), archetype_title(&archetype))
+    });
+
+    DeckIdentity { name, colors, portrait, archetype }
+}
+
+/// One WUBRG letter → its [`ColorSet`] bit (anything else → empty).
+fn color_from_char(c: char) -> ColorSet {
+    match c.to_ascii_uppercase() {
+        'W' => ColorSet::white(),
+        'U' => ColorSet::blue(),
+        'B' => ColorSet::black(),
+        'R' => ColorSet::red(),
+        'G' => ColorSet::green(),
+        _ => ColorSet::default(),
+    }
+}
+
+/// Infer an archetype from the non-land curve. Heuristic, intentionally
+/// simple — it just sets a sensible DEFAULT the player can retag:
+/// * aggro   — low curve and creature-dense,
+/// * control — top-heavy, or light on creatures and spell-dense,
+/// * midrange— everything else.
+fn derive_archetype(nonland: &[&arcana_core::catalog::CardInfo]) -> String {
+    let n = nonland.len();
+    if n == 0 {
+        return "midrange".to_string();
+    }
+    let n_f = n as f64;
+    let avg_mv = nonland.iter().map(|c| c.mana_value as f64).sum::<f64>() / n_f;
+    let creature_ratio =
+        nonland.iter().filter(|c| c.is_creature).count() as f64 / n_f;
+    let spell_ratio =
+        nonland.iter().filter(|c| c.is_instant || c.is_sorcery).count() as f64 / n_f;
+
+    if avg_mv <= 2.5 && creature_ratio >= 0.5 {
+        "aggro".to_string()
+    } else if avg_mv >= 3.3 || (creature_ratio < 0.35 && spell_ratio >= 0.30) {
+        "control".to_string()
+    } else {
+        "midrange".to_string()
+    }
+}
+
+/// Title-case an archetype tag for the default deck name.
+fn archetype_title(a: &str) -> &'static str {
+    match a {
+        "aggro" => "Aggro",
+        "control" => "Control",
+        _ => "Midrange",
+    }
+}
+
+/// Faction-style name for a color combo — mono / guild / shard / wedge /
+/// four-color (Nephilim) / five-color — the Civ-faction flavor on the Stage.
+fn color_combo_name(colors: ColorSet) -> String {
+    let order = [
+        ('W', ColorSet::white()), ('U', ColorSet::blue()), ('B', ColorSet::black()),
+        ('R', ColorSet::red()), ('G', ColorSet::green()),
+    ];
+    let present: String = order.iter()
+        .filter(|(_, cs)| colors.0 & cs.0 != 0)
+        .map(|(ch, _)| *ch)
+        .collect();
+    let name = match present.as_str() {
+        "" => "Colorless",
+        "W" => "Mono-White", "U" => "Mono-Blue", "B" => "Mono-Black",
+        "R" => "Mono-Red", "G" => "Mono-Green",
+        "WU" => "Azorius", "WB" => "Orzhov", "WR" => "Boros", "WG" => "Selesnya",
+        "UB" => "Dimir", "UR" => "Izzet", "UG" => "Simic",
+        "BR" => "Rakdos", "BG" => "Golgari", "RG" => "Gruul",
+        "WUB" => "Esper", "WUR" => "Jeskai", "WUG" => "Bant",
+        "WBR" => "Mardu", "WBG" => "Abzan", "WRG" => "Naya",
+        "UBR" => "Grixis", "UBG" => "Sultai", "URG" => "Temur", "BRG" => "Jund",
+        "WUBR" => "Yore", "WUBG" => "Witch", "WURG" => "Ink",
+        "WBRG" => "Dune", "UBRG" => "Glint",
+        "WUBRG" => "Five-Color",
+        _ => return present, // unreachable given the WUBRG order
+    };
+    name.to_string()
+}
+
 /// Bot strength dial → Monte-Carlo search budget.
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Difficulty {
@@ -1146,6 +1262,36 @@ mod tests {
         assert_eq!(back.seats.len(), 2);
         assert!(matches!(back.seats[0], SeatSpec::Local { .. }));
         assert!(matches!(back.first_player, FirstPlayer::Seat { index: 0 }));
+    }
+
+    #[test]
+    fn color_combo_names_are_factions() {
+        assert_eq!(color_combo_name(ColorSet::red()), "Mono-Red");
+        assert_eq!(color_combo_name(ColorSet::white() | ColorSet::red()), "Boros");
+        assert_eq!(color_combo_name(
+            ColorSet::white() | ColorSet::blue() | ColorSet::black()), "Esper");
+        assert_eq!(color_combo_name(
+            ColorSet::white() | ColorSet::black() | ColorSet::red()), "Mardu");
+        assert_eq!(color_combo_name(ColorSet::default()), "Colorless");
+        let five = ColorSet::white() | ColorSet::blue() | ColorSet::black()
+            | ColorSet::red() | ColorSet::green();
+        assert_eq!(color_combo_name(five), "Five-Color");
+    }
+
+    #[test]
+    fn derive_deck_identity_from_sample_deck() {
+        let reg = leaked_catalog();
+        let deck = arcana_cards::sample_deck(reg, 3);
+        assert!(!deck.is_empty());
+        let id = derive_deck_identity(reg, &deck, None);
+        assert_ne!(id.colors.0, 0, "a sample deck has colored cards");
+        assert!(id.portrait.is_some(), "a deck has a signature non-land card");
+        assert!(!id.name.trim().is_empty(), "a default faction name is produced");
+        assert!(["aggro", "midrange", "control"].contains(&id.archetype.as_str()),
+            "archetype is one of the three: {}", id.archetype);
+        // A supplied (saved) name overrides the derived default.
+        let named = derive_deck_identity(reg, &deck, Some("My Brew".into()));
+        assert_eq!(named.name, "My Brew");
     }
 
     /// The catalog query layer works over the real ~20k-card catalog: an
