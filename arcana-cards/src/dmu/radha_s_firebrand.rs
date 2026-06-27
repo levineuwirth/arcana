@@ -12,23 +12,27 @@
 //!    than this creature's power" restriction is a dynamic-power filter
 //!    not expressible in the target filter; any creature is targetable.
 //! 2. {5}{R}, once each turn: this creature gets +2/+2 until end of
-//!    turn. PARTIAL: the Domain "{1} less per basic land type" cost
-//!    reduction can't be expressed in a fixed ManaCost; GAP'd.
+//!    turn. The Domain "{1} less to activate per basic land type among
+//!    lands you control" reduction is wired via
+//!    `ActivationCost::cost_reduction` (`script::domain`).
 
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
 };
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{
+    CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine,
+};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -47,9 +51,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         power: Some(PtValue::Fixed(3)),
         toughness: Some(PtValue::Fixed(1)),
-        // GAP: Domain is not an evergreen KeywordAbility; its only
-        // mechanical effect (cost reduction) is on the activated
-        // ability and is GAP'd there.
+        // Domain is not an evergreen KeywordAbility; its only mechanical
+        // effect here (cost reduction) lives on the activated ability via
+        // `ActivationCost::cost_reduction`.
         keywords: vec![],
         ..Default::default()
     };
@@ -70,10 +74,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                        Activate only once each turn."
                     .into(),
                 cost: ActivationCost {
-                    // GAP: "{1} less per basic land type" cost reduction
-                    // is not expressible in a fixed ManaCost.
                     mana_cost: ManaCost::parse("{5}{R}").unwrap(),
                     once_per_turn: true,
+                    // Domain — "{1} less to activate for each basic land
+                    // type among lands you control" (CR 702.27).
+                    cost_reduction: Some(domain_reduction),
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![],
@@ -116,4 +121,16 @@ fn pump_self(
         duration: Duration::EndOfTurn,
         keywords: vec![],
     }]
+}
+
+/// Domain (CR 702.27) — the {5}{R} ability costs {1} less to activate for
+/// each basic land type among lands you control. `controller` is the
+/// activator; `script::domain` returns `0..=5`.
+fn domain_reduction(
+    state: &GameState,
+    _source: ObjectId,
+    controller: PlayerId,
+    reg: &CardRegistry,
+) -> u32 {
+    script::domain(state, controller, reg)
 }

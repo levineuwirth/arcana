@@ -96,6 +96,41 @@ pub fn count_matching(
         .count() as u32
 }
 
+/// CR 702.27 — Domain: the number of basic land types (Plains, Island,
+/// Swamp, Mountain, Forest) among lands `you` control. Each type counts
+/// once no matter how many lands bear it, and a single land with several
+/// basic types (a dual land, or a land made all-basic-types by Urborg /
+/// Prismatic Omen) contributes each of its types. Range `0..=5`. The
+/// canonical "X = your domain" resolution amount and the
+/// [`crate::registry::ActivationCostReductionFn`] count for "{1} less per
+/// basic land type among lands you control".
+///
+/// Reads the lands' current subtypes (so layer-granted basic land types
+/// count); resolves the five basic-type symbols via `reg`, returning `0`
+/// for any never interned. Total and panic-free.
+pub fn domain(state: &GameState, you: PlayerId, reg: &CardRegistry) -> u32 {
+    if !valid(state, you) {
+        return 0;
+    }
+    const BASICS: [&str; 5] = ["Plains", "Island", "Swamp", "Mountain", "Forest"];
+    let syms: Vec<_> = BASICS
+        .iter()
+        .filter_map(|b| reg.interner().lookup(b))
+        .collect();
+    syms.iter()
+        .filter(|&&sym| {
+            state
+                .objects
+                .objects_in_zone(Zone::Battlefield)
+                .any(|o| {
+                    o.controller == you
+                        && o.is_land()
+                        && o.characteristics.subtypes.contains(sym)
+                })
+        })
+        .count() as u32
+}
+
 /// Cards in `player`'s graveyard matching `filter`. `0` for an
 /// invalid player.
 pub fn graveyard_matching(

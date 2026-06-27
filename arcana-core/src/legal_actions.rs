@@ -2225,8 +2225,18 @@ fn enumerate_activation_actions(
             let modified_ability_cost = if ability.is_mana_ability {
                 ability.cost.mana_cost.clone()
             } else {
+                // External Training-Grounds delta plus the ability's own
+                // intrinsic self-referential reduction (Tamiyo's Logbook /
+                // Mirror of Galadriel: "{1} less per other artifact you
+                // control"). Both adjust the generic component (floor 0);
+                // they stack additively.
+                let intrinsic_reduction = ability.cost.cost_reduction
+                    .map(|f| f(state, obj.id, player, registry) as i32)
+                    .unwrap_or(0);
                 ability.cost.mana_cost
-                    .with_generic_delta(state.ability_cost_delta(obj.id))
+                    .with_generic_delta(
+                        state.ability_cost_delta(obj.id) - intrinsic_reduction,
+                    )
             };
             // Generic-{X} fan-out (CR 107.3 / 601.2b for activated costs):
             // expand {X} to each affordable value (0..=pool total, a safe
@@ -4223,6 +4233,79 @@ mod tests {
                 "X={expected} activation should be enumerated; got {xs:?}");
         }
         assert!(!xs.contains(&4), "X cannot exceed available mana (3)");
+    }
+
+    /// CR 602.5 — an ability's intrinsic, self-referential
+    /// `ActivationCost::cost_reduction` lowers the generic component of
+    /// its mana cost dynamically (Tamiyo's-Logbook / Domain class). Here
+    /// "{3}: …; costs {1} less per artifact you control": unaffordable on
+    /// one mana with no artifacts, affordable once two artifacts drop it
+    /// to {1}.
+    #[test]
+    fn intrinsic_cost_reduction_lowers_generic_component() {
+        use crate::registry::{ActivatedAbilityDef, ActivationCost, CardDefinition};
+        use crate::mana::ManaCost;
+        use crate::targets::{ControllerConstraint, ObjectFilter};
+
+        fn artifacts_you_control(
+            state: &GameState,
+            _src: ObjectId,
+            ctrl: crate::types::PlayerId,
+            _reg: &CardRegistry,
+        ) -> u32 {
+            let f = ObjectFilter::permanent()
+                .with_types(TypeLine::ARTIFACT.into())
+                .controlled_by(ControllerConstraint::You);
+            crate::script::count_matching(state, &f, ctrl)
+        }
+
+        let mut reg = CardRegistry::new();
+        let name = reg.interner_mut().intern("Cheap Drawer");
+        let chars = creature_chars(0, 0);
+        let cid = reg.register(
+            CardDefinition::new(name, chars)
+                .with_activated_ability(ActivatedAbilityDef {
+                    text: "{3}: draw".into(),
+                    cost: ActivationCost {
+                        mana_cost: ManaCost::parse("{3}").expect("valid"),
+                        cost_reduction: Some(artifacts_you_control),
+                        ..ActivationCost::default()
+                    },
+                    target_requirements: vec![],
+                    is_mana_ability: false,
+                    is_loyalty_ability: false,
+                    activation_zone: crate::registry::ActivationZone::Battlefield,
+                    is_instant_speed: false,
+                    face_gate: None,
+                    effect: |_, _, _| Vec::new(),
+                }));
+
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let chars = creature_chars(0, 0);
+        let obj = state_put_with_card(&mut s, 0, Zone::Battlefield, chars, cid);
+        s.objects.get_mut(obj).unwrap().status.summoning_sick = false;
+        // Only a single colorless mana available.
+        add_mana(&mut s, 0, crate::types::ManaColor::Colorless, 1);
+
+        let activatable = |s: &GameState, reg: &CardRegistry| {
+            legal_actions(s, reg).iter().any(|a| matches!(a,
+                Action::ActivateAbility { source, .. } if *source == obj))
+        };
+
+        // No artifacts: {3} with 1 mana → unaffordable.
+        assert!(!activatable(&s, &reg),
+            "{{3}} ability should be unaffordable on 1 mana with no reduction");
+
+        // Two artifacts → reduction 2 → effective {1} → affordable.
+        let art = Characteristics {
+            types: TypeLine::ARTIFACT.into(),
+            ..Default::default()
+        };
+        state_put_with_card(&mut s, 0, Zone::Battlefield, art.clone(), cid);
+        state_put_with_card(&mut s, 0, Zone::Battlefield, art, cid);
+        assert!(activatable(&s, &reg),
+            "two artifacts should reduce {{3}} to {{1}}, affordable on 1 mana");
     }
 
     // --- min_self_counters precondition (Class level-up CR 717.5b) -------

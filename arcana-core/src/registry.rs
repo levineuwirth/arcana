@@ -107,6 +107,24 @@ pub type ActivatedEffectFn =
 pub type ActivationConditionFn =
     fn(&GameState, ObjectId, PlayerId, &CardRegistry) -> bool;
 
+/// A SELF-referential dynamic reduction of an activated ability's generic
+/// mana cost: "this ability costs {1} less to activate for each other
+/// artifact you control" (Etherium Pteramander), "{1} less per basic land
+/// type among lands you control" (Domain — Radha's Firebrand, Jodah's
+/// Codex), "{1} less per quest counter on it" (Quest for the Necropolis).
+/// Returns the number of generic mana to subtract;
+/// the legal-action enumerator applies it via `with_generic_delta(-n)` with
+/// a floor of zero on the generic component (mana abilities are exempt,
+/// like the [`crate::layers`] Training-Grounds `ability_cost_delta`, but
+/// that one is an EXTERNAL continuous effect another permanent emits — this
+/// is intrinsic to the ability itself). Same `(state, source, controller,
+/// reg)` shape as [`ActivationConditionFn`]; written with the
+/// [`crate::conditions`] count helpers. The two stack additively (intrinsic
+/// reduction then the external delta), matching CR 601.2f/602.5 cost
+/// modification being commutative over generic mana.
+pub type ActivationCostReductionFn =
+    fn(&GameState, ObjectId, PlayerId, &CardRegistry) -> u32;
+
 // =============================================================================
 // ActivationContext
 // =============================================================================
@@ -1266,6 +1284,16 @@ pub struct ActivationCost {
     /// Number of graveyard cards to exile for [`Self::exile_graveyard_other`];
     /// `0`/`1` → one card. Ignored when `exile_graveyard_other` is `None`.
     pub exile_graveyard_count: u32,
+    /// CR 602.5 — a SELF-referential dynamic reduction of the generic
+    /// component of [`Self::mana_cost`]: "costs {1} less per other artifact
+    /// you control" (Etherium Pteramander), "{1} less per basic land type
+    /// among lands you control" (Domain). The legal-action enumerator
+    /// subtracts the
+    /// returned amount from the generic component (floor 0) when offering
+    /// the activation, stacking additively with the external
+    /// [`crate::layers`] `ability_cost_delta` (Training Grounds class).
+    /// `None` = no intrinsic reduction. See [`ActivationCostReductionFn`].
+    pub cost_reduction: Option<ActivationCostReductionFn>,
 }
 
 impl ActivationCost {
