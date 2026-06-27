@@ -39,10 +39,23 @@ pub type ConditionId = u32;
 /// that produced it.
 pub type SmallString = u32;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct StringInterner {
     strings: Vec<String>,
     index: HashMap<String, SmallString>,
+}
+
+impl Default for StringInterner {
+    fn default() -> Self {
+        // Reserve handle 0 for the EMPTY string. `SmallString::default() == 0`,
+        // so an unset/default name (a nameless token, an anonymized card, an
+        // `unwrap_or_default()` miss) must resolve to "" — NOT to whichever card
+        // happened to be interned first (the "renders as Aura" bug). Callers
+        // already treat an empty name as "no name".
+        let mut s = Self { strings: Vec::new(), index: HashMap::new() };
+        s.intern("");
+        s
+    }
 }
 
 impl StringInterner {
@@ -518,13 +531,26 @@ mod tests {
 
     // --- String interner -----------------------------------------------------
 
+    // NOTE: handle 0 is RESERVED for the empty string (see `Default`), so a
+    // fresh interner starts at len 1 and the first user string gets handle 1.
+
+    #[test]
+    fn empty_string_is_reserved_at_handle_zero() {
+        let i = StringInterner::new();
+        assert_eq!(i.len(), 1, "the reserved empty string");
+        assert_eq!(i.resolve(0), Some(""), "handle 0 is \"\"");
+        assert_eq!(i.lookup(""), Some(0));
+        // SmallString::default() is 0 — an unset name resolves to "" (not a card).
+        assert_eq!(i.resolve(SmallString::default()), Some(""));
+    }
+
     #[test]
     fn intern_is_idempotent() {
         let mut i = StringInterner::new();
         let a = i.intern("Goblin");
         let b = i.intern("Goblin");
         assert_eq!(a, b);
-        assert_eq!(i.len(), 1);
+        assert_eq!(i.len(), 2); // "" + "Goblin"
     }
 
     #[test]
@@ -533,7 +559,7 @@ mod tests {
         let a = i.intern("Goblin");
         let b = i.intern("Bear");
         assert_ne!(a, b);
-        assert_eq!(i.len(), 2);
+        assert_eq!(i.len(), 3); // "" + "Goblin" + "Bear"
     }
 
     #[test]
@@ -547,16 +573,16 @@ mod tests {
     fn resolve_unknown_returns_none() {
         let i = StringInterner::new();
         assert!(i.resolve(u32::MAX).is_none());
-        assert!(i.resolve(0).is_none());
+        assert_eq!(i.resolve(0), Some(""), "handle 0 is the reserved empty string");
     }
 
     #[test]
     fn lookup_without_intern_does_not_add() {
         let mut i = StringInterner::new();
         assert!(i.lookup("Elf").is_none());
-        assert_eq!(i.len(), 0);
+        assert_eq!(i.len(), 1); // just the reserved ""
         i.intern("Elf");
-        assert_eq!(i.lookup("Elf"), Some(0));
+        assert_eq!(i.lookup("Elf"), Some(1)); // 0 is reserved for ""
         assert!(i.lookup("Goblin").is_none());
     }
 
@@ -798,7 +824,8 @@ mod tests {
         let interner = StringInterner::new();
         let st = SubtypeSet::new();
         assert!(!st.contains_name(&interner, "PhantomType"));
-        assert!(interner.is_empty());
+        // Unchanged — only the reserved "" is present (contains_name interns nothing).
+        assert_eq!(interner.len(), 1);
     }
 
     // --- PermanentStatus -----------------------------------------------------
