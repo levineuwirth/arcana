@@ -17,6 +17,7 @@
 
 use std::fmt;
 
+use arcana_ai::information_set::project;
 use arcana_ai::search::{MaterialValue, ValueMcPolicy};
 use arcana_ai::session::{Seat, Session, Turn};
 use arcana_core::actions::Action;
@@ -194,28 +195,28 @@ pub struct LibraryStats {
     pub by_name: Vec<(String, usize)>,
 }
 
-fn eval_for(state: &GameState) -> Eval {
-    let value = arcana_ai::search::value(state, HUMAN);
+fn eval_for(state: &GameState, seat: PlayerId) -> Eval {
+    let value = arcana_ai::search::value(state, seat);
     let win_pct = 100.0 * arcana_ai::calibrate::win_probability(value);
     Eval { value, win_pct }
 }
 
-/// The human's per-permanent card power (marginal win% in this position), sorted
+/// `seat`'s per-permanent card power (marginal win% in this position), sorted
 /// descending. Cheap (no clones/rollouts); see `card_marginal_values`.
-fn card_power_for(state: &GameState) -> Vec<CardPower> {
-    arcana_ai::search::card_marginal_values(state, HUMAN)
+fn card_power_for(state: &GameState, seat: PlayerId) -> Vec<CardPower> {
+    arcana_ai::search::card_marginal_values(state, seat)
         .into_iter()
         .map(|(id, win_pct)| CardPower { id, win_pct })
         .collect()
 }
 
-fn library_stats(state: &GameState, reg: &CardRegistry) -> LibraryStats {
+fn library_stats(state: &GameState, reg: &CardRegistry, seat: PlayerId) -> LibraryStats {
     use std::collections::HashMap;
     let mut by_type: HashMap<&'static str, usize> = HashMap::new();
     let mut by_cmc: HashMap<u32, usize> = HashMap::new();
     let mut by_name: HashMap<String, usize> = HashMap::new();
     let mut total = 0;
-    for o in state.objects.objects_in_zone(arcana_core::zones::Zone::Library(HUMAN)) {
+    for o in state.objects.objects_in_zone(arcana_core::zones::Zone::Library(seat)) {
         total += 1;
         let c = &o.characteristics;
         let t = &c.types;
@@ -376,6 +377,10 @@ pub enum ApplyError {
     /// A London-mulligan bottom submission was malformed (wrong count, or an id
     /// not in the human's hand). `owed` is how many must be bottomed.
     IllegalBottom { owed: usize },
+    /// The requesting seat tried to act when the pending decision belongs to a
+    /// different seat (a networked client submitting out of turn). `awaiting` is
+    /// the seat whose decision is actually pending, if any.
+    NotYourTurn { seat: PlayerId, awaiting: Option<PlayerId> },
 }
 
 impl fmt::Display for ApplyError {
@@ -396,6 +401,10 @@ impl fmt::Display for ApplyError {
             ApplyError::IllegalBottom { owed } => {
                 write!(f, "choose exactly {owed} card(s) from your hand to bottom")
             }
+            ApplyError::NotYourTurn { seat, awaiting } => match awaiting {
+                Some(a) => write!(f, "it's not your turn (you are seat {seat}; seat {a} is to act)"),
+                None => write!(f, "no decision is pending for seat {seat}"),
+            },
         }
     }
 }
@@ -772,6 +781,11 @@ pub struct GameCore {
     /// Legal actions surfaced at the latest human decision, indexed by the
     /// `index` the frontend echoes back. Empty once the game is over.
     legal: Vec<Action>,
+    /// The seat whose decision `legal` belongs to (the player to act), or `None`
+    /// when no human decision is pending. With two networked humans sharing one
+    /// `GameCore`, a client may only act when it owns the pending decision; this
+    /// is what `*_for(seat, …)` validates against (`ApplyError::NotYourTurn`).
+    awaiting: Option<PlayerId>,
 }
 
 impl GameCore {
@@ -830,7 +844,7 @@ impl GameCore {
         };
         let seats = vec![Seat::Human, Self::make_bot_with_difficulty(seed, difficulty)];
         let session = Session::new(vec![human_deck, opp_deck], reg, seats, seed);
-        Ok(Self { reg, session, legal: Vec::new() })
+        Ok(Self { reg, session, legal: Vec::new(), awaiting: None })
     }
 
     /// Start a fresh game. `seed` controls the shuffle/RNG (the deck list itself
@@ -852,7 +866,7 @@ impl GameCore {
     ) -> Self {
         let seats = vec![Seat::Human, Self::make_bot(seed)];
         let session = Session::new(vec![human, opponent], reg, seats, seed);
-        Self { reg, session, legal: Vec::new() }
+        Self { reg, session, legal: Vec::new(), awaiting: None }
     }
 
     /// Read-only access to the registry (for callers that build a replacement
@@ -866,31 +880,49 @@ impl GameCore {
         self.session.set_auto_pass(level);
     }
 
+    /// Backward-compatible snapshot from the local human's seat ([`HUMAN`]) —
+    /// the solo vs-AI path. See [`snapshot_for`](Self::snapshot_for).
+    pub fn snapshot(&mut self) -> StateResponse {
+        self.snapshot_for(HUMAN)
+    }
+
     /// Drive the session through all bot + trivial decisions, then project the
-    /// next human decision (or the finished game) into a [`StateResponse`].
+    /// game from `seat`'s perspective into a [`StateResponse`].
     ///
     /// Idempotent while a human decision is pending: `advance` re-surfaces the
-    /// same decision without mutating, so polling `/state` is safe.
-    pub fn snapshot(&mut self) -> StateResponse {
+    /// same decision without mutating, so polling `/state` is safe — and two
+    /// networked clients can each poll their own `seat` against the one game.
+    ///
+    /// When the pending decision belongs to `seat`, the response carries that
+    /// seat's legal actions / combat / mulligan prompts. When it belongs to the
+    /// OTHER seat, `seat` sees its own board (own hand visible, opponent's
+    /// hidden) with no actions — a "waiting for opponent" view.
+    pub fn snapshot_for(&mut self, seat: PlayerId) -> StateResponse {
         let view = match self.session.advance() {
             Turn::AwaitingHuman { player, view, legal, .. } => {
-                let mut vs = view_state(&view.state, self.reg, player, &legal);
-                // `view.state` is the information-set projection: hidden zones
-                // (your library) are anonymized, so the search picker built from
-                // it would show blank cards. A search lets the searching player
-                // see the real cards, so recompute the picker from the
-                // authoritative state — project() preserves object ids, so the
-                // `legal` action indices still line up.
-                vs.choice = build_choice_view(self.session.state(), self.reg, player, &legal);
                 self.legal = legal;
-                vs
+                self.awaiting = Some(player);
+                if player == seat {
+                    // This client is the one to act.
+                    let mut vs = view_state(&view.state, self.reg, seat, &self.legal);
+                    // `view.state` anonymizes hidden zones; a search lets the
+                    // searching player see the real cards, so recompute the
+                    // picker from the authoritative state (ids are preserved).
+                    vs.choice = build_choice_view(
+                        self.session.state(), self.reg, seat, &self.legal);
+                    vs
+                } else {
+                    // The other seat is to act — project this seat's own view
+                    // (its hand visible, opponent's hidden) with no actions.
+                    let projected = project(self.session.state(), seat);
+                    view_state(&projected.state, self.reg, seat, &[])
+                }
             }
             Turn::GameOver(result) => {
                 self.legal = Vec::new();
-                // The full state's `result` field is set on game over, so
-                // view_state already fills `game_over`; belt-and-braces, derive
-                // it from the Turn payload if it somehow isn't.
-                let mut vs = view_state(self.session.state(), self.reg, HUMAN, &[]);
+                self.awaiting = None;
+                let projected = project(self.session.state(), seat);
+                let mut vs = view_state(&projected.state, self.reg, seat, &[]);
                 if vs.game_over.is_none() {
                     vs.game_over = Some(format_result(&result));
                 }
@@ -903,11 +935,14 @@ impl GameCore {
             .iter()
             .map(|(p, d)| RecentAction { player: *p, description: d.clone() })
             .collect();
-        let combat = combat_prompt(self.session.state(), &self.legal);
-        let bottom = bottom_prompt(&self.legal);
-        let eval = eval_for(self.session.state());
-        let library = library_stats(self.session.state(), self.reg);
-        let card_power = card_power_for(self.session.state());
+        // Combat / mulligan prompts only belong to the seat whose decision is
+        // pending; a waiting client must not be shown the actor's prompt.
+        let is_my_turn = self.awaiting == Some(seat);
+        let combat = if is_my_turn { combat_prompt(self.session.state(), &self.legal) } else { None };
+        let bottom = if is_my_turn { bottom_prompt(&self.legal) } else { None };
+        let eval = eval_for(self.session.state(), seat);
+        let library = library_stats(self.session.state(), self.reg, seat);
+        let card_power = card_power_for(self.session.state(), seat);
         StateResponse { view, recent, eval, library, combat, bottom, card_power }
     }
 
@@ -921,14 +956,21 @@ impl GameCore {
     /// rollouts are perfect-information from the human's seat — a documented
     /// simplification (the rollout engine sees the opponent's hidden cards).
     pub fn suggest(&self, deep: bool) -> Vec<Suggestion> {
-        if self.legal.len() <= 1 {
+        self.suggest_for(HUMAN, deep)
+    }
+
+    /// As [`suggest`](Self::suggest) but ranked from `seat`'s perspective. Only
+    /// meaningful when the cached `legal` belongs to `seat` (its decision is
+    /// pending); returns `[]` otherwise.
+    pub fn suggest_for(&self, seat: PlayerId, deep: bool) -> Vec<Suggestion> {
+        if self.legal.len() <= 1 || self.awaiting != Some(seat) {
             return Vec::new();
         }
         let state = self.session.state();
         // Snappy auto budget vs a heavier "deepen" budget.
         let (rollouts, cap, candidates) = if deep { (20, 40, 16) } else { (8, 30, 12) };
         arcana_ai::search::rank_actions(
-            state, self.reg, HUMAN, &self.legal, &MaterialValue,
+            state, self.reg, seat, &self.legal, &MaterialValue,
             rollouts, cap, candidates, SUGGEST_SEED,
         )
         .into_iter()
@@ -946,16 +988,33 @@ impl GameCore {
     /// again. Returns the new state, or an [`ApplyError`] for a stale/out-of-range
     /// index or a finished game — never panics on bad input.
     pub fn apply_index(&mut self, index: usize) -> Result<StateResponse, ApplyError> {
-        if self.legal.is_empty() {
-            return Err(ApplyError::NoPendingDecision);
-        }
+        self.apply_index_for(HUMAN, index)
+    }
+
+    /// As [`apply_index`](Self::apply_index) but for a specific `seat`: rejects
+    /// the call with [`ApplyError::NotYourTurn`] unless the pending decision
+    /// belongs to `seat` (so a networked client can't act out of turn).
+    pub fn apply_index_for(&mut self, seat: PlayerId, index: usize) -> Result<StateResponse, ApplyError> {
+        self.ensure_turn(seat)?;
         let action = self
             .legal
             .get(index)
             .cloned()
             .ok_or(ApplyError::OutOfRange { index, len: self.legal.len() })?;
         self.session.apply(action);
-        Ok(self.snapshot())
+        Ok(self.snapshot_for(seat))
+    }
+
+    /// Guard a seat-scoped mutation: the game must have a pending decision and it
+    /// must belong to `seat`.
+    fn ensure_turn(&self, seat: PlayerId) -> Result<(), ApplyError> {
+        if self.legal.is_empty() {
+            return Err(ApplyError::NoPendingDecision);
+        }
+        if self.awaiting != Some(seat) {
+            return Err(ApplyError::NotYourTurn { seat, awaiting: self.awaiting });
+        }
+        Ok(())
     }
 
     /// Apply an incremental combat declaration built by the frontend. The picked
@@ -965,19 +1024,23 @@ impl GameCore {
     /// always-legal "no attacks / no blocks". Returns [`ApplyError::IllegalCombat`]
     /// if the set isn't a legal declaration, so the frontend can re-prompt.
     pub fn apply_combat(&mut self, sub: CombatSubmission) -> Result<StateResponse, ApplyError> {
-        if self.legal.is_empty() {
-            return Err(ApplyError::NoPendingDecision);
-        }
+        self.apply_combat_for(HUMAN, sub)
+    }
+
+    /// As [`apply_combat`](Self::apply_combat) but for a specific `seat`
+    /// (validated against the pending decision).
+    pub fn apply_combat_for(&mut self, seat: PlayerId, sub: CombatSubmission) -> Result<StateResponse, ApplyError> {
+        self.ensure_turn(seat)?;
         let action = match sub {
             CombatSubmission::Attackers { attackers } => match_attack(&self.legal, &attackers),
             CombatSubmission::Blockers { blockers } =>
-                legal_block_declaration(self.session.state(), HUMAN, &blockers),
+                legal_block_declaration(self.session.state(), seat, &blockers),
             CombatSubmission::Order { orderings } => match_ordering(&self.legal, &orderings),
             CombatSubmission::Damage { distributions } => match_damage(&self.legal, &distributions),
         };
         let action = action.ok_or(ApplyError::IllegalCombat)?;
         self.session.apply(action);
-        Ok(self.snapshot())
+        Ok(self.snapshot_for(seat))
     }
 
     /// MTGA-style "click a card to play it": auto-tap the mana to make hand card
@@ -986,13 +1049,19 @@ impl GameCore {
     /// to choose targets). Returns [`ApplyError::NotPlayable`] if it can't be
     /// played this turn. See [`arcana_core::legal_actions::auto_tap_sequence`].
     pub fn auto_tap_and_cast(&mut self, target: ObjectId) -> Result<StateResponse, ApplyError> {
+        self.auto_tap_and_cast_for(HUMAN, target)
+    }
+
+    /// As [`auto_tap_and_cast`](Self::auto_tap_and_cast) but for a specific `seat`.
+    pub fn auto_tap_and_cast_for(&mut self, seat: PlayerId, target: ObjectId) -> Result<StateResponse, ApplyError> {
+        self.ensure_turn(seat)?;
         let seq = arcana_core::legal_actions::auto_tap_sequence(
-            self.session.state(), self.reg, HUMAN, target)
+            self.session.state(), self.reg, seat, target)
             .ok_or(ApplyError::NotPlayable { id: target })?;
         for action in seq {
             self.session.apply(action);
         }
-        Ok(self.snapshot())
+        Ok(self.snapshot_for(seat))
     }
 
     /// Auto-tap mana for a permanent's (non-mana) activated ability, then activate
@@ -1000,13 +1069,19 @@ impl GameCore {
     /// the per-choice activations become legal (the frontend then surfaces them).
     /// See [`arcana_core::legal_actions::auto_tap_activate_sequence`].
     pub fn auto_tap_and_activate(&mut self, source: ObjectId) -> Result<StateResponse, ApplyError> {
+        self.auto_tap_and_activate_for(HUMAN, source)
+    }
+
+    /// As [`auto_tap_and_activate`](Self::auto_tap_and_activate) but for a specific `seat`.
+    pub fn auto_tap_and_activate_for(&mut self, seat: PlayerId, source: ObjectId) -> Result<StateResponse, ApplyError> {
+        self.ensure_turn(seat)?;
         let seq = arcana_core::legal_actions::auto_tap_activate_sequence(
-            self.session.state(), self.reg, HUMAN, source)
+            self.session.state(), self.reg, seat, source)
             .ok_or(ApplyError::NotPlayable { id: source })?;
         for action in seq {
             self.session.apply(action);
         }
-        Ok(self.snapshot())
+        Ok(self.snapshot_for(seat))
     }
 
     /// Apply a London-mulligan bottoming: put the chosen `ids` on the bottom of
@@ -1015,13 +1090,19 @@ impl GameCore {
     /// submission, so a malformed request is rejected as [`ApplyError::IllegalBottom`]
     /// rather than reaching the engine.
     pub fn bottom_cards(&mut self, ids: Vec<ObjectId>) -> Result<StateResponse, ApplyError> {
+        self.bottom_cards_for(HUMAN, ids)
+    }
+
+    /// As [`bottom_cards`](Self::bottom_cards) but for a specific `seat`.
+    pub fn bottom_cards_for(&mut self, seat: PlayerId, ids: Vec<ObjectId>) -> Result<StateResponse, ApplyError> {
+        self.ensure_turn(seat)?;
         let owed = bottom_prompt(&self.legal).ok_or(ApplyError::NoPendingDecision)?;
         let hand: std::collections::HashSet<ObjectId> = self
             .session
             .state()
             .objects
             .iter()
-            .filter(|o| o.zone == arcana_core::zones::Zone::Hand(HUMAN))
+            .filter(|o| o.zone == arcana_core::zones::Zone::Hand(seat))
             .map(|o| o.id)
             .collect();
         let mut seen = std::collections::HashSet::new();
@@ -1031,7 +1112,14 @@ impl GameCore {
             return Err(ApplyError::IllegalBottom { owed });
         }
         self.session.apply(Action::BottomCards(ids));
-        Ok(self.snapshot())
+        Ok(self.snapshot_for(seat))
+    }
+
+    /// The seat whose decision is currently pending (the player to act), or
+    /// `None` if the game is over / no human decision is up. Networked routing
+    /// uses this to tell a polling client whether it's their turn.
+    pub fn awaiting_seat(&self) -> Option<PlayerId> {
+        self.awaiting
     }
 }
 
@@ -1484,5 +1572,69 @@ mod tests {
         let json = serde_json::to_string(&s).expect("serialize StateResponse");
         let back: StateResponse = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back, s);
+    }
+
+    // ---- Phase 1: seat-aware core (networked-duel foundation) --------------
+
+    /// A two-HUMAN game on one `GameCore` (no bot) — the shape a networked duel
+    /// runs. Tests reach into the private fields directly (child module).
+    fn two_human_core(reg: &'static CardRegistry, seed: u64) -> GameCore {
+        let deck = arcana_cards::sample_deck(reg, DECK_SEED);
+        let seats = vec![Seat::Human, Seat::Human];
+        let session = Session::new(vec![deck.clone(), deck], reg, seats, seed);
+        GameCore { reg, session, legal: Vec::new(), awaiting: None }
+    }
+
+    /// With two human seats sharing one game, each seat's snapshot is from ITS
+    /// OWN perspective: the seat to act sees its hand + legal actions; the other
+    /// sees its own hand (opponent's hidden) and NO actions ("waiting").
+    #[test]
+    fn two_human_seats_each_get_their_own_perspective() {
+        let reg = leaked_catalog();
+        let mut core = two_human_core(reg, 7);
+
+        // Populate `awaiting` and learn who acts first.
+        core.snapshot_for(0);
+        let actor = core.awaiting_seat().expect("someone must be to act");
+        let waiter = 1 - actor;
+
+        let s_actor = core.snapshot_for(actor);
+        let s_wait = core.snapshot_for(waiter);
+
+        // Perspective is each seat's own.
+        assert_eq!(s_actor.view.perspective, actor);
+        assert_eq!(s_wait.view.perspective, waiter);
+
+        // Only the acting seat is given a decision.
+        assert!(!s_actor.view.legal.is_empty(), "actor faces a real decision");
+        assert!(s_wait.view.legal.is_empty(), "the waiting seat has no actions");
+
+        // Each sees its own hand; the opponent's is hidden in both views.
+        let a = actor as usize;
+        let w = waiter as usize;
+        assert_eq!(s_actor.view.players[a].hand.len(), s_actor.view.players[a].hand_count,
+            "actor sees its own hand");
+        assert!(s_actor.view.players[w].hand.is_empty(), "opponent hand hidden from actor");
+        assert_eq!(s_wait.view.players[w].hand.len(), s_wait.view.players[w].hand_count,
+            "waiter sees its own hand");
+        assert!(s_wait.view.players[a].hand.is_empty(), "opponent hand hidden from waiter");
+    }
+
+    /// A seat may only act on its own turn: the off-turn seat is rejected with
+    /// `NotYourTurn` (never mutating the game), while the acting seat succeeds.
+    #[test]
+    fn acting_out_of_turn_is_rejected() {
+        let reg = leaked_catalog();
+        let mut core = two_human_core(reg, 7);
+        core.snapshot_for(0);
+        let actor = core.awaiting_seat().expect("someone must be to act");
+        let waiter = 1 - actor;
+
+        assert_eq!(
+            core.apply_index_for(waiter, 0),
+            Err(ApplyError::NotYourTurn { seat: waiter, awaiting: Some(actor) }),
+            "the off-turn seat can't act");
+        // The actor can act, and after it does the turn passes to the other seat.
+        assert!(core.apply_index_for(actor, 0).is_ok(), "the on-turn seat can act");
     }
 }
