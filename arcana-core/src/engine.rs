@@ -1206,19 +1206,39 @@ fn apply_play_land(
 
     state.player_mut(controller).land_plays_remaining =
         state.player(controller).land_plays_remaining.saturating_sub(1);
-    // Land play is NOT a spell — no stack entry. Direct ETB. Re-id
-    // on the move means we must address the post-move object via the
-    // returned new id.
-    let Some(new_id) = state.move_object_to_zone(
-        object_id, Zone::Battlefield, MoveCause::PlayLand) else {
+    // Land play is NOT a spell — no stack entry, so it never goes through
+    // finalize_resolved_spell (where a cast permanent's printed `enters_with`
+    // clauses are applied). Do the battlefield-entry sequence here, mirroring
+    // that path so the land's enters-tapped clause (tap-land / check-land /
+    // fast-land / …) is honored — and applied BEFORE the EntersBattlefield
+    // event, so an "enters untapped" ETB trigger sees the correct state.
+    // (Previously a PLAYED land skipped enters_with entirely — the Clifftop
+    // Retreat "didn't enter tapped" bug.)
+    let Some((new_id, from)) = state.swap_to_zone_reid(object_id, Zone::Battlefield) else {
         state.priority.record_action();
         return;
     };
-    // CR 305.2 — playing a land gives control of it to the player
-    // who played it.
+    // CR 305.2 — playing a land gives its controller to the player who played
+    // it; set this BEFORE the enters_with check (a "unless you control …"
+    // condition is evaluated from the controller's board).
     if let Some(obj) = state.objects.get_mut(new_id) {
         obj.controller = controller;
     }
+    state.emit(GameEvent::ZoneChange {
+        object_id, from, to: Zone::Battlefield, new_id, cause: MoveCause::PlayLand,
+    });
+    let enters_with = state.objects.get(new_id)
+        .and_then(|o| registry.get(o.card_id))
+        .map(|d| d.enters_with.clone())
+        .unwrap_or_default();
+    if !enters_with.is_empty() {
+        crate::stack::apply_enters_with_clauses(
+            state, new_id, &enters_with, /*x_value=*/ None, /*delve_count=*/ 0);
+    }
+    state.after_enter_battlefield(new_id);
+    state.emit(GameEvent::EntersBattlefield {
+        object_id: new_id, from_zone: from, was_cast: false,
+    });
     state.priority.record_action();
 }
 
@@ -8835,6 +8855,60 @@ mod tests {
 
         // Original untouched.
         state.objects.get(land_id).unwrap().zone.is_hand().then_some(()).unwrap();
+    }
+
+    /// A PLAYED land (Action::PlayLand, not a cast spell) honors its printed
+    /// `enters_with` — tap-lands enter tapped, and a check-land enters tapped
+    /// unless you control the named type. Regression for the Clifftop Retreat
+    /// "didn't enter tapped" bug: apply_play_land skipped enters_with entirely.
+    #[test]
+    fn played_land_honors_enters_with_clauses() {
+        use crate::registry::{CardDefinition, CardRegistry, EntersWithSpec};
+        use crate::objects::{Characteristics, GameObject};
+        use crate::targets::ObjectFilter;
+        use crate::types::TypeLine;
+
+        let mut reg = CardRegistry::new();
+        let land_chars = |name| Characteristics {
+            name, types: TypeLine::LAND.into(), ..Default::default() };
+        let tap_name = reg.interner_mut().intern("Test Tapland");
+        let tap_cid = reg.register(CardDefinition::new(tap_name, land_chars(tap_name))
+            .with_enters_with(EntersWithSpec::Tapped));
+        let mountain = reg.interner_mut().intern("Mountain");
+        let chk_name = reg.interner_mut().intern("Test Checkland");
+        let chk_cid = reg.register(CardDefinition::new(chk_name, land_chars(chk_name))
+            .with_enters_with(EntersWithSpec::TappedUnlessControl {
+                filter: ObjectFilter::permanent().with_subtypes_any(vec![mountain]) }));
+
+        // Play `cid` from p0's hand (optionally with a Mountain already out);
+        // return whether the resulting battlefield land is tapped.
+        let play = |cid, name, seed_mountain: bool| -> bool {
+            let mut s = GameState::new(2, 0);
+            s.priority.give_to(0);
+            s.player_mut(0).land_plays_remaining = 1;
+            if seed_mountain {
+                let mid = s.allocate_object_id();
+                let mut mc = Characteristics { types: TypeLine::LAND.into(), ..Default::default() };
+                mc.subtypes.0.insert(mountain);
+                let mut mo = GameObject::new(mid, 0, Zone::Battlefield, 1, mc);
+                mo.controller = 0;
+                s.objects.insert(mo);
+            }
+            let id = s.allocate_object_id();
+            let mut o = GameObject::new(id, 0, Zone::Hand(0), cid, land_chars(name));
+            o.controller = 0;
+            s.objects.insert(o);
+            apply_play_land(&mut s, &reg, id, false);
+            let tapped = s.objects.objects_in_zone(Zone::Battlefield)
+                .find(|o| o.card_id == cid)
+                .map(|o| o.is_tapped())
+                .expect("the played land is on the battlefield");
+            tapped
+        };
+
+        assert!(play(tap_cid, tap_name, false), "a tap-land enters tapped when played");
+        assert!(play(chk_cid, chk_name, false), "check-land with no Mountain → tapped");
+        assert!(!play(chk_cid, chk_name, true), "check-land with a Mountain → untapped");
     }
 
     // --- phase progression --------------------------------------------------
