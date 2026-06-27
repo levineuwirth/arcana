@@ -108,6 +108,9 @@ pub struct PlayerView {
     pub mana_pool: usize,
     /// This player's energy counters ({E}) — public. Shown in the HUD when > 0.
     pub energy: u32,
+    /// This player's poison counters — public. 10 = loss (CR 104.3c). Shown in
+    /// the HUD when > 0 (Toxic / Infect).
+    pub poison: u32,
     /// Mana this player could produce right now (floating pool + everything
     /// their untapped mana abilities can still make), by color. Drives the
     /// "available mana" gauge. See [`crate::legal_actions::available_mana`] for
@@ -365,6 +368,7 @@ pub fn view_state(
                 .filter(|o| o.owner == p).count(),
             mana_pool: state.player(p).mana_pool.total(),
             energy: state.player(p).energy,
+            poison: state.player(p).poison_counters,
             available_mana: mana_counts(&crate::legal_actions::available_mana(state, p, registry)),
             hand: if p == perspective {
                 let mut h = cards_in(Zone::Hand(p));

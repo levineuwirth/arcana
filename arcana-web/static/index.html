@@ -233,6 +233,11 @@
   .phud .energy { font-family: var(--font-serif); font-weight: 600; font-size: 16px; color: var(--mana-r, #d08a2a);
     font-variant-numeric: tabular-nums; line-height: 1; }
   .phud .energy .unit { font-size: 10px; color: var(--text-faint); font-weight: 400; margin-left: 3px; }
+  .phud .poison { font-family: var(--font-serif); font-weight: 600; font-size: 16px; color: var(--mana-g, #5aa15a);
+    font-variant-numeric: tabular-nums; line-height: 1; }
+  .phud .poison .unit { font-size: 10px; color: var(--text-faint); font-weight: 400; margin-left: 3px; }
+  .phud .poison.lethal { color: #c0432a; animation: poison-pulse 1.2s ease-in-out infinite; }
+  @keyframes poison-pulse { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
   .phud .gauge { display: flex; align-items: center; gap: 8px; }
   .phud .gauge .gpip { display: inline-flex; align-items: center; gap: 1px; font-variant-numeric: tabular-nums; }
   .phud .gauge .floating { color: var(--text-faint); }
@@ -1195,6 +1200,14 @@ function renderHud(el, p, isYou) {
     energy.innerHTML = '⚡' + p.energy + '<span class="unit">energy</span>';
     energy.title = p.energy + " energy ({E})";
   }
+  // Poison counters — shown once non-zero; 10 = loss, so it escalates near 10.
+  let poison = null;
+  if (p.poison > 0) {
+    poison = document.createElement("span");
+    poison.className = "poison tnum" + (p.poison >= 8 ? " lethal" : "");
+    poison.innerHTML = '☠' + p.poison + '<span class="unit">/10 poison</span>';
+    poison.title = p.poison + " poison counters (10 = you lose)";
+  }
   const gauge = document.createElement("span");
   gauge.className = "gauge"; gauge.innerHTML = manaGaugeHtml(p);
   const spacer = document.createElement("span"); spacer.className = "spacer";
@@ -1210,6 +1223,7 @@ function renderHud(el, p, isYou) {
   }
   el.append(who, life);
   if (energy) el.append(energy);
+  if (poison) el.append(poison);
   el.append(gauge, spacer, counts);
 
   // Targeting: a player can be a legal target — make the HUD clickable.
