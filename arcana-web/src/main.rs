@@ -55,7 +55,7 @@ use arcana_core::types::CardId;
 use arcana_ai::session::AutoPass;
 use arcana_web::{
     derive_deck_identity, personalities, resolve_import, CombatSubmission, DeckIdentity,
-    GameCore, ImportedDeck, Personality, StateResponse, Suggestion,
+    GameCore, ImportedDeck, MatchConfig, Personality, StateResponse, Suggestion,
 };
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
@@ -104,7 +104,8 @@ enum Command {
         seed: Option<u64>,
         deck: Option<Vec<CardId>>,
         opponent: Option<Vec<CardId>>,
-        reply: oneshot::Sender<StateResponse>,
+        config: Option<MatchConfig>,
+        reply: oneshot::Sender<Result<StateResponse, String>>,
     },
 }
 
@@ -373,6 +374,12 @@ struct NewRequest {
     deck: Option<Vec<CardId>>,
     /// The opponent's deck (seat 1). If absent, the bot mirrors the human's deck.
     opponent: Option<Vec<CardId>>,
+    /// Full match setup from the World Stage. When present it takes precedence
+    /// over the legacy `deck`/`opponent` fields and is built via
+    /// `GameCore::from_match_config` (so a bad config yields a 400, not a
+    /// silent fallback). The legacy fields remain for the deckbuilder's
+    /// "Play this deck" path until the Stage replaces it.
+    config: Option<MatchConfig>,
 }
 
 /// A deck is playable if it can at least draw an opening hand and every id is a
@@ -470,19 +477,38 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>) {
             Command::Suggest { deep, reply } => {
                 let _ = reply.send(core.suggest(deep));
             }
-            Command::New { seed, deck, opponent, reply } => {
-                let seed = seed.unwrap_or_else(time_seed);
-                core = match deck.filter(|d| deck_is_valid(reg, d)) {
-                    Some(human) => {
-                        // Bot plays the chosen opponent deck, else mirrors the human.
-                        let bot = opponent.filter(|d| deck_is_valid(reg, d))
-                            .unwrap_or_else(|| human.clone());
-                        GameCore::new_with_decks(reg, seed, human, bot)
+            Command::New { seed, deck, opponent, config, reply } => {
+                // A World Stage MatchConfig takes precedence and surfaces build
+                // errors (→ 400); the legacy deck/opponent path always succeeds.
+                let built: Result<GameCore, String> = match config {
+                    Some(mut cfg) => {
+                        if cfg.seed == 0 {
+                            cfg.seed = seed.unwrap_or_else(time_seed); // 0 = "pick one"
+                        }
+                        GameCore::from_match_config(reg, &cfg)
                     }
-                    None => GameCore::new(reg, seed), // sample mirror
+                    None => {
+                        let seed = seed.unwrap_or_else(time_seed);
+                        Ok(match deck.filter(|d| deck_is_valid(reg, d)) {
+                            Some(human) => {
+                                // Bot plays the chosen opponent deck, else mirrors.
+                                let bot = opponent.filter(|d| deck_is_valid(reg, d))
+                                    .unwrap_or_else(|| human.clone());
+                                GameCore::new_with_decks(reg, seed, human, bot)
+                            }
+                            None => GameCore::new(reg, seed), // sample mirror
+                        })
+                    }
                 };
-                core.set_auto_pass(auto_pass); // preserve the player's choice
-                let _ = reply.send(core.snapshot());
+                match built {
+                    Ok(c) => {
+                        core = c;
+                        core.set_auto_pass(auto_pass); // preserve the player's choice
+                        let _ = reply.send(Ok(core.snapshot()));
+                    }
+                    // Keep the prior game on a bad config; report the error.
+                    Err(e) => { let _ = reply.send(Err(e)); }
+                }
             }
         }
     }
@@ -888,12 +914,13 @@ async fn post_new(State(app): State<AppState>, body: String) -> Response {
     let req: NewRequest = serde_json::from_str(&body).unwrap_or_default();
     let (reply, rx) = oneshot::channel();
     if app.tx.send(Command::New {
-        seed: req.seed, deck: req.deck, opponent: req.opponent, reply,
+        seed: req.seed, deck: req.deck, opponent: req.opponent, config: req.config, reply,
     }).is_err() {
         return worker_gone();
     }
     match rx.await {
-        Ok(resp) => Json(resp).into_response(),
+        Ok(Ok(resp)) => Json(resp).into_response(),
+        Ok(Err(e)) => (StatusCode::BAD_REQUEST, err(e)).into_response(),
         Err(_) => worker_gone(),
     }
 }
