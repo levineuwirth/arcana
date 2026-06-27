@@ -1,9 +1,8 @@
 //! Raucous Carnival — nonbasic land. "This land enters tapped unless a
 //! player has 13 or less life. {T}: Add {R} or {W}."
 //!
-//! The conditional untapped entry is not expressible
-//! (`EntersWithSpec::Tapped` is unconditional); modeled as always
-//! entering tapped with the unless-clause as a documented gap.
+//! The conditional untapped entry ("unless a player has 13 or less
+//! life") is wired via `EntersWithSpec::TappedUnlessAnyPlayerLifeAtMost`.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaUnit;
@@ -24,11 +23,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::LAND.into(),
         ..Default::default()
     };
-    // GAP: "enters tapped UNLESS a player has 13 or less life" — the
-    // conditional entry is not expressible; modeled as always tapped.
     reg.register(
         CardDefinition::new(name, chars)
-            .with_enters_with(EntersWithSpec::Tapped)
+            // "Enters tapped unless a player has 13 or less life."
+            .with_enters_with(EntersWithSpec::TappedUnlessAnyPlayerLifeAtMost {
+                life: 13,
+            })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Add {R}.".into(),
                 cost: ActivationCost::tap_only(),

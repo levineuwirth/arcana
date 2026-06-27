@@ -35,10 +35,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars)
-            // GAP: "enters tapped UNLESS you control three or more other
-            // Swamps" — conditional enters-tapped is not expressible;
-            // modeled as always entering tapped.
-            .with_enters_with(EntersWithSpec::Tapped)
+            // "Enters tapped unless you control three or more other Swamps."
+            .with_enters_with(EntersWithSpec::TappedUnlessControlCount {
+                filter: ObjectFilter::permanent().with_subtype_sym(swamp),
+                min: 3,
+                max: u32::MAX,
+            })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Add {B}.".into(),
                 cost: ActivationCost::tap_only(),

@@ -1,10 +1,9 @@
 //! Abandoned Campground — nonbasic land.
 //! "This land enters tapped unless a player has 13 or less life." and
 //! "{T}: Add {W} or {U}."
-//! GAP: the "unless a player has 13 or less life" condition on the
-//! enters-tapped replacement is not expressible — only the
-//! unconditional `EntersWithSpec::Tapped` exists, so the land always
-//! enters tapped here.
+//! The "unless a player has 13 or less life" condition on the
+//! enters-tapped replacement is wired via
+//! `EntersWithSpec::TappedUnlessAnyPlayerLifeAtMost`.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaUnit;
@@ -27,7 +26,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars)
-            .with_enters_with(EntersWithSpec::Tapped)
+            // "Enters tapped unless a player has 13 or less life."
+            .with_enters_with(EntersWithSpec::TappedUnlessAnyPlayerLifeAtMost {
+                life: 13,
+            })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Add {W}.".into(),
                 cost: ActivationCost::tap_only(),

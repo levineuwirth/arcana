@@ -2,9 +2,9 @@
 //! "This land enters tapped unless you control an Island or a
 //! Mountain." and "{T}: Add {U} or {R}."
 //!
-//! The check-land condition is not expressible (`EntersWithSpec` has
-//! no conditional form), so the land is wired with the unconditional
-//! default branch (enters tapped) plus the two mana abilities.
+//! The check-land condition ("unless you control an Island or a
+//! Mountain") is wired via `EntersWithSpec::TappedUnlessControl` over an
+//! Island-or-Mountain filter, plus the two mana abilities.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaUnit;
@@ -14,10 +14,13 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry, EntersWithSpec,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, ManaColor, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Sulfur Falls");
+    let island = reg.interner_mut().intern("Island");
+    let mountain = reg.interner_mut().intern("Mountain");
     let chars = Characteristics {
         name,
         mana_cost: None,
@@ -25,12 +28,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::LAND.into(),
         ..Default::default()
     };
-    // GAP: 'This land enters tapped UNLESS you control an Island or a
-    // Mountain' — conditional enters-tapped has no EntersWithSpec
-    // variant; modeled as unconditionally enters tapped.
+    // "This land enters tapped unless you control an Island or a Mountain."
+    let unless = ObjectFilter::permanent().with_subtypes_any(vec![island, mountain]);
     reg.register(
         CardDefinition::new(name, chars)
-            .with_enters_with(EntersWithSpec::Tapped)
+            .with_enters_with(EntersWithSpec::TappedUnlessControl { filter: unless })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Add {U}.".into(),
                 cost: ActivationCost::tap_only(),

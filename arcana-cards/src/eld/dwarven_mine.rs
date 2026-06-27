@@ -1,18 +1,20 @@
 //! Dwarven Mine — land — Mountain.
 //! "({T}: Add {R}.)" / "This land enters tapped unless you control three or
 //! more other Mountains." / "When this land enters untapped, create a 1/1
-//! red Dwarf creature token." The conditional enters-tapped clause is a GAP
-//! (the land enters untapped here), and the ETB trigger's "enters untapped"
-//! condition is likewise noted — it fires on every entry.
+//! red Dwarf creature token." The conditional enters-tapped clause is wired
+//! via `EntersWithSpec::TappedUnlessControlCount` over a Mountain-subtype
+//! filter with `3..`; the ETB trigger's "enters untapped" condition is still
+//! noted — it fires on every entry.
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaUnit;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
-    CardDefinition, CardRegistry,
+    CardDefinition, CardRegistry, EntersWithSpec,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -33,11 +35,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         ..Default::default()
     };
-    // GAP: "enters tapped unless you control three or more other Mountains"
-    // — conditional enters-tapped is not expressible (EntersWithSpec::Tapped
-    // is unconditional); the land enters untapped here.
     reg.register(
         CardDefinition::new(name, chars)
+            // "Enters tapped unless you control three or more other Mountains."
+            .with_enters_with(EntersWithSpec::TappedUnlessControlCount {
+                filter: ObjectFilter::permanent().with_subtype_sym(mountain),
+                min: 3,
+                max: u32::MAX,
+            })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Add {R}.".into(),
                 cost: ActivationCost::tap_only(),

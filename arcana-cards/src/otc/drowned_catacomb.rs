@@ -1,25 +1,26 @@
 //! Drowned Catacomb — nonbasic land (check land).
 //! "This land enters tapped unless you control an Island or a Swamp."
 //! and "{T}: Add {U} or {B}." The two-color mana choice is modeled as
-//! two separate mana abilities (the Dimir Guildgate idiom).
-//!
-//! GAP: the CONDITIONAL enters-tapped ("unless you control an Island
-//! or a Swamp") is not expressible — `EntersWithSpec::Tapped` is
-//! unconditional. The land is registered entering untapped; the
-//! check-land condition is unmodeled.
+//! two separate mana abilities (the Dimir Guildgate idiom). The
+//! check-land condition ("unless you control an Island or a Swamp") is
+//! wired via `EntersWithSpec::TappedUnlessControl` over an
+//! Island-or-Swamp filter.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaUnit;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
-    CardDefinition, CardRegistry,
+    CardDefinition, CardRegistry, EntersWithSpec,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, ManaColor, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Drowned Catacomb");
+    let island = reg.interner_mut().intern("Island");
+    let swamp = reg.interner_mut().intern("Swamp");
     let chars = Characteristics {
         name,
         mana_cost: None,
@@ -27,11 +28,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::LAND.into(),
         ..Default::default()
     };
-    // GAP: "This land enters tapped unless you control an Island or a
-    // Swamp" — conditional enters-tapped is not expressible
-    // (EntersWithSpec::Tapped is unconditional); entering untapped.
+    // "This land enters tapped unless you control an Island or a Swamp."
+    let unless = ObjectFilter::permanent().with_subtypes_any(vec![island, swamp]);
     reg.register(
         CardDefinition::new(name, chars)
+            .with_enters_with(EntersWithSpec::TappedUnlessControl { filter: unless })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Add {U}.".into(),
                 cost: ActivationCost::tap_only(),

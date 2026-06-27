@@ -1,9 +1,8 @@
 //! Copperline Gorge — Land (Scars of Mirrodin fast land).
 //! "This land enters tapped unless you control two or fewer other
-//! lands." and "{T}: Add {R} or {G}." Modeled as always entering
-//! tapped (the unless-condition is a GAP — the real card enters
-//! UNTAPPED early) plus the two-color mana choice as two mana
-//! abilities.
+//! lands." and "{T}: Add {R} or {G}." The fast-land condition is wired
+//! via `EntersWithSpec::TappedUnlessControlCount` over a land filter
+//! with `0..=2`, plus the two-color mana choice as two mana abilities.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaUnit;
@@ -13,6 +12,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry, EntersWithSpec,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, ManaColor, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,12 +24,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::LAND.into(),
         ..Default::default()
     };
-    // GAP: "enters tapped UNLESS you control two or fewer other lands" —
-    // conditional enters-tapped is not expressible (EntersWithSpec::Tapped is
-    // unconditional); modeled as always tapped, which is wrong on turns 1-3.
     reg.register(
         CardDefinition::new(name, chars)
-            .with_enters_with(EntersWithSpec::Tapped)
+            // "Enters tapped unless you control two or fewer other lands."
+            .with_enters_with(EntersWithSpec::TappedUnlessControlCount {
+                filter: ObjectFilter::permanent().with_types(TypeLine::LAND.into()),
+                min: 0,
+                max: 2,
+            })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Add {R}.".into(),
                 cost: ActivationCost::tap_only(),

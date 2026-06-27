@@ -1,9 +1,9 @@
 //! Woodland Cemetery — nonbasic land (Innistrad, 2011).
 //! "This land enters tapped unless you control a Swamp or a Forest."
 //! and "{T}: Add {B} or {G}."
-//! GAP: the "unless you control a Swamp or a Forest" check-land
-//! condition is not expressible (`EntersWithSpec` has no conditional
-//! variant); modeled conservatively as always entering tapped.
+//! The check-land condition ("unless you control a Swamp or a Forest")
+//! is wired via `EntersWithSpec::TappedUnlessControl` over a
+//! Swamp-or-Forest filter.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaUnit;
@@ -13,10 +13,13 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry, EntersWithSpec,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, ManaColor, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Woodland Cemetery");
+    let swamp = reg.interner_mut().intern("Swamp");
+    let forest = reg.interner_mut().intern("Forest");
     let chars = Characteristics {
         name,
         mana_cost: None,
@@ -24,12 +27,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::LAND.into(),
         ..Default::default()
     };
+    // "This land enters tapped unless you control a Swamp or a Forest."
+    let unless = ObjectFilter::permanent().with_subtypes_any(vec![swamp, forest]);
     reg.register(
         CardDefinition::new(name, chars)
-            // GAP: "enters tapped UNLESS you control a Swamp or a
-            // Forest" — conditional enters-tapped is not expressible;
-            // always-tapped is the conservative model.
-            .with_enters_with(EntersWithSpec::Tapped)
+            .with_enters_with(EntersWithSpec::TappedUnlessControl { filter: unless })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Add {B}.".into(),
                 cost: ActivationCost::tap_only(),

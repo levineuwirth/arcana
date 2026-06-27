@@ -1,8 +1,8 @@
 //! Hinterland Harbor — nonbasic land (Innistrad, 2011).
 //! "This land enters tapped unless you control a Forest or an Island."
-//! and "{T}: Add {G} or {U}." The conditional enters-tapped is modeled as
-//! unconditional `EntersWithSpec::Tapped` — GAP: the "unless you control
-//! a Forest or an Island" escape is not expressible.
+//! and "{T}: Add {G} or {U}." The check-land condition ("unless you
+//! control a Forest or an Island") is wired via
+//! `EntersWithSpec::TappedUnlessControl` over a Forest-or-Island filter.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaUnit;
@@ -12,10 +12,13 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry, EntersWithSpec,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, ManaColor, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Hinterland Harbor");
+    let forest = reg.interner_mut().intern("Forest");
+    let island = reg.interner_mut().intern("Island");
     let chars = Characteristics {
         name,
         mana_cost: None,
@@ -23,12 +26,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::LAND.into(),
         ..Default::default()
     };
+    // "This land enters tapped unless you control a Forest or an Island."
+    let unless = ObjectFilter::permanent().with_subtypes_any(vec![forest, island]);
     reg.register(
         CardDefinition::new(name, chars)
-            // GAP: "enters tapped UNLESS you control a Forest or an
-            // Island" — conditional enters-tapped is not expressible;
-            // modeled as always entering tapped.
-            .with_enters_with(EntersWithSpec::Tapped)
+            .with_enters_with(EntersWithSpec::TappedUnlessControl { filter: unless })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Add {G}.".into(),
                 cost: ActivationCost::tap_only(),

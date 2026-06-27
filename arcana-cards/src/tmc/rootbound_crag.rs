@@ -10,10 +10,13 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry, EntersWithSpec,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, ManaColor, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Rootbound Crag");
+    let mountain = reg.interner_mut().intern("Mountain");
+    let forest = reg.interner_mut().intern("Forest");
     let chars = Characteristics {
         name,
         mana_cost: None,
@@ -21,12 +24,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::LAND.into(),
         ..Default::default()
     };
+    // "This land enters tapped unless you control a Mountain or a Forest."
+    let unless = ObjectFilter::permanent().with_subtypes_any(vec![mountain, forest]);
     reg.register(
         CardDefinition::new(name, chars)
-            // GAP: "enters tapped UNLESS you control a Mountain or a
-            // Forest" — conditional enters-tapped is not expressible;
-            // modeled as always entering tapped.
-            .with_enters_with(EntersWithSpec::Tapped)
+            .with_enters_with(EntersWithSpec::TappedUnlessControl { filter: unless })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Add {R}.".into(),
                 cost: ActivationCost::tap_only(),

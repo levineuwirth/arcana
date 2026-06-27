@@ -1,8 +1,9 @@
 //! Rockfall Vale — Land (Midnight Hunt slow land).
 //! "This land enters tapped unless you control two or more other
-//! lands." and "{T}: Add {R} or {G}." Modeled as always entering
-//! tapped (the unless-condition is a GAP) plus the two-color mana
-//! choice as two mana abilities.
+//! lands." and "{T}: Add {R} or {G}." The slow-land condition ("unless
+//! you control two or more other lands") is wired via
+//! `EntersWithSpec::TappedUnlessControlCount` over a land filter with
+//! `2..`, plus the two-color mana choice as two mana abilities.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaUnit;
@@ -12,6 +13,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry, EntersWithSpec,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, ManaColor, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,12 +25,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::LAND.into(),
         ..Default::default()
     };
-    // GAP: "enters tapped UNLESS you control two or more other lands" —
-    // conditional enters-tapped is not expressible (EntersWithSpec::Tapped is
-    // unconditional); modeled as always tapped.
     reg.register(
         CardDefinition::new(name, chars)
-            .with_enters_with(EntersWithSpec::Tapped)
+            // "Enters tapped unless you control two or more other lands."
+            .with_enters_with(EntersWithSpec::TappedUnlessControlCount {
+                filter: ObjectFilter::permanent().with_types(TypeLine::LAND.into()),
+                min: 2,
+                max: u32::MAX,
+            })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Add {R}.".into(),
                 cost: ActivationCost::tap_only(),

@@ -2,9 +2,8 @@
 //! "This land enters tapped unless a player has 13 or less life." and
 //! "{T}: Add {G} or {W}."
 //!
-//! GAP: the conditional untapped entry ("unless a player has 13 or less
-//! life") is not expressible — `EntersWithSpec` has no conditional
-//! variant; modeled as unconditionally entering tapped.
+//! The conditional untapped entry ("unless a player has 13 or less
+//! life") is wired via `EntersWithSpec::TappedUnlessAnyPlayerLifeAtMost`.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaUnit;
@@ -27,9 +26,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars)
-            // GAP: "unless a player has 13 or less life" — conditional
-            // untapped entry not expressible.
-            .with_enters_with(EntersWithSpec::Tapped)
+            // "Enters tapped unless a player has 13 or less life."
+            .with_enters_with(EntersWithSpec::TappedUnlessAnyPlayerLifeAtMost {
+                life: 13,
+            })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Add {G}.".into(),
                 cost: ActivationCost::tap_only(),

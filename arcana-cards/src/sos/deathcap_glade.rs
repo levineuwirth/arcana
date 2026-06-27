@@ -10,6 +10,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry, EntersWithSpec,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, ManaColor, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -23,10 +24,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars)
-            // GAP: "enters tapped UNLESS you control two or more other
-            // lands" — conditional enters-tapped is not expressible;
-            // modeled as always entering tapped.
-            .with_enters_with(EntersWithSpec::Tapped)
+            // "Enters tapped unless you control two or more other lands."
+            .with_enters_with(EntersWithSpec::TappedUnlessControlCount {
+                filter: ObjectFilter::permanent().with_types(TypeLine::LAND.into()),
+                min: 2,
+                max: u32::MAX,
+            })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Add {B}.".into(),
                 cost: ActivationCost::tap_only(),

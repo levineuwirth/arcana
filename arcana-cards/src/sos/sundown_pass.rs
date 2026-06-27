@@ -1,9 +1,9 @@
 //! Sundown Pass — nonbasic land (Crimson Vow, 2021).
 //! "This land enters tapped unless you control two or more other
-//! lands." and "{T}: Add {R} or {W}."
-//! The conditional enters-tapped has no EntersWithSpec variant — the
-//! land is wired as always entering tapped (the conservative floor)
-//! with the unless-clause as a documented GAP.
+//! lands." and "{T}: Add {R} or {W}." The slow-land condition ("unless
+//! you control two or more other lands") is wired via
+//! `EntersWithSpec::TappedUnlessControlCount` over a land filter with
+//! `2..`.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaUnit;
@@ -13,6 +13,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry, EntersWithSpec,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, ManaColor, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -24,11 +25,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::LAND.into(),
         ..Default::default()
     };
-    // GAP: "enters tapped UNLESS you control two or more other lands" —
-    // EntersWithSpec has no conditional form; modeled as always tapped.
     reg.register(
         CardDefinition::new(name, chars)
-            .with_enters_with(EntersWithSpec::Tapped)
+            // "Enters tapped unless you control two or more other lands."
+            .with_enters_with(EntersWithSpec::TappedUnlessControlCount {
+                filter: ObjectFilter::permanent().with_types(TypeLine::LAND.into()),
+                min: 2,
+                max: u32::MAX,
+            })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Add {R}.".into(),
                 cost: ActivationCost::tap_only(),

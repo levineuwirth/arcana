@@ -1,11 +1,8 @@
 //! Blackcleave Cliffs — nonbasic land (fast land).
 //! "This land enters tapped unless you control two or fewer other
-//! lands." and "{T}: Add {B} or {R}." Modeled as enters-tapped plus
-//! two mana abilities.
-//!
-//! GAP: the "unless you control two or fewer other lands" conditional
-//! on entering tapped is not expressible — `EntersWithSpec::Tapped`
-//! is unconditional (the land enters tapped more often than printed).
+//! lands." and "{T}: Add {B} or {R}." The fast-land condition is wired
+//! via `EntersWithSpec::TappedUnlessControlCount` over a land filter
+//! with `0..=2`.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaUnit;
@@ -15,6 +12,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry, EntersWithSpec,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, ManaColor, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,10 +26,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars)
-            // GAP: "unless you control two or fewer other lands" —
-            // conditional enters-tapped is not expressible; modeled as
-            // unconditionally tapped.
-            .with_enters_with(EntersWithSpec::Tapped)
+            // "Enters tapped unless you control two or fewer other lands."
+            .with_enters_with(EntersWithSpec::TappedUnlessControlCount {
+                filter: ObjectFilter::permanent().with_types(TypeLine::LAND.into()),
+                min: 0,
+                max: 2,
+            })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Add {B}.".into(),
                 cost: ActivationCost::tap_only(),

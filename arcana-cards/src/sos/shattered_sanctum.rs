@@ -2,20 +2,20 @@
 //! "This land enters tapped unless you control two or more other lands."
 //! and "{T}: Add {W} or {B}."
 //!
-//! The CONDITIONAL enters-tapped clause is not expressible —
-//! `EntersWithSpec::Tapped` is unconditional and there is no
-//! conditional variant, so the card is modeled entering untapped with
-//! a GAP note. The two-color mana choice is the standard two-ability
-//! idiom.
+//! The slow-land condition ("unless you control two or more other
+//! lands") is wired via `EntersWithSpec::TappedUnlessControlCount` over
+//! a land filter with `2..`. The two-color mana choice is the standard
+//! two-ability idiom.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaUnit;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
-    CardDefinition, CardRegistry,
+    CardDefinition, CardRegistry, EntersWithSpec,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, ManaColor, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,11 +27,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::LAND.into(),
         ..Default::default()
     };
-    // GAP: "This land enters tapped unless you control two or more other
-    // lands" — EntersWithSpec has no conditional variant; modeled as
-    // entering untapped.
     reg.register(
         CardDefinition::new(name, chars)
+            // "Enters tapped unless you control two or more other lands."
+            .with_enters_with(EntersWithSpec::TappedUnlessControlCount {
+                filter: ObjectFilter::permanent().with_types(TypeLine::LAND.into()),
+                min: 2,
+                max: u32::MAX,
+            })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Add {W}.".into(),
                 cost: ActivationCost::tap_only(),

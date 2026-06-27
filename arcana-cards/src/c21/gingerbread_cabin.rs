@@ -2,11 +2,12 @@
 //! enters tapped unless you control three or more other Forests. When
 //! this land enters untapped, create a Food token."
 //!
-//! The conditional untapped entry is not expressible
-//! (`EntersWithSpec::Tapped` is unconditional) — modeled as always
-//! tapped. The "enters untapped" gate on the Food trigger is likewise
-//! not expressible; the trigger is wired unconditionally with the gate
-//! as a documented gap.
+//! The conditional enters-tapped clause ("unless you control three or
+//! more other Forests") is wired via
+//! `EntersWithSpec::TappedUnlessControlCount` over a Forest-subtype
+//! filter with `3..`. The "enters untapped" gate on the Food trigger is
+//! still not expressible; the trigger is wired unconditionally with the
+//! gate as a documented gap.
 
 use arcana_core::effects::{CommodityToken, Effect};
 use arcana_core::mana::ManaUnit;
@@ -16,6 +17,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry, EntersWithSpec,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -35,12 +37,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         subtypes,
         ..Default::default()
     };
-    // GAP: "enters tapped UNLESS you control three or more other
-    // Forests" — conditional entry not expressible; modeled as always
-    // tapped.
     reg.register(
         CardDefinition::new(name, chars)
-            .with_enters_with(EntersWithSpec::Tapped)
+            // "Enters tapped unless you control three or more other Forests."
+            .with_enters_with(EntersWithSpec::TappedUnlessControlCount {
+                filter: ObjectFilter::permanent().with_subtype_sym(forest),
+                min: 3,
+                max: u32::MAX,
+            })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Add {G}.".into(),
                 cost: ActivationCost::tap_only(),

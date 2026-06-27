@@ -1,10 +1,9 @@
 //! Botanical Sanctum — nonbasic land (Kaladesh).
 //! "This land enters tapped unless you control two or fewer other lands."
-//! and "{T}: Add {G} or {U}."
-//!
-//! GAP: the conditional untapped entry ("unless you control two or fewer
-//! other lands") is not expressible — `EntersWithSpec` has no conditional
-//! variant; modeled as unconditionally entering tapped.
+//! and "{T}: Add {G} or {U}." The fast-land condition ("unless you
+//! control two or fewer other lands") is wired via
+//! `EntersWithSpec::TappedUnlessControlCount` over a land filter with
+//! `0..=2`.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaUnit;
@@ -14,6 +13,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry, EntersWithSpec,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, ManaColor, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,9 +27,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars)
-            // GAP: "unless you control two or fewer other lands" —
-            // conditional untapped entry not expressible.
-            .with_enters_with(EntersWithSpec::Tapped)
+            // "Enters tapped unless you control two or fewer other lands."
+            .with_enters_with(EntersWithSpec::TappedUnlessControlCount {
+                filter: ObjectFilter::permanent().with_types(TypeLine::LAND.into()),
+                min: 0,
+                max: 2,
+            })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Add {G}.".into(),
                 cost: ActivationCost::tap_only(),

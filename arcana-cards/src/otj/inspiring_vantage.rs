@@ -1,19 +1,19 @@
 //! Inspiring Vantage — nonbasic land (Kaladesh fastland).
 //! "This land enters tapped unless you control two or fewer other lands."
-//! and "{T}: Add {R} or {W}."
-//!
-//! GAP: the CONDITIONAL "enters tapped unless you control two or fewer
-//! other lands" is not expressible — `EntersWithSpec` has only the
-//! unconditional `Tapped` variant; this build enters untapped always.
+//! and "{T}: Add {R} or {W}." The fast-land condition ("unless you
+//! control two or fewer other lands") is wired via
+//! `EntersWithSpec::TappedUnlessControlCount` over a land filter with
+//! `0..=2`.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaUnit;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
-    CardDefinition, CardRegistry,
+    CardDefinition, CardRegistry, EntersWithSpec,
 };
 use arcana_core::state::GameState;
+use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, ManaColor, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -27,6 +27,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
     reg.register(
         CardDefinition::new(name, chars)
+            // "Enters tapped unless you control two or fewer other lands."
+            .with_enters_with(EntersWithSpec::TappedUnlessControlCount {
+                filter: ObjectFilter::permanent().with_types(TypeLine::LAND.into()),
+                min: 0,
+                max: 2,
+            })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Add {R}.".into(),
                 cost: ActivationCost::tap_only(),
