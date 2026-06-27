@@ -115,6 +115,7 @@
     const tapped = opts.tapped != null ? opts.tapped : !!data.tapped;
     const card = document.createElement("div");
     card.className = "ac-card" + (tapped ? " tapped" : "");
+    if (data.id != null) card.dataset.cardId = data.id; // for arrows / target lookup
     if (cos.foil) card.classList.add("foil");
     if (opts.classes) card.classList.add.apply(card.classList, opts.classes);
     if (opts.onClick) card.classList.add("clickable");

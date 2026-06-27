@@ -41,6 +41,8 @@
     border-radius: var(--radius-panel); background: var(--bg-offset);
   }
   .phasebar.you-turn { border-left-color: var(--text); }
+  .arrows { position: fixed; inset: 0; z-index: 110; pointer-events: none; }
+  .arrows path { fill: none; stroke-width: 3; opacity: .92; stroke-linecap: round; }
   .autopass-ctl { display: inline-flex; align-items: center; gap: 6px; font-size: 11px;
     text-transform: uppercase; letter-spacing: .06em; color: var(--text-faint); }
   .autopass-ctl select {
@@ -439,6 +441,13 @@
       <div class="dock" id="dock-right"></div>
     </div>
   </div>
+
+  <!-- Targeting / combat arrows are drawn here, above the board, below modals. -->
+  <svg id="arrows" class="arrows"><defs>
+    <marker id="ah-atk" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#d4452f"/></marker>
+    <marker id="ah-blk" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#3b7dd8"/></marker>
+    <marker id="ah-tgt" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#caa45a"/></marker>
+  </defs><g id="arrow-layer"></g></svg>
 
   <!-- Transient combat / mulligan UI floats here (does not reflow the dock). -->
   <div id="overlay"><div class="overlay-card"><div id="combat"></div></div></div>
@@ -1786,6 +1795,58 @@ function syncOverlay() {
   ov.classList.toggle("show", !!(combat && combat.classList.contains("show")));
 }
 
+// ----- targeting / combat arrows (SVG overlay) -----------------------------
+const SVGNS = "http://www.w3.org/2000/svg";
+function cardEl(id) { return document.querySelector('[data-card-id="' + id + '"]'); }
+// A player's HUD element to point a player-target/attack arrow at.
+function hudEl(player) {
+  const me = G.resp && G.resp.view.perspective;
+  return document.getElementById(player === me ? "youhud" : "opphud");
+}
+function centerOf(el) {
+  const r = el.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+}
+function drawArrow(layer, from, to, mark) {
+  const dx = to.x - from.x, dy = to.y - from.y;
+  const lift = Math.min(70, (Math.hypot(dx, dy) || 1) * 0.22);
+  const mx = (from.x + to.x) / 2, my = (from.y + to.y) / 2 - lift;
+  const p = document.createElementNS(SVGNS, "path");
+  p.setAttribute("d", "M " + from.x + " " + from.y + " Q " + mx + " " + my + " " + to.x + " " + to.y);
+  p.setAttribute("stroke", mark.color);
+  p.setAttribute("marker-end", "url(#" + mark.id + ")");
+  layer.appendChild(p);
+}
+const ARROW_ATK = { color: "#d4452f", id: "ah-atk" };
+const ARROW_BLK = { color: "#3b7dd8", id: "ah-blk" };
+const ARROW_TGT = { color: "#caa45a", id: "ah-tgt" };
+
+// Redraw all live arrows: combat declarations now, targeting in renderTargeting.
+function renderArrows() {
+  const layer = document.getElementById("arrow-layer");
+  if (!layer) return;
+  layer.innerHTML = "";
+  if (!G.resp) return;
+  const cm = combatMaps();
+  if (cm && cm.mode === "attackers") {
+    for (const [aid, def] of G.atk) {
+      const from = cardEl(aid); if (!from) continue;
+      let to = null;
+      if (def && def.Player !== undefined) { const h = hudEl(def.Player); if (h) to = h; }
+      else if (def) { to = cardEl(def.Planeswalker !== undefined ? def.Planeswalker : def.Battle); }
+      if (to) drawArrow(layer, centerOf(from), centerOf(to), ARROW_ATK);
+    }
+  } else if (cm && cm.mode === "blockers") {
+    for (const [bid, aid] of G.blk) {
+      const from = cardEl(bid), to = cardEl(aid);
+      if (from && to) drawArrow(layer, centerOf(from), centerOf(to), ARROW_BLK);
+    }
+  }
+  drawTargetingArrows(layer); // phase 2: source → hovered/candidate target
+}
+// Placeholder filled in by the targeting feature.
+function drawTargetingArrows(_layer) {}
+
 function renderAll() {
   const resp = G.resp;
   if (!resp) return;
@@ -1833,6 +1894,7 @@ function renderAll() {
   maybeAutoSuggest(view);
   renderCardPower();
   syncOverlay();
+  renderArrows();
 
   // remember which battlefield ids we've now shown (so new ones pulse next time)
   G.seenBf = new Set();
@@ -1931,6 +1993,15 @@ initResizers();
 Arcana.mountThemeSwitcher(document.getElementById("themeslot"));
 document.getElementById("new").onclick = newGame;
 document.getElementById("refresh").onclick = getState;
+
+// Keep arrows aligned when the layout shifts (resize / internal panel scroll).
+let arrowRaf = 0;
+function scheduleArrows() {
+  if (arrowRaf) return;
+  arrowRaf = requestAnimationFrame(() => { arrowRaf = 0; renderArrows(); });
+}
+window.addEventListener("resize", scheduleArrows);
+window.addEventListener("scroll", scheduleArrows, true); // capture: catches panel scroll
 
 // Auto-pass level — persisted, and synced to the server on load (the worker
 // keeps it across new games, so we only need to push it when it changes / loads).
