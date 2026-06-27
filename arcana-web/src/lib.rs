@@ -577,6 +577,51 @@ fn color_combo_name(colors: ColorSet) -> String {
     name.to_string()
 }
 
+/// A preset AI rival shown on the World Stage — the Civ-leader gallery. A named
+/// opponent with a deck, an agenda (flavor), a difficulty, and a derived deck
+/// identity. Selecting one fills the opponent seat of a [`MatchConfig`] (as a
+/// [`SeatSpec::Bot`]); the "custom deck" slot produces the same Bot seat from a
+/// saved list, so personalities and custom decks share one code path.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Personality {
+    /// Stable key for the frontend (e.g. "pyromancer").
+    pub id: String,
+    pub profile: PlayerProfile,
+    pub agenda: String,
+    pub difficulty: Difficulty,
+    pub deck: Vec<CardId>,
+    pub identity: DeckIdentity,
+}
+
+/// The built-in roster of AI rivals. Each is a mono-color creature deck of a
+/// tuned curve with a flavorful name + agenda + difficulty; the deck identity
+/// (colors / portrait / archetype) is DERIVED from the real deck, so the Stage
+/// portrays each rival honestly even though the flavor is authored.
+pub fn personalities(reg: &CardRegistry) -> Vec<Personality> {
+    // (id, name, agenda, color, difficulty, curve cap)
+    const ROSTER: [(&str, &str, &str, char, Difficulty, u32); 5] = [
+        ("pyromancer", "The Pyromancer", "Burn fast, burn bright.", 'R', Difficulty::Normal, 4),
+        ("wildspeaker", "The Wildspeaker", "The wilds answer my call.", 'G', Difficulty::Easy, 6),
+        ("cleric", "The Cleric", "Stand behind the wall of faith.", 'W', Difficulty::Easy, 4),
+        ("necromancer", "The Necromancer", "Death is only the beginning.", 'B', Difficulty::Normal, 5),
+        ("tempest", "The Tempest", "The tide turns at my command.", 'U', Difficulty::Hard, 6),
+    ];
+    ROSTER.iter().map(|&(id, name, agenda, color, difficulty, cmc_max)| {
+        let deck = arcana_ai::deckeval::mono_color_creature_deck(
+            reg, color, /*distinct=*/ 12, /*n_spells=*/ 22, /*n_lands=*/ 18, cmc_max,
+        ).cards;
+        let identity = derive_deck_identity(reg, &deck, None);
+        Personality {
+            id: id.to_string(),
+            profile: PlayerProfile { name: name.to_string() },
+            agenda: agenda.to_string(),
+            difficulty,
+            deck,
+            identity,
+        }
+    }).collect()
+}
+
 /// Bot strength dial → Monte-Carlo search budget.
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Difficulty {
@@ -1292,6 +1337,37 @@ mod tests {
         // A supplied (saved) name overrides the derived default.
         let named = derive_deck_identity(reg, &deck, Some("My Brew".into()));
         assert_eq!(named.name, "My Brew");
+    }
+
+    #[test]
+    fn personalities_roster_is_well_formed() {
+        let reg = leaked_catalog();
+        let roster = personalities(reg);
+        assert!(roster.len() >= 5, "a few named rivals exist");
+        let mut ids = std::collections::HashSet::new();
+        for p in &roster {
+            assert!(ids.insert(p.id.clone()), "rival ids are unique: {}", p.id);
+            assert!(!p.profile.name.trim().is_empty(), "{} has a name", p.id);
+            assert!(!p.agenda.trim().is_empty(), "{} has an agenda", p.id);
+            assert!(!p.deck.is_empty(), "{} has a deck", p.id);
+            assert_ne!(p.identity.colors.0, 0, "{} has a colored identity", p.id);
+            assert!(p.identity.portrait.is_some(), "{} has a signature card", p.id);
+        }
+        // Each rival's deck builds a valid duel as the opponent seat.
+        let human = arcana_cards::sample_deck(reg, 3);
+        let p = &roster[0];
+        let cfg = MatchConfig {
+            seats: vec![
+                SeatSpec::Local { profile: PlayerProfile::default(),
+                    deck: human.clone(), identity: DeckIdentity::default() },
+                SeatSpec::Bot { profile: p.profile.clone(), agenda: p.agenda.clone(),
+                    deck: p.deck.clone(), identity: p.identity.clone(),
+                    difficulty: p.difficulty },
+            ],
+            ..Default::default()
+        };
+        assert!(GameCore::from_match_config(reg, &cfg).is_ok(),
+            "a roster rival is a valid opponent seat");
     }
 
     /// The catalog query layer works over the real ~20k-card catalog: an

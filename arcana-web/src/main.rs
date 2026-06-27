@@ -54,8 +54,8 @@ use arcana_core::registry::CardRegistry;
 use arcana_core::types::CardId;
 use arcana_ai::session::AutoPass;
 use arcana_web::{
-    derive_deck_identity, resolve_import, CombatSubmission, DeckIdentity, GameCore,
-    ImportedDeck, StateResponse, Suggestion,
+    derive_deck_identity, personalities, resolve_import, CombatSubmission, DeckIdentity,
+    GameCore, ImportedDeck, Personality, StateResponse, Suggestion,
 };
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
@@ -98,6 +98,7 @@ enum Command {
         name: Option<String>,
         reply: oneshot::Sender<DeckIdentity>,
     },
+    Personalities { reply: oneshot::Sender<Vec<Personality>> },
     Suggest { deep: bool, reply: oneshot::Sender<Vec<Suggestion>> },
     New {
         seed: Option<u64>,
@@ -462,6 +463,9 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>) {
             }
             Command::DeckIdentity { deck, name, reply } => {
                 let _ = reply.send(derive_deck_identity(core.registry(), &deck, name));
+            }
+            Command::Personalities { reply } => {
+                let _ = reply.send(personalities(core.registry()));
             }
             Command::Suggest { deep, reply } => {
                 let _ = reply.send(core.suggest(deep));
@@ -845,6 +849,21 @@ async fn get_sample_deck(State(app): State<AppState>) -> Response {
 /// signature portrait, archetype, faction name) for a decklist. The Stage uses
 /// it to render a deck as a faction; the player can then override any field.
 /// Body: `{ "deck": [cardId,…], "name": "optional saved name" }`.
+/// `GET /personalities` → the built-in roster of AI rivals (the Stage's foe
+/// gallery): each a named opponent with an agenda, difficulty, deck, and
+/// derived identity. The frontend renders them as gallery cards; selecting one
+/// fills the opponent seat of the posted `MatchConfig`.
+async fn get_personalities(State(app): State<AppState>) -> Response {
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::Personalities { reply }).is_err() {
+        return worker_gone();
+    }
+    match rx.await {
+        Ok(roster) => Json(roster).into_response(),
+        Err(_) => worker_gone(),
+    }
+}
+
 async fn post_deck_identity(State(app): State<AppState>, body: String) -> Response {
     #[derive(serde::Deserialize, Default)]
     struct Req {
@@ -909,6 +928,7 @@ async fn main() {
         .route("/legality", post(post_legality))
         .route("/sample-deck", get(get_sample_deck))
         .route("/deck-identity", post(post_deck_identity))
+        .route("/personalities", get(get_personalities))
         .route("/glossary", get(get_glossary))
         .route("/state", get(get_state))
         .route("/suggest", get(get_suggest))
