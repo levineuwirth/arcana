@@ -802,51 +802,97 @@ fn enumerate_blocker_declarations(state: &GameState, defender: PlayerId) -> Vec<
         .map(|a| a.object_id).collect();
     attackers.sort();
 
-    for atk in attackers {
-        // Total emitted DeclareBlockers actions are bounded too: a wide
-        // board with many attackers could otherwise sum to a large set
-        // even with each attacker's subsets individually capped.
-        if out.len() >= MAX_COMBAT_ENUM { break; }
-        // Per-attacker eligibility filter (Flying/Reach, Protection).
-        // Menace is now expressed via `block_constraints`, not per-
-        // blocker eligibility.
+    // Per-attacker valid blocker subsets (CR 509.1): for each attacker, the
+    // characteristic-equivalence-deduped subsets of its eligible blockers
+    // whose size satisfies the attacker's constraints (menace minimum,
+    // max-blockers), always including the empty subset (= "not blocked").
+    // Menace/Flying/Reach/Protection are honored via `block_constraints` +
+    // `can_block_attacker`.
+    let per_attacker: Vec<Vec<Vec<ObjectId>>> = attackers.iter().map(|&atk| {
         let eligible_for_atk: Vec<ObjectId> = all_eligible.iter()
             .copied()
             .filter(|&blk| can_block_attacker(state, blk, atk))
             .collect();
-
         let constraints = state.block_constraints(atk);
         let max_size = match constraints.max_blockers {
             Some(m) => (m as usize).min(eligible_for_atk.len()),
             None => eligible_for_atk.len(),
         };
-        if (constraints.min_blockers as usize) > max_size {
-            // No legal non-empty block exists on this attacker
-            // (e.g. Menace with only one eligible blocker, or
-            // unblockable via max=Some(0)).
+        // Identity key (each creature its own group), NOT characteristic
+        // equivalence: the cross-product below assigns DISTINCT creatures to
+        // distinct attackers, so two identical blockers must remain separable
+        // (else they'd collapse to one representative and only one of two
+        // identical creatures could ever be assigned). MAX_COMBAT_ENUM bounds
+        // the 2^k subset space; the product is capped again.
+        let mut subsets = enumerate_equivalence_subsets(
+            &eligible_for_atk, max_size, MAX_COMBAT_ENUM,
+            |&id| id,
+        );
+        // Keep only constraint-legal sizes; the empty subset ("unblocked")
+        // is always legal and must be present so the cross-product can leave
+        // this attacker unblocked.
+        subsets.retain(|s| constraints.allows_block_count(s.len() as u32));
+        if !subsets.iter().any(|s| s.is_empty()) {
+            subsets.push(Vec::new());
+        }
+        subsets
+    }).collect();
+
+    // Cross-attacker product: pick one legal subset per attacker such that no
+    // creature blocks two attackers (CR 509.1a). Unlike the old per-attacker
+    // emission, this yields declarations that block SEVERAL different
+    // attackers at once — what a defender normally wants. Cap-threaded so a
+    // wide board can't explode the output.
+    let mut used: std::collections::HashSet<ObjectId> = std::collections::HashSet::new();
+    let mut acc: Vec<BlockerDeclaration> = Vec::new();
+    product_block_assignments(&per_attacker, &attackers, 0, &mut used, &mut acc, &mut out);
+    out
+}
+
+/// Recursive disjoint cross-product over the per-attacker blocker subsets
+/// (see [`enumerate_blocker_declarations`]). At attacker index `i`, try each
+/// of its candidate subsets that doesn't reuse an already-assigned creature;
+/// at the leaf (all attackers decided) emit the accumulated declaration if it
+/// blocks anything. `out[0]` is already the empty declaration, so the all-
+/// empty leaf is skipped. Bounded by [`MAX_COMBAT_ENUM`].
+fn product_block_assignments(
+    per_attacker: &[Vec<Vec<ObjectId>>],
+    attackers: &[ObjectId],
+    i: usize,
+    used: &mut std::collections::HashSet<ObjectId>,
+    acc: &mut Vec<BlockerDeclaration>,
+    out: &mut Vec<Action>,
+) {
+    if out.len() >= MAX_COMBAT_ENUM {
+        return;
+    }
+    if i == per_attacker.len() {
+        if !acc.is_empty() {
+            out.push(Action::DeclareBlockers { blockers: acc.clone() });
+        }
+        return;
+    }
+    let atk = attackers[i];
+    for subset in &per_attacker[i] {
+        if out.len() >= MAX_COMBAT_ENUM {
+            return;
+        }
+        // Skip subsets that reuse a creature already blocking another attacker.
+        if subset.iter().any(|b| used.contains(b)) {
             continue;
         }
-
-        // Characteristic-equivalence dedup: subsets of size 0..=max
-        // over the eligible blockers, grouped by equivalence class.
-        // Filter the emitted subsets down to the constraint-allowed
-        // sizes; drop the empty subset (already emitted above).
-        let subsets = enumerate_equivalence_subsets(
-            &eligible_for_atk, max_size, MAX_COMBAT_ENUM,
-            |&id| object_equivalence_key(state, id),
-        );
-        for subset in subsets {
-            if out.len() >= MAX_COMBAT_ENUM { break; }
-            let size = subset.len() as u32;
-            if size == 0 { continue; }
-            if !constraints.allows_block_count(size) { continue; }
-            let decls: Vec<BlockerDeclaration> = subset.into_iter()
-                .map(|blk| BlockerDeclaration { blocker: blk, blocking: atk })
-                .collect();
-            out.push(Action::DeclareBlockers { blockers: decls });
+        for &b in subset {
+            used.insert(b);
+            acc.push(BlockerDeclaration { blocker: b, blocking: atk });
+        }
+        product_block_assignments(per_attacker, attackers, i + 1, used, acc, out);
+        for _ in subset {
+            acc.pop();
+        }
+        for b in subset {
+            used.remove(b);
         }
     }
-    out
 }
 
 /// Per-pair blocker eligibility (CR 509.1b). Checks the per-blocker
@@ -3933,6 +3979,41 @@ mod tests {
                 if blockers.len() == 1
                 && blockers[0].blocker == blk
                 && blockers[0].blocking == 99)));
+    }
+
+    #[test]
+    fn blocker_enumeration_offers_multi_attacker_blocks() {
+        // Two attackers, two blockers (each can block either). The
+        // enumeration must offer a declaration that blocks BOTH attackers at
+        // once — the case the old per-attacker emission never produced.
+        let mut s = GameState::new(2, 0);
+        s.priority.player = 1; // defender has priority
+        let atk1 = put(&mut s, 0, Zone::Battlefield, creature_chars(2, 2));
+        let atk2 = put(&mut s, 0, Zone::Battlefield, creature_chars(2, 2));
+        let mk = |id| AttackerInfo {
+            object_id: id, defending_player: 1, defending_planeswalker: None,
+            blocked_by: vec![], is_blocked: false,
+        };
+        s.combat = Some(CombatState {
+            phase: CombatPhase::DeclareBlockers,
+            attackers: vec![mk(atk1), mk(atk2)],
+            ..CombatState::new()
+        });
+        let blk1 = put(&mut s, 1, Zone::Battlefield, creature_chars(1, 1));
+        let blk2 = put(&mut s, 1, Zone::Battlefield, creature_chars(1, 1));
+
+        let actions = legal_actions(&s, &CardRegistry::new());
+        let blocks_both = |a: &Action| matches!(a, Action::DeclareBlockers { blockers }
+            if blockers.len() == 2
+                && blockers.iter().any(|b| b.blocking == atk1)
+                && blockers.iter().any(|b| b.blocking == atk2)
+                && blockers.iter().any(|b| b.blocker == blk1)
+                && blockers.iter().any(|b| b.blocker == blk2));
+        assert!(actions.iter().any(blocks_both),
+            "enumeration must offer blocking two different attackers at once");
+        // Single-attacker blocks remain available too.
+        assert!(actions.iter().any(|a| matches!(a, Action::DeclareBlockers { blockers }
+            if blockers.len() == 1)));
     }
 
     #[test]
