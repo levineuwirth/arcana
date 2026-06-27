@@ -31,10 +31,24 @@
     max-height: calc(100vh - 80px); overflow-y: auto;
   }
 
-  form#search { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
-  form#search .colors { display: inline-flex; gap: 8px; }
-  form#search .colors label { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; color: var(--text-muted); }
-  .results-meta { color: var(--text-faint); font-size: 12px; }
+  /* search/filter bar — a roomy name row + a compact filter row */
+  .filters { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+  .filter-main { display: flex; gap: 8px; }
+  .filter-main #q-name { flex: 1; min-width: 0; padding: 7px 12px; font-size: 14px; }
+  .filter-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .filter-row select { padding: 4px 8px; }
+  .colorpips { display: inline-flex; gap: 3px; }
+  .colorpips .pip {
+    padding: 2px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg);
+    cursor: pointer; line-height: 0; opacity: .42; filter: grayscale(.35); transition: all var(--transition-fast);
+  }
+  .colorpips .pip:hover { opacity: .85; }
+  .colorpips .pip.active { opacity: 1; filter: none; border-color: var(--text-muted); background: var(--bg-offset); }
+  .colorpips .pip img, .colorpips .pip .ac-sym { width: 19px; height: 19px; display: block; }
+  .mv-range { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-muted); }
+  .mv-range input { width: 52px; padding: 4px 6px; }
+  .arttools { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .results-meta { color: var(--text-faint); font-size: 12px; margin-left: auto; }
 
   .grid { display: flex; gap: 10px; flex-wrap: wrap; --card-w: 122px; }
   #deckstats .colors .ctile { display: inline-flex; align-items: center; gap: 1px;
@@ -96,31 +110,31 @@
 
   <main>
     <section id="browse">
-      <form id="search">
-        <input id="q-name" placeholder="name contains…" size="16" />
-        <span class="colors">
-          <label><input type="checkbox" value="W" />W</label>
-          <label><input type="checkbox" value="U" />U</label>
-          <label><input type="checkbox" value="B" />B</label>
-          <label><input type="checkbox" value="R" />R</label>
-          <label><input type="checkbox" value="G" />G</label>
-          <label><input type="checkbox" value="C" />◇</label>
-        </span>
-        <select id="q-type">
-          <option value="">any type</option>
-          <option>Creature</option><option>Instant</option><option>Sorcery</option>
-          <option>Artifact</option><option>Enchantment</option><option>Land</option>
-          <option>Planeswalker</option><option>Battle</option>
-        </select>
-        <select id="q-kw"><option value="">any keyword</option></select>
-        <input id="q-cmin" type="number" min="0" placeholder="mv≥" style="width:64px" />
-        <input id="q-cmax" type="number" min="0" placeholder="mv≤" style="width:64px" />
-        <button type="submit">Search</button>
+      <form id="search" class="filters">
+        <div class="filter-main">
+          <input id="q-name" placeholder="Search cards by name…" />
+          <button type="submit" class="primary">Search</button>
+        </div>
+        <div class="filter-row">
+          <span id="colorpips" class="colorpips" title="Filter by color"></span>
+          <select id="q-type">
+            <option value="">Any type</option>
+            <option>Creature</option><option>Instant</option><option>Sorcery</option>
+            <option>Artifact</option><option>Enchantment</option><option>Land</option>
+            <option>Planeswalker</option><option>Battle</option>
+          </select>
+          <select id="q-kw"><option value="">Any keyword</option></select>
+          <span class="mv-range">MV
+            <input id="q-cmin" type="number" min="0" placeholder="min" />–<input id="q-cmax" type="number" min="0" placeholder="max" />
+          </span>
+          <span id="results-meta" class="results-meta"></span>
+        </div>
+      </form>
+      <div class="arttools">
         <button type="button" id="cacheart" class="ghost" title="Pre-download art for the results + deck so images don't trickle in">Cache art</button>
         <button type="button" id="cacheall" class="ghost" title="Download + cache the entire catalog's art via Scryfall bulk data (~20k cards / ~2 GB, one-time; fast parallel download; persists + works offline)">Download all art</button>
-        <span id="results-meta" class="results-meta"></span>
         <span id="cacheart-msg" class="muted"></span>
-      </form>
+      </div>
       <div id="results" class="grid"><span class="empty-note">Search the catalog to add cards.</span></div>
     </section>
 
@@ -269,7 +283,7 @@ function buildQuery() {
   const q = { limit: 120 };
   const name = document.getElementById("q-name").value.trim();
   if (name) q.name = name;
-  const checked = [...document.querySelectorAll("form#search .colors input:checked")].map((c) => c.value);
+  const checked = [...document.querySelectorAll("#colorpips .pip.active")].map((b) => b.dataset.color);
   if (checked.includes("C")) q.colorless = true;
   const colors = checked.filter((c) => c !== "C");
   if (colors.length) q.colors = colors;
@@ -459,8 +473,27 @@ async function pollWarmAll() {
   }
 }
 
+// ---- color filter pips (mana symbols; click to toggle) ----
+function buildColorPips() {
+  const box = document.getElementById("colorpips");
+  const COLORS = [["W","W"],["U","U"],["B","B"],["R","R"],["G","G"],["C","C"]];
+  for (const [code, sym] of COLORS) {
+    const pip = document.createElement("button");
+    pip.type = "button"; pip.className = "pip"; pip.dataset.color = code;
+    pip.title = code === "C" ? "Colorless" : code;
+    pip.innerHTML = Arcana.manaSymbolHtml(sym);
+    pip.onclick = () => { pip.classList.toggle("active"); search(); };
+    box.appendChild(pip);
+  }
+}
+buildColorPips();
+
 // ---- wire ----
 document.getElementById("search").onsubmit = (e) => { e.preventDefault(); search(); };
+// Live filtering: changing any filter re-searches immediately.
+for (const id of ["q-type", "q-kw", "q-cmin", "q-cmax"]) {
+  document.getElementById(id).onchange = search;
+}
 document.getElementById("cacheart").onclick = cacheArt;
 document.getElementById("cacheall").onclick = downloadAllArt;
 pollWarmAll(); // resume the progress display if a download is already running
