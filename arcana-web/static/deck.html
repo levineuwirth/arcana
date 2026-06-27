@@ -18,6 +18,13 @@
 
   main { display: flex; gap: 16px; padding: 16px var(--page-padding); align-items: flex-start; }
   #browse { flex: 1; min-width: 0; }
+  #preview {
+    width: 264px; flex-shrink: 0; position: sticky; top: 64px;
+    max-height: calc(100vh - 80px); overflow-y: auto;
+    border: 1px solid var(--border); border-radius: var(--radius-panel);
+    padding: 12px; background: var(--bg-offset);
+  }
+  #pv { display: flex; flex-direction: column; gap: 10px; }
   #deckpanel {
     width: 330px; flex-shrink: 0; border: 1px solid var(--border); border-radius: var(--radius-panel);
     padding: 12px; background: var(--bg-offset); position: sticky; top: 64px;
@@ -114,6 +121,8 @@
       <div id="results" class="grid"><span class="empty-note">Search the catalog to add cards.</span></div>
     </section>
 
+    <aside id="preview"><div id="pv" class="pv-empty">Hover a card to preview it.</div></aside>
+
     <aside id="deckpanel">
       <div id="deckstats"></div>
       <div id="decklist"></div>
@@ -149,12 +158,16 @@ function sortedEntries(m) {
 }
 
 // ---- card tiles (shared component) ----
+function previewCard(info) { Arcana.renderPreview(document.getElementById("pv"), info); }
+
 function tile(info) {
   const have = main.get(info.id);
-  return Arcana.renderCard(info, {
+  const el = Arcana.renderCard(info, {
     count: have ? have.count : 0,
     onClick: () => addCard(main, info),
   });
+  el.addEventListener("mouseenter", () => previewCard(info));
+  return el;
 }
 
 // ---- deck ops (generic over a map: main or side) ----
@@ -178,6 +191,7 @@ function sectionRows(container, m, isSide) {
   }
   for (const { info, count } of sortedEntries(m)) {
     const row = document.createElement("div"); row.className = "row";
+    row.addEventListener("mouseenter", () => previewCard(info));
     const minus = document.createElement("button"); minus.textContent = "−"; minus.onclick = () => setCount(m, info.id, count - 1);
     const cnt = document.createElement("span"); cnt.className = "cnt"; cnt.textContent = count;
     const plus = document.createElement("button"); plus.textContent = "+"; plus.onclick = () => setCount(m, info.id, count + 1);

@@ -204,13 +204,68 @@
 
   /* ---- Zoom overlay ------------------------------------------------------ */
   let zoomEl = null;
+  /**
+   * Render a rich card preview into `container`: large card image, a
+   * name·mana·type·P/T line, and EVERY keyword's reminder text (not just on
+   * hover). Shared by the zoom modal and the deckbuilder's hover pane. Pass
+   * `data = null` to show an empty-state hint.
+   */
+  Arcana.renderPreview = function (container, data, cosmetic) {
+    container.innerHTML = "";
+    if (!data) {
+      container.classList.add("pv-empty");
+      container.textContent = "Hover a card to preview it.";
+      return;
+    }
+    container.classList.remove("pv-empty");
+    const cos = Object.assign({}, DEFAULT_COSMETIC, cosmetic || {});
+
+    const imgWrap = document.createElement("div");
+    imgWrap.className = "pv-img";
+    if (data.name) {
+      const img = document.createElement("img");
+      img.alt = data.name; img.loading = "lazy";
+      img.src = (cos.artSource || Arcana.art)(data.name);
+      img.onerror = () => { imgWrap.innerHTML = ""; imgWrap.appendChild(fallback(data.name, data)); };
+      imgWrap.appendChild(img);
+    } else {
+      imgWrap.appendChild(fallback("(hidden card)", data));
+    }
+    container.appendChild(imgWrap);
+
+    const info = document.createElement("div");
+    info.className = "pv-info";
+    if (data.name) {
+      const nm = document.createElement("div"); nm.className = "pv-name"; nm.textContent = data.name;
+      info.appendChild(nm);
+    }
+    const meta = document.createElement("div"); meta.className = "pv-meta";
+    if (data.mana_cost) { const m = document.createElement("span"); m.innerHTML = Arcana.renderMana(data.mana_cost); meta.appendChild(m); }
+    if (data.type_line) { const t = document.createElement("span"); t.className = "pv-type"; t.textContent = data.type_line; meta.appendChild(t); }
+    if (data.power !== null && data.power !== undefined) {
+      const pt = document.createElement("span"); pt.className = "pv-pt tnum"; pt.textContent = data.power + "/" + data.toughness; meta.appendChild(pt);
+    }
+    if (meta.childNodes.length) info.appendChild(meta);
+    container.appendChild(info);
+
+    const kws = data.keywords || [];
+    if (kws.length) {
+      const box = document.createElement("div"); box.className = "pv-kw";
+      for (const kw of kws) {
+        const row = document.createElement("div"); row.className = "pv-kw-row";
+        const b = document.createElement("b"); b.textContent = kw; row.appendChild(b);
+        row.appendChild(document.createTextNode(" — " + (Arcana.glossary[kw] || "(no reminder text)")));
+        box.appendChild(row);
+      }
+      container.appendChild(box);
+    }
+  };
+
   function ensureZoom() {
     if (zoomEl) return zoomEl;
     zoomEl = document.createElement("div");
     zoomEl.className = "ac-zoom";
-    zoomEl.innerHTML =
-      '<img alt="card" /><div class="zoom-info"></div>' +
-      '<div class="zoom-kw"></div><div class="zoom-reminder"></div>';
+    zoomEl.innerHTML = '<div class="ac-zoom-box"></div>';
     zoomEl.onclick = hideZoom;
     zoomEl.oncontextmenu = (e) => { e.preventDefault(); hideZoom(); };
     document.body.appendChild(zoomEl);
@@ -218,37 +273,7 @@
   }
   function showZoom(data, cosmetic) {
     const z = ensureZoom();
-    const cos = Object.assign({}, DEFAULT_COSMETIC, cosmetic || {});
-    const img = z.querySelector("img");
-    if (data.name) {
-      img.style.display = "block";
-      img.src = (cos.artSource || Arcana.art)(data.name);
-      img.onerror = () => { img.style.display = "none"; };
-    } else {
-      img.style.display = "none";
-    }
-    const parts = [data.name || "(hidden card)"];
-    if (data.mana_cost) parts.push(data.mana_cost);
-    if (data.type_line) parts.push(data.type_line);
-    if (data.power !== null && data.power !== undefined) parts.push(data.power + "/" + data.toughness);
-    z.querySelector(".zoom-info").textContent = parts.join("  ·  ");
-
-    const kwbox = z.querySelector(".zoom-kw");
-    const reminder = z.querySelector(".zoom-reminder");
-    kwbox.innerHTML = "";
-    reminder.textContent = "";
-    const kws = data.keywords || [];
-    const explain = (kw) => { reminder.textContent = kw + " — " + (Arcana.glossary[kw] || "(no reminder text)"); };
-    kws.forEach((kw, i) => {
-      const chip = document.createElement("span");
-      chip.className = "zoom-chip";
-      chip.textContent = kw;
-      chip.title = Arcana.glossary[kw] || "";
-      chip.onmouseenter = () => explain(kw);
-      chip.onclick = (e) => { e.stopPropagation(); explain(kw); };
-      kwbox.appendChild(chip);
-      if (i === 0) explain(kw);
-    });
+    Arcana.renderPreview(z.querySelector(".ac-zoom-box"), data, cosmetic);
     z.classList.add("show");
   }
   function hideZoom() { if (zoomEl) zoomEl.classList.remove("show"); }

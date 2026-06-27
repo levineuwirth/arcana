@@ -474,6 +474,24 @@ button.ghost, .btn.ghost { background: transparent; }
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-float);
 }
+
+/* shared rich preview (zoom modal + deckbuilder hover pane) */
+.ac-zoom-box { display: flex; flex-direction: column; align-items: center; gap: 10px; max-height: 92vh; }
+.pv-img img { display: block; width: 100%; max-width: 100%; border-radius: var(--radius-panel); box-shadow: var(--shadow-float); }
+.ac-zoom .pv-img img { width: auto; max-height: 68vh; max-width: 90vw; }
+.pv-img .ac-fallback { aspect-ratio: 488/680; width: 220px; }
+.pv-info { text-align: center; display: flex; flex-direction: column; gap: 4px; }
+.pv-name { font-family: var(--font-serif); font-weight: 600; font-size: 16px; color: var(--text); }
+.pv-meta { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center;
+  font-size: 13px; color: var(--text-muted); }
+.pv-meta .pv-pt { font-variant-numeric: tabular-nums; }
+.pv-kw { display: flex; flex-direction: column; gap: 5px; max-width: 460px; font-size: 12px; line-height: 1.4; }
+.pv-kw-row { color: var(--text-muted); }
+.pv-kw-row b { color: var(--text); font-weight: 600; }
+.pv-empty { color: var(--text-faint); font-style: italic; font-family: var(--font-serif); padding: 12px; text-align: center; }
+/* dark zoom overlay → light text */
+.ac-zoom .pv-name, .ac-zoom .pv-kw-row b { color: #f3efe6; }
+.ac-zoom .pv-meta, .ac-zoom .pv-kw-row { color: #cfc9bd; }
 .ac-zoom .zoom-info {
   font-family: var(--font-serif);
   font-size: 15px;
