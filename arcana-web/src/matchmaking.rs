@@ -64,6 +64,8 @@ struct NetMatch {
     code: String,
     status: MatchStatus,
     seed: u64,
+    /// Monotonic creation order — recency key for [`Matches::prune`] (no clock).
+    seq: u64,
     seats: [SeatSlot; 2],
     core: Option<GameCore>,
 }
@@ -94,18 +96,62 @@ pub struct SeatInfo {
     pub identity: DeckIdentity,
 }
 
+/// Cap on retained matches before idle lobbies get evicted (a local-tool
+/// backstop against the registry growing without bound).
+const MAX_MATCHES: usize = 64;
+
 /// The registry of networked matches. One per server, owned by the game worker.
 pub struct Matches {
     reg: &'static CardRegistry,
     by_code: HashMap<String, NetMatch>,
     /// splitmix64 state for codes / tokens / seeds (no `rand` dependency).
     rng: u64,
+    /// Monotonic match-creation counter (recency for [`prune`](Self::prune)).
+    next_seq: u64,
 }
 
 impl Matches {
     /// `seed` initializes the code/token RNG (the server passes a time seed).
     pub fn new(reg: &'static CardRegistry, seed: u64) -> Self {
-        Self { reg, by_code: HashMap::new(), rng: seed | 1 }
+        Self { reg, by_code: HashMap::new(), rng: seed | 1, next_seq: 0 }
+    }
+
+    /// Reclaim space: drop finished (`Over`) matches outright, and if still over
+    /// [`MAX_MATCHES`] evict the oldest never-joined lobbies. Active games are
+    /// never evicted. Called before opening a new match. Deterministic (recency
+    /// by creation `seq`, no wall clock).
+    fn prune(&mut self) {
+        self.by_code.retain(|_, m| m.status != MatchStatus::Over);
+        if self.by_code.len() <= MAX_MATCHES {
+            return;
+        }
+        let mut lobbies: Vec<(u64, String)> = self.by_code.iter()
+            .filter(|(_, m)| m.status == MatchStatus::Lobby)
+            .map(|(c, m)| (m.seq, c.clone()))
+            .collect();
+        lobbies.sort_by_key(|(seq, _)| *seq);
+        let mut excess = self.by_code.len().saturating_sub(MAX_MATCHES);
+        for (_, code) in lobbies {
+            if excess == 0 { break; }
+            self.by_code.remove(&code);
+            excess -= 1;
+        }
+    }
+
+    /// Leave (or cancel) a match: the requesting seat must own its token. The
+    /// whole match is removed — a host cancels an unjoined lobby, or a player
+    /// bows out of a live game (the opponent's next poll then reports the match
+    /// is gone).
+    pub fn leave(&mut self, code: &str, seat: PlayerId, token: &str) -> Result<(), String> {
+        let m = self.by_code.get(code)
+            .ok_or_else(|| "no match with that code".to_string())?;
+        let ok = m.seats.get(seat as usize)
+            .is_some_and(|s| s.filled && s.token == token);
+        if !ok {
+            return Err("not authorized for this seat".to_string());
+        }
+        self.by_code.remove(code);
+        Ok(())
     }
 
     fn next_rand(&mut self) -> u64 {
@@ -143,9 +189,12 @@ impl Matches {
         if deck.is_empty() {
             return Err("your deck is empty".to_string());
         }
+        self.prune();
         let code = self.fresh_code();
         let token = self.token();
         let seed = self.next_rand();
+        let seq = self.next_seq;
+        self.next_seq += 1;
         let host = SeatSlot {
             filled: true, token: token.clone(), profile, identity, deck,
         };
@@ -153,6 +202,7 @@ impl Matches {
             code: code.clone(),
             status: MatchStatus::Lobby,
             seed,
+            seq,
             seats: [host, SeatSlot::empty()],
             core: None,
         });
@@ -373,5 +423,30 @@ mod tests {
             "the off-turn seat can't act");
         assert!(m.action(&host.code, actor, actor_tok, 0).is_ok(),
             "the on-turn seat can act");
+    }
+
+    /// Leaving/cancelling removes the match and requires the seat's own token.
+    #[test]
+    fn leave_removes_the_match_and_checks_token() {
+        let reg = leaked_catalog();
+        let mut m = Matches::new(reg, 1);
+        let host = m.create(profile("Alice"), DeckIdentity::default(), deck(reg)).unwrap();
+        assert!(m.leave(&host.code, 0, "wrongtoken").is_err(), "wrong token can't cancel");
+        assert!(m.info(&host.code).is_some(), "still there after a bad cancel");
+        assert!(m.leave(&host.code, 0, &host.token).is_ok(), "host cancels its lobby");
+        assert!(m.info(&host.code).is_none(), "cancelled match is gone");
+    }
+
+    /// The registry is bounded: spamming never-joined lobbies prunes the oldest.
+    #[test]
+    fn idle_lobbies_are_pruned_to_a_bound() {
+        let reg = leaked_catalog();
+        let mut m = Matches::new(reg, 2);
+        let d = deck(reg);
+        for _ in 0..200 {
+            m.create(profile("A"), DeckIdentity::default(), d.clone()).unwrap();
+        }
+        assert!(m.by_code.len() <= MAX_MATCHES + 1,
+            "idle lobbies pruned to a bound, got {}", m.by_code.len());
     }
 }

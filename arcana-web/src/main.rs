@@ -139,6 +139,8 @@ enum Command {
     MatchActivate { at: MatchRef, source: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
     MatchBottom { at: MatchRef, ids: Vec<ObjectId>, reply: oneshot::Sender<Result<StateResponse, String>> },
     MatchSuggest { at: MatchRef, deep: bool, reply: oneshot::Sender<Vec<Suggestion>> },
+    /// Leave / cancel a match (removes it; the opponent's next poll sees it gone).
+    MatchLeave { at: MatchRef, reply: oneshot::Sender<Result<(), String>> },
 }
 
 /// Identifies a seat in a networked match: the join code, the seat index, and
@@ -666,6 +668,9 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>) {
             Command::MatchSuggest { at, deep, reply } => {
                 let _ = reply.send(matches.suggest(&at.code, at.seat, &at.token, deep));
             }
+            Command::MatchLeave { at, reply } => {
+                let _ = reply.send(matches.leave(&at.code, at.seat, &at.token));
+            }
         }
     }
 }
@@ -915,6 +920,18 @@ async fn match_suggest(State(app): State<AppState>, Query(q): Query<MatchSuggest
     }
     match rx.await {
         Ok(s) => Json(s).into_response(),
+        Err(_) => worker_gone(),
+    }
+}
+
+async fn match_leave(State(app): State<AppState>, Query(at): Query<MatchRef>) -> Response {
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::MatchLeave { at, reply }).is_err() {
+        return worker_gone();
+    }
+    match rx.await {
+        Ok(Ok(())) => Json(serde_json::json!({"ok": true})).into_response(),
+        Ok(Err(msg)) => (StatusCode::BAD_REQUEST, err(msg)).into_response(),
         Err(_) => worker_gone(),
     }
 }
@@ -1300,6 +1317,7 @@ async fn main() {
         .route("/m/activate", post(match_activate))
         .route("/m/bottom", post(match_bottom))
         .route("/m/suggest", get(match_suggest))
+        .route("/m/leave", post(match_leave))
         .route("/art", get(get_art))
         .route("/art/warm", post(post_art_warm))
         .route("/art/warm-all", post(post_art_warm_all))
