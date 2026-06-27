@@ -17,6 +17,8 @@
 
 use std::fmt;
 
+pub mod matchmaking;
+
 use arcana_ai::information_set::project;
 use arcana_ai::search::{MaterialValue, ValueMcPolicy};
 use arcana_ai::session::{Seat, Session, Turn};
@@ -866,6 +868,17 @@ impl GameCore {
     ) -> Self {
         let seats = vec![Seat::Human, Self::make_bot(seed)];
         let session = Session::new(vec![human, opponent], reg, seats, seed);
+        Self { reg, session, legal: Vec::new(), awaiting: None }
+    }
+
+    /// Start a networked duel: BOTH seats are human (no bot). Seat 0 plays
+    /// `deck0`, seat 1 plays `deck1`. Each client drives its own seat via the
+    /// `*_for(seat, …)` API; see [`snapshot_for`](Self::snapshot_for).
+    pub fn new_two_human(
+        reg: &'static CardRegistry, seed: u64, deck0: Vec<CardId>, deck1: Vec<CardId>,
+    ) -> Self {
+        let seats = vec![Seat::Human, Seat::Human];
+        let session = Session::new(vec![deck0, deck1], reg, seats, seed);
         Self { reg, session, legal: Vec::new(), awaiting: None }
     }
 
