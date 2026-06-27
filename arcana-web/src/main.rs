@@ -43,6 +43,7 @@
 
 use std::net::SocketAddr;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -78,6 +79,7 @@ enum Command {
     AutoTap { target: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
     Activate { source: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
     SetAutoPass { level: AutoPass, reply: oneshot::Sender<StateResponse> },
+    AllCardNames { reply: oneshot::Sender<Vec<String>> },
     Bottom { ids: Vec<ObjectId>, reply: oneshot::Sender<Result<StateResponse, String>> },
     Search { query: CardQuery, reply: oneshot::Sender<Vec<CardInfo>> },
     Import { text: String, reply: oneshot::Sender<ImportedDeck> },
@@ -116,6 +118,25 @@ struct ArtCache {
     /// Serializes outbound Scryfall fetches to a minimum spacing (their API asks
     /// for ~50–100ms between requests). Cache hits don't touch this.
     gate: tokio::sync::Mutex<Instant>,
+    /// Progress of a "download all art" background job (one at a time).
+    warm: WarmState,
+}
+
+/// Live progress of the bulk art download (see `post_art_warm_all`).
+#[derive(Default)]
+struct WarmState {
+    running: AtomicBool,
+    total: AtomicUsize,
+    done: AtomicUsize,
+    failed: AtomicUsize,
+}
+
+#[derive(Serialize)]
+struct WarmStatus {
+    running: bool,
+    total: usize,
+    done: usize,
+    failed: usize,
 }
 
 impl ArtCache {
@@ -131,7 +152,16 @@ impl ArtCache {
             .user_agent("Arcana/0.1 (card-art proxy)")
             .build()
             .expect("reqwest client");
-        Self { dir, client, gate: tokio::sync::Mutex::new(Instant::now()) }
+        Self { dir, client, gate: tokio::sync::Mutex::new(Instant::now()), warm: WarmState::default() }
+    }
+
+    fn warm_status(&self) -> WarmStatus {
+        WarmStatus {
+            running: self.warm.running.load(Ordering::Relaxed),
+            total: self.warm.total.load(Ordering::Relaxed),
+            done: self.warm.done.load(Ordering::Relaxed),
+            failed: self.warm.failed.load(Ordering::Relaxed),
+        }
     }
 
     fn path_for(&self, name: &str) -> PathBuf {
@@ -279,6 +309,16 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>) {
                 auto_pass = level;
                 core.set_auto_pass(level);
                 let _ = reply.send(core.snapshot());
+            }
+            Command::AllCardNames { reply } => {
+                let r = core.registry();
+                let mut names: Vec<String> = r.iter()
+                    .filter_map(|(_, def)| r.interner().resolve(def.name).map(|s| s.to_string()))
+                    .filter(|s| !s.is_empty())
+                    .collect();
+                names.sort();
+                names.dedup();
+                let _ = reply.send(names);
             }
             Command::Bottom { ids, reply } => {
                 let res = core.bottom_cards(ids).map_err(|e| e.to_string());
@@ -520,6 +560,44 @@ async fn post_art_warm(State(app): State<AppState>, body: String) -> Response {
     Json(WarmResponse { requested, ok, failed: requested - ok }).into_response()
 }
 
+/// Start (or report) a background job that downloads + caches art for EVERY card
+/// in the catalog so the whole collection is available locally/offline. Runs one
+/// at a time; already-cached cards are skipped instantly. Poll `/art/warm-status`
+/// for progress. ~8k cards at the throttle ≈ 12–15 min the first time.
+async fn post_art_warm_all(State(app): State<AppState>) -> Response {
+    if app.art.warm.running.swap(true, Ordering::SeqCst) {
+        return Json(app.art.warm_status()).into_response(); // already running
+    }
+    // The registry lives on the game worker thread — ask it for every name.
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::AllCardNames { reply }).is_err() {
+        app.art.warm.running.store(false, Ordering::SeqCst);
+        return worker_gone();
+    }
+    let names = match rx.await {
+        Ok(n) => n,
+        Err(_) => { app.art.warm.running.store(false, Ordering::SeqCst); return worker_gone(); }
+    };
+    app.art.warm.total.store(names.len(), Ordering::SeqCst);
+    app.art.warm.done.store(0, Ordering::SeqCst);
+    app.art.warm.failed.store(0, Ordering::SeqCst);
+    let art = app.art.clone();
+    tokio::spawn(async move {
+        for name in names {
+            if art.fetch(&name).await.is_none() {
+                art.warm.failed.fetch_add(1, Ordering::Relaxed);
+            }
+            art.warm.done.fetch_add(1, Ordering::Relaxed);
+        }
+        art.warm.running.store(false, Ordering::Relaxed);
+    });
+    Json(app.art.warm_status()).into_response()
+}
+
+async fn get_art_warm_status(State(app): State<AppState>) -> Response {
+    Json(app.art.warm_status()).into_response()
+}
+
 /// Cached/proxied card art (see [`ArtCache`]). Long-lived cache headers so the
 /// browser also caches it; a miss/failure 404s and the client shows its fallback.
 async fn get_art(State(app): State<AppState>, Query(q): Query<ArtRequest>) -> Response {
@@ -673,6 +751,8 @@ async fn main() {
         .route("/new", post(post_new))
         .route("/art", get(get_art))
         .route("/art/warm", post(post_art_warm))
+        .route("/art/warm-all", post(post_art_warm_all))
+        .route("/art/warm-status", get(get_art_warm_status))
         .with_state(AppState { tx, art: Arc::new(ArtCache::new()) });
 
     // Port is overridable via PORT for convenience; defaults to 8080.

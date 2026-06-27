@@ -117,6 +117,7 @@
         <input id="q-cmax" type="number" min="0" placeholder="mv≤" style="width:64px" />
         <button type="submit">Search</button>
         <button type="button" id="cacheart" class="ghost" title="Pre-download art for the results + deck so images don't trickle in">Cache art</button>
+        <button type="button" id="cacheall" class="ghost" title="Download + cache art for the entire catalog (~20k cards; one-time, runs in the background and may take a while; persists + works offline after)">Download all art</button>
         <span id="results-meta" class="results-meta"></span>
         <span id="cacheart-msg" class="muted"></span>
       </form>
@@ -428,9 +429,41 @@ async function cacheArt() {
   }
 }
 
+// ---- download ALL catalog art (background job + progress polling) ----
+let warmPoll = null;
+async function downloadAllArt() {
+  const msg = document.getElementById("cacheart-msg");
+  document.getElementById("cacheall").disabled = true;
+  try { await Arcana.Api.warmAll(); }
+  catch (e) { msg.textContent = "couldn't start"; document.getElementById("cacheall").disabled = false; return; }
+  pollWarmAll();
+}
+async function pollWarmAll() {
+  if (warmPoll) { clearTimeout(warmPoll); warmPoll = null; }
+  let s;
+  try { s = await Arcana.Api.warmStatus(); } catch (e) { return; }
+  const msg = document.getElementById("cacheart-msg");
+  const btn = document.getElementById("cacheall");
+  if (s.running) {
+    btn.disabled = true;
+    const miss = s.failed ? " (" + s.failed + " missing)" : "";
+    msg.textContent = "Downloading all art… " + s.done + "/" + s.total + miss;
+    warmPoll = setTimeout(pollWarmAll, 1500);
+  } else {
+    btn.disabled = false;
+    if (s.total) {
+      msg.textContent = "All art cached (" + (s.total - s.failed) + "/" + s.total +
+        (s.failed ? ", " + s.failed + " missing" : "") + ")";
+      render(); // reload any fallback tiles from the now-warm cache
+    }
+  }
+}
+
 // ---- wire ----
 document.getElementById("search").onsubmit = (e) => { e.preventDefault(); search(); };
 document.getElementById("cacheart").onclick = cacheArt;
+document.getElementById("cacheall").onclick = downloadAllArt;
+pollWarmAll(); // resume the progress display if a download is already running
 document.getElementById("save").onclick = saveDeck;
 document.getElementById("clear").onclick = () => { if (confirm("Clear the deck?")) clearDeck(); };
 document.getElementById("loadsel").onchange = (e) => { if (e.target.value) loadDeck(e.target.value); };

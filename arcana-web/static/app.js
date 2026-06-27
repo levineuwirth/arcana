@@ -317,6 +317,8 @@
     activate: (objectId) => call("POST", "/activate", { object_id: objectId }),
     autoPass: (level) => call("POST", "/autopass", { level }),
     warmArt: (names) => call("POST", "/art/warm", { names }),
+    warmAll: () => call("POST", "/art/warm-all"),
+    warmStatus: () => call("GET", "/art/warm-status"),
     bottom: (ids) => call("POST", "/bottom", { ids }),
     suggest: (deep) => call("GET", "/suggest" + (deep ? "?deep=true" : "")),
     newGame: (body) => call("POST", "/new", body || {}),
