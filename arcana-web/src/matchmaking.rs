@@ -7,13 +7,22 @@
 //! [`MatchStatus::Active`]. Every play call carries `(code, seat, token)` and is
 //! authenticated before touching the game, so one client can't act as the other.
 //!
-//! The HTTP layer (and the worker thread that owns one `Matches`) is wired in a
-//! later phase; this module is the pure, unit-tested model underneath it.
+//! CONCURRENCY: each Active match runs its [`GameCore`] on its OWN OS thread
+//! (`run_match`), so heavy work in one game (e.g. a `suggest` rollout) never
+//! blocks another match or the solo game. `Matches` is the Send+Sync coordinator
+//! — it holds only per-match command SENDERS + lobby metadata, lives in the
+//! axum `AppState` behind a `Mutex`, and authenticates/routes without touching
+//! any game. Async handlers get a [`MatchSender`] (lock released first) and
+//! await the per-match thread, so no lock is ever held across an await. This
+//! sidesteps `GameCore: !Send`: the core is built from `Send` decklists INSIDE
+//! its thread and never crosses a thread boundary.
 
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
+use tokio::sync::{mpsc, oneshot};
 
+use arcana_core::objects::ObjectId;
 use arcana_core::registry::CardRegistry;
 use arcana_core::types::{CardId, PlayerId};
 
@@ -58,8 +67,98 @@ impl SeatSlot {
     }
 }
 
-/// One networked match: its lobby slots and, once both seats are filled, the
-/// shared two-human game.
+/// A command to a per-match game thread. The acting `seat` is already
+/// authenticated by the coordinator; each carries a oneshot reply. Private — the
+/// async layer talks to a match only through [`MatchSender`].
+enum MatchCmd {
+    State { seat: PlayerId, reply: oneshot::Sender<Result<StateResponse, String>> },
+    Action { seat: PlayerId, index: usize, reply: oneshot::Sender<Result<StateResponse, String>> },
+    Combat { seat: PlayerId, sub: CombatSubmission, reply: oneshot::Sender<Result<StateResponse, String>> },
+    AutoTap { seat: PlayerId, target: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
+    Activate { seat: PlayerId, source: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
+    Bottom { seat: PlayerId, ids: Vec<ObjectId>, reply: oneshot::Sender<Result<StateResponse, String>> },
+    Suggest { seat: PlayerId, deep: bool, reply: oneshot::Sender<Vec<Suggestion>> },
+}
+
+/// Drives ONE match's [`GameCore`] on its own thread. Exits when the sender is
+/// dropped (the match left / pruned), releasing the `GameCore`. Heavy work here
+/// (suggest rollouts) is isolated to this thread.
+fn run_match(mut core: GameCore, mut rx: mpsc::UnboundedReceiver<MatchCmd>) {
+    while let Some(cmd) = rx.blocking_recv() {
+        match cmd {
+            MatchCmd::State { seat, reply } => {
+                let _ = reply.send(Ok(core.snapshot_for(seat)));
+            }
+            MatchCmd::Action { seat, index, reply } => {
+                let _ = reply.send(core.apply_index_for(seat, index).map_err(|e| e.to_string()));
+            }
+            MatchCmd::Combat { seat, sub, reply } => {
+                let _ = reply.send(core.apply_combat_for(seat, sub).map_err(|e| e.to_string()));
+            }
+            MatchCmd::AutoTap { seat, target, reply } => {
+                let _ = reply.send(core.auto_tap_and_cast_for(seat, target).map_err(|e| e.to_string()));
+            }
+            MatchCmd::Activate { seat, source, reply } => {
+                let _ = reply.send(core.auto_tap_and_activate_for(seat, source).map_err(|e| e.to_string()));
+            }
+            MatchCmd::Bottom { seat, ids, reply } => {
+                let _ = reply.send(core.bottom_cards_for(seat, ids).map_err(|e| e.to_string()));
+            }
+            MatchCmd::Suggest { seat, deep, reply } => {
+                let _ = reply.send(core.suggest_for(seat, deep));
+            }
+        }
+    }
+}
+
+/// A handle to one match's game thread, returned by [`Matches::route`] after
+/// authentication. Encapsulates the oneshot round-trip so callers never see
+/// [`MatchCmd`] and never hold the registry lock across the await. A send/recv
+/// failure means the match thread is gone (left / reaped) → surfaced as an error.
+pub struct MatchSender(mpsc::UnboundedSender<MatchCmd>);
+
+impl MatchSender {
+    async fn ask(
+        &self,
+        make: impl FnOnce(oneshot::Sender<Result<StateResponse, String>>) -> MatchCmd,
+    ) -> Result<StateResponse, String> {
+        let (reply, rx) = oneshot::channel();
+        self.0.send(make(reply)).map_err(|_| "the match has ended".to_string())?;
+        match rx.await {
+            Ok(inner) => inner,
+            Err(_) => Err("the match has ended".to_string()),
+        }
+    }
+
+    pub async fn state(&self, seat: PlayerId) -> Result<StateResponse, String> {
+        self.ask(|reply| MatchCmd::State { seat, reply }).await
+    }
+    pub async fn action(&self, seat: PlayerId, index: usize) -> Result<StateResponse, String> {
+        self.ask(|reply| MatchCmd::Action { seat, index, reply }).await
+    }
+    pub async fn combat(&self, seat: PlayerId, sub: CombatSubmission) -> Result<StateResponse, String> {
+        self.ask(|reply| MatchCmd::Combat { seat, sub, reply }).await
+    }
+    pub async fn auto_tap(&self, seat: PlayerId, target: ObjectId) -> Result<StateResponse, String> {
+        self.ask(|reply| MatchCmd::AutoTap { seat, target, reply }).await
+    }
+    pub async fn activate(&self, seat: PlayerId, source: ObjectId) -> Result<StateResponse, String> {
+        self.ask(|reply| MatchCmd::Activate { seat, source, reply }).await
+    }
+    pub async fn bottom(&self, seat: PlayerId, ids: Vec<ObjectId>) -> Result<StateResponse, String> {
+        self.ask(|reply| MatchCmd::Bottom { seat, ids, reply }).await
+    }
+    pub async fn suggest(&self, seat: PlayerId, deep: bool) -> Vec<Suggestion> {
+        let (reply, rx) = oneshot::channel();
+        if self.0.send(MatchCmd::Suggest { seat, deep, reply }).is_err() {
+            return Vec::new();
+        }
+        rx.await.unwrap_or_default()
+    }
+}
+
+/// One networked match: its lobby slots and, once a guest joins, a SENDER to the
+/// match's game thread (the [`GameCore`] lives on that thread, not here).
 struct NetMatch {
     code: String,
     status: MatchStatus,
@@ -67,7 +166,9 @@ struct NetMatch {
     /// Monotonic creation order — recency key for [`Matches::prune`] (no clock).
     seq: u64,
     seats: [SeatSlot; 2],
-    core: Option<GameCore>,
+    /// Command channel to this match's game thread. `None` until a guest joins
+    /// (the thread + `GameCore` are created then). Dropping it stops the thread.
+    tx: Option<mpsc::UnboundedSender<MatchCmd>>,
 }
 
 /// The credentials a client keeps after creating/joining: which match, which
@@ -204,7 +305,7 @@ impl Matches {
             seed,
             seq,
             seats: [host, SeatSlot::empty()],
-            core: None,
+            tx: None,
         });
         Ok(SeatCredentials { code, seat: 0, token })
     }
@@ -229,9 +330,22 @@ impl Matches {
         m.seats[1] = SeatSlot {
             filled: true, token: token.clone(), profile, identity, deck,
         };
-        let core = GameCore::new_two_human(
-            self.reg, m.seed, m.seats[0].deck.clone(), m.seats[1].deck.clone());
-        m.core = Some(core);
+        // Spawn the match's game thread. The GameCore (which is !Send because of
+        // Seat::Bot) is BUILT INSIDE the thread from Send inputs (reg/seed/decks),
+        // so it never crosses a thread boundary — that's what makes this legal.
+        let reg = self.reg;
+        let seed = m.seed;
+        let deck0 = m.seats[0].deck.clone();
+        let deck1 = m.seats[1].deck.clone();
+        let (tx, rx) = mpsc::unbounded_channel::<MatchCmd>();
+        std::thread::Builder::new()
+            .name(format!("match-{code}"))
+            .spawn(move || {
+                let core = GameCore::new_two_human(reg, seed, deck0, deck1);
+                run_match(core, rx);
+            })
+            .expect("spawn match thread");
+        m.tx = Some(tx);
         m.status = MatchStatus::Active;
         Ok(SeatCredentials { code: code.to_string(), seat: 1, token })
     }
@@ -251,83 +365,47 @@ impl Matches {
         })
     }
 
-    /// Authenticate `(code, seat, token)` and return the live game mutably.
-    fn authed_core(&mut self, code: &str, seat: PlayerId, token: &str)
-        -> Result<&mut GameCore, String>
+    /// Authenticate `(code, seat, token)` and return a [`MatchSender`] to the
+    /// match's game thread. The caller (an async handler) sends/awaits AFTER
+    /// releasing the registry lock — no lock is held across the await.
+    pub fn route(&self, code: &str, seat: PlayerId, token: &str)
+        -> Result<MatchSender, String>
     {
-        let m = self.by_code.get_mut(code)
+        let m = self.by_code.get(code)
             .ok_or_else(|| "no match with that code".to_string())?;
         let ok = m.seats.get(seat as usize)
             .is_some_and(|s| s.filled && s.token == token);
         if !ok {
             return Err("not authorized for this seat".to_string());
         }
-        m.core.as_mut().ok_or_else(|| "that match has not started yet".to_string())
+        m.tx.clone()
+            .map(MatchSender)
+            .ok_or_else(|| "that match has not started yet".to_string())
     }
 
-    /// Read-only authenticated access (for `suggest`).
-    fn authed_core_ref(&self, code: &str, seat: PlayerId, token: &str) -> Option<&GameCore> {
-        let m = self.by_code.get(code)?;
-        let s = m.seats.get(seat as usize)?;
-        if !s.filled || s.token != token {
-            return None;
+    /// Mark a match finished (handlers call this when a pushed view shows
+    /// game_over) so [`prune`](Self::prune) can reclaim it.
+    pub fn mark_over(&mut self, code: &str) {
+        if let Some(m) = self.by_code.get_mut(code) {
+            m.status = MatchStatus::Over;
         }
-        m.core.as_ref()
     }
+}
 
-    /// Project the game from `seat`'s perspective (the "waiting for opponent"
-    /// view when it isn't their turn). Flips the match to `Over` on game end.
-    pub fn snapshot(&mut self, code: &str, seat: PlayerId, token: &str)
-        -> Result<StateResponse, String>
-    {
-        let core = self.authed_core(code, seat, token)?;
-        let resp = core.snapshot_for(seat);
-        if resp.view.game_over.is_some() {
-            if let Some(m) = self.by_code.get_mut(code) {
-                m.status = MatchStatus::Over;
-            }
-        }
-        Ok(resp)
+/// Synchronous round-trips to a match thread, for unit tests (no async runtime).
+#[cfg(test)]
+impl Matches {
+    fn snapshot(&self, code: &str, seat: PlayerId, token: &str) -> Result<StateResponse, String> {
+        let s = self.route(code, seat, token)?;
+        let (reply, rx) = oneshot::channel();
+        s.0.send(MatchCmd::State { seat, reply }).map_err(|_| "match ended".to_string())?;
+        rx.blocking_recv().map_err(|_| "match ended".to_string())?
     }
-
-    pub fn action(&mut self, code: &str, seat: PlayerId, token: &str, index: usize)
-        -> Result<StateResponse, String>
-    {
-        self.authed_core(code, seat, token)?
-            .apply_index_for(seat, index).map_err(|e| e.to_string())
-    }
-
-    pub fn combat(&mut self, code: &str, seat: PlayerId, token: &str, sub: CombatSubmission)
-        -> Result<StateResponse, String>
-    {
-        self.authed_core(code, seat, token)?
-            .apply_combat_for(seat, sub).map_err(|e| e.to_string())
-    }
-
-    pub fn auto_tap(&mut self, code: &str, seat: PlayerId, token: &str, target: arcana_core::objects::ObjectId)
-        -> Result<StateResponse, String>
-    {
-        self.authed_core(code, seat, token)?
-            .auto_tap_and_cast_for(seat, target).map_err(|e| e.to_string())
-    }
-
-    pub fn activate(&mut self, code: &str, seat: PlayerId, token: &str, source: arcana_core::objects::ObjectId)
-        -> Result<StateResponse, String>
-    {
-        self.authed_core(code, seat, token)?
-            .auto_tap_and_activate_for(seat, source).map_err(|e| e.to_string())
-    }
-
-    pub fn bottom(&mut self, code: &str, seat: PlayerId, token: &str, ids: Vec<arcana_core::objects::ObjectId>)
-        -> Result<StateResponse, String>
-    {
-        self.authed_core(code, seat, token)?
-            .bottom_cards_for(seat, ids).map_err(|e| e.to_string())
-    }
-
-    pub fn suggest(&self, code: &str, seat: PlayerId, token: &str, deep: bool) -> Vec<Suggestion> {
-        self.authed_core_ref(code, seat, token)
-            .map_or_else(Vec::new, |c| c.suggest_for(seat, deep))
+    fn action(&self, code: &str, seat: PlayerId, token: &str, index: usize) -> Result<StateResponse, String> {
+        let s = self.route(code, seat, token)?;
+        let (reply, rx) = oneshot::channel();
+        s.0.send(MatchCmd::Action { seat, index, reply }).map_err(|_| "match ended".to_string())?;
+        rx.blocking_recv().map_err(|_| "match ended".to_string())?
     }
 }
 
