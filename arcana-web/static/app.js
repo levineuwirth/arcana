@@ -348,10 +348,11 @@
       ? call("GET", "/m/suggest" + M.qs() + (deep ? "&deep=true" : ""))
       : call("GET", "/suggest" + (deep ? "?deep=true" : "")),
     newGame: (body) => call("POST", "/new", body || {}),
-    // networked lobby (host / join / poll)
+    // networked lobby (host / join / poll / leave)
     lobbyCreate: (body) => call("POST", "/lobby/create", body),
     lobbyJoin: (body) => call("POST", "/lobby/join", body),
     lobbyInfo: (code) => call("GET", "/lobby/info?code=" + encodeURIComponent(code)),
+    matchLeave: () => call("POST", "/m/leave" + M.qs()),
     // catalog / deckbuilder
     search: (query) => call("POST", "/search", query),
     formats: () => call("GET", "/formats"),

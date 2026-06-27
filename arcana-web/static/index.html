@@ -1173,7 +1173,9 @@ function renderHud(el, p, isYou) {
   if (!el) return;
   el.innerHTML = "";
   const who = document.createElement("span");
-  who.className = "who"; who.textContent = (isYou ? "You" : "Opponent") + " · P" + p.id;
+  // In a networked duel show the real player names (loaded from the lobby).
+  const label = isYou ? (G.myName || "You") : (G.oppName || "Opponent");
+  who.className = "who"; who.textContent = label + " · P" + p.id;
   const life = document.createElement("span");
   life.className = "life tnum"; life.innerHTML = p.life + '<span class="unit">life</span>';
   const gauge = document.createElement("span");
@@ -2160,7 +2162,12 @@ function adopt(resp, isAdvance) {
 
 async function getState() {
   try { adopt(await Arcana.Api.state(), false); }
-  catch (e) { logLine("sys", "request failed: " + e); }
+  catch (e) {
+    // A networked /m/state error (no such match / unauthorized) means the match
+    // is gone — the opponent left or it was reaped — so stop, don't spin.
+    if (Arcana.Match.active() && e && e.isApi) matchEnded(e.message);
+    else logLine("sys", "request failed: " + e);
+  }
 }
 
 // ----- networked duel: poll while it's the opponent's turn -----------------
@@ -2169,6 +2176,7 @@ async function getState() {
 // action). adopt() drives this: whenever our view has no legal actions and the
 // game isn't over, we schedule a /m/state poll and chain until it's our turn.
 let pollTimer = null;
+let matchOver = false;
 function setWaitingBanner(show, text) {
   const el = document.getElementById("netwait");
   if (!el) return;
@@ -2177,19 +2185,34 @@ function setWaitingBanner(show, text) {
 }
 async function pollOnce() {
   pollTimer = null;
-  try { adopt(await Arcana.Api.state(), true); } // isAdvance → log opponent moves
-  catch (e) { schedulePoll(); }                  // transient: retry
+  try { adopt(await Arcana.Api.state(), true); } // isAdvance: log opponent moves
+  catch (e) {
+    if (e && e.isApi) matchEnded(e.message); // match gone: stop polling
+    else schedulePoll();                     // transient network blip: retry
+  }
 }
 function schedulePoll() {
-  if (pollTimer) return;
+  if (pollTimer || matchOver) return;
   pollTimer = setTimeout(pollOnce, 1500);
 }
 function maybePollOpponent() {
-  if (!Arcana.Match.active()) { setWaitingBanner(false); return; }
+  if (!Arcana.Match.active() || matchOver) { if (!matchOver) setWaitingBanner(false); return; }
   const v = G.resp && G.resp.view;
   const waiting = !!(v && !v.game_over && (!v.legal || v.legal.length === 0));
-  setWaitingBanner(waiting);
+  setWaitingBanner(waiting, "Waiting for " + (G.oppName || "opponent") + "…");
   if (waiting) schedulePoll();
+}
+
+// The shared game is gone (opponent left, or the server reaped it). Stop the
+// poll loop, tell the player, and turn the top-bar button into a way back.
+function matchEnded(why) {
+  if (matchOver) return;
+  matchOver = true;
+  if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+  clearMatchCreds();
+  setWaitingBanner(true, "Match ended — " + (why || "opponent left") + ".");
+  const nb = document.getElementById("new");
+  if (nb) { nb.textContent = "Back to Stage"; nb.onclick = () => { window.location = "/"; }; }
 }
 
 // generic guarded request: run `fn`, adopt the result, surface errors gracefully
@@ -2289,23 +2312,68 @@ document.addEventListener("click", (e) => {
   if (!document.getElementById("panels-menu").contains(e.target)) panelsPop.classList.remove("show");
 });
 
-// Networked duel? The Stage hands us (code, seat, token) in the URL — adopt
-// that match context so every game call routes to the per-seat /m/* endpoints.
-(function initMatch() {
+// ----- networked duel: context, reconnect, leave ---------------------------
+// The Stage hands the cockpit its (code, seat, token) in the URL. We also stash
+// them in localStorage so a refresh / reopen of /duel reconnects to the same
+// seat (the token is the only proof we own it). Solo play has no creds and uses
+// the original routes untouched.
+const MATCH_KEY = "arcana.match";
+function saveMatchCreds(c) { try { localStorage.setItem(MATCH_KEY, JSON.stringify(c)); } catch (e) {} }
+function loadMatchCreds() { try { return JSON.parse(localStorage.getItem(MATCH_KEY) || "null"); } catch (e) { return null; } }
+function clearMatchCreds() { try { localStorage.removeItem(MATCH_KEY); } catch (e) {} }
+
+function enterMatchMode(ctx) {
+  Arcana.Match.set(ctx);
+  saveMatchCreds(ctx);
+  document.querySelector(".sub").textContent = "cockpit · seat " + ctx.seat + " · " + ctx.code;
+  // Auto-pass is a solo convenience; hide it in a networked duel.
+  const ap = document.querySelector(".autopass-ctl");
+  if (ap) ap.style.display = "none";
+  // Repurpose "New duel →" as "Leave match".
+  const nb = document.getElementById("new");
+  if (nb) { nb.textContent = "Leave match"; nb.title = "Leave this networked duel"; nb.onclick = leaveMatch; }
+}
+
+async function leaveMatch() {
+  if (!confirm("Leave this match? Your opponent will be told it ended.")) return;
+  try { await Arcana.Api.matchLeave(); } catch (e) { /* best-effort */ }
+  clearMatchCreds();
+  window.location = "/";
+}
+
+// Pull the lobby roster once so the HUD + waiting pill show real names.
+async function loadOpponentName() {
+  if (!Arcana.Match.active()) return;
+  try {
+    const info = await Arcana.Api.lobbyInfo(Arcana.Match.ctx.code);
+    if (info && info.seats) {
+      const me = Arcana.Match.seat();
+      G.myName = (info.seats[me] && info.seats[me].name) || "You";
+      G.oppName = (info.seats[1 - me] && info.seats[1 - me].name) || "Opponent";
+      maybePollOpponent();
+    }
+  } catch (e) { /* names are cosmetic */ }
+}
+
+(async function boot() {
   const p = new URLSearchParams(location.search);
   const code = p.get("code"), seat = p.get("seat"), token = p.get("token");
   if (code && seat !== null && token) {
-    Arcana.Match.set({ code, seat: parseInt(seat, 10), token });
-    document.querySelector(".sub").textContent = "cockpit · seat " + seat + " · " + code;
-    // Auto-pass is a solo convenience; hide it in a networked duel.
-    const ap = document.querySelector(".autopass-ctl");
-    if (ap) ap.style.display = "none";
+    enterMatchMode({ code, seat: parseInt(seat, 10), token });
+  } else {
+    // No URL creds — reconnect to a stored match if it's still live.
+    const saved = loadMatchCreds();
+    if (saved && saved.code) {
+      try {
+        const info = await Arcana.Api.lobbyInfo(saved.code);
+        if (info && info.status !== "over") enterMatchMode(saved);
+        else clearMatchCreds();
+      } catch (e) { clearMatchCreds(); }
+    }
   }
-})();
-
-Arcana.loadGlossary();
-// Sync the saved auto-pass level to the server (solo only), then load the game.
-(async () => {
+  await loadOpponentName();
+  Arcana.loadGlossary();
+  // Sync the saved auto-pass level to the server (solo only), then load the game.
   if (!Arcana.Match.active() && autopassLevel !== "stops") {
     try { await Arcana.Api.autoPass(autopassLevel); } catch (e) { /* ignore */ }
   }
