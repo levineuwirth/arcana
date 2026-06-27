@@ -593,14 +593,24 @@ fn portrait_name(reg: &CardRegistry, portrait: Option<CardId>) -> Option<String>
     portrait.and_then(|id| arcana_core::catalog::card_info(reg, id)).map(|ci| ci.name)
 }
 
+/// A card the player can pick as their deck's portrait (id + display name).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CardRef {
+    pub id: CardId,
+    pub name: String,
+}
+
 /// A [`DeckIdentity`] plus the display extras the Stage needs but the canonical
-/// type omits: the portrait card's NAME (for `/art`) and the color letters (for
-/// heraldry). The frontend posts back `identity`; the rest is render-only.
+/// type omits: the portrait card's NAME (for `/art`), the color letters (for
+/// heraldry), and the deck's distinct non-land cards as portrait CANDIDATES
+/// (biggest first) so the player can override the signature card. The frontend
+/// posts back `identity`; the rest is render-only.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DeckIdentityView {
     pub identity: DeckIdentity,
     pub portrait_name: Option<String>,
     pub colors: Vec<char>,
+    pub portrait_candidates: Vec<CardRef>,
 }
 
 /// Derive a deck's identity and wrap it with the Stage's display extras.
@@ -608,9 +618,29 @@ pub fn deck_identity_view(
     reg: &CardRegistry, deck: &[CardId], name: Option<String>,
 ) -> DeckIdentityView {
     let identity = derive_deck_identity(reg, deck, name);
+
+    // Distinct non-land cards as portrait candidates, biggest mana value first
+    // (then by name) — the player's signature-card picker.
+    let mut seen = std::collections::HashSet::new();
+    let mut cands: Vec<arcana_core::catalog::CardInfo> = Vec::new();
+    for &id in deck {
+        if seen.insert(id) {
+            if let Some(ci) = arcana_core::catalog::card_info(reg, id) {
+                if !ci.is_land {
+                    cands.push(ci);
+                }
+            }
+        }
+    }
+    cands.sort_by(|a, b| b.mana_value.cmp(&a.mana_value).then_with(|| a.name.cmp(&b.name)));
+    let portrait_candidates = cands.into_iter()
+        .map(|ci| CardRef { id: ci.id, name: ci.name })
+        .collect();
+
     DeckIdentityView {
         portrait_name: portrait_name(reg, identity.portrait),
         colors: color_letters(identity.colors),
+        portrait_candidates,
         identity,
     }
 }

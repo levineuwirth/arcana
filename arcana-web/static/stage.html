@@ -32,7 +32,9 @@
   .hall {
     flex: 1; width: min(1180px, 94vw); margin: 0 auto; padding: 26px 0 40px;
     display: flex; flex-direction: column; gap: 26px;
+    animation: hall-in .55s cubic-bezier(.2,.7,.2,1) both;
   }
+  @keyframes hall-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
   .hall-title { text-align: center; margin: 8px 0 2px; }
   .hall-title h1 {
@@ -52,14 +54,21 @@
 
   /* ---- Your throne -------------------------------------------------------- */
   .throne {
+    position: relative; --faction: var(--link);
     display: grid; grid-template-columns: 220px 1fr; gap: 22px;
-    background: linear-gradient(180deg, color-mix(in srgb, var(--link) 8%, var(--bg-offset)), var(--bg-offset));
+    background:
+      radial-gradient(420px 200px at 12% 0%, color-mix(in srgb, var(--faction) 16%, transparent), transparent 70%),
+      linear-gradient(180deg, color-mix(in srgb, var(--faction) 8%, var(--bg-offset)), var(--bg-offset));
     border: 1px solid var(--border); border-radius: var(--radius-panel);
-    padding: 20px; box-shadow: var(--shadow-float);
+    padding: 20px; box-shadow: var(--shadow-float); overflow: hidden;
   }
+  /* faction heraldry: a thin color-identity bar across the top of the throne */
+  .throne .banner { position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--faction); }
   .portrait {
     aspect-ratio: 0.717; border-radius: 12px; overflow: hidden;
-    background: var(--bg-nav); border: 1px solid var(--border);
+    background: var(--bg-nav);
+    border: 1px solid color-mix(in srgb, var(--faction) 55%, var(--border));
+    box-shadow: 0 0 26px color-mix(in srgb, var(--faction) 30%, transparent);
     display: flex; align-items: center; justify-content: center;
   }
   .portrait img { width: 100%; height: 100%; object-fit: cover; }
@@ -156,6 +165,7 @@
     <section>
       <div class="section-label">Your Champion</div>
       <div class="throne">
+        <div class="banner" id="your-banner"></div>
         <div class="portrait" id="your-portrait"><div class="ph">select a deck</div></div>
         <div class="throne-body">
           <div class="field faction-name">
@@ -167,7 +177,7 @@
             <span class="tag" id="your-arch-tag" style="display:none"></span>
             <span class="muted" id="your-count"></span>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px;">
             <div class="field">
               <label for="your-deck">Deck</label>
               <select id="your-deck"></select>
@@ -179,6 +189,10 @@
                 <option value="midrange">Midrange</option>
                 <option value="control">Control</option>
               </select>
+            </div>
+            <div class="field">
+              <label for="your-portrait-sel">Portrait</label>
+              <select id="your-portrait-sel"></select>
             </div>
             <div class="field">
               <label for="player-name">Your name</label>
@@ -218,7 +232,7 @@
     </section>
   </main>
 
-  <div class="curtain" id="curtain"><span>The duel begins…</span></div>
+  <div class="curtain" id="curtain"><span id="curtain-text">The duel begins…</span></div>
 
   <script src="/app.js"></script>
   <script>
@@ -268,21 +282,65 @@
     return { ids: expandSaved(savedDecks()[name]), name };
   }
 
+  // ---- faction heraldry (color identity -> CSS) ----
+  const MANA_VAR = { W: "--mana-w", U: "--mana-u", B: "--mana-b", R: "--mana-r", G: "--mana-g", C: "--mana-c" };
+  function factionColors(letters) {
+    const ls = (letters && letters.length) ? letters : ["C"];
+    const vars = ls.map((c) => "var(" + (MANA_VAR[c] || "--mana-c") + ")");
+    return { primary: vars[0], grad: vars.length === 1 ? vars[0] : "linear-gradient(90deg," + vars.join(",") + ")" };
+  }
+
+  // ---- per-deck identity overrides (name / archetype / portrait), persisted ----
+  function loadIdentities() { try { return JSON.parse(localStorage.getItem("arcana.identities") || "{}"); } catch { return {}; } }
+  function identityOverride(deckName) { return loadIdentities()[deckName] || null; }
+  function persistIdentity() {
+    if (!G.your) return;
+    const all = loadIdentities();
+    all[G.your.deckName] = {
+      name: G.your.identity.name, archetype: G.your.identity.archetype, portrait: G.your.identity.portrait,
+    };
+    try { localStorage.setItem("arcana.identities", JSON.stringify(all)); } catch {}
+  }
+
   // ---- your deck -> identity ----
   async function loadYourDeck() {
     const value = document.getElementById("your-deck").value;
     const { ids, name } = await idsForSelection(value);
     if (!ids || ids.length < 7) { setHint("That deck has fewer than 7 cards."); G.your = null; refreshBegin(); return; }
-    const view = await A.Api.deckIdentity(ids, name);     // { identity, portrait_name, colors }
-    G.your = { deck: ids, identity: view.identity, portrait_name: view.portrait_name };
-    // paint
-    document.getElementById("your-name-in").value = view.identity.name;
-    renderPips(document.getElementById("your-pips"), view.colors);
-    document.getElementById("your-arch").value = view.identity.archetype || "midrange";
-    const tag = document.getElementById("your-arch-tag"); tag.style.display = "none";
-    document.getElementById("your-count").textContent = ids.length + " cards";
-    paintPortrait(document.getElementById("your-portrait"), view.portrait_name);
+    const view = await A.Api.deckIdentity(ids, name);     // { identity, portrait_name, colors, portrait_candidates }
+    const identity = Object.assign({}, view.identity);
+    const ov = identityOverride(name);                    // re-apply saved edits for this deck
+    if (ov) {
+      if (ov.name) identity.name = ov.name;
+      if (ov.archetype) identity.archetype = ov.archetype;
+      if (ov.portrait != null) identity.portrait = ov.portrait;
+    }
+    G.your = { deck: ids, deckName: name, identity, candidates: view.portrait_candidates || [], colors: view.colors };
+    paintYour();
     refreshBegin();
+  }
+
+  function portraitNameFor(id) {
+    const c = G.your && (G.your.candidates || []).find((c) => c.id === id);
+    return c ? c.name : null;
+  }
+
+  function paintYour() {
+    const y = G.your;
+    document.getElementById("your-name-in").value = y.identity.name;
+    renderPips(document.getElementById("your-pips"), y.colors);
+    document.getElementById("your-arch").value = y.identity.archetype || "midrange";
+    document.getElementById("your-count").textContent = y.deck.length + " cards";
+    // portrait picker
+    const sel = document.getElementById("your-portrait-sel");
+    sel.innerHTML = "";
+    for (const c of y.candidates) sel.add(new Option(c.name, String(c.id)));
+    if (y.identity.portrait != null) sel.value = String(y.identity.portrait);
+    paintPortrait(document.getElementById("your-portrait"), portraitNameFor(y.identity.portrait));
+    // heraldry: tint the throne + color-identity banner
+    const f = factionColors(y.colors);
+    document.querySelector(".throne").style.setProperty("--faction", f.primary);
+    document.getElementById("your-banner").style.background = f.grad;
   }
 
   function paintPortrait(box, name) {
@@ -397,11 +455,13 @@
       first_player: firstPlayer(),
       seed,
     };
+    persistIdentity();
     const btn = document.getElementById("begin"); btn.disabled = true;
     try {
       await A.Api.newGame({ config });
+      document.getElementById("curtain-text").textContent = id.name + "  ⚔  " + G.foe.profile.name;
       document.getElementById("curtain").classList.add("up");
-      setTimeout(() => { window.location = "/duel"; }, 480);
+      setTimeout(() => { window.location = "/duel"; }, 600);
     } catch (e) {
       btn.disabled = false;
       setHint("Could not start the duel — " + (e && e.message ? e.message : "try another setup."));
@@ -412,6 +472,25 @@
   document.getElementById("your-deck").onchange = loadYourDeck;
   document.getElementById("player-name").value = loadProfileName();
   document.getElementById("begin").onclick = begin;
+
+  // ---- manual identity overrides (persisted per deck) ----
+  document.getElementById("your-name-in").oninput = (e) => {
+    if (!G.your) return;
+    G.your.identity.name = e.target.value;
+    persistIdentity(); refreshBegin();
+  };
+  document.getElementById("your-arch").onchange = (e) => {
+    if (!G.your) return;
+    G.your.identity.archetype = e.target.value;
+    persistIdentity();
+  };
+  document.getElementById("your-portrait-sel").onchange = (e) => {
+    if (!G.your) return;
+    const id = Number(e.target.value);
+    G.your.identity.portrait = id;
+    paintPortrait(document.getElementById("your-portrait"), portraitNameFor(id));
+    persistIdentity();
+  };
 
   (async function init() {
     try {
