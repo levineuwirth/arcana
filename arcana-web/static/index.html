@@ -27,14 +27,8 @@
   :root { --dock-left: 240px; --dock-right: 290px; }
 
   /* ---- top bar ---- */
-  .topbar {
-    flex: 0 0 auto; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
-    padding: 8px 0; background: var(--bg-nav); border-bottom: 1px solid var(--border);
-  }
-  .topbar .spacer { flex: 1; }
-  .brand { display: flex; align-items: baseline; gap: 8px; }
-  .brand .mark { font-family: var(--font-serif); font-weight: 600; font-size: 19px; letter-spacing: .01em; }
-  .brand .sub { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--text-faint); }
+  /* .topbar / .wordmark / .sub are shared (theme.css). */
+  .topbar { flex: 0 0 auto; }
   .phasebar {
     display: flex; align-items: baseline; gap: 12px;
     padding: 5px 14px; border: 1px solid var(--border); border-left: 3px solid var(--border);
@@ -420,7 +414,7 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><span class="mark">Arcana</span><span class="sub">cockpit</span></div>
+    <span class="wordmark">Arc<b>ana</b></span><span class="sub">cockpit</span>
     <div class="phasebar" id="phase"></div>
     <div class="spacer"></div>
     <label class="autopass-ctl" title="How much to auto-pass your dead priority windows">

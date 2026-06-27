@@ -7,14 +7,9 @@
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("arcana.theme")||"dark";}catch(e){document.documentElement.dataset.theme="dark";}</script>
 <link rel="stylesheet" href="/theme.css" />
 <style>
-  header {
-    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
-    padding: 10px var(--page-padding); border-bottom: 1px solid var(--border);
-    position: sticky; top: 0; background: var(--bg-nav); z-index: 20;
-  }
-  header .mark { font-family: var(--font-serif); font-weight: 600; font-size: 18px; }
-  header .sub { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--text-faint); }
-  header .spacer { flex: 1; }
+  /* .topbar / .wordmark / .sub are shared (theme.css); keep the deckbuilder
+     header sticky as the page scrolls. */
+  header.topbar { position: sticky; top: 0; z-index: 20; }
 
   main { display: flex; gap: 16px; padding: 16px var(--page-padding); align-items: flex-start; }
   #browse { flex: 1; min-width: 0; }
@@ -111,8 +106,8 @@
 </style>
 </head>
 <body>
-  <header>
-    <span class="mark">Arcana</span><span class="sub">deckbuilder</span>
+  <header class="topbar">
+    <span class="wordmark">Arc<b>ana</b></span><span class="sub">deckbuilder</span>
     <a href="/">← Play</a>
     <span class="spacer"></span>
     <input id="deckname" placeholder="deck name" size="14" />

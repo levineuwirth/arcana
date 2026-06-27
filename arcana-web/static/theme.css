@@ -556,3 +556,18 @@ button.ghost, .btn.ghost { background: transparent; }
     scroll-behavior: auto !important;
   }
 }
+
+/* ---- Shared top bar ------------------------------------------------------- */
+/* One brand bar across the Stage, cockpit, and deckbuilder. `.wordmark` is the
+   "Arcana" lockup (the "ana" tinted with --link); `.sub` is a small page label. */
+.topbar {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 12px 22px; border-bottom: 1px solid var(--border-muted);
+  background: var(--bg-nav);
+}
+.topbar .spacer { flex: 1; }
+.topbar a.ghost { font-size: 13px; color: var(--text-muted); }
+.topbar a.ghost:hover { color: var(--link-hover); }
+.wordmark { font-family: var(--font-serif); font-size: 20px; letter-spacing: .14em; text-transform: uppercase; }
+.wordmark b { color: var(--link); font-weight: 700; }
+.topbar .sub { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--text-faint); }

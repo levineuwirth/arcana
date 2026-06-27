@@ -19,15 +19,7 @@
   a { color: var(--link); text-decoration: none; }
   a:hover { color: var(--link-hover); }
 
-  .topbar {
-    display: flex; align-items: center; gap: 14px;
-    padding: 12px 22px; border-bottom: 1px solid var(--border-muted);
-    background: var(--bg-nav);
-  }
-  .wordmark { font-family: var(--font-serif); font-size: 20px; letter-spacing: .14em; text-transform: uppercase; }
-  .wordmark b { color: var(--link); font-weight: 700; }
-  .topbar .spacer { flex: 1; }
-  .topbar a.ghost { font-size: 13px; color: var(--text-muted); }
+  /* .topbar / .wordmark / .sub are shared (theme.css). */
 
   .hall {
     flex: 1; width: min(1180px, 94vw); margin: 0 auto; padding: 26px 0 40px;
@@ -111,10 +103,9 @@
   }
   .foe:hover { transform: translateY(-3px); border-color: var(--border-muted); }
   .foe.sel { border-color: var(--link); box-shadow: 0 0 0 1px var(--link), 0 0 22px color-mix(in srgb, var(--link) 35%, transparent); }
-  /* Frame the card's ILLUSTRATION (a wide window just below the title bar),
-     not a band of the whole card — so the type line/frame don't bleed in. */
-  .foe .art { aspect-ratio: 2.0; background: var(--bg-nav); overflow: hidden; }
-  .foe .art img { width: 100%; height: 100%; object-fit: cover; object-position: center 13%; }
+  /* Pure illustration (Scryfall art_crop) — no frame/title to bleed in. */
+  .foe .art { aspect-ratio: 1.4; background: var(--bg-nav); overflow: hidden; }
+  .foe .art img { width: 100%; height: 100%; object-fit: cover; object-position: center; }
   .foe .body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; }
   .foe .nm { font-family: var(--font-serif); font-size: 16px; }
   .foe .ag { font-size: 12px; color: var(--text-faint); font-style: italic; line-height: 1.35; min-height: 2.6em; }
@@ -151,7 +142,6 @@
 <body>
   <div class="topbar">
     <span class="wordmark">Arc<b>ana</b></span>
-    <span class="muted" style="font-size:12px;letter-spacing:.2em;text-transform:uppercase;">The Stage</span>
     <span class="spacer"></span>
     <a class="ghost" href="/deck">Deckbuilder →</a>
     <span id="themeslot"></span>
@@ -364,7 +354,12 @@
     const el = document.createElement("button");
     el.className = "foe"; el.dataset.id = p.id;
     const art = document.createElement("div"); art.className = "art";
-    if (p.portrait_name) { const img = document.createElement("img"); img.src = A.art(p.portrait_name); img.alt = p.portrait_name; art.appendChild(img); }
+    if (p.portrait_name) {
+      const img = document.createElement("img");
+      img.src = A.artCrop(p.portrait_name); img.alt = p.portrait_name;
+      img.onerror = () => { img.onerror = null; img.src = A.art(p.portrait_name); }; // fall back to full card
+      art.appendChild(img);
+    }
     el.appendChild(art);
     const body = document.createElement("div"); body.className = "body";
     const nm = document.createElement("div"); nm.className = "nm"; nm.textContent = p.profile.name;

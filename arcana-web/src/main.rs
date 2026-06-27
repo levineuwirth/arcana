@@ -134,7 +134,7 @@ struct ArtCache {
     /// download. The CDN is NOT rate-limited, so once this is loaded we resolve
     /// every card from it and can download images in parallel (no API, no
     /// throttle). `None` until loaded.
-    bulk: tokio::sync::RwLock<Option<std::collections::HashMap<String, String>>>,
+    bulk: tokio::sync::RwLock<Option<std::collections::HashMap<String, ArtUrls>>>,
     /// Progress of a "download all art" background job (one at a time).
     warm: WarmState,
 }
@@ -156,18 +156,40 @@ struct BulkImg {
     normal: Option<String>,
     #[serde(default)]
     large: Option<String>,
+    /// The illustration only (no frame/title) — Scryfall's `art_crop`.
+    #[serde(default)]
+    art_crop: Option<String>,
 }
 #[derive(Deserialize)]
 struct BulkFace {
     #[serde(default)]
     image_uris: Option<BulkImg>,
 }
+
+/// Resolved CDN URLs for a card: the full card image and the art crop
+/// (illustration only). Either may be missing.
+#[derive(Clone, Default)]
+struct ArtUrls {
+    full: Option<String>,
+    art: Option<String>,
+}
+impl ArtUrls {
+    fn is_empty(&self) -> bool { self.full.is_none() && self.art.is_none() }
+    /// The URL for a variant ("art" → art crop; anything else → full card).
+    fn for_variant(&self, variant: &str) -> Option<String> {
+        if variant == "art" { self.art.clone() } else { self.full.clone() }
+    }
+}
+
 impl BulkCard {
-    fn best_image(self) -> Option<String> {
-        let pick = |i: Option<BulkImg>| i.and_then(|i| i.normal.or(i.large));
-        pick(self.image_uris).or_else(|| {
-            self.card_faces.into_iter().flatten().find_map(|f| pick(f.image_uris))
-        })
+    fn best_urls(self) -> ArtUrls {
+        // Single-faced image_uris, else the first face's (DFCs).
+        let img = self.image_uris.or_else(||
+            self.card_faces.into_iter().flatten().find_map(|f| f.image_uris));
+        match img {
+            Some(i) => ArtUrls { full: i.normal.or(i.large), art: i.art_crop },
+            None => ArtUrls::default(),
+        }
     }
 }
 
@@ -235,7 +257,7 @@ impl ArtCache {
     fn map_path(&self) -> PathBuf { self.dir.join("bulk-map.tsv") }
 
     /// Load the cached name→URL map if present and < 14 days old (TSV: name\tURL).
-    async fn load_bulk_from_disk(&self) -> Option<std::collections::HashMap<String, String>> {
+    async fn load_bulk_from_disk(&self) -> Option<std::collections::HashMap<String, ArtUrls>> {
         let p = self.map_path();
         let age = tokio::fs::metadata(&p).await.ok()?.modified().ok()?.elapsed().ok()?;
         if age > Duration::from_secs(14 * 24 * 3600) {
@@ -244,20 +266,26 @@ impl ArtCache {
         let data = tokio::fs::read_to_string(&p).await.ok()?;
         let mut map = std::collections::HashMap::new();
         for line in data.lines() {
-            if let Some((n, u)) = line.split_once('\t') {
-                map.insert(n.to_string(), u.to_string());
-            }
+            // `name<TAB>full<TAB>art`. A line without the art column is the old
+            // 2-column format → bail so the bulk map re-downloads WITH art crops.
+            let mut it = line.splitn(3, '\t');
+            let (Some(n), Some(full), art) = (it.next(), it.next(), it.next()) else { continue; };
+            let Some(art) = art else { return None; };
+            let opt = |s: &str| (!s.is_empty()).then(|| s.to_string());
+            map.insert(n.to_string(), ArtUrls { full: opt(full), art: opt(art) });
         }
         (!map.is_empty()).then_some(map)
     }
-    async fn save_bulk_to_disk(&self, map: &std::collections::HashMap<String, String>) {
-        let mut s = String::with_capacity(map.len() * 80);
+    async fn save_bulk_to_disk(&self, map: &std::collections::HashMap<String, ArtUrls>) {
+        let mut s = String::with_capacity(map.len() * 120);
         for (n, u) in map {
-            s.push_str(n); s.push('\t'); s.push_str(u); s.push('\n');
+            s.push_str(n); s.push('\t');
+            s.push_str(u.full.as_deref().unwrap_or("")); s.push('\t');
+            s.push_str(u.art.as_deref().unwrap_or("")); s.push('\n');
         }
         let _ = tokio::fs::write(self.map_path(), s).await;
     }
-    async fn load_bulk(&self) -> Option<std::collections::HashMap<String, String>> {
+    async fn load_bulk(&self) -> Option<std::collections::HashMap<String, ArtUrls>> {
         // 1) bulk-data index → the oracle_cards download URI (on the CDN).
         let idx_bytes = self.client
             .get("https://api.scryfall.com/bulk-data").send().await.ok()?
@@ -272,8 +300,9 @@ impl ArtCache {
         let mut map = std::collections::HashMap::with_capacity(cards.len());
         for c in cards {
             let key = c.name.to_lowercase();
-            if let Some(url) = c.best_image() {
-                map.entry(key).or_insert(url);
+            let urls = c.best_urls();
+            if !urls.is_empty() {
+                map.entry(key).or_insert(urls);
             }
         }
         Some(map)
@@ -288,30 +317,43 @@ impl ArtCache {
         }
     }
 
-    fn path_for(&self, name: &str) -> PathBuf {
+    /// Disk path for a card's image `variant` ("" = full card, "art" = art
+    /// crop). Full keeps its legacy `{hash}.jpg` name so existing caches stay
+    /// valid; variants get a `{hash}_{variant}.jpg` suffix.
+    fn path_for(&self, name: &str, variant: &str) -> PathBuf {
         use std::hash::{Hash, Hasher};
         let mut h = std::collections::hash_map::DefaultHasher::new();
         name.to_lowercase().hash(&mut h);
-        self.dir.join(format!("{:016x}.jpg", h.finish()))
+        let base = format!("{:016x}", h.finish());
+        let file = if variant.is_empty() {
+            format!("{base}.jpg")
+        } else {
+            format!("{base}_{variant}.jpg")
+        };
+        self.dir.join(file)
     }
 
-    /// Cached image bytes for `name`, fetching + caching from Scryfall on a miss.
-    /// `None` if the fetch fails (the client then shows its art fallback).
-    async fn fetch(&self, name: &str) -> Option<Vec<u8>> {
-        let path = self.path_for(name);
+    /// Cached image bytes for `name` at `variant` ("" full card / "art" art
+    /// crop), fetching + caching from Scryfall on a miss. `None` if the fetch
+    /// fails (the client then shows its art fallback). The art crop is cached
+    /// to disk the same way as the full card, so it's persistent + downloadable.
+    async fn fetch(&self, name: &str, variant: &str) -> Option<Vec<u8>> {
+        let path = self.path_for(name, variant);
         if let Ok(bytes) = tokio::fs::read(&path).await {
             return Some(bytes);
         }
         // Prefer the bulk-data CDN URL (not rate-limited → parallel-safe).
         let cdn = self.bulk.read().await.as_ref()
-            .and_then(|m| m.get(&name.to_lowercase()).cloned());
+            .and_then(|m| m.get(&name.to_lowercase()).map(|u| u.for_variant(variant)))
+            .flatten();
         let bytes = if let Some(url) = cdn {
             let resp = self.client.get(&url).send().await.ok()?;
             if !resp.status().is_success() { return None; }
             resp.bytes().await.ok()?.to_vec()
         } else {
             // Fallback: resolve via the rate-limited API (hold the gate across a
-            // ≥90ms spacing sleep so these stay ≤~11/s).
+            // ≥90ms spacing sleep so these stay ≤~11/s). `version=art_crop`
+            // yields the illustration for the "art" variant.
             {
                 let mut last = self.gate.lock().await;
                 const MIN: Duration = Duration::from_millis(90);
@@ -319,9 +361,11 @@ impl ArtCache {
                 if since < MIN { tokio::time::sleep(MIN - since).await; }
                 *last = Instant::now();
             }
+            let mut query = vec![("format", "image"), ("exact", name)];
+            if variant == "art" { query.push(("version", "art_crop")); }
             let resp = self.client
                 .get("https://api.scryfall.com/cards/named")
-                .query(&[("format", "image"), ("exact", name)])
+                .query(&query)
                 .send().await.ok()?;
             if !resp.status().is_success() { return None; }
             resp.bytes().await.ok()?.to_vec()
@@ -691,6 +735,9 @@ struct AutoPassRequest {
 #[derive(Debug, Deserialize)]
 struct ArtRequest {
     name: String,
+    /// "art" → the illustration crop; absent/anything else → the full card.
+    #[serde(default)]
+    crop: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -718,7 +765,7 @@ async fn post_art_warm(State(app): State<AppState>, body: String) -> Response {
     let mut ok = 0usize;
     let requested = req.names.len().min(200); // bound work per request
     for name in req.names.into_iter().take(200) {
-        if app.art.fetch(&name).await.is_some() {
+        if app.art.fetch(&name, "").await.is_some() {
             ok += 1;
         }
     }
@@ -758,9 +805,12 @@ async fn post_art_warm_all(State(app): State<AppState>) -> Response {
             let sem = sem.clone();
             handles.push(tokio::spawn(async move {
                 let _permit = sem.acquire_owned().await;
-                if art.fetch(&name).await.is_none() {
+                if art.fetch(&name, "").await.is_none() {
                     art.warm.failed.fetch_add(1, Ordering::Relaxed);
                 }
+                // Also cache the art crop (illustration) so it's available
+                // offline like the full card; best-effort (not counted failed).
+                let _ = art.fetch(&name, "art").await;
                 art.warm.done.fetch_add(1, Ordering::Relaxed);
             }));
         }
@@ -777,7 +827,8 @@ async fn get_art_warm_status(State(app): State<AppState>) -> Response {
 /// Cached/proxied card art (see [`ArtCache`]). Long-lived cache headers so the
 /// browser also caches it; a miss/failure 404s and the client shows its fallback.
 async fn get_art(State(app): State<AppState>, Query(q): Query<ArtRequest>) -> Response {
-    match app.art.fetch(&q.name).await {
+    let variant = if q.crop.as_deref() == Some("art") { "art" } else { "" };
+    match app.art.fetch(&q.name, variant).await {
         Some(bytes) => (
             [
                 (axum::http::header::CONTENT_TYPE, "image/jpeg"),

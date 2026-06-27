@@ -65,6 +65,11 @@
   Arcana.art = function (name) {
     return "/art?name=" + encodeURIComponent(name);
   };
+  // The illustration crop (no frame/title) — Scryfall art_crop, cached the same
+  // way as the full card.
+  Arcana.artCrop = function (name) {
+    return "/art?crop=art&name=" + encodeURIComponent(name);
+  };
 
   /* ---- Mana pips --------------------------------------------------------- */
   const COLOR_CLASS = { W: "w", U: "u", B: "b", R: "r", G: "g", C: "c" };
