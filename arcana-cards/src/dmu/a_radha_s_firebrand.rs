@@ -1,5 +1,6 @@
 //! A-Radha's Firebrand — `{1}{R}` 3/1 Human Warrior. (Domain — not a usable
-//! KeywordAbility variant; the Domain cost-reduction is noted as a gap.)
+//! KeywordAbility variant; the Domain cost-reduction is on the activated
+//! ability via `ActivationCost::cost_reduction`.)
 //! "Whenever Radha's Firebrand attacks, target creature defending player controls
 //! with power less than or equal to Radha's Firebrand's power can't block this turn."
 //! "Domain — {5}{R}: Radha's Firebrand gets +2/+2 until end of turn. This ability
@@ -9,11 +10,12 @@
 use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone, CardDefinition,
     CardRegistry,
 };
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
     ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
@@ -21,7 +23,7 @@ use arcana_core::targets::{
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -67,14 +69,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 }],
             })
             .with_activated_ability(ActivatedAbilityDef {
-                // GAP (cost): "costs {1} less per basic land type among lands you
-                // control" is a dynamic cost reduction with no ActivationCost field;
-                // the printed {5}{R} is modeled, plus once-per-turn.
                 text: "Domain — {5}{R}: Radha's Firebrand gets +2/+2 until end of turn. Activate only once each turn."
                     .into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{5}{R}").expect("valid cost"),
                     once_per_turn: true,
+                    // Domain — "{1} less to activate for each basic land type
+                    // among lands you control" (CR 702.27).
+                    cost_reduction: Some(domain_reduction),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),
@@ -110,4 +112,15 @@ fn pump_self(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -
         duration: Duration::EndOfTurn,
         keywords: vec![],
     }]
+}
+
+/// Domain (CR 702.27) — the {5}{R} ability costs {1} less to activate for
+/// each basic land type among lands you control.
+fn domain_reduction(
+    state: &GameState,
+    _source: ObjectId,
+    controller: PlayerId,
+    reg: &CardRegistry,
+) -> u32 {
+    script::domain(state, controller, reg)
 }

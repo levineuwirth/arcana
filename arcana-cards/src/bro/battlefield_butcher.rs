@@ -1,19 +1,20 @@
 //! Battlefield Butcher — `{2}{B}` 1/4 black Human Soldier.
 //! "{5}, {T}: Each opponent loses 2 life. This ability costs {1} less to activate
 //! for each creature card in your graveyard."
-//! GAP: Dynamic cost reduction "costs {1} less for each creature card in your
-//! graveyard" not modeled in ActivationCost.
+//! The dynamic cost reduction is wired via `ActivationCost::cost_reduction`
+//! (`script::graveyard_matching` over creature cards in your graveyard).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
 };
 use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::targets::ObjectFilter;
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Battlefield Butcher");
@@ -39,8 +40,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{5}").unwrap(),
                     tap: true,
+                    // "{1} less to activate for each creature card in your
+                    // graveyard."
+                    cost_reduction: Some(graveyard_creatures_reduction),
                     ..ActivationCost::default()
-                    // GAP: dynamic cost reduction not modeled
                 },
                 target_requirements: Vec::new(),
                 is_mana_ability: false,
@@ -50,6 +53,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 face_gate: None,
                 effect: each_opponent_loses_2,
             }),
+    )
+}
+
+/// "{1} less to activate for each creature card in your graveyard."
+/// `controller` is the activator; their graveyard is searched for cards
+/// with the creature type.
+fn graveyard_creatures_reduction(
+    state: &GameState,
+    _source: ObjectId,
+    controller: PlayerId,
+    _reg: &CardRegistry,
+) -> u32 {
+    script::graveyard_matching(
+        state,
+        &ObjectFilter::creature(),
+        controller,
+        controller,
     )
 }
 

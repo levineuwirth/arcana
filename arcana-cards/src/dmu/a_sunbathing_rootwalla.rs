@@ -1,16 +1,18 @@
 //! A-Sunbathing Rootwalla — `{1}{G}` 2/2 Lizard.
 //! Domain — `{1}{G}:` Until end of turn, this creature gets +1/+1 for each
 //! basic land type among lands you control. Activate only once each turn.
-//! GAP: Domain scaling (count of distinct basic land types) not available
-//! via script helpers; emitting Vec::new().
+//! X is computed via `script::domain` and feeds a self `Pump` of +X/+X
+//! until end of turn; `once_per_turn` enforces the activation limit.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
 };
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
@@ -50,12 +52,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn domain_pump(
-    _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
+    state: &GameState,
+    ctx: &ActivationContext,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: Domain — "for each basic land type among lands you control" requires
-    // a script helper to count distinct basic land types on the battlefield;
-    // no such helper exists in the current API.
-    Vec::new()
+    // X = domain (number of basic land types among lands you control).
+    let x = script::domain(state, ctx.controller, reg) as i32;
+    vec![Effect::Pump {
+        target: ctx.source,
+        power: x,
+        toughness: x,
+        duration: Duration::EndOfTurn,
+        keywords: vec![],
+    }]
 }

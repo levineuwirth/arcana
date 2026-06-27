@@ -7,13 +7,14 @@
 //!
 //! Channel is a hand-activated ability: `discard_self: true` +
 //! `ActivationZone::Hand`.
-//! GAP: the "costs {1} less for each legendary creature you control"
-//! cost reduction is not expressible; the printed {1}{G} is charged.
+//! The "costs {1} less for each legendary creature you control" cost
+//! reduction is wired via `ActivationCost::cost_reduction`
+//! (`script::count_matching` over legendary creatures you control).
 //! GAP: "may search" is modeled as a mandatory search.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::{ManaCost, ManaUnit};
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
@@ -25,7 +26,7 @@ use arcana_core::targets::{
     TargetFilter, TargetRequirement,
 };
 use arcana_core::types::{
-    CardId, ColorSet, ManaColor, SupertypeSet, TypeLine,
+    CardId, ColorSet, ManaColor, PlayerId, SupertypeSet, TypeLine,
 };
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -59,12 +60,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Channel — {1}{G}, Discard this card: Destroy target artifact, enchantment, or nonbasic land an opponent controls. That player may search their library for a land card with a basic land type, put it onto the battlefield, then shuffle.".into(),
-                // GAP: "costs {1} less to activate for each legendary creature
-                // you control" — dynamic activation-cost reduction is not
-                // expressible; the printed {1}{G} is always charged.
+                // "costs {1} less to activate for each legendary creature
+                // you control."
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}{G}").expect("valid cost"),
                     discard_self: true,
+                    cost_reduction: Some(legendary_creature_reduction),
                     ..ActivationCost::default()
                 },
                 target_requirements: vec![TargetRequirement {
@@ -91,6 +92,20 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: channel_destroy,
             }),
     )
+}
+
+/// Channel — "costs {1} less to activate for each legendary creature
+/// you control." `controller` is the activator (the card is in hand).
+fn legendary_creature_reduction(
+    state: &GameState,
+    _source: ObjectId,
+    controller: PlayerId,
+    _reg: &CardRegistry,
+) -> u32 {
+    let filter = ObjectFilter::creature()
+        .with_supertypes(SupertypeSet(SupertypeSet::LEGENDARY))
+        .controlled_by(ControllerConstraint::You);
+    script::count_matching(state, &filter, controller)
 }
 
 fn add_green_mana(

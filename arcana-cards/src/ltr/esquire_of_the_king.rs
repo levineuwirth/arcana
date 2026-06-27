@@ -6,7 +6,7 @@ use arcana_core::effects::Effect;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
-use arcana_core::objects::NULL_OBJECT_ID;
+use arcana_core::objects::{ObjectId, NULL_OBJECT_ID};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
@@ -14,7 +14,9 @@ use arcana_core::registry::{
 use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{
+    CardId, ColorSet, PlayerId, PtValue, SubtypeSet, SupertypeSet, TypeLine,
+};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Esquire of the King");
@@ -37,11 +39,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{4}{W}, {T}: Creatures you control get +1/+1 until end of turn. This ability costs {2} less to activate if you control a legendary creature.".into(),
-                // GAP: "costs {2} less if you control a legendary creature" —
-                // conditional cost reduction not in ActivationCost; using full cost.
+                // "costs {2} less if you control a legendary creature."
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{4}{W}").unwrap(),
                     tap: true,
+                    cost_reduction: Some(legendary_creature_reduction),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),
@@ -53,6 +55,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: pump_team,
             }),
     )
+}
+
+/// "costs {2} less to activate if you control a legendary creature"
+/// (Idiom B — fixed reduction gated on a condition).
+fn legendary_creature_reduction(
+    state: &GameState,
+    _source: ObjectId,
+    controller: PlayerId,
+    _reg: &CardRegistry,
+) -> u32 {
+    let filter = ObjectFilter::creature()
+        .with_supertypes(SupertypeSet(SupertypeSet::LEGENDARY));
+    if arcana_core::conditions::you_control_a(state, controller, &filter) {
+        2
+    } else {
+        0
+    }
 }
 
 fn pump_team(

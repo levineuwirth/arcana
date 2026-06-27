@@ -1,17 +1,22 @@
 //! Samite Pilgrim — `{1}{W}` 1/1 Creature — Human Cleric.
 //! Domain — `{T}: Prevent the next X damage that would be dealt to target creature this turn,
 //! where X is the number of basic land types among lands you control.`
-//! GAP: "number of basic land types" — no script helper for counting distinct basic land types.
+//! X is computed via `script::domain` (number of basic land types among
+//! lands you control) and feeds a `PreventDamage` shield (up to X) lasting
+//! until end of turn.
 
 use arcana_core::effects::Effect;
+use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
 };
+use arcana_core::replacement::ReplacementDuration;
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetRequirement};
+use arcana_core::targets::{TargetChoice, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -48,10 +53,18 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn prevent_damage(
-    _state: &GameState,
-    _ctx: &ActivationContext,
-    _reg: &CardRegistry,
+    state: &GameState,
+    ctx: &ActivationContext,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "number of basic land types" — no script helper; Domain not computable
-    Vec::new()
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return Vec::new();
+    };
+    // X = domain (number of basic land types among lands you control).
+    let x = script::domain(state, ctx.controller, reg);
+    vec![Effect::PreventDamage {
+        target: DamageTarget::Object(*id),
+        amount: Some(x),
+        duration: ReplacementDuration::EndOfTurn,
+    }]
 }

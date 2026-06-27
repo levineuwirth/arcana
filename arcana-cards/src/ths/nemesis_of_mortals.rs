@@ -6,19 +6,24 @@
 //! * {7}{G}{G}: Monstrosity 5. This ability costs {1} less to activate for
 //!   each creature card in your graveyard.
 //!   Modeled as the Monstrosity 5 payload: put five +1/+1 counters on this
-//!   creature. GAP: no "becomes monstrous" flag / one-shot guard, and the
-//!   activation cost-reduction per creature card in graveyard is not
-//!   expressible.
+//!   creature. The activation cost-reduction per creature card in your
+//!   graveyard is wired via `ActivationCost::cost_reduction`
+//!   (`script::graveyard_matching`). GAP: no "becomes monstrous" flag /
+//!   one-shot guard.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone, CardDefinition,
     CardRegistry,
 };
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
+use arcana_core::targets::ObjectFilter;
+use arcana_core::types::{
+    CardId, ColorSet, CounterKind, PlayerId, PtValue, SubtypeSet, TypeLine,
+};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Nemesis of Mortals");
@@ -42,6 +47,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             text: "{7}{G}{G}: Monstrosity 5.".into(),
             cost: ActivationCost {
                 mana_cost: ManaCost::parse("{7}{G}{G}").expect("valid cost"),
+                // "{1} less to activate for each creature card in your
+                // graveyard."
+                cost_reduction: Some(graveyard_creatures_reduction),
                 ..ActivationCost::default()
             },
             target_requirements: Vec::new(),
@@ -52,6 +60,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             face_gate: None,
             effect: monstrosity_five,
         }),
+    )
+}
+
+/// "{1} less to activate for each creature card in your graveyard"
+/// (Idiom A) — only the {7}{G}{G} Monstrosity ability is reduced; the
+/// spell's own cast-cost reduction remains a GAP.
+fn graveyard_creatures_reduction(
+    state: &GameState,
+    _source: ObjectId,
+    controller: PlayerId,
+    _reg: &CardRegistry,
+) -> u32 {
+    script::graveyard_matching(
+        state,
+        &ObjectFilter::creature(),
+        controller,
+        controller,
     )
 }
 

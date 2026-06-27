@@ -8,16 +8,19 @@
 //!        lands you control.
 //!
 //! GAP: Read Ahead (choosing a starting chapter) is not modeled.
-//! GAP: Chapter III Domain amount (basic land type count) not expressible
-//!      with available script helpers; chapter III effect returns Vec::new().
+//! Chapter III Domain amount (basic land type count) is wired via
+//! `script::domain`; the target creature you control gets +X/+X and gains
+//! trample until end of turn.
 
-use arcana_core::effects::{Effect, TokenDefinition};
+use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::{
-    ControllerConstraint, ObjectFilter, TargetCount, TargetFilter,
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
     TargetRequirement,
 };
 use arcana_core::triggers::{
@@ -166,11 +169,20 @@ fn chapter_ii(
 }
 
 fn chapter_iii(
-    _state: &GameState,
-    _trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    state: &GameState,
+    trig: &PendingTrigger,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: Domain amount (number of basic land types among lands you control)
-    //      is not expressible with available script helpers; effect omitted.
-    Vec::new()
+    let Some(TargetChoice::Object(id)) = trig.targets.targets.first() else {
+        return Vec::new();
+    };
+    // X = domain (number of basic land types among lands you control).
+    let x = script::domain(state, trig.controller, reg) as i32;
+    vec![Effect::Pump {
+        target: *id,
+        power: x,
+        toughness: x,
+        duration: Duration::EndOfTurn,
+        keywords: vec![KeywordAbility::Trample],
+    }]
 }

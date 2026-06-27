@@ -6,19 +6,21 @@
 //!  lands you control."
 //!
 //! The graveyard recursion is expressible as a graveyard-activated ability
-//! returning this card to the battlefield. The "tapped" rider, the granted
-//! leave-the-battlefield replacement effect, and the Domain {1}-less cost
-//! reduction are not expressible and are GAP'd.
+//! returning this card to the battlefield. The Domain "{1} less to activate
+//! for each basic land type among lands you control" reduction is wired via
+//! `ActivationCost::cost_reduction` (`script::domain`). The "tapped" rider
+//! and the granted leave-the-battlefield replacement effect remain GAP'd.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
 };
+use arcana_core::script;
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, PlayerId, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Llanowar Greenwidow");
@@ -40,8 +42,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
     reg.register(
         CardDefinition::new(name, chars)
-            // GAP (cost reduction): "costs {1} less for each basic land type
-            //   among lands you control" — no Domain cost-reduction hook.
+            // Domain — "costs {1} less for each basic land type among lands
+            //   you control" is wired via `cost_reduction`.
             // GAP (rider): "tapped" + grants the leave-battlefield-exile
             //   replacement effect — neither return-tapped nor a granted
             //   replacement is expressible here.
@@ -49,6 +51,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "{7}{G}: Return this card from your graveyard to the battlefield tapped.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{7}{G}").expect("valid cost"),
+                    cost_reduction: Some(domain_reduction),
                     ..ActivationCost::default()
                 },
                 target_requirements: Vec::new(),
@@ -60,6 +63,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: return_self_to_battlefield,
             }),
     )
+}
+
+/// Domain (CR 702.27) — "{1} less to activate for each basic land type
+/// among lands you control." `controller` is the activator.
+fn domain_reduction(
+    state: &GameState,
+    _source: ObjectId,
+    controller: PlayerId,
+    reg: &CardRegistry,
+) -> u32 {
+    script::domain(state, controller, reg)
 }
 
 fn return_self_to_battlefield(

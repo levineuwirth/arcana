@@ -1,16 +1,16 @@
 //! Meria's Outrider — `{4}{R}` 4/4 Elf Archer with Reach.
 //! Domain — When this creature enters, it deals damage to each opponent
 //! equal to the number of basic land types among lands you control.
-//!   GAP: "number of basic land types among lands you control" (domain) is
-//!   not computable with the available script helpers; the ETB damage is a
-//!   dynamic amount that cannot be expressed, so the whole effect is
-//!   GAP'd (returns an empty effect list). Reach is kept. (Domain is an
-//!   ability word, not a KeywordAbility.)
+//!   The ETB damage scales with `script::domain` (number of basic land
+//!   types among lands you control) and is dealt to each opponent. Reach
+//!   is kept. (Domain is an ability word, not a KeywordAbility.)
 
 use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
@@ -52,10 +52,21 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn etb_domain_damage(
-    _state: &GameState,
-    _trig: &PendingTrigger,
-    _reg: &CardRegistry,
+    state: &GameState,
+    trig: &PendingTrigger,
+    reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: domain (basic land types among your lands) is not computable.
-    Vec::new()
+    // X = domain (number of basic land types among lands you control).
+    let x = script::domain(state, trig.controller, reg);
+    if x == 0 {
+        return Vec::new();
+    }
+    script::opponents(state, trig.controller)
+        .into_iter()
+        .map(|opp| Effect::DealDamage {
+            source: trig.source,
+            target: DamageTarget::Player(opp),
+            amount: x,
+        })
+        .collect()
 }
