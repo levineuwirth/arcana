@@ -290,6 +290,63 @@ pub fn match_block(legal: &[Action], chosen: &[BlockerDeclaration]) -> Option<Ac
     }).cloned()
 }
 
+/// Validate a player-submitted block DIRECTLY against game state, rather than
+/// by membership in the legal-action enumeration. The enumeration emits one
+/// `DeclareBlockers` per SINGLE attacker (and is capped at `MAX_COMBAT_ENUM`),
+/// so [`match_block`] can't confirm a declaration that blocks two or more
+/// DIFFERENT attackers at once — exactly the common case of blocking several
+/// attackers with several creatures. This checks each pairing's legality
+/// (controller, untapped creature on the battlefield, not suspected, the
+/// target is an attacker, per-pair evasion via [`GameState::blocker_eligible`]),
+/// that no creature blocks twice, and that every blocked attacker's blocker
+/// count satisfies its constraints (menace minimum, max-blockers). Returns the
+/// canonical `DeclareBlockers` action or `None`.
+///
+/// The chosen pairings are exactly what [`GameState::apply_declared_blockers`]
+/// will apply (it re-filters per-pair), so a `Some` here applies faithfully.
+pub fn legal_block_declaration(
+    state: &GameState,
+    defender: PlayerId,
+    chosen: &[BlockerDeclaration],
+) -> Option<Action> {
+    use std::collections::{HashMap, HashSet};
+    let combat = state.combat.as_ref()?;
+    let mut seen: HashSet<ObjectId> = HashSet::new();
+    let mut per_attacker: HashMap<ObjectId, u32> = HashMap::new();
+    for d in chosen {
+        let blk = state.objects.get(d.blocker)?;
+        // Mirror can_block (legal_actions) + apply_declared_blockers' gate.
+        if blk.controller != defender
+            || !blk.is_creature()
+            || !blk.zone.is_battlefield()
+            || blk.is_tapped()
+            || blk.status.suspected
+        {
+            return None;
+        }
+        if !combat.is_attacker(d.blocking) {
+            return None;
+        }
+        if !state.blocker_eligible(d.blocker, d.blocking) {
+            return None;
+        }
+        // CR 509.1a — a creature blocks only one attacker (no multi-block
+        // grants modeled yet).
+        if !seen.insert(d.blocker) {
+            return None;
+        }
+        *per_attacker.entry(d.blocking).or_insert(0) += 1;
+    }
+    // Menace / max-blockers: each blocked attacker's blocker count must be
+    // within its constraints (unblocked attackers — count 0 — are always ok).
+    for (atk, count) in &per_attacker {
+        if !state.block_constraints(*atk).allows_block_count(*count) {
+            return None;
+        }
+    }
+    Some(Action::DeclareBlockers { blockers: chosen.to_vec() })
+}
+
 /// CR 509.2 — multi-blocked attackers needing a damage-assignment ORDER, each
 /// paired with its blockers (one legal permutation, the canonical list the
 /// attacking player reorders). Taken from the first legal `OrderBlockers`.
@@ -1822,6 +1879,53 @@ mod tests {
         let a = combat.attacker(atk).unwrap();
         assert!(a.is_blocked);
         assert_eq!(a.blocked_by, vec![blk]);
+    }
+
+    #[test]
+    fn legal_block_declaration_accepts_multi_attacker_block() {
+        let mut s = GameState::new(2, 0);
+        s.begin_combat();
+        // P0 attacks with two creatures.
+        let atk1 = put_creature(&mut s, 0, 2, 2); ready(atk1, &mut s);
+        let atk2 = put_creature(&mut s, 0, 2, 2); ready(atk2, &mut s);
+        s.apply_declared_attackers(vec![
+            AttackerDeclaration { attacker: atk1, defending: DefendingEntity::Player(1) },
+            AttackerDeclaration { attacker: atk2, defending: DefendingEntity::Player(1) },
+        ]);
+        s.enter_declare_blockers();
+        // P1 has two blockers.
+        let blk1 = put_creature(&mut s, 1, 1, 1); ready(blk1, &mut s);
+        let blk2 = put_creature(&mut s, 1, 1, 1); ready(blk2, &mut s);
+
+        // Block each attacker with a DIFFERENT blocker — the case the
+        // single-attacker enumeration + match_block rejected.
+        let ok = vec![
+            BlockerDeclaration { blocker: blk1, blocking: atk1 },
+            BlockerDeclaration { blocker: blk2, blocking: atk2 },
+        ];
+        assert!(legal_block_declaration(&s, 1, &ok).is_some(),
+            "blocking two different attackers with two creatures is legal");
+
+        // Can't block with the attacking player's creature.
+        let foreign = vec![BlockerDeclaration { blocker: atk1, blocking: atk2 }];
+        assert!(legal_block_declaration(&s, 1, &foreign).is_none(),
+            "a creature you don't control can't block");
+
+        // One creature can't block two attackers.
+        let dup = vec![
+            BlockerDeclaration { blocker: blk1, blocking: atk1 },
+            BlockerDeclaration { blocker: blk1, blocking: atk2 },
+        ];
+        assert!(legal_block_declaration(&s, 1, &dup).is_none(),
+            "one creature can't block two attackers");
+
+        // Blocking a non-attacker is illegal.
+        let nonatk = vec![BlockerDeclaration { blocker: blk1, blocking: blk2 }];
+        assert!(legal_block_declaration(&s, 1, &nonatk).is_none(),
+            "the blocked object must be an attacker");
+
+        // The empty declaration (block nothing) is always legal.
+        assert!(legal_block_declaration(&s, 1, &[]).is_some());
     }
 
     #[test]

@@ -23,7 +23,8 @@ use arcana_core::actions::Action;
 use arcana_core::catalog::{card_info, CardInfo};
 use arcana_core::deck::parse_deck_text;
 use arcana_core::combat::{
-    attacker_options, blocker_options, damage_targets, match_attack, match_block, match_damage,
+    attacker_options, blocker_options, damage_targets, legal_block_declaration,
+    match_attack, match_damage,
     match_ordering, ordering_targets, AttackerDeclaration, BlockerDeclaration, DamageAssignment,
     DefendingEntity,
 };
@@ -561,7 +562,8 @@ impl GameCore {
         }
         let action = match sub {
             CombatSubmission::Attackers { attackers } => match_attack(&self.legal, &attackers),
-            CombatSubmission::Blockers { blockers } => match_block(&self.legal, &blockers),
+            CombatSubmission::Blockers { blockers } =>
+                legal_block_declaration(self.session.state(), HUMAN, &blockers),
             CombatSubmission::Order { orderings } => match_ordering(&self.legal, &orderings),
             CombatSubmission::Damage { distributions } => match_damage(&self.legal, &distributions),
         };
