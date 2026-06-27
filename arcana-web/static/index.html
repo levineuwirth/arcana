@@ -2177,6 +2177,25 @@ async function getState() {
 // game isn't over, we schedule a /m/state poll and chain until it's our turn.
 let pollTimer = null;
 let matchOver = false;
+let wsConnected = false;
+
+// Open the server-push socket: opponent moves arrive instantly instead of via
+// the 1.5s poll. While it's healthy we don't poll; if it drops we fall back to
+// polling so play continues regardless.
+function startMatchSocket() {
+  if (!Arcana.Match.active() || matchOver) return;
+  Arcana.Match.openSocket(
+    (msg) => {
+      if (msg && msg.ended) { matchEnded(msg.reason); return; }
+      wsConnected = true;
+      adopt(msg, true); // a pushed StateResponse — log opponent moves
+    },
+    () => { // socket dropped
+      wsConnected = false;
+      if (!matchOver) { logLine("sys", "live link dropped — falling back to polling"); maybePollOpponent(); }
+    }
+  );
+}
 function setWaitingBanner(show, text) {
   const el = document.getElementById("netwait");
   if (!el) return;
@@ -2200,7 +2219,7 @@ function maybePollOpponent() {
   const v = G.resp && G.resp.view;
   const waiting = !!(v && !v.game_over && (!v.legal || v.legal.length === 0));
   setWaitingBanner(waiting, "Waiting for " + (G.oppName || "opponent") + "…");
-  if (waiting) schedulePoll();
+  if (waiting && !wsConnected) schedulePoll(); // WS push covers it when connected
 }
 
 // The shared game is gone (opponent left, or the server reaped it). Stop the
@@ -2208,6 +2227,8 @@ function maybePollOpponent() {
 function matchEnded(why) {
   if (matchOver) return;
   matchOver = true;
+  wsConnected = false;
+  Arcana.Match.closeSocket();
   if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
   clearMatchCreds();
   setWaitingBanner(true, "Match ended — " + (why || "opponent left") + ".");
@@ -2336,6 +2357,7 @@ function enterMatchMode(ctx) {
 
 async function leaveMatch() {
   if (!confirm("Leave this match? Your opponent will be told it ended.")) return;
+  Arcana.Match.closeSocket();
   try { await Arcana.Api.matchLeave(); } catch (e) { /* best-effort */ }
   clearMatchCreds();
   window.location = "/";
@@ -2377,7 +2399,8 @@ async function loadOpponentName() {
   if (!Arcana.Match.active() && autopassLevel !== "stops") {
     try { await Arcana.Api.autoPass(autopassLevel); } catch (e) { /* ignore */ }
   }
-  getState();
+  await getState();
+  startMatchSocket(); // server push for networked duels (no-op when solo)
 })();
 </script>
 </body>

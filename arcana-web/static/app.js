@@ -329,6 +329,24 @@
       return "?code=" + encodeURIComponent(c.code) +
              "&seat=" + c.seat + "&token=" + encodeURIComponent(c.token);
     },
+    /// Open the server-push socket for this seat. `onMessage(obj)` fires for each
+    /// pushed StateResponse (or an `{ended,reason}` notice); `onClose()` fires if
+    /// the socket drops. Returns the WebSocket, or null if it couldn't be made.
+    openSocket(onMessage, onClose) {
+      if (!this.ctx) return null;
+      const proto = location.protocol === "https:" ? "wss:" : "ws:";
+      let ws;
+      try { ws = new WebSocket(proto + "//" + location.host + "/m/ws" + this.qs()); }
+      catch (e) { return null; }
+      ws.onmessage = (ev) => { let m; try { m = JSON.parse(ev.data); } catch (e) { return; } onMessage(m); };
+      ws.onclose = () => { if (this.ws === ws) this.ws = null; onClose && onClose(); };
+      ws.onerror = () => { /* onclose follows */ };
+      this.ws = ws;
+      return ws;
+    },
+    closeSocket() {
+      if (this.ws) { try { this.ws.close(); } catch (e) {} this.ws = null; }
+    },
   };
   const M = Arcana.Match;
 

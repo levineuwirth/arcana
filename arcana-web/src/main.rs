@@ -41,7 +41,7 @@
 //! threads. This keeps all game state on one thread (no locking races) and
 //! satisfies the framework's bounds without touching the engine crates.
 
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -59,13 +59,15 @@ use arcana_web::{
     DeckIdentityView, GameCore, ImportedDeck, MatchConfig, Personality, PlayerProfile,
     StateResponse, Suggestion,
 };
-use axum::extract::{Query, State};
+use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
+use axum::extract::{ConnectInfo, Query, Request, State};
 use axum::http::StatusCode;
+use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::{broadcast, mpsc, oneshot};
 
 /// The single-page UI, embedded so the binary is self-contained.
 const INDEX_HTML: &str = include_str!("../static/index.html");
@@ -159,6 +161,11 @@ struct MatchRef {
 struct AppState {
     tx: mpsc::UnboundedSender<Command>,
     art: Arc<ArtCache>,
+    /// Broadcasts the join code of any networked match whose state just changed,
+    /// so each open `/m/ws` task can push the fresh per-seat view to its client
+    /// (server push instead of polling). The payload is just the code; the task
+    /// re-fetches its own projection via `Command::MatchState`.
+    changes: broadcast::Sender<String>,
 }
 
 /// Card-art proxy with a persistent on-disk cache. The browser requests
@@ -533,7 +540,7 @@ fn time_seed() -> u64 {
 /// The worker thread's main loop: owns one [`GameCore`] and serves commands
 /// sequentially. The registry is built and leaked to `'static` here, so it
 /// never has to cross a thread boundary.
-fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>) {
+fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>, changes: broadcast::Sender<String>) {
     let reg: &'static CardRegistry = Box::leak(Box::new(arcana_cards::build_catalog()));
     let mut core = GameCore::new(reg, time_seed());
     // Persists across `New` so the player's auto-pass choice survives a new game.
@@ -651,25 +658,38 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>) {
                 let _ = reply.send(matches.snapshot(&at.code, at.seat, &at.token));
             }
             Command::MatchAction { at, index, reply } => {
-                let _ = reply.send(matches.action(&at.code, at.seat, &at.token, index));
+                let res = matches.action(&at.code, at.seat, &at.token, index);
+                if res.is_ok() { let _ = changes.send(at.code.clone()); }
+                let _ = reply.send(res);
             }
             Command::MatchCombat { at, sub, reply } => {
-                let _ = reply.send(matches.combat(&at.code, at.seat, &at.token, sub));
+                let res = matches.combat(&at.code, at.seat, &at.token, sub);
+                if res.is_ok() { let _ = changes.send(at.code.clone()); }
+                let _ = reply.send(res);
             }
             Command::MatchAutoTap { at, target, reply } => {
-                let _ = reply.send(matches.auto_tap(&at.code, at.seat, &at.token, target));
+                let res = matches.auto_tap(&at.code, at.seat, &at.token, target);
+                if res.is_ok() { let _ = changes.send(at.code.clone()); }
+                let _ = reply.send(res);
             }
             Command::MatchActivate { at, source, reply } => {
-                let _ = reply.send(matches.activate(&at.code, at.seat, &at.token, source));
+                let res = matches.activate(&at.code, at.seat, &at.token, source);
+                if res.is_ok() { let _ = changes.send(at.code.clone()); }
+                let _ = reply.send(res);
             }
             Command::MatchBottom { at, ids, reply } => {
-                let _ = reply.send(matches.bottom(&at.code, at.seat, &at.token, ids));
+                let res = matches.bottom(&at.code, at.seat, &at.token, ids);
+                if res.is_ok() { let _ = changes.send(at.code.clone()); }
+                let _ = reply.send(res);
             }
             Command::MatchSuggest { at, deep, reply } => {
                 let _ = reply.send(matches.suggest(&at.code, at.seat, &at.token, deep));
             }
             Command::MatchLeave { at, reply } => {
-                let _ = reply.send(matches.leave(&at.code, at.seat, &at.token));
+                let res = matches.leave(&at.code, at.seat, &at.token);
+                // Notify the opponent's socket so it learns the match is gone.
+                if res.is_ok() { let _ = changes.send(at.code.clone()); }
+                let _ = reply.send(res);
             }
         }
     }
@@ -933,6 +953,66 @@ async fn match_leave(State(app): State<AppState>, Query(at): Query<MatchRef>) ->
         Ok(Ok(())) => Json(serde_json::json!({"ok": true})).into_response(),
         Ok(Err(msg)) => (StatusCode::BAD_REQUEST, err(msg)).into_response(),
         Err(_) => worker_gone(),
+    }
+}
+
+/// Server-push channel for a networked seat. On connect (and on every change to
+/// this match) it pushes the seat's freshly-projected `StateResponse` as JSON;
+/// when the match is gone it pushes `{"ended":true,"reason":…}` and closes. The
+/// client still submits ACTIONS over the REST `/m/*` routes — this socket is
+/// push-only, replacing the poll loop.
+async fn match_ws(
+    ws: WebSocketUpgrade, State(app): State<AppState>, Query(at): Query<MatchRef>,
+) -> Response {
+    ws.on_upgrade(move |socket| match_ws_loop(socket, app, at))
+}
+
+async fn match_ws_loop(mut socket: WebSocket, app: AppState, at: MatchRef) {
+    let mut sub = app.changes.subscribe();
+    // Initial sync (also authenticates: a bad code/seat/token closes the socket).
+    if !push_match_state(&mut socket, &app, &at).await {
+        return;
+    }
+    loop {
+        tokio::select! {
+            changed = sub.recv() => match changed {
+                Ok(code) if code == at.code => {
+                    if !push_match_state(&mut socket, &app, &at).await { return; }
+                }
+                Ok(_) => {}                                  // a different match
+                Err(broadcast::error::RecvError::Lagged(_)) => {
+                    if !push_match_state(&mut socket, &app, &at).await { return; }
+                }
+                Err(broadcast::error::RecvError::Closed) => return,
+            },
+            incoming = socket.recv() => match incoming {
+                Some(Ok(Message::Close(_))) | None => return,
+                Some(Err(_)) => return,
+                Some(Ok(_)) => {}                            // client frames ignored
+            },
+        }
+    }
+}
+
+/// Fetch this seat's view from the worker and send it. Returns `false` (close
+/// the socket) on a send failure or when the match is gone (after sending an
+/// `ended` notice).
+async fn push_match_state(socket: &mut WebSocket, app: &AppState, at: &MatchRef) -> bool {
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::MatchState { at: at.clone(), reply }).is_err() {
+        return false;
+    }
+    match rx.await {
+        Ok(Ok(state)) => {
+            let json = serde_json::to_string(&state).unwrap_or_default();
+            socket.send(Message::Text(json.into())).await.is_ok()
+        }
+        Ok(Err(reason)) => {
+            let end = serde_json::json!({ "ended": true, "reason": reason }).to_string();
+            let _ = socket.send(Message::Text(end.into())).await;
+            false
+        }
+        Err(_) => false,
     }
 }
 
@@ -1265,15 +1345,21 @@ async fn post_new(State(app): State<AppState>, body: String) -> Response {
 #[tokio::main]
 async fn main() {
     let (tx, rx) = mpsc::unbounded_channel::<Command>();
+    // Server-push bus: the worker announces a changed match code, open /m/ws
+    // tasks re-fetch + push. Capacity is generous; lagged receivers just resync.
+    let (changes, _) = broadcast::channel::<String>(256);
     // The game lives on its own thread; building the catalog (and leaking it)
     // happens there. `advance` runs the bot, so this also keeps the bot's work
     // off the async runtime's worker threads.
-    std::thread::Builder::new()
-        .name("arcana-game".into())
-        .spawn(move || run_worker(rx))
-        .expect("spawn game worker");
+    {
+        let changes = changes.clone();
+        std::thread::Builder::new()
+            .name("arcana-game".into())
+            .spawn(move || run_worker(rx, changes))
+            .expect("spawn game worker");
+    }
 
-    let state = AppState { tx, art: Arc::new(ArtCache::new()) };
+    let state = AppState { tx, art: Arc::new(ArtCache::new()), changes };
     // Warm the bulk name→CDN-URL map in the background so on-demand art resolves
     // from the (unthrottled) CDN instead of the rate-limited API. Instant once
     // the map is cached to disk; ~30–60s the very first time.
@@ -1281,6 +1367,21 @@ async fn main() {
         let art = state.art.clone();
         tokio::spawn(async move { art.ensure_bulk().await; });
     }
+
+    // SOLO routes drive the host's single local game. On a LAN bind they're
+    // restricted to the host machine (loopback) so a guest can't reset or play
+    // the host's solo game; the networked /lobby + /m/* routes stay open.
+    let solo = Router::new()
+        .route("/state", get(get_state))
+        .route("/suggest", get(get_suggest))
+        .route("/action", post(post_action))
+        .route("/combat", post(post_combat))
+        .route("/autotap", post(post_autotap))
+        .route("/activate", post(post_activate))
+        .route("/autopass", post(post_autopass))
+        .route("/bottom", post(post_bottom))
+        .route("/new", post(post_new))
+        .layer(middleware::from_fn(guard_local_only));
 
     let app = Router::new()
         .route("/", get(stage))
@@ -1296,17 +1397,8 @@ async fn main() {
         .route("/deck-identity", post(post_deck_identity))
         .route("/personalities", get(get_personalities))
         .route("/glossary", get(get_glossary))
-        .route("/state", get(get_state))
-        .route("/suggest", get(get_suggest))
-        .route("/action", post(post_action))
-        .route("/combat", post(post_combat))
-        .route("/autotap", post(post_autotap))
-        .route("/activate", post(post_activate))
-        .route("/autopass", post(post_autopass))
-        .route("/bottom", post(post_bottom))
         .route("/search", post(post_search))
-        .route("/new", post(post_new))
-        // Networked-match lobby + per-seat play (see the `/m/*` handlers).
+        // Networked-match lobby + per-seat play (open on a LAN — that's the point).
         .route("/lobby/create", post(lobby_create))
         .route("/lobby/join", post(lobby_join))
         .route("/lobby/info", get(lobby_info))
@@ -1318,18 +1410,49 @@ async fn main() {
         .route("/m/bottom", post(match_bottom))
         .route("/m/suggest", get(match_suggest))
         .route("/m/leave", post(match_leave))
+        .route("/m/ws", get(match_ws))
         .route("/art", get(get_art))
         .route("/art/warm", post(post_art_warm))
         .route("/art/warm-all", post(post_art_warm_all))
         .route("/art/warm-status", get(get_art_warm_status))
+        .merge(solo)
         .with_state(state);
 
-    // Port is overridable via PORT for convenience; defaults to 8080.
+    // Port is overridable via PORT; HOST too (default loopback). Set
+    // HOST=0.0.0.0 to expose the server on the LAN so a friend can join.
     let port: u16 = std::env::var("PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8080);
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    let host: IpAddr = std::env::var("HOST").ok()
+        .and_then(|h| h.parse().ok())
+        .unwrap_or(IpAddr::from([127, 0, 0, 1]));
+    let addr = SocketAddr::new(host, port);
     let listener = tokio::net::TcpListener::bind(addr)
         .await
         .unwrap_or_else(|e| panic!("failed to bind {addr}: {e}"));
-    println!("arcana-web listening on http://{addr}  (open it in a browser)");
-    axum::serve(listener, app).await.expect("server error");
+    if host.is_loopback() {
+        println!("arcana-web listening on http://{addr}  (open it in a browser)");
+    } else {
+        println!("arcana-web listening on http://{addr}  (LAN: a friend opens \
+                  http://<this-machine's-IP>:{port} ; solo controls stay host-only)");
+    }
+    // ConnectInfo lets `guard_local_only` see the peer IP (loopback vs LAN).
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
+        .await
+        .expect("server error");
+}
+
+/// Restrict the SOLO game routes to the host machine. Loopback peers (the host)
+/// pass; on a LAN bind a remote peer gets a 403 (it should use the networked
+/// lobby instead). When the peer IP is unknown (loopback-only bind without
+/// connect-info) it allows — the dev default.
+async fn guard_local_only(req: Request, next: Next) -> Response {
+    let is_local = req.extensions().get::<ConnectInfo<SocketAddr>>()
+        .map(|ci| ci.0.ip().is_loopback())
+        .unwrap_or(true);
+    if is_local {
+        next.run(req).await
+    } else {
+        (StatusCode::FORBIDDEN,
+         err("this control is only available on the host machine — join via the Stage instead"))
+            .into_response()
+    }
 }
