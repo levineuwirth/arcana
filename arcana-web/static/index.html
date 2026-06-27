@@ -43,6 +43,19 @@
   .phasebar.you-turn { border-left-color: var(--text); }
   .arrows { position: fixed; inset: 0; z-index: 110; pointer-events: none; }
   .arrows path { fill: none; stroke-width: 3; opacity: .92; stroke-linecap: round; }
+
+  /* board-click targeting */
+  .ac-card.targeting-src .ac-frame { box-shadow: 0 0 0 3px var(--tgt, #caa45a); }
+  .ac-card.target .ac-frame { box-shadow: 0 0 0 3px #caa45a; cursor: pointer; }
+  .ac-card.target:hover .ac-frame { box-shadow: 0 0 0 4px #caa45a; }
+  .phud.target-player { cursor: pointer; outline: 2px solid #caa45a; outline-offset: 2px; border-radius: var(--radius-control); }
+  .targetbanner {
+    position: fixed; top: 56px; left: 50%; transform: translateX(-50%); z-index: 130;
+    display: flex; align-items: center; gap: 14px; padding: 8px 16px;
+    background: var(--bg-offset); border: 1px solid #caa45a; border-radius: var(--radius-panel);
+    box-shadow: var(--shadow-float); font-family: var(--font-serif); font-size: 15px; color: var(--text);
+  }
+  .targetbanner button { font-size: 12px; }
   .autopass-ctl { display: inline-flex; align-items: center; gap: 6px; font-size: 11px;
     text-transform: uppercase; letter-spacing: .06em; color: var(--text-faint); }
   .autopass-ctl select {
@@ -1130,6 +1143,14 @@ function renderHud(el, p, isYou) {
   if (p.graveyard_count) counts.appendChild(zoneCount("graveyard", p.graveyard_count, () => openZone(p, "graveyard")));
   if (p.exile_count) counts.appendChild(zoneCount("exile", p.exile_count, () => openZone(p, "exile")));
   el.append(who, life, gauge, spacer, counts);
+
+  // Targeting: a player can be a legal target — make the HUD clickable.
+  el.onclick = null;
+  el.classList.remove("target-player");
+  if (G.targeting) {
+    const act = G.targeting.actions.find((a) => a.targets[0].player === p.id);
+    if (act) { el.classList.add("target-player"); el.onclick = () => applyTarget(act); }
+  }
 }
 
 function zoneCount(label, n, onClick) {
@@ -1240,7 +1261,10 @@ function renderBattlefield(container, p, isYou, cm) {
   // clickable.
   const toggleLands = () => { G.expandLands = !G.expandLands; renderAll(); };
   const landNeedsCards = inCombat && lands.some((c) => landCombatRole(c.id, cm));
-  const showLandCards = G.expandLands || landNeedsCards;
+  // Also expand if a land is a legal target right now (so it's clickable).
+  const landIsTarget = G.targeting &&
+    lands.some((c) => G.targeting.actions.some((a) => a.targets[0] && a.targets[0].object === c.id));
+  const showLandCards = G.expandLands || landNeedsCards || landIsTarget;
   if (lands.length && !showLandCards) {
     grid.appendChild(renderLandStrip(lands, isYou, mkHead("Lands · " + lands.length, toggleLands, "expand ▸")));
   } else {
@@ -1376,6 +1400,7 @@ function combatDecor(c, isYou, cm) {
 // your permanent with an available activated ability, make it click-to-activate
 // (so abilities are card-driven, not buttons).
 function bfDecor(c, isYou, cm) {
+  if (G.targeting) return targetDecor(c.id); // targeting mode overrides normal clicks
   const combat = combatDecor(c, isYou, cm);
   const inCombat = cm && cm.mode;
   if (!inCombat && isYou) {
@@ -1389,6 +1414,76 @@ function bfDecor(c, isYou, cm) {
     }
   }
   return combat;
+}
+
+// ----- board-click targeting ----------------------------------------------
+// Decorate a battlefield card while choosing a target: the source is marked, a
+// legal target is selectable (click to apply), everything else dims.
+function targetDecor(id) {
+  const t = G.targeting;
+  if (id === t.source) return { classes: ["targeting-src"] };
+  const act = t.actions.find((a) => a.targets[0].object === id);
+  if (act) return { classes: ["selectable", "target"], badge: "target", onClick: () => applyTarget(act) };
+  return { classes: ["dim"] };
+}
+
+// After auto-tap, decide how to pick among target-bearing actions: single-target
+// actions whose target is a board card or a player → board-click targeting;
+// anything else (multi-target, stack targets) → the chooser popup.
+function offerTargets(c, actions, ev) {
+  const singles = actions.filter((a) => (a.targets || []).length === 1);
+  const allSingle = singles.length > 0 && singles.length === actions.length;
+  const boardable = allSingle && singles.every((a) => {
+    const t = a.targets[0];
+    return t.player != null || (t.object != null && G.cardById.has(t.object));
+  });
+  if (boardable) startTargeting(c, singles);
+  else showActionMenu(ev, actions, "Choose");
+}
+
+function startTargeting(c, actions) {
+  G.targeting = { source: c.id, name: c.name || "spell", actions, cursor: null };
+  document.addEventListener("keydown", targetingEsc);
+  document.addEventListener("mousemove", targetingMove);
+  renderAll();
+}
+function targetingEsc(e) { if (e.key === "Escape") cancelTargeting(); }
+function targetingMove(e) {
+  if (!G.targeting) return;
+  G.targeting.cursor = { x: e.clientX, y: e.clientY };
+  scheduleArrows();
+}
+function endTargeting() {
+  G.targeting = null;
+  document.removeEventListener("keydown", targetingEsc);
+  document.removeEventListener("mousemove", targetingMove);
+}
+function cancelTargeting() { endTargeting(); renderAll(); }
+function applyTarget(act) {
+  endTargeting();
+  sendAction(act.index, act.label);
+}
+
+// Rubber-band arrow from the source to the cursor while targeting.
+function drawTargetingArrows(layer) {
+  const t = G.targeting;
+  if (!t || !t.cursor) return;
+  const src = cardEl(t.source);
+  if (!src) return;
+  drawArrow(layer, centerOf(src), t.cursor, ARROW_TGT);
+}
+
+// The "Choose a target" banner shown at the top of the board during targeting.
+function renderTargetBanner() {
+  let b = document.getElementById("targetbanner");
+  if (!G.targeting) { if (b) b.remove(); return; }
+  if (!b) { b = document.createElement("div"); b.id = "targetbanner"; b.className = "targetbanner"; document.body.appendChild(b); }
+  b.innerHTML = "";
+  const txt = document.createElement("span");
+  txt.textContent = "Choose a target for " + G.targeting.name;
+  const cancel = document.createElement("button");
+  cancel.textContent = "Cancel"; cancel.onclick = cancelTargeting;
+  b.append(txt, cancel);
 }
 
 // Legal actions that act FROM this permanent (ActionView.source). For a
@@ -1412,11 +1507,14 @@ async function playPermanent(c, ev) {
   if (after.length) onPermanentClick(after, ev);
 }
 
-// One ability → activate it; several → a small chooser popup.
+// One action → apply it (its target, if any, is already baked in); several →
+// board-click targeting (single-target variants) or a chooser popup.
 function onPermanentClick(acts, ev) {
   if (G.busy) return;
   if (acts.length === 1) { sendAction(acts[0].index, acts[0].label); return; }
-  showActionMenu(ev, acts, "Choose an ability");
+  const src = acts[0].source;
+  const c = G.cardById.get(src) || { id: src, name: "ability" };
+  offerTargets(c, acts, ev);
 }
 
 // A small floating menu of action buttons, anchored at the pointer (for a
@@ -1893,6 +1991,7 @@ function renderAll() {
   renderSuggest();
   maybeAutoSuggest(view);
   renderCardPower();
+  renderTargetBanner();
   syncOverlay();
   renderArrows();
 
@@ -1961,7 +2060,7 @@ async function playHandCard(c, ev) {
   const casts = ((G.resp && G.resp.view.legal) || [])
     .filter((a) => a.source === c.id && /^Cast /.test(a.label));
   if (casts.length) {
-    showActionMenu(ev, casts, "Cast — choose a target");
+    offerTargets(c, casts, ev); // board-click targeting (or chooser fallback)
   } else {
     logLine("you", "You: play " + (c.name || "card"));
   }

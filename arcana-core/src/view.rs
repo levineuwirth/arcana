@@ -136,6 +136,21 @@ pub struct ActionView {
     pub label: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<ObjectId>,
+    /// The action's chosen target(s), if any — so a card-driven UI can offer
+    /// board-click targeting (highlight these, click one to apply) and draw a
+    /// source→target arrow. Empty for untargeted actions.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub targets: Vec<TargetRef>,
+}
+
+/// A single target of an action, for the targeting UI: an object (permanent /
+/// card on the stack) or a player.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct TargetRef {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub object: Option<ObjectId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub player: Option<PlayerId>,
 }
 
 /// The object an action acts FROM, for card-driven UIs (see [`ActionView::source`]).
@@ -146,6 +161,19 @@ fn action_source(a: &Action) -> Option<ObjectId> {
         Action::ActivateAbility { source, .. } => Some(*source),
         _ => None,
     }
+}
+
+/// The action's chosen targets, for board-click targeting (see [`ActionView::targets`]).
+fn action_targets(a: &Action) -> Vec<TargetRef> {
+    let sel = match a {
+        Action::CastSpell { targets, .. } => Some(targets),
+        Action::ActivateAbility { targets, .. } => Some(targets),
+        _ => None,
+    };
+    sel.map(|s| s.targets.iter().map(|t| TargetRef {
+        object: t.object_id(),
+        player: t.player_id(),
+    }).collect()).unwrap_or_default()
 }
 
 /// A complete, serializable snapshot of the game from one player's view.
@@ -277,6 +305,7 @@ pub fn view_state(
             index,
             label: render_action(a, state, registry),
             source: action_source(a),
+            targets: action_targets(a),
         })
         .collect();
 
