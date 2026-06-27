@@ -3,8 +3,8 @@
 //! more other Mountains." / "When this land enters untapped, create a 1/1
 //! red Dwarf creature token." The conditional enters-tapped clause is wired
 //! via `EntersWithSpec::TappedUnlessControlCount` over a Mountain-subtype
-//! filter with `3..`; the ETB trigger's "enters untapped" condition is still
-//! noted — it fires on every entry.
+//! filter with `3..`; the ETB trigger fires only when it enters UNTAPPED
+//! (`TriggerCondition::SelfEntersBattlefieldUntapped`).
 
 use arcana_core::effects::{Effect, TokenDefinition};
 use arcana_core::mana::ManaUnit;
@@ -56,7 +56,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             })
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                trigger_condition: TriggerCondition::SelfEntersBattlefieldUntapped,
                 intervening_if: None,
                 effect: etb_dwarf_token,
                 trigger_zones: vec![Zone::Battlefield],
@@ -82,10 +82,8 @@ fn etb_dwarf_token(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "When this land enters UNTAPPED" — the entered-untapped condition
-    // is not checkable here; the trigger fires on every entry (consistent
-    // with the GAP'd conditional enters-tapped clause, under which this land
-    // always enters untapped).
+    // Gated by SelfEntersBattlefieldUntapped — fires only when this land
+    // entered untapped (the trigger condition captures that at entry).
     let dwarf = reg.interner().lookup("Dwarf").unwrap_or_default();
     let mut subtypes = SubtypeSet::default();
     if let Some(d) = reg.interner().lookup("Dwarf") {

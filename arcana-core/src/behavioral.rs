@@ -318,7 +318,7 @@ fn synth_event(
     let who = |c: &CC| match c { CC::Opponent => 1 - controller, _ => controller };
     let other = dummy.unwrap_or(source);
     Some(match cond {
-        TC::SelfEntersBattlefield =>
+        TC::SelfEntersBattlefield | TC::SelfEntersBattlefieldUntapped =>
             GE::EntersBattlefield { object_id: source, from_zone: Zone::Stack, was_cast: true },
         TC::SelfDies => GE::Dies { object_id: source },
         TC::SelfLeavesBattlefield => GE::LeavesBattlefield {

@@ -232,6 +232,14 @@ impl TriggeredAbilityDef {
 pub enum TriggerCondition {
     /// "When ~ enters the battlefield".
     SelfEntersBattlefield,
+    /// "When ~ enters the battlefield UNTAPPED" — the ELD check-land
+    /// cycle (Dwarven Mine: deals 1 damage; Idyllic Grange: gain 1 life;
+    /// Gingerbread Cabin: create a Food). Distinct from an intervening-if
+    /// "if untapped": the untapped state is captured at the EntersBattlefield
+    /// event (after the enters-tapped clause applies), so the trigger fires
+    /// or not based on how it entered and then resolves regardless of any
+    /// later tap (e.g. the land being tapped for mana in response).
+    SelfEntersBattlefieldUntapped,
     /// "When ~ dies".
     SelfDies,
     /// "When ~ leaves the battlefield" (broader than SelfDies — fires
@@ -399,6 +407,11 @@ impl TriggerCondition {
         match self {
             SelfEntersBattlefield => matches!(event,
                 GameEvent::EntersBattlefield { object_id, .. } if *object_id == source),
+
+            SelfEntersBattlefieldUntapped => matches!(event,
+                GameEvent::EntersBattlefield { object_id, .. }
+                    if *object_id == source
+                        && state.objects.get(source).is_some_and(|o| !o.is_tapped())),
 
             SelfDies => matches!(event,
                 GameEvent::Dies { object_id } if *object_id == source),
@@ -1217,6 +1230,30 @@ mod tests {
             was_cast: false,
         };
         assert!(!TriggerCondition::SelfEntersBattlefield.matches(&event, 42, 0, &s));
+    }
+
+    #[test]
+    fn self_enters_untapped_matches_only_when_untapped() {
+        use crate::objects::{Characteristics, GameObject};
+        let mut s = GameState::new(2, 0);
+        let chars = Characteristics {
+            types: crate::types::TypeLine::LAND.into(),
+            ..Default::default()
+        };
+        let id = s.allocate_object_id();
+        s.objects.insert(GameObject::new(id, 0, Zone::Battlefield, 1, chars));
+        let event = GameEvent::EntersBattlefield {
+            object_id: id, from_zone: Zone::Stack, was_cast: true,
+        };
+        // Entered untapped → the trigger fires.
+        assert!(TriggerCondition::SelfEntersBattlefieldUntapped
+            .matches(&event, id, 0, &s),
+            "untapped entry fires the trigger");
+        // Tap it (as the enters-tapped clause would) → it does not fire.
+        s.objects.get_mut(id).unwrap().tap();
+        assert!(!TriggerCondition::SelfEntersBattlefieldUntapped
+            .matches(&event, id, 0, &s),
+            "a tapped entry does not fire the trigger");
     }
 
     #[test]

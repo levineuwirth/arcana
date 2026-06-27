@@ -57,10 +57,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             })
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: "When this land enters UNTAPPED" — the trigger's
-                // tapped-state condition is not checkable; fires on every
-                // ETB instead.
+                // Fires only when this land enters UNTAPPED.
+                trigger_condition: TriggerCondition::SelfEntersBattlefieldUntapped,
                 intervening_if: None,
                 effect: etb_counter_on_creature,
                 trigger_zones: vec![Zone::Battlefield],

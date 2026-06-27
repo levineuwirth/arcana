@@ -1539,7 +1539,9 @@ mod behavioral_triage {
     fn cond_name(c: &arcana_core::triggers::TriggerCondition) -> &'static str {
         use arcana_core::triggers::TriggerCondition as T;
         match c {
-            T::SelfEntersBattlefield => "ETB", T::SelfDies => "Dies",
+            T::SelfEntersBattlefield => "ETB",
+            T::SelfEntersBattlefieldUntapped => "ETB(untapped)",
+            T::SelfDies => "Dies",
             T::SelfAttacks => "Attacks", T::SelfAttacksUnblocked => "AttacksUnblocked",
             T::SelfBecomesBlocked => "BecomesBlocked", T::SelfBlocks => "Blocks",
             T::SelfBlocksOrBecomesBlocked => "BlocksOrBlocked", T::SelfBecomesTapped => "Tapped",

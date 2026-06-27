@@ -58,10 +58,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             })
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                // GAP: "When this land enters UNTAPPED" — no
-                // entered-untapped condition predicate; fires on every
-                // entry.
+                // Fires only when this land enters UNTAPPED.
+                trigger_condition: TriggerCondition::SelfEntersBattlefieldUntapped,
                 intervening_if: None,
                 effect: etb_food,
                 trigger_zones: vec![Zone::Battlefield],
