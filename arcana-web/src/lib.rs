@@ -33,7 +33,7 @@ use arcana_core::objects::ObjectId;
 use arcana_core::state::GameState;
 use arcana_core::registry::CardRegistry;
 use arcana_core::state::GameResult;
-use arcana_core::types::{CardId, PlayerId};
+use arcana_core::types::{CardId, ColorSet, PlayerId};
 use arcana_core::view::{view_state, ViewState};
 use serde::{Deserialize, Serialize};
 
@@ -412,6 +412,122 @@ pub fn format_result(r: &GameResult) -> String {
     }
 }
 
+// =============================================================================
+// Match configuration — the "World Stage" spine
+//
+// Models a match as N identity-bearing SEATS so the same setup screen scales
+// from a duel to a free-for-all and to networked play. The engine runs a
+// two-player duel today (N-player gameplay is gated on separate engine work),
+// so `GameCore::from_match_config` validates a two-seat match — but every type
+// here is N-shaped, so widening it is data, not a redesign.
+// =============================================================================
+
+/// Who occupies a seat. Extensible by design: the local human names themselves
+/// now; avatar / title / rating come later.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PlayerProfile {
+    pub name: String,
+}
+impl Default for PlayerProfile {
+    fn default() -> Self {
+        Self { name: "You".to_string() }
+    }
+}
+
+/// A deck's *presentation* identity, shown on the Stage. Every field is DERIVED
+/// from the decklist by default (colors from the mana pips, a signature card
+/// for the portrait, an archetype from the curve) and OVERRIDABLE by the
+/// player — the server treats a hand-edited identity exactly like a derived
+/// one, so manual naming / portrait-picking / retagging "just work".
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DeckIdentity {
+    /// Faction / deck name (defaults to the saved deck's name).
+    pub name: String,
+    /// Color heraldry (WUBRG bits; derived from mana costs, overridable).
+    pub colors: ColorSet,
+    /// Signature card whose art is the Stage portrait (derived, overridable).
+    pub portrait: Option<CardId>,
+    /// "aggro" | "midrange" | "control" — derived from the curve, overridable.
+    pub archetype: String,
+}
+impl Default for DeckIdentity {
+    fn default() -> Self {
+        Self {
+            name: "Unnamed Deck".to_string(),
+            colors: ColorSet::default(),
+            portrait: None,
+            archetype: String::new(),
+        }
+    }
+}
+
+/// Bot strength dial → Monte-Carlo search budget.
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub enum Difficulty {
+    Easy,
+    #[default]
+    Normal,
+    Hard,
+}
+
+/// One seat of a match. A `#[serde(tag = "kind")]` enum so the Stage frontend
+/// sends `{ "kind": "Bot", ... }`.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "kind")]
+pub enum SeatSpec {
+    /// The local human (this client).
+    Local {
+        #[serde(default)]
+        profile: PlayerProfile,
+        deck: Vec<CardId>,
+        #[serde(default)]
+        identity: DeckIdentity,
+    },
+    /// An AI rival — a named personality or a custom deck — at a difficulty.
+    Bot {
+        #[serde(default)]
+        profile: PlayerProfile,
+        #[serde(default)]
+        agenda: String,
+        deck: Vec<CardId>,
+        #[serde(default)]
+        identity: DeckIdentity,
+        #[serde(default)]
+        difficulty: Difficulty,
+    },
+    /// A networked human. The deck arrives over the wire; a stub until the
+    /// multiplayer phase wires real transport.
+    Network {
+        #[serde(default)]
+        profile: PlayerProfile,
+        #[serde(default)]
+        identity: DeckIdentity,
+    },
+}
+
+/// Who takes the first turn.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[serde(tag = "kind")]
+pub enum FirstPlayer {
+    Seat { index: usize },
+    Random,
+}
+impl Default for FirstPlayer {
+    fn default() -> Self {
+        FirstPlayer::Random
+    }
+}
+
+/// A full match setup posted from the World Stage.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct MatchConfig {
+    pub seats: Vec<SeatSpec>,
+    #[serde(default)]
+    pub first_player: FirstPlayer,
+    #[serde(default)]
+    pub seed: u64,
+}
+
 /// One in-progress game: a human (P0) vs a snappy Monte-Carlo bot (P1) on
 /// mirrored sample decks. Holds the legal actions from the most recent human
 /// decision so `/action` can resolve an index the browser sent back.
@@ -424,12 +540,62 @@ pub struct GameCore {
 }
 
 impl GameCore {
-    /// Build the snappy bot policy recommended for interactive play.
+    /// Build the snappy bot policy recommended for interactive play (Normal).
     fn make_bot(seed: u64) -> Seat {
-        // ValueMcPolicy with a small budget: lookahead enough to not be silly,
-        // light enough to answer an HTTP request promptly.
-        let policy = ValueMcPolicy::with_budget(Box::new(MaterialValue), seed ^ 0xA5EED, 6, 25, 10);
+        Self::make_bot_with_difficulty(seed, Difficulty::Normal)
+    }
+
+    /// Bot policy at a chosen [`Difficulty`] — the dial scales the Monte-Carlo
+    /// search budget (rollouts / depth cap / candidate breadth). Even "Hard"
+    /// stays light enough to answer an HTTP request promptly.
+    fn make_bot_with_difficulty(seed: u64, difficulty: Difficulty) -> Seat {
+        let (rollouts, cap, candidates) = match difficulty {
+            Difficulty::Easy => (2, 15, 6),
+            Difficulty::Normal => (6, 25, 10),
+            Difficulty::Hard => (20, 40, 16),
+        };
+        let policy = ValueMcPolicy::with_budget(
+            Box::new(MaterialValue), seed ^ 0xA5EED, rollouts, cap, candidates);
         Seat::Bot(Box::new(policy))
+    }
+
+    /// Build a game from a [`MatchConfig`] (the World Stage's output). The
+    /// config models N seats, but the engine runs a two-player duel today, so
+    /// this requires exactly two seats: seat 0 the local human, seat 1 an AI
+    /// opponent (a rival personality or a custom deck). Returns an error string
+    /// the HTTP layer can surface (a `400`) rather than panicking on bad input.
+    ///
+    /// `first_player`: the engine starts seat 0 today; `Random` perturbs the
+    /// seed so the shuffle differs. Seat-controlled first-player is a follow-up
+    /// (it needs an engine starting-player parameter).
+    pub fn from_match_config(
+        reg: &'static CardRegistry, cfg: &MatchConfig,
+    ) -> Result<Self, String> {
+        if cfg.seats.len() != 2 {
+            return Err(format!(
+                "a duel needs exactly two seats; got {}", cfg.seats.len()));
+        }
+        let human_deck = match &cfg.seats[0] {
+            SeatSpec::Local { deck, .. } => deck.clone(),
+            _ => return Err("seat 0 must be the local human".to_string()),
+        };
+        let (opp_deck, difficulty) = match &cfg.seats[1] {
+            SeatSpec::Bot { deck, difficulty, .. } => (deck.clone(), *difficulty),
+            SeatSpec::Network { .. } =>
+                return Err("network opponents aren't supported yet".to_string()),
+            SeatSpec::Local { .. } =>
+                return Err("seat 1 must be an opponent, not a second local seat".to_string()),
+        };
+        if human_deck.is_empty() || opp_deck.is_empty() {
+            return Err("both decks must be non-empty".to_string());
+        }
+        let seed = match cfg.first_player {
+            FirstPlayer::Random => cfg.seed ^ 0xF1257, // perturb the shuffle
+            FirstPlayer::Seat { .. } => cfg.seed,
+        };
+        let seats = vec![Seat::Human, Self::make_bot_with_difficulty(seed, difficulty)];
+        let session = Session::new(vec![human_deck, opp_deck], reg, seats, seed);
+        Ok(Self { reg, session, legal: Vec::new() })
     }
 
     /// Start a fresh game. `seed` controls the shuffle/RNG (the deck list itself
@@ -913,6 +1079,73 @@ mod tests {
         let p1 = &s.view.players[1];
         assert_eq!(p0.library_count + p0.hand_count, human.len(), "seat 0 plays the human deck");
         assert_eq!(p1.library_count + p1.hand_count, opponent.len(), "seat 1 plays the opponent deck");
+    }
+
+    /// A MatchConfig builds a duel: seat 0 (local human) plays its deck, seat 1
+    /// (a bot rival) plays its own. Bad configs return Err, not panic.
+    #[test]
+    fn from_match_config_builds_a_duel_and_rejects_bad_input() {
+        let reg = leaked_catalog();
+        let human = arcana_cards::sample_deck(reg, 3);
+        let opp = arcana_cards::sample_deck(reg, 9);
+        let local = |deck: Vec<CardId>| SeatSpec::Local {
+            profile: PlayerProfile { name: "Levi".into() },
+            deck, identity: DeckIdentity::default(),
+        };
+        let cfg = MatchConfig {
+            seats: vec![
+                local(human.clone()),
+                SeatSpec::Bot {
+                    profile: PlayerProfile { name: "The Pyromancer".into() },
+                    agenda: "Burn it all.".into(),
+                    deck: opp.clone(),
+                    identity: DeckIdentity::default(),
+                    difficulty: Difficulty::Hard,
+                },
+            ],
+            first_player: FirstPlayer::Random,
+            seed: 7,
+        };
+        let mut core = GameCore::from_match_config(reg, &cfg).expect("valid duel");
+        let s = core.snapshot();
+        assert_eq!(s.view.players[0].library_count + s.view.players[0].hand_count,
+            human.len(), "seat 0 plays the human deck");
+        assert!(s.view.game_over.is_none());
+
+        // One seat → error.
+        let one = MatchConfig { seats: vec![local(human.clone())], ..Default::default() };
+        assert!(GameCore::from_match_config(reg, &one).is_err());
+        // Network opponent → not yet supported.
+        let net = MatchConfig {
+            seats: vec![local(human.clone()),
+                SeatSpec::Network { profile: PlayerProfile::default(),
+                    identity: DeckIdentity::default() }],
+            ..Default::default()
+        };
+        assert!(GameCore::from_match_config(reg, &net).is_err());
+    }
+
+    /// The Stage's wire contract: a MatchConfig (with the `#[serde(tag="kind")]`
+    /// seats) round-trips through JSON, so the frontend can post exactly this.
+    #[test]
+    fn match_config_json_roundtrips() {
+        let cfg = MatchConfig {
+            seats: vec![
+                SeatSpec::Local { profile: PlayerProfile { name: "Levi".into() },
+                    deck: vec![1, 2, 3], identity: DeckIdentity::default() },
+                SeatSpec::Bot { profile: PlayerProfile { name: "Rival".into() },
+                    agenda: "x".into(), deck: vec![4, 5],
+                    identity: DeckIdentity::default(), difficulty: Difficulty::Easy },
+            ],
+            first_player: FirstPlayer::Seat { index: 0 },
+            seed: 42,
+        };
+        let json = serde_json::to_string(&cfg).expect("serialize");
+        assert!(json.contains("\"kind\":\"Local\"") && json.contains("\"kind\":\"Bot\""));
+        let back: MatchConfig = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.seats.len(), 2);
+        assert!(matches!(back.seats[0], SeatSpec::Local { .. }));
+        assert!(matches!(back.first_player, FirstPlayer::Seat { index: 0 }));
     }
 
     /// The catalog query layer works over the real ~20k-card catalog: an
