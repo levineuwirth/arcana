@@ -756,6 +756,15 @@ pub enum ChoiceFollowUp {
     /// Floating Shield) — `attached_keyword(Protection(Color(chosen)))`,
     /// `Duration::WhileSourceOnBattlefield`.
     AttachProtectionFromChosenColor { source: ObjectId },
+    /// Consume a [`ChoiceResponse::ChooseColor`]: install a layer-5
+    /// `SetColor` on `target` to the CHOSEN color for `duration` — "target
+    /// permanent becomes the color of your choice" (Alchor's Tomb, indefinite;
+    /// Spiritmonger, end of turn; Sisay's Ingenuity's granted ability). The
+    /// chosen [`crate::types::Color`] becomes a one-color `ColorSet`,
+    /// replacing the target's colors (CR 105.3 — a "becomes" color effect
+    /// overwrites). Mirrors [`Self::AttachProtectionFromChosenColor`] but
+    /// targets an arbitrary permanent rather than the choice's source.
+    SetColorOfChosen { target: ObjectId, duration: crate::layers::Duration },
     /// Sacrifice each picked permanent (move to owner's graveyard,
     /// emit [`crate::events::GameEvent::Sacrifice`]).
     Sacrifice { player: PlayerId },

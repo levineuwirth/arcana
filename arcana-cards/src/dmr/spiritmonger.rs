@@ -4,9 +4,11 @@
 //! on this creature."
 //! "{B}: Regenerate this creature."
 //! "{G}: This creature becomes the color of your choice until end of turn."
-//!   (GAP — no documented way to express the player's color choice)
+//!   (wired via `Effect::ChooseColor` + the `SetColorOfChosen` follow-up)
 
+use arcana_core::actions::ChoiceFollowUp;
 use arcana_core::effects::Effect;
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
@@ -110,11 +112,17 @@ fn regen(
 
 fn become_color(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "becomes the color of your choice" — no documented way to capture
-    // the player's chosen color (SetColor needs a fixed ColorSet; there is no
-    // ChosenColor target variant).
-    Vec::new()
+    // "Becomes the color of your choice until end of turn": post a
+    // mid-resolution color choice to the controller, whose follow-up sets
+    // this creature's color (layer 5) to the chosen color for the turn.
+    vec![Effect::ChooseColor {
+        chooser: ctx.controller,
+        follow_up: Box::new(ChoiceFollowUp::SetColorOfChosen {
+            target: ctx.source,
+            duration: Duration::EndOfTurn,
+        }),
+    }]
 }

@@ -1323,8 +1323,20 @@ pub(crate) fn apply_resolution_choice(
                                 crate::effects::ProtectionQuality::Color(*color)),
                             crate::layers::Duration::WhileSourceOnBattlefield));
                 }
+                crate::actions::ChoiceFollowUp::SetColorOfChosen { target, duration } => {
+                    // "Target permanent becomes the [chosen] color." The
+                    // chosen color overwrites the target's colors (layer 5);
+                    // the effect's source is the target itself, matching
+                    // Effect::SetColor.
+                    state.add_continuous_effect(
+                        crate::layers::ContinuousEffect::set_color(
+                            target, target,
+                            crate::types::ColorSet::from(*color),
+                            duration));
+                }
                 other => panic!("apply_resolution_choice: ChooseColor follow-up \
-                                 must be AttachProtectionFromChosenColor, got {other:?}"),
+                                 must be AttachProtectionFromChosenColor or \
+                                 SetColorOfChosen, got {other:?}"),
             }
         }
 
@@ -2025,6 +2037,14 @@ fn apply_choice_follow_up(
             panic!(
                 "apply_choice_follow_up: AttachProtectionFromChosenColor \
                  should be consumed at the ChoiceKind::ChooseColor dispatch arm");
+        }
+        ChoiceFollowUp::SetColorOfChosen { .. } => {
+            // Paired with ChoiceKind::ChooseColor (not PickCards); its
+            // dispatch lives inline at the ChooseColor arm in
+            // apply_resolution_choice.
+            panic!(
+                "apply_choice_follow_up: SetColorOfChosen should be \
+                 consumed at the ChoiceKind::ChooseColor dispatch arm");
         }
     }
 }
@@ -5609,6 +5629,37 @@ mod resolution_choice_framework_tests {
         assert!(prot.contains(&ProtectionQuality::Color(Color::Red)),
             "enchanted creature gains protection from the chosen color: {prot:?}");
         assert!(!prot.contains(&ProtectionQuality::Color(Color::Blue)));
+    }
+
+    #[test]
+    fn choose_color_sets_target_to_chosen_color() {
+        use crate::actions::{ChoiceContext, ChoiceFollowUp, ChoiceKind, ChoiceResponse};
+        use crate::layers::Duration;
+        use crate::types::{Color, ColorSet};
+        let mut s = GameState::new(2, 0);
+        // The fixture creature is printed green; choosing red proves the
+        // "becomes the chosen color" effect OVERWRITES the base color
+        // (layer 5), as Spiritmonger's "{G}: becomes the color of your
+        // choice" does.
+        let creature = put_creature_in_zone(&mut s, 0, Zone::Battlefield, 2, 2);
+        assert_eq!(s.compute_characteristics(creature).unwrap().colors.0,
+            ColorSet::green().0, "base creature is printed green in this fixture");
+
+        // "{G}: this becomes the color of your choice until end of turn" —
+        // drive the choice picking Red.
+        s.currently_resolving = Some(creature);
+        s.pending_choice_follow_up = Some(ChoiceFollowUp::SetColorOfChosen {
+            target: creature,
+            duration: Duration::EndOfTurn,
+        });
+        let pc_id = s.push_pending_choice(
+            0, ChoiceContext::ResolvingStack(creature), ChoiceKind::ChooseColor);
+        apply_resolution_choice(&mut s, &CardRegistry::new(), pc_id,
+            ChoiceResponse::ChooseColor { color: Color::Red });
+
+        let colors = s.compute_characteristics(creature).unwrap().colors;
+        assert_eq!(colors.0, ColorSet::from(Color::Red).0,
+            "target becomes exactly the chosen color (red): {colors:?}");
     }
 
     #[test]
