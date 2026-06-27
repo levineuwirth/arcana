@@ -239,12 +239,6 @@
   };
 
   // ---- localStorage helpers (shared format with the deckbuilder) ----
-  function savedDecks() { try { return JSON.parse(localStorage.getItem("arcana.decks") || "{}"); } catch { return {}; } }
-  function expandSaved(d) { // saved deck -> flat [cardId,...] from its maindeck
-    const out = [];
-    for (const [id, count] of (d && d.main) || []) for (let i = 0; i < count; i++) out.push(id);
-    return out;
-  }
   function loadProfileName() { try { return JSON.parse(localStorage.getItem("arcana.profile") || "{}").name || ""; } catch { return ""; } }
   function saveProfileName(name) { try { localStorage.setItem("arcana.profile", JSON.stringify({ name })); } catch {} }
 
@@ -254,24 +248,26 @@
     for (const c of ls) { const d = document.createElement("span"); d.className = "pip " + c; into.appendChild(d); }
   }
 
-  // ---- deck options (saved + sample) ----
+  // ---- deck options (saved decks via Arcana.Decks + sample) ----
   let sampleIds = null;
   async function deckOptions() {
     const sel = document.getElementById("your-deck");
     sel.innerHTML = "";
-    const names = Object.keys(savedDecks());
-    for (const n of names) sel.add(new Option(n, "saved:" + n));
+    const decks = A.Decks.list();
+    for (const d of decks) sel.add(new Option(d.name, "saved:" + d.id));
     sel.add(new Option("— Sample deck —", "sample"));
-    sel.value = names.length ? "saved:" + names[0] : "sample";
+    sel.value = decks.length ? "saved:" + decks[0].id : "sample";
   }
 
+  // → { ids:[cardId…], name, deckId } ; deckId is null for the sample.
   async function idsForSelection(value) {
     if (value === "sample") {
       if (!sampleIds) sampleIds = await A.Api.sampleDeck();
-      return { ids: sampleIds, name: "Sample deck" };
+      return { ids: sampleIds, name: "Sample deck", deckId: null };
     }
-    const name = value.slice(6);
-    return { ids: expandSaved(savedDecks()[name]), name };
+    const id = value.slice(6);
+    const d = A.Decks.get(id);
+    return { ids: A.Decks.ids(id).main, name: d ? d.name : "Deck", deckId: id };
   }
 
   // ---- faction heraldry (color identity -> CSS) ----
@@ -283,31 +279,28 @@
   }
 
   // ---- per-deck identity overrides (name / archetype / portrait), persisted ----
-  function loadIdentities() { try { return JSON.parse(localStorage.getItem("arcana.identities") || "{}"); } catch { return {}; } }
-  function identityOverride(deckName) { return loadIdentities()[deckName] || null; }
+  // Identity overrides now live ON the deck record (Arcana.Decks), keyed by id.
   function persistIdentity() {
-    if (!G.your) return;
-    const all = loadIdentities();
-    all[G.your.deckName] = {
+    if (!G.your || !G.your.deckId) return; // sample deck has no record to persist to
+    A.Decks.setIdentity(G.your.deckId, {
       name: G.your.identity.name, archetype: G.your.identity.archetype, portrait: G.your.identity.portrait,
-    };
-    try { localStorage.setItem("arcana.identities", JSON.stringify(all)); } catch {}
+    });
   }
 
   // ---- your deck -> identity ----
   async function loadYourDeck() {
     const value = document.getElementById("your-deck").value;
-    const { ids, name } = await idsForSelection(value);
+    const { ids, name, deckId } = await idsForSelection(value);
     if (!ids || ids.length < 7) { setHint("That deck has fewer than 7 cards."); G.your = null; refreshBegin(); return; }
     const view = await A.Api.deckIdentity(ids, name);     // { identity, portrait_name, colors, portrait_candidates }
     const identity = Object.assign({}, view.identity);
-    const ov = identityOverride(name);                    // re-apply saved edits for this deck
+    const ov = deckId ? (A.Decks.get(deckId) || {}).identity : null; // saved edits for this deck
     if (ov) {
       if (ov.name) identity.name = ov.name;
       if (ov.archetype) identity.archetype = ov.archetype;
       if (ov.portrait != null) identity.portrait = ov.portrait;
     }
-    G.your = { deck: ids, deckName: name, identity, candidates: view.portrait_candidates || [], colors: view.colors };
+    G.your = { deck: ids, deckId, identity, candidates: view.portrait_candidates || [], colors: view.colors };
     paintYour();
     refreshBegin();
   }
@@ -384,7 +377,7 @@
     const ag = document.createElement("div"); ag.className = "ag"; ag.textContent = "Spar against one of your saved decks.";
     const ftr = document.createElement("div"); ftr.className = "ftr";
     const pick = document.createElement("select"); pick.style.maxWidth = "100%";
-    for (const n of Object.keys(savedDecks())) pick.add(new Option(n, n));
+    for (const d of A.Decks.list()) pick.add(new Option(d.name, d.id));
     pick.add(new Option("— Sample —", "__sample"));
     const diff = document.createElement("select");
     for (const d of ["Easy", "Normal", "Hard"]) diff.add(new Option(d, d));
@@ -395,7 +388,7 @@
       const v = pick.value;
       const { ids, name } = v === "__sample"
         ? { ids: (sampleIds ||= await A.Api.sampleDeck()), name: "Sample deck" }
-        : { ids: expandSaved(savedDecks()[v]), name: v };
+        : { ids: A.Decks.ids(v).main, name: (A.Decks.get(v) || {}).name || "Deck" };
       if (!ids || ids.length < 7) { setHint("That custom deck has fewer than 7 cards."); return; }
       const view = await A.Api.deckIdentity(ids, name);
       selectFoe(el, {

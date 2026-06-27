@@ -421,48 +421,57 @@ function renderResults(results) {
   for (const info of results) box.appendChild(tile(info));
 }
 
-// ---- save / load (localStorage) ----
-function savedDecks() { try { return JSON.parse(localStorage.getItem("arcana.decks") || "{}"); } catch { return {}; } }
+// ---- deck library (versioned, lineage-aware store; see Arcana.Decks) ----
+let editingId = null; // the deck open in the editor (null = unsaved scratch)
+
 function refreshLoadSelect() {
-  const names = Object.keys(savedDecks());
+  const decks = Arcana.Decks.list();
   const sel = document.getElementById("loadsel");
   sel.innerHTML = '<option value="">load…</option>';
-  for (const name of names) { const o = document.createElement("option"); o.value = name; o.textContent = name; sel.appendChild(o); }
+  for (const d of decks) sel.add(new Option(d.name, d.id));
+  if (editingId) sel.value = editingId;
   const opp = document.getElementById("opponent");
   const prev = opp.value;
   opp.innerHTML = "";
-  const add = (v, t) => { const o = document.createElement("option"); o.value = v; o.textContent = t; opp.appendChild(o); };
+  const add = (v, t) => opp.add(new Option(t, v));
   add("mirror", "vs Mirror");
   add("sample", "vs Sample deck");
-  for (const name of names) add("saved:" + name, "vs " + name);
+  for (const d of decks) add("saved:" + d.id, "vs " + d.name);
   opp.value = prev || "mirror";
 }
-function deckIdsFromSaved(d) {
-  const m = Array.isArray(d) ? d : (d.main || []);
-  const ids = [];
-  for (const { info, count } of m) for (let i = 0; i < count; i++) ids.push(info.id);
-  return ids;
+function deckContent() {
+  return {
+    main: [...main.values()].map(({ info, count }) => ({ info, count })),
+    side: [...side.values()].map(({ info, count }) => ({ info, count })),
+  };
 }
 function loadEntries(m, arr) { m.clear(); for (const { info, count } of (arr || [])) m.set(info.id, { info, count }); }
 function saveDeck() {
   const name = document.getElementById("deckname").value.trim();
   if (!name) { alert("Name the deck first."); return; }
-  const decks = savedDecks();
-  decks[name] = {
-    main: [...main.values()].map(({ info, count }) => ({ info, count })),
-    side: [...side.values()].map(({ info, count }) => ({ info, count })),
-  };
-  localStorage.setItem("arcana.decks", JSON.stringify(decks));
+  const c = deckContent();
+  if (editingId) {
+    Arcana.Decks.rename(editingId, name);     // a save commits a new version
+    Arcana.Decks.save(editingId, c.main, c.side, "edit");
+  } else {
+    editingId = Arcana.Decks.create(name, c.main, c.side);
+  }
   refreshLoadSelect();
 }
-function loadDeck(name) {
-  const d = savedDecks()[name]; if (!d) return;
-  loadEntries(main, Array.isArray(d) ? d : d.main);
-  loadEntries(side, Array.isArray(d) ? [] : d.side);
-  document.getElementById("deckname").value = name;
+function loadDeck(id) {
+  const d = Arcana.Decks.get(id); if (!d) return;
+  const c = Arcana.Decks.content(id);
+  loadEntries(main, c.main);
+  loadEntries(side, c.side);
+  document.getElementById("deckname").value = d.name;
+  editingId = id;
   render();
 }
-function clearDeck() { main.clear(); side.clear(); render(); }
+function clearDeck() {
+  main.clear(); side.clear(); editingId = null;
+  document.getElementById("deckname").value = "";
+  render();
+}
 
 // ---- import / export ----
 function openIo(mode) {
@@ -515,8 +524,8 @@ async function playDeck() {
   const sel = document.getElementById("opponent").value;
   if (sel === "sample") body.opponent = sampleDeck;
   else if (sel.startsWith("saved:")) {
-    const d = savedDecks()[sel.slice(6)];
-    if (d) body.opponent = deckIdsFromSaved(d);
+    const opp = Arcana.Decks.ids(sel.slice(6)).main;
+    if (opp.length) body.opponent = opp;
   } // "mirror" -> omit opponent (server mirrors)
   if (body.opponent && body.opponent.length < 7) {
     alert("Opponent deck has fewer than 7 cards; it will fall back to the sample deck.");

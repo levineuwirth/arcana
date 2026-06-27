@@ -339,5 +339,151 @@
     personalities: () => call("GET", "/personalities"),
   };
 
+  /* ---- Decks: a versioned, lineage-aware deck store (localStorage) --------
+     Shared by the deckbuilder, the Stage, and the My Decks page. Each deck has
+     a stable id, a lineage (parent + relation: native|fork|variation), and a
+     full version HISTORY — every save appends a commit you can diff/restore.
+     Deck content is `[{info, count}]` per zone (full CardInfo, so any surface
+     can render without a round-trip). One-time migration upgrades the old
+     name-keyed map (and folds in arcana.identities overrides). */
+  const DECKS_KEY = "arcana.decks";
+  const genId = () =>
+    (crypto.randomUUID && crypto.randomUUID()) ||
+    (Date.now().toString(36) + Math.random().toString(36).slice(2));
+  const nowTs = () => Date.now();
+
+  function readStore() {
+    let raw;
+    try { raw = JSON.parse(localStorage.getItem(DECKS_KEY) || "{}"); } catch { raw = {}; }
+    if (raw && raw.version === 2) return raw;
+    // --- migrate the old `{ name: {main,side} }` (or `{name:[...]}`) map ---
+    let overrides = {};
+    try { overrides = JSON.parse(localStorage.getItem("arcana.identities") || "{}"); } catch {}
+    const store = { version: 2, decks: {} };
+    for (const [name, d] of Object.entries(raw || {})) {
+      if (!d) continue;
+      const main = Array.isArray(d) ? d : (d.main || []);
+      const side = Array.isArray(d) ? [] : (d.side || d.sideboard || []);
+      if (!Array.isArray(main)) continue;
+      const id = genId(), vid = genId();
+      store.decks[id] = {
+        id, name: String(name), parent: null, relation: "native", created: nowTs(),
+        identity: overrides[name] || null, head: vid,
+        versions: [{ vid, ts: nowTs(), label: "imported", main, side }],
+      };
+    }
+    writeStore(store);
+    return store;
+  }
+  function writeStore(store) {
+    try { localStorage.setItem(DECKS_KEY, JSON.stringify(store)); } catch {}
+  }
+  function headVersion(deck) {
+    return (deck && deck.versions.find((v) => v.vid === deck.head)) ||
+           (deck && deck.versions[deck.versions.length - 1]) || null;
+  }
+  // Normalize content to ids+counts (drops the CardInfo) — for the engine/Stage.
+  function toIds(content) {
+    const out = [];
+    for (const e of content || []) {
+      const id = e.info ? e.info.id : e.id;
+      for (let i = 0; i < (e.count || 0); i++) out.push(id);
+    }
+    return out;
+  }
+
+  const Decks = {
+    KEY: DECKS_KEY,
+    all() { return readStore().decks; },
+    list() { return Object.values(readStore().decks); },
+    get(id) { return readStore().decks[id] || null; },
+    /** Head version's `{ main, side }` content (full-info entries). */
+    content(id) {
+      const v = headVersion(this.get(id));
+      return v ? { main: v.main || [], side: v.side || [] } : { main: [], side: [] };
+    },
+    /** Head content as engine ids `{ main:[id…], side:[id…] }`. */
+    ids(id) { const c = this.content(id); return { main: toIds(c.main), side: toIds(c.side) }; },
+    create(name, main, side, relation, parent) {
+      const store = readStore();
+      const id = genId(), vid = genId();
+      store.decks[id] = {
+        id, name: name || "New deck", parent: parent || null,
+        relation: relation || "native", created: nowTs(), identity: null, head: vid,
+        versions: [{ vid, ts: nowTs(), label: "created", main: main || [], side: side || [] }],
+      };
+      writeStore(store);
+      return id;
+    },
+    /** Append a new version (a commit) and make it head. */
+    save(id, main, side, label) {
+      const store = readStore();
+      const d = store.decks[id];
+      if (!d) return null;
+      const vid = genId();
+      d.versions.push({ vid, ts: nowTs(), label: label || "edit", main: main || [], side: side || [] });
+      d.head = vid;
+      writeStore(store);
+      return vid;
+    },
+    rename(id, name) {
+      const store = readStore(); const d = store.decks[id];
+      if (d) { d.name = name; writeStore(store); }
+    },
+    setIdentity(id, identity) {
+      const store = readStore(); const d = store.decks[id];
+      if (d) { d.identity = identity; writeStore(store); }
+    },
+    /** Fork (new line) / vary (clustered tweak): a child copying the head. */
+    fork(id, name, relation) {
+      const c = this.content(id);
+      const src = this.get(id);
+      const nm = name || ((src ? src.name : "Deck") + (relation === "variation" ? " (var)" : " (fork)"));
+      return this.create(nm, c.main, c.side, relation || "fork", id);
+    },
+    /** Independent copy with NO lineage. */
+    duplicate(id, name) {
+      const c = this.content(id);
+      const src = this.get(id);
+      return this.create(name || ((src ? src.name : "Deck") + " copy"), c.main, c.side, "native", null);
+    },
+    remove(id) {
+      const store = readStore();
+      // Re-parent children to this deck's parent so a family isn't orphaned.
+      const gone = store.decks[id];
+      if (!gone) return;
+      for (const d of Object.values(store.decks)) if (d.parent === id) d.parent = gone.parent;
+      delete store.decks[id];
+      writeStore(store);
+    },
+    history(id) { const d = this.get(id); return d ? d.versions.slice() : []; },
+    /** Restore an old version by appending a copy of it as the new head. */
+    restore(id, vid) {
+      const d = this.get(id);
+      const v = d && d.versions.find((x) => x.vid === vid);
+      if (!v) return null;
+      return this.save(id, v.main, v.side, "restore");
+    },
+    /** A deck plus all its descendants (for family grouping on the page). */
+    family(id) {
+      const all = this.all(); const out = [];
+      const walk = (pid) => { for (const d of Object.values(all)) if (d.parent === pid) { out.push(d); walk(d.id); } };
+      const root = all[id]; if (root) { out.push(root); walk(id); }
+      return out;
+    },
+    /** Delta from content A to content B (per the card id), for compare views. */
+    diff(aContent, bContent) {
+      const idx = (c) => { const m = new Map(); for (const e of c || []) { const id = e.info ? e.info.id : e.id; m.set(id, { info: e.info, count: (m.get(id)?.count || 0) + e.count }); } return m; };
+      const A = idx(aContent), B = idx(bContent);
+      const added = [], removed = [], changed = [];
+      for (const [id, b] of B) { const a = A.get(id);
+        if (!a) added.push({ info: b.info, count: b.count });
+        else if (a.count !== b.count) changed.push({ info: b.info, from: a.count, to: b.count }); }
+      for (const [id, a] of A) if (!B.has(id)) removed.push({ info: a.info, count: a.count });
+      return { added, removed, changed };
+    },
+  };
+  Arcana.Decks = Decks;
+
   window.Arcana = Arcana;
 })();
