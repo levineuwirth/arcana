@@ -380,7 +380,15 @@ pub fn view_state(
                 }).collect()
             },
             graveyard: cards_in(Zone::Graveyard(p)),
-            exile: exile_of(p),
+            exile: {
+                let mut ex = exile_of(p);
+                // Impulse-exiled cards you "may play" surface as castable, so the
+                // UI can highlight + offer them (cast-from-exile). Only your own.
+                if p == perspective {
+                    for c in &mut ex { c.playable = playable.contains(&c.id); }
+                }
+                ex
+            },
         }
     }).collect();
 
@@ -517,6 +525,25 @@ mod tests {
         let legal = crate::legal_actions::legal_actions(&s, &registry);
         let ch = view_state(&s, &registry, 0, &legal).choice.expect("dig picker");
         assert_eq!(ch.pool.len(), looked.len(), "dig pool must not leak the library");
+    }
+
+    #[test]
+    fn exiled_cards_show_under_their_owner() {
+        // Exile is one shared zone; each player's view shows the cards THEY own
+        // (so impulse-exiled cards you may play surface on your side).
+        let mut s = GameState::new(2, 0);
+        let mine = s.allocate_object_id();
+        let theirs = s.allocate_object_id();
+        s.objects.insert(GameObject::new(mine, 0, Zone::Exile, 1, Characteristics::default()));
+        s.objects.insert(GameObject::new(theirs, 1, Zone::Exile, 1, Characteristics::default()));
+        let reg = CardRegistry::new();
+        let legal = crate::legal_actions::legal_actions(&s, &reg);
+        let view = view_state(&s, &reg, 0, &legal);
+        let p0: Vec<_> = view.players[0].exile.iter().map(|c| c.id).collect();
+        let p1: Vec<_> = view.players[1].exile.iter().map(|c| c.id).collect();
+        assert!(p0.contains(&mine) && !p0.contains(&theirs), "you see your own exile");
+        assert!(p1.contains(&theirs) && !p1.contains(&mine), "owner-filtered");
+        assert_eq!(view.players[0].exile_count, 1);
     }
 
     #[test]

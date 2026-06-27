@@ -9,10 +9,9 @@
 //! Back (Avatar Roku, Legendary Creature — Avatar):
 //!   Firebending 4; {8}: Create a 4/4 red Dragon token with flying and firebending 4.
 //!
-//! GAP: Chapter I's "exile top three, until end of your next turn you may play those
-//! cards" is not an expressible impulse-with-play-window primitive; emitted best-effort
-//! as exiling the top three (the play window is the gap). Actually no clean exile-top-N
-//! to-exile effect exists either — emitted as Vec::new() for chapter I.
+//! Chapter I uses Effect::ImpulseExile (exile the top three, flagged playable
+//! from exile). Residual GAP: the play window is until end of THIS turn, not
+//! your NEXT turn (the standard one-turn impulse window).
 //! GAP: Firebending 4 is not a supported keyword (no KeywordAbility variant).
 //! GAP: the back face's {8} create-Dragon activated ability is creature-face engine debt
 //! for transformed Sagas; the back face is declared so the catalog records both faces.
@@ -137,12 +136,13 @@ fn add_lore_counter(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegist
     }]
 }
 
-fn chapter_i(_state: &GameState, _trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
-    // I — Exile the top three cards of your library; until end of your next turn you
-    // may play those cards.
-    // GAP: impulse-exile with a delayed "you may play those cards" window is not an
-    // expressible primitive.
-    Vec::new()
+fn chapter_i(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    // I — Exile the top three cards of your library; until end of your next turn
+    // you may play those cards. Modeled with Effect::ImpulseExile (exile top 3,
+    // flagged castable-from-exile).
+    // GAP (residual): the play window is until end of THIS turn, not your NEXT
+    // turn — ImpulseExile uses the standard one-turn impulse window.
+    vec![Effect::ImpulseExile { player: trig.controller, count: 3 }]
 }
 
 fn chapter_ii(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {

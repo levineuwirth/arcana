@@ -238,6 +238,12 @@
   .phud .counts .zc { border-radius: var(--radius-control); padding: 0 4px; }
   .phud .counts .zc.clickable { cursor: pointer; }
   .phud .counts .zc.clickable:hover { background: var(--bg); color: var(--text); }
+  /* exile pip glows when it holds something you can play (impulse / foretell) */
+  .phud .counts .zc.hot { color: var(--link); box-shadow: 0 0 0 1px color-mix(in srgb, var(--link) 55%, transparent); }
+  .phud .counts .zc.hot .zc-spark { font-size: 10px; }
+  /* a castable card (e.g. an impulse-exiled card) glows in the zone viewer */
+  .ac-card.castable .ac-frame { box-shadow: 0 0 0 2px var(--link), 0 0 16px color-mix(in srgb, var(--link) 45%, transparent); }
+  .ac-card.castable:hover .ac-frame { box-shadow: 0 0 0 3px var(--link), 0 0 22px color-mix(in srgb, var(--link) 60%, transparent); }
 
   /* zone viewer modal (browse graveyard / exile / library / hand) */
   .zoneviewer {
@@ -1186,7 +1192,11 @@ function renderHud(el, p, isYou) {
   counts.appendChild(zoneCount("hand", p.hand_count, () => openZone(p, "hand")));
   counts.appendChild(zoneCount("library", p.library_count, () => openZone(p, "library")));
   if (p.graveyard_count) counts.appendChild(zoneCount("graveyard", p.graveyard_count, () => openZone(p, "graveyard")));
-  if (p.exile_count) counts.appendChild(zoneCount("exile", p.exile_count, () => openZone(p, "exile")));
+  if (p.exile_count) {
+    // Flag the exile pip when it holds something you can play (impulse / foretell).
+    const castable = isYou && (p.exile || []).some((c) => c.playable);
+    counts.appendChild(zoneCount("exile", p.exile_count, () => openZone(p, "exile"), castable));
+  }
   el.append(who, life, gauge, spacer, counts);
 
   // Targeting: a player can be a legal target — make the HUD clickable.
@@ -1198,11 +1208,11 @@ function renderHud(el, p, isYou) {
   }
 }
 
-function zoneCount(label, n, onClick) {
+function zoneCount(label, n, onClick, hot) {
   const s = document.createElement("span");
-  s.className = "zc clickable";
-  s.innerHTML = label + ' <b class="tnum">' + n + "</b>";
-  s.title = "Browse " + label;
+  s.className = "zc clickable" + (hot ? " hot" : "");
+  s.innerHTML = label + ' <b class="tnum">' + n + "</b>" + (hot ? ' <span class="zc-spark">⚡</span>' : "");
+  s.title = hot ? "Playable cards in " + label + " — click to play" : "Browse " + label;
   s.onclick = onClick;
   return s;
 }
@@ -1212,7 +1222,7 @@ function openZone(p, kind) {
   const mine = G.resp && p.id === G.resp.view.perspective;
   const who = mine ? "Your" : "Opponent's";
   if (kind === "graveyard") return showZoneViewer(who + " Graveyard", p.graveyard || [], 0);
-  if (kind === "exile") return showZoneViewer(who + " Exile", p.exile || [], 0);
+  if (kind === "exile") return showZoneViewer(who + " Exile", p.exile || [], 0, mine ? exileDecor : null);
   if (kind === "hand") {
     return mine
       ? showZoneViewer("Your Hand", p.hand || [], 0)
@@ -1221,8 +1231,21 @@ function openZone(p, kind) {
   if (kind === "library") return showZoneViewer(who + " Library", [], p.library_count); // order hidden → backs
 }
 
-// A dimmed modal browsing a zone's cards (face-up) or N face-down backs.
-function showZoneViewer(title, cards, backCount) {
+// Decorate exiled cards: ones you may play (impulse / foretell) are highlighted
+// and click-to-cast (auto-tap + cast from exile); the rest render plainly.
+function exileDecor(c) {
+  if (c.playable) {
+    return {
+      classes: ["selectable", "castable"],
+      onClick: (ev) => { closeZoneViewer(); playHandCard(c, ev); },
+    };
+  }
+  return {};
+}
+
+// A dimmed modal browsing a zone's cards (face-up) or N face-down backs. When a
+// `decor(card)` is given, each card is decorated (e.g. castable exile cards).
+function showZoneViewer(title, cards, backCount, decor) {
   closeZoneViewer();
   const modal = document.createElement("div");
   modal.id = "zoneviewer"; modal.className = "zoneviewer";
@@ -1236,7 +1259,10 @@ function showZoneViewer(title, cards, backCount) {
   head.append(ttl, close);
   const grid = document.createElement("div"); grid.className = "zv-grid";
   if (cards.length) {
-    for (const c of cards) grid.appendChild(Arcana.renderCard(c, {}));
+    for (const c of cards) {
+      const d = decor ? decor(c) : null;
+      grid.appendChild(Arcana.renderCard(c, d ? { classes: d.classes, onClick: d.onClick } : {}));
+    }
   } else if (backCount) {
     for (let i = 0; i < backCount; i++) {
       const b = document.createElement("div"); b.className = "zv-back"; b.textContent = "Arcana";
