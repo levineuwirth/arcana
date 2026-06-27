@@ -42,7 +42,9 @@
 //! satisfies the framework's bounds without touching the engine crates.
 
 use std::net::SocketAddr;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use arcana_core::catalog::{CardInfo, CardQuery};
 use arcana_core::deck::{check_legality, builtin_formats, FormatSpec, LegalityReport};
@@ -96,10 +98,80 @@ enum Command {
 }
 
 /// Shared server state: a handle to the game worker. Cheap to clone (just an
-/// mpsc sender), and `Send + Sync + 'static` as axum requires.
+/// mpsc sender + an `Arc`), and `Send + Sync + 'static` as axum requires.
 #[derive(Clone)]
 struct AppState {
     tx: mpsc::UnboundedSender<Command>,
+    art: Arc<ArtCache>,
+}
+
+/// Card-art proxy with a persistent on-disk cache. The browser requests
+/// `/art?name=…` from us instead of hammering Scryfall's rate-limited API
+/// directly (which fails progressively as you browse). We serve a cached image
+/// instantly, or fetch it from Scryfall ONCE — throttled to a polite cadence —
+/// and cache it to disk so it persists across sessions (and works offline after).
+struct ArtCache {
+    dir: PathBuf,
+    client: reqwest::Client,
+    /// Serializes outbound Scryfall fetches to a minimum spacing (their API asks
+    /// for ~50–100ms between requests). Cache hits don't touch this.
+    gate: tokio::sync::Mutex<Instant>,
+}
+
+impl ArtCache {
+    fn new() -> Self {
+        let dir = std::env::var("ARCANA_ART_CACHE")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| match std::env::var("HOME") {
+                Ok(h) => PathBuf::from(h).join(".cache/arcana/art"),
+                Err(_) => std::env::temp_dir().join("arcana-art"),
+            });
+        let _ = std::fs::create_dir_all(&dir);
+        let client = reqwest::Client::builder()
+            .user_agent("Arcana/0.1 (card-art proxy)")
+            .build()
+            .expect("reqwest client");
+        Self { dir, client, gate: tokio::sync::Mutex::new(Instant::now()) }
+    }
+
+    fn path_for(&self, name: &str) -> PathBuf {
+        use std::hash::{Hash, Hasher};
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        name.to_lowercase().hash(&mut h);
+        self.dir.join(format!("{:016x}.jpg", h.finish()))
+    }
+
+    /// Cached image bytes for `name`, fetching + caching from Scryfall on a miss.
+    /// `None` if the fetch fails (the client then shows its art fallback).
+    async fn fetch(&self, name: &str) -> Option<Vec<u8>> {
+        let path = self.path_for(name);
+        if let Ok(bytes) = tokio::fs::read(&path).await {
+            return Some(bytes);
+        }
+        // Throttle outbound Scryfall requests (hold the gate across the spacing
+        // sleep so all fetches stay ≥90ms apart, ≤~11/s).
+        {
+            let mut last = self.gate.lock().await;
+            const MIN: Duration = Duration::from_millis(90);
+            let since = last.elapsed();
+            if since < MIN {
+                tokio::time::sleep(MIN - since).await;
+            }
+            *last = Instant::now();
+        }
+        let resp = self.client
+            .get("https://api.scryfall.com/cards/named")
+            .query(&[("format", "image"), ("exact", name)])
+            .send()
+            .await
+            .ok()?;
+        if !resp.status().is_success() {
+            return None;
+        }
+        let bytes = resp.bytes().await.ok()?.to_vec();
+        let _ = tokio::fs::write(&path, &bytes).await;
+        Some(bytes)
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -411,6 +483,27 @@ struct AutoPassRequest {
     level: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct ArtRequest {
+    name: String,
+}
+
+/// Cached/proxied card art (see [`ArtCache`]). Long-lived cache headers so the
+/// browser also caches it; a miss/failure 404s and the client shows its fallback.
+async fn get_art(State(app): State<AppState>, Query(q): Query<ArtRequest>) -> Response {
+    match app.art.fetch(&q.name).await {
+        Some(bytes) => (
+            [
+                (axum::http::header::CONTENT_TYPE, "image/jpeg"),
+                (axum::http::header::CACHE_CONTROL, "public, max-age=2592000"),
+            ],
+            bytes,
+        )
+            .into_response(),
+        None => (StatusCode::NOT_FOUND, "art unavailable").into_response(),
+    }
+}
+
 async fn post_autopass(State(app): State<AppState>, body: String) -> Response {
     let req: AutoPassRequest = match serde_json::from_str(&body) {
         Ok(r) => r,
@@ -546,7 +639,8 @@ async fn main() {
         .route("/bottom", post(post_bottom))
         .route("/search", post(post_search))
         .route("/new", post(post_new))
-        .with_state(AppState { tx });
+        .route("/art", get(get_art))
+        .with_state(AppState { tx, art: Arc::new(ArtCache::new()) });
 
     // Port is overridable via PORT for convenience; defaults to 8080.
     let port: u16 = std::env::var("PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8080);

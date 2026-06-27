@@ -60,8 +60,10 @@
   };
 
   /* ---- Card art ---------------------------------------------------------- */
+  // Go through our own /art proxy, which caches images to disk and throttles the
+  // Scryfall fetch — so browsing many cards doesn't hit Scryfall's rate limit.
   Arcana.art = function (name) {
-    return "https://api.scryfall.com/cards/named?format=image&exact=" + encodeURIComponent(name);
+    return "/art?name=" + encodeURIComponent(name);
   };
 
   /* ---- Mana pips --------------------------------------------------------- */
