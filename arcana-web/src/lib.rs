@@ -371,8 +371,9 @@ pub enum ApplyError {
     OutOfRange { index: usize, len: usize },
     /// A submitted combat declaration didn't match any legal declaration (an
     /// illegal set, or one beyond the engine's enumeration cap). The frontend
-    /// should re-prompt with the current options.
-    IllegalCombat,
+    /// should re-prompt with the current options. `reason` explains WHY when we
+    /// can (e.g. a creature that must attack was omitted), else a generic note.
+    IllegalCombat { reason: Option<String> },
     /// Auto-tap was asked to play a card that can't be cast/played this turn even
     /// tapping out (it shouldn't have been clickable).
     NotPlayable { id: ObjectId },
@@ -394,9 +395,10 @@ impl fmt::Display for ApplyError {
             ApplyError::OutOfRange { index, len } => {
                 write!(f, "action index {index} out of range (0..{len})")
             }
-            ApplyError::IllegalCombat => {
-                write!(f, "that combat declaration is not legal — pick again")
-            }
+            ApplyError::IllegalCombat { reason } => match reason {
+                Some(r) => write!(f, "{r}"),
+                None => write!(f, "that combat declaration is not legal — pick again"),
+            },
             ApplyError::NotPlayable { id } => {
                 write!(f, "card {id} can't be played this turn")
             }
@@ -774,6 +776,34 @@ pub struct MatchConfig {
     pub seed: u64,
 }
 
+/// Explain why an attacker declaration was rejected, when we can. The common,
+/// confusing case (CR 508.1a): a creature that MUST attack if able (Reckless
+/// Brute / Goad / …) was left out — so "Declare no attackers" / a partial set is
+/// illegal. Names those creatures; `None` when the cause is something else (the
+/// caller then falls back to the generic "not legal" note).
+fn illegal_attack_reason(
+    state: &GameState, registry: &CardRegistry, seat: PlayerId, attackers: &[AttackerDeclaration],
+) -> Option<String> {
+    use std::collections::HashSet;
+    let submitted: HashSet<ObjectId> = attackers.iter().map(|d| d.attacker).collect();
+    let mut names: Vec<String> = state.objects.iter()
+        .filter(|o| o.zone == arcana_core::zones::Zone::Battlefield
+            && o.controller == seat
+            && arcana_core::legal_actions::can_attack(state, o)
+            && state.must_attack(o.id)
+            && !submitted.contains(&o.id))
+        .map(|o| registry.interner().resolve(o.characteristics.name)
+            .filter(|s| !s.is_empty()).unwrap_or("A creature").to_string())
+        .collect();
+    names.sort();
+    names.dedup();
+    match names.len() {
+        0 => None,
+        1 => Some(format!("{} must attack this combat if able.", names[0])),
+        _ => Some(format!("{} must attack this combat if able.", names.join(", "))),
+    }
+}
+
 /// One in-progress game: a human (P0) vs a snappy Monte-Carlo bot (P1) on
 /// mirrored sample decks. Holds the legal actions from the most recent human
 /// decision so `/action` can resolve an index the browser sent back.
@@ -1044,14 +1074,19 @@ impl GameCore {
     /// (validated against the pending decision).
     pub fn apply_combat_for(&mut self, seat: PlayerId, sub: CombatSubmission) -> Result<StateResponse, ApplyError> {
         self.ensure_turn(seat)?;
-        let action = match sub {
-            CombatSubmission::Attackers { attackers } => match_attack(&self.legal, &attackers),
+        // On rejection, try to explain WHY (e.g. a must-attack creature was
+        // omitted) instead of a bare "not legal".
+        let (action, reason) = match sub {
+            CombatSubmission::Attackers { attackers } => (
+                match_attack(&self.legal, &attackers),
+                illegal_attack_reason(self.session.state(), self.reg, seat, &attackers),
+            ),
             CombatSubmission::Blockers { blockers } =>
-                legal_block_declaration(self.session.state(), seat, &blockers),
-            CombatSubmission::Order { orderings } => match_ordering(&self.legal, &orderings),
-            CombatSubmission::Damage { distributions } => match_damage(&self.legal, &distributions),
+                (legal_block_declaration(self.session.state(), seat, &blockers), None),
+            CombatSubmission::Order { orderings } => (match_ordering(&self.legal, &orderings), None),
+            CombatSubmission::Damage { distributions } => (match_damage(&self.legal, &distributions), None),
         };
-        let action = action.ok_or(ApplyError::IllegalCombat)?;
+        let action = action.ok_or(ApplyError::IllegalCombat { reason })?;
         self.session.apply(action);
         Ok(self.snapshot_for(seat))
     }
@@ -1143,6 +1178,34 @@ mod tests {
     // A leaked registry mirrors the server's `'static` app-state strategy.
     fn leaked_catalog() -> &'static CardRegistry {
         Box::leak(Box::new(arcana_cards::build_catalog()))
+    }
+
+    /// Omitting a creature that MUST attack (Reckless Brute / Goad) yields a
+    /// clear, named reason instead of a bare "not legal".
+    #[test]
+    fn omitting_a_must_attack_creature_explains_why() {
+        use arcana_core::layers::{ContinuousEffect, Duration};
+        use arcana_core::objects::{Characteristics, GameObject};
+        use arcana_core::types::TypeLine;
+        use arcana_core::zones::Zone;
+        let reg = leaked_catalog();
+        let mut s = GameState::new(2, 0);
+        let id = s.allocate_object_id();
+        let mut chars = Characteristics::default();
+        chars.types = TypeLine::CREATURE.into();
+        s.objects.insert(GameObject::new(id, 0, Zone::Battlefield, 1, chars));
+        // It's able to attack (untapped creature) and required to.
+        s.add_continuous_effect(ContinuousEffect::must_attack(id, id, Duration::EndOfTurn));
+        assert!(arcana_core::legal_actions::can_attack(&s, s.objects.get(id).unwrap()));
+        assert!(s.must_attack(id));
+
+        // An attacker submission that omits it is rejected WITH a reason.
+        let reason = illegal_attack_reason(&s, reg, 0, &[]);
+        assert!(reason.as_deref().unwrap_or("").contains("must attack"),
+            "expected a must-attack reason, got {reason:?}");
+        // A creature with no requirement produces no special reason.
+        let s2 = GameState::new(2, 0);
+        assert_eq!(illegal_attack_reason(&s2, reg, 0, &[]), None);
     }
 
     /// Covers all three required guarantees of the server logic:

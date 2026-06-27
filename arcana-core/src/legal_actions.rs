@@ -912,7 +912,11 @@ fn can_block_attacker(state: &GameState, blocker: ObjectId, attacker: ObjectId) 
     state.blocker_eligible(blocker, attacker)
 }
 
-fn can_attack(state: &GameState, obj: &crate::objects::GameObject) -> bool {
+/// Whether `obj` is able to be declared as an attacker right now (a creature its
+/// controller has untapped, no summoning sickness without haste, no Defender /
+/// "can't attack" restriction). Public so callers can explain WHY a declaration
+/// was rejected (e.g. a must-attack creature that's able but omitted).
+pub fn can_attack(state: &GameState, obj: &crate::objects::GameObject) -> bool {
     use crate::effects::KeywordAbility;
     if !obj.is_creature() || !obj.zone.is_battlefield() || obj.is_tapped() {
         return false;
