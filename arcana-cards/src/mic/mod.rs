@@ -43,3 +43,4 @@ pub mod liliana_s_devotee;
 pub mod diregraf_colossus;
 pub mod kurbis_harvest_celebrant;
 pub mod lord_of_the_accursed;
+pub mod celebrate_the_harvest;

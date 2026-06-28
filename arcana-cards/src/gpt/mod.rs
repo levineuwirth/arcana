@@ -58,3 +58,4 @@ pub mod shrieking_grotesque;
 pub mod harrier_griffin;
 pub mod absolver_thrull;
 pub mod belfry_spirit;
+pub mod castigate;

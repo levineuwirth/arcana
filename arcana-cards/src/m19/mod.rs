@@ -97,3 +97,4 @@ pub mod suncleanser;
 pub mod pegasus_courser;
 pub mod skyrider_patrol;
 pub mod elvish_clancaller;
+pub mod one_with_the_machine;

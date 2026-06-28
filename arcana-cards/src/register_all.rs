@@ -6691,6 +6691,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::m19::pegasus_courser::register(reg); n += 1;
     crate::m19::skyrider_patrol::register(reg); n += 1;
     crate::m19::elvish_clancaller::register(reg); n += 1;
+    crate::m19::one_with_the_machine::register(reg); n += 1;
     // --- vis ---
     crate::vis::phyrexian_walker::register(reg); n += 1;
     crate::vis::tempest_drake::register(reg); n += 1;
@@ -7612,6 +7613,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::gpt::harrier_griffin::register(reg); n += 1;
     crate::gpt::absolver_thrull::register(reg); n += 1;
     crate::gpt::belfry_spirit::register(reg); n += 1;
+    crate::gpt::castigate::register(reg); n += 1;
     // --- a25 ---
     crate::a25::watchwolf::register(reg); n += 1;
     crate::a25::geist_of_the_moors::register(reg); n += 1;
@@ -9847,6 +9849,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::s4ed::red_ward::register(reg); n += 1;
     crate::s4ed::white_ward::register(reg); n += 1;
     crate::s4ed::green_ward::register(reg); n += 1;
+    crate::s4ed::simulacrum::register(reg); n += 1;
     // --- s2xm ---
     crate::s2xm::glint_sleeve_artisan::register(reg); n += 1;
     crate::s2xm::accomplished_automaton::register(reg); n += 1;
@@ -19354,6 +19357,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::mic::diregraf_colossus::register(reg); n += 1;
     crate::mic::kurbis_harvest_celebrant::register(reg); n += 1;
     crate::mic::lord_of_the_accursed::register(reg); n += 1;
+    crate::mic::celebrate_the_harvest::register(reg); n += 1;
     // --- lcc ---
     crate::lcc::generous_gift::register(reg); n += 1;
     crate::lcc::evacuation::register(reg); n += 1;
@@ -19687,6 +19691,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::c14::reaper_from_the_abyss::register(reg); n += 1;
     crate::c14::hoverguard_sweepers::register(reg); n += 1;
     crate::c14::evernight_shade::register(reg); n += 1;
+    crate::c14::spoils_of_blood::register(reg); n += 1;
     // --- c18 ---
     crate::c18::dream_cache::register(reg); n += 1;
     crate::c18::tidings::register(reg); n += 1;

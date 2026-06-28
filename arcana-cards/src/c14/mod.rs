@@ -19,3 +19,4 @@ pub mod bloodgift_demon;
 pub mod reaper_from_the_abyss;
 pub mod hoverguard_sweepers;
 pub mod evernight_shade;
+pub mod spoils_of_blood;

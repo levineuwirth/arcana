@@ -27,3 +27,4 @@ pub mod black_ward;
 pub mod red_ward;
 pub mod white_ward;
 pub mod green_ward;
+pub mod simulacrum;

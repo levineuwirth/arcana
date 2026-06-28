@@ -515,6 +515,27 @@ pub fn max_spells_by_a_player_last_turn(state: &GameState) -> u32 {
     max
 }
 
+/// The greatest mana value among battlefield permanents matching `filter`
+/// (0 if none). For "the greatest mana value among permanents/artifacts" or
+/// "X is the highest mana value …" amounts.
+pub fn max_cmc_of(state: &GameState, filter: &ObjectFilter, you: PlayerId) -> u32 {
+    ids_matching(state, filter, you).into_iter()
+        .filter_map(|id| state.objects.get(id))
+        .map(|o| o.characteristics.mana_value())
+        .max()
+        .unwrap_or(0)
+}
+
+/// The greatest power among battlefield permanents matching `filter` (0 if
+/// none; negatives clamp via the caller's `.max(0) as u32`). For "equal to the
+/// greatest power among …" amounts.
+pub fn max_power_of(state: &GameState, filter: &ObjectFilter, you: PlayerId) -> i32 {
+    ids_matching(state, filter, you).into_iter()
+        .map(|id| power_of(state, id))
+        .max()
+        .unwrap_or(0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
