@@ -59,3 +59,4 @@ pub mod tor_wauki_the_younger;
 pub mod zaxara_the_exemplary;
 pub mod shanid_sleepers_scourge;
 pub mod garna_the_bloodflame;
+pub mod iridian_maelstrom;

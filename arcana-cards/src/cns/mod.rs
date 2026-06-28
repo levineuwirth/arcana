@@ -48,3 +48,4 @@ pub mod deal_broker;
 pub mod pride_guardian;
 pub mod marchesa_s_smuggler;
 pub mod stasis_cell;
+pub mod stifle;
