@@ -73,3 +73,4 @@ pub mod wolfir_silverheart;
 pub mod searchlight_geist;
 pub mod builder_s_blessing;
 pub mod malignus;
+pub mod bower_passage;

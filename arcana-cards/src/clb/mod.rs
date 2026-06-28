@@ -277,3 +277,4 @@ pub mod nine_fingers_keene;
 pub mod vrock;
 pub mod gray_harbor_merfolk;
 pub mod descent_into_avernus;
+pub mod inspiring_leader;

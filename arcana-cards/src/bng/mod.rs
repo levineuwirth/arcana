@@ -77,3 +77,4 @@ pub mod nessian_demolok;
 pub mod thunder_brute;
 pub mod snake_of_the_golden_grove;
 pub mod scourge_of_skola_vale;
+pub mod skyreaping;

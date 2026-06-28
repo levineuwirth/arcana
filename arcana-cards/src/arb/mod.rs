@@ -46,3 +46,4 @@ pub mod naya_sojourners;
 pub mod lightning_reaver;
 pub mod retaliator_griffin;
 pub mod tainted_sigil;
+pub mod flurry_of_wings;

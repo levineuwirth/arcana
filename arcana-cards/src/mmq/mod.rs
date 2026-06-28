@@ -167,3 +167,4 @@ pub mod cateran_overlord;
 pub mod rushwood_elemental;
 pub mod cho_manno_s_blessing;
 pub mod worry_beads;
+pub mod mercadia_s_downfall;

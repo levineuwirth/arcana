@@ -311,3 +311,4 @@ pub mod lyra_dawnbringer;
 pub mod confiscate;
 pub mod goblin_oriflamme;
 pub mod enigma_drake;
+pub mod inspiring_call;

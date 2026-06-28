@@ -112,3 +112,4 @@ pub mod sanctum_spirit;
 pub mod rhys_the_redeemed;
 pub mod vampire_hexmage;
 pub mod wound_reflection;
+pub mod rush_of_knowledge;
