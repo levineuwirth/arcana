@@ -575,6 +575,17 @@ pub struct Characteristics {
     /// Forest" still type-fails before the subtype check).
     #[serde(default)]
     pub every_creature_type: bool,
+    /// CR 701.5f — "This spell can't be countered." A static ability of
+    /// the spell that functions on the stack; the spell's characteristics
+    /// carry the flag onto its [`crate::stack::StackEntry`], where the
+    /// counter path reads it (an effect that tries to counter the spell
+    /// simply does nothing). Set at register time on cards whose oracle
+    /// text says so. Does NOT prevent the CR 608.2b "countered by the
+    /// game rules" SBA (all targets illegal) — that isn't a counter
+    /// effect. The "spells you control can't be countered" battlefield
+    /// static (Vexing Shusher-class) is a separate, future concern.
+    #[serde(default)]
+    pub cant_be_countered: bool,
 }
 
 impl Characteristics {
@@ -626,6 +637,7 @@ mod tests {
             is_fortification: false,
             saga_final_chapter: None,
             every_creature_type: false,
+            cant_be_countered: false,
         }
     }
 

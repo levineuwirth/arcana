@@ -2637,6 +2637,8 @@ impl TokenDefinition {
             saga_final_chapter: None,
             every_creature_type: self.keywords.contains(
                 &KeywordAbility::Changeling),
+            // Tokens aren't cast, so "can't be countered" never applies.
+            cant_be_countered: false,
         }
     }
 }
@@ -4286,6 +4288,15 @@ fn copy_permanent(state: &mut GameState, target: ObjectId) {
 }
 
 fn counter_stack_entry(state: &mut GameState, target: ObjectId) {
+    // CR 701.5f — "this spell can't be countered": a counter effect does
+    // nothing, leaving the spell on the stack to resolve. (The 608.2b
+    // rules-counter for all-targets-illegal is a separate path and is
+    // NOT affected.) Peek before removing.
+    if state.stack.iter().any(|e| e.id == target
+        && e.characteristics().is_some_and(|c| c.cant_be_countered))
+    {
+        return;
+    }
     let Some(entry) = state.remove_stack_entry_by_id(target) else { return; };
     if entry.is_spell() {
         state.counter_resolved_spell(entry);
@@ -7047,6 +7058,24 @@ mod tests {
         assert_eq!(s.zone_count(Zone::Graveyard(0)), 1);
         assert!(s.event_log.iter().any(|e|
             matches!(e, GameEvent::SpellCountered { object_id } if *object_id == stack_id)));
+    }
+
+    #[test]
+    fn cant_be_countered_spell_survives_a_counter() {
+        let mut s = GameState::new(2, 0);
+        let card = put_instant(&mut s, 0, Zone::Hand(0));
+        // "This spell can't be countered."
+        s.objects.get_mut(card).unwrap().characteristics.cant_be_countered = true;
+        let stack_id = s.announce_spell_on_stack(
+            card, 0, TargetSelection::new(), vec![], None, vec![]);
+        assert_eq!(s.stack_size(), 1);
+
+        Effect::Counter { target: stack_id }.execute(&mut s);
+        // The counter does nothing — the spell stays on the stack to resolve.
+        assert_eq!(s.stack_size(), 1, "uncounterable spell is not removed");
+        assert!(!s.event_log.iter().any(|e|
+            matches!(e, GameEvent::SpellCountered { .. })),
+            "no SpellCountered event for an uncounterable spell");
     }
 
     #[test]

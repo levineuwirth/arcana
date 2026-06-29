@@ -1573,6 +1573,7 @@ fn combine_split_characteristics(
         saga_final_chapter: None,
         every_creature_type: left.every_creature_type
             || right.every_creature_type,
+        cant_be_countered: left.cant_be_countered || right.cant_be_countered,
     }
 }
 
