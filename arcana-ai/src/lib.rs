@@ -12,4 +12,5 @@ pub mod mlp;
 pub mod session;
 pub mod deckeval;
 pub mod deckeval_runner;
+pub mod deck_corpus;
 pub mod calibrate;
