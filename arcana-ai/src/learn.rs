@@ -5,7 +5,7 @@
 //! 1. [`collect_value_data`] plays self-play games and labels each visited
 //!    state, from BOTH players' perspectives, with that player's eventual game
 //!    outcome (win=1 / draw=0.5 / loss=0) — Monte-Carlo value targets.
-//! 2. Features come from [`BasicE2Encoder`] (99 perspective-relative floats);
+//! 2. Features come from [`BasicE2Encoder`] (123 perspective-relative floats);
 //!    they are standardized (zero mean / unit variance per feature) so plain
 //!    gradient descent converges.
 //! 3. [`train_logistic`] fits logistic regression (win probability) by
@@ -449,7 +449,7 @@ mod tests {
     /// self-play, then round-robin greedy(learned) against random,
     /// greedy(material) and PIMC. Two findings from a representative run:
     ///   ranking: pimc(35) > random(22) > g-learned(15) > g-material(0)
-    /// (1) the learned 99-feature linear value BEATS the hand-tuned 6-term
+    /// (1) the learned 123-feature linear value BEATS the hand-tuned 6-term
     /// material value head-to-head (g-learned 12-0 g-material) — learning helped;
     /// (2) but 1-ply greedy on ANY static value is myopic and loses to random:
     /// declaring attackers doesn't immediately raise material/board (combat

@@ -77,7 +77,7 @@ No integration test plays >2 players.
 2-player is genuinely ready: closed `legal_actions → step` loop (1,100-game
 proof), seeded-replayable ChaCha8 RNG with a determinism test, clone-based
 rollouts, **arcana-ai** (Policy trait, N-policy `run_episode`, info-set
-projection, 99-float v0 encoder, terminal reward) and **arcana-py** (PyO3
+projection, 123-float v0 encoder, terminal reward) and **arcana-py** (PyO3
 `run_episode` + training.py + REINFORCE demo). Gaps: `MtgEnv.step()` stub,
 full-GameState serde (14 fn-pointer sites; action trace serializes),
 canonical-only enumeration for ordering/distribution choices, unmeasured

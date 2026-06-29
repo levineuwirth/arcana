@@ -30,12 +30,14 @@
 //!
 //! # v0 feature budget
 //!
-//! Per-player block (38 floats) + game-level block (20 floats) +
-//! perspective indicators (3 floats) = **99 floats for 2 players**.
-//! Spec §14.2 budgets 1500-2500 for the *finished* E2 — the gap
-//! closes when card-specific aggregates land (per-color hand cmc
-//! distribution, per-keyword permanent presence, etc.). The
-//! scaffolding here is what those features hook into.
+//! Per-player block (50 floats) + game-level block (20 floats) +
+//! perspective indicators (3 floats) = **123 floats for 2 players**.
+//! The per-player block now includes identity-free *card-aware*
+//! aggregates: an 8-bucket CMC histogram of controlled permanents and
+//! per-keyword presence on controlled creatures. Spec §14.2 budgets
+//! 1500-2500 for the *finished* E2 — the remaining gap closes when
+//! true card-identity features land (embeddings / per-name signals);
+//! the scaffolding here is what those features hook into.
 //!
 //! # Normalization
 //!
@@ -123,11 +125,11 @@ const PERSPECTIVE_FEATURES: usize = 3;
 pub const BASIC_E2_DIM_TWO_PLAYERS: usize =
     2 * PER_PLAYER_FEATURES + GAME_LEVEL_FEATURES + PERSPECTIVE_FEATURES;
 
-/// E2 (feature-based) encoder, v0. Card-agnostic — reads only what
-/// every [`GameState`] exposes today. Future revisions add
-/// card-specific aggregates (per-color hand distribution, per-cmc
-/// stack distribution, per-keyword presence) once the registry
-/// stabilizes.
+/// E2 (feature-based) encoder, v0. Identity-free — reads only
+/// structural aggregates every [`GameState`] exposes (counts, an
+/// 8-bucket CMC histogram, per-keyword presence), never a specific
+/// card name. Future revisions add true card-identity features
+/// (embeddings / per-name signals) once the registry stabilizes.
 #[derive(Debug, Clone)]
 pub struct BasicE2Encoder {
     num_players: u8,
