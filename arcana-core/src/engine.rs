@@ -4800,6 +4800,48 @@ mod resolution_choice_framework_tests {
         assert!(s.pending_choice.is_none());
     }
 
+    /// Virus Beetle behavior — "each opponent discards a card" — is
+    /// ENFORCED end to end. The card's ETB returns
+    /// `Effect::Discard { player: opponent, count: 1, ControllerChooses }`
+    /// per opponent; this drives that exact effect and confirms it posts a
+    /// MANDATORY pick to the OPPONENT (they choose their own card) and that
+    /// answering actually moves a card from their hand to the graveyard.
+    #[test]
+    fn opponent_discard_is_enforced_end_to_end() {
+        use crate::actions::{ChoiceKind, ChoiceResponse};
+        use crate::effects::{DiscardChoice, Effect};
+        let mut s = GameState::new(2, 0);
+        // Opponent (player 1) holds two cards.
+        for _ in 0..2 {
+            let id = s.allocate_object_id();
+            s.objects.insert(GameObject::new(
+                id, 1, Zone::Hand(1), 0, Characteristics::default()));
+        }
+        assert_eq!(s.zone_count(Zone::Hand(1)), 2);
+        // The discard resolves inside a (triggered-ability) resolution.
+        s.currently_resolving = Some(crate::objects::NULL_OBJECT_ID);
+        Effect::Discard { player: 1, count: 1, choice: DiscardChoice::ControllerChooses }
+            .execute(&mut s);
+        // A mandatory pick is posted to the OPPONENT (they pick their own card).
+        let pc = s.pending_choice.as_ref().expect("opponent discard choice posted");
+        assert_eq!(pc.choosing_player, 1, "the discarding player chooses");
+        let pc_id = pc.id;
+        let candidate = match &pc.kind {
+            ChoiceKind::PickCards { candidates, min, max } => {
+                assert_eq!((*min, *max), (1, 1), "mandatory single discard");
+                candidates[0]
+            }
+            other => panic!("expected PickCards, got {other:?}"),
+        };
+        // Opponent answers → the card is actually discarded.
+        apply_resolution_choice(
+            &mut s, &CardRegistry::new(), pc_id,
+            ChoiceResponse::PickCards { picked: vec![candidate] });
+        assert!(s.pending_choice.is_none(), "choice resolved");
+        assert_eq!(s.zone_count(Zone::Hand(1)), 1, "opponent discarded exactly one");
+        assert_eq!(s.zone_count(Zone::Graveyard(1)), 1, "the card went to the graveyard");
+    }
+
     /// `legal_actions` for a pending YesNo lists both answers plus Concede.
     #[test]
     fn legal_actions_for_yesno_includes_both_choices_and_concede() {
