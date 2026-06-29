@@ -152,3 +152,4 @@ pub mod angelic_guardian;
 pub mod kaalia_zenith_seeker;
 pub mod gargos_vicious_watcher;
 pub mod serra_s_guardian;
+pub mod rule_of_law;

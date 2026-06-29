@@ -222,3 +222,4 @@ pub mod hofri_ghostforge;
 pub mod sage_s_reverie;
 pub mod ghostly_prison;
 pub mod gift_of_immortality;
+pub mod hardened_scales;

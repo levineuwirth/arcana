@@ -53,3 +53,5 @@ pub mod abyssal_horror;
 pub mod vigilant_drake;
 pub mod crimson_hellkite;
 pub mod castle;
+pub mod nature_s_revolt;
+pub mod arcane_laboratory;
