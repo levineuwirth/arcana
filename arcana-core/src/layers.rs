@@ -1033,6 +1033,20 @@ impl ContinuousEffect {
         }
     }
 
+    /// Board-wide "[filter] permanents are [types] in addition", Layer 4
+    /// (Living Lands / Nature's Revolt — pair with `filtered_set_base_pt`
+    /// for the 1/1 body).
+    pub fn filtered_add_type(source: ObjectId,
+                             filter: crate::targets::ObjectFilter,
+                             types: crate::types::TypeLine,
+                             duration: Duration) -> Self {
+        Self {
+            source, layer: Layer::L4Type, timestamp: 0, duration,
+            dependency: None,
+            kind: ContinuousEffectKind::FilteredAddType { filter, types },
+        }
+    }
+
     /// "Target becomes [colors]", Layer 5 (replaces the color set).
     pub fn set_color(source: ObjectId, target: ObjectId,
                      colors: crate::types::ColorSet, duration: Duration) -> Self {
@@ -1109,6 +1123,16 @@ pub enum ContinuousEffectKind {
     /// artifact", "is also a creature"). ORs `types` into the
     /// in-flight type line (additive — does not remove existing types).
     AddType { target: ObjectId, types: crate::types::TypeLine },
+    /// Layer 4 — board-wide "[filter] permanents are [types] in addition
+    /// to their other types" (the filtered sibling of [`Self::AddType`]).
+    /// "All lands are 1/1 creatures" / "Lands you control are creatures"
+    /// = `FilteredAddType { types: CREATURE }` paired with a
+    /// [`Self::FilteredSetBasePt`] `1/1` (CR 613: L4 type-add before L7b
+    /// P/T-set). ORs `types` into each matching permanent's type line.
+    FilteredAddType {
+        filter: crate::targets::ObjectFilter,
+        types: crate::types::TypeLine,
+    },
     /// Layer 5 — "Target becomes [colors]" (becomes black, etc.).
     /// REPLACES the in-flight color set (CR 613.3e: a "becomes" color
     /// effect sets, it doesn't add — use the full intended set, e.g.
@@ -1506,6 +1530,7 @@ impl ContinuousEffectKind {
             | Self::FilteredRemoveKeyword { filter, .. }
             | Self::FilteredLoseAllAbilities { filter }
             | Self::FilteredSetBasePt { filter, .. }
+            | Self::FilteredAddType { filter, .. }
             | Self::FilteredGrantKeyword { filter, .. } => {
                 // Battlefield-only, base-characteristics filter from
                 // the source controller's perspective.
@@ -1699,7 +1724,8 @@ impl ContinuousEffectKind {
                 chars.power = Some(PtValue::Fixed(*power));
                 chars.toughness = Some(PtValue::Fixed(*toughness));
             }
-            Self::AddType { types, .. } => {
+            Self::AddType { types, .. }
+            | Self::FilteredAddType { types, .. } => {
                 // Layer 4 — additive: OR the new type bits in.
                 chars.types.0 |= types.0;
             }
@@ -3474,6 +3500,53 @@ mod tests {
         assert!(s.spell_cast_limit_reached(s.objects.get(sorc_id).unwrap(), 0));
         assert!(!s.spell_cast_limit_reached(s.objects.get(cre_id).unwrap(), 0),
             "the creature spell isn't subject to the noncreature limit");
+    }
+
+    #[test]
+    fn filtered_add_type_plus_set_pt_animates_lands() {
+        use crate::types::TypeLine;
+        let mut s = GameState::new(2, 0);
+        let enchantment = put_creature(&mut s, 0, 0, 0); // Living Lands source
+        // A vanilla land player 0 controls.
+        let land = {
+            let id = s.allocate_object_id();
+            let mut c = Characteristics::default();
+            c.types = TypeLine::LAND.into();
+            let mut o = GameObject::new(id, 0, Zone::Battlefield, 0, c);
+            o.controller = 0;
+            s.objects.insert(o);
+            id
+        };
+        // An opponent's land — must stay untouched (controller-scoped).
+        let their_land = {
+            let id = s.allocate_object_id();
+            let mut c = Characteristics::default();
+            c.types = TypeLine::LAND.into();
+            let mut o = GameObject::new(id, 1, Zone::Battlefield, 0, c);
+            o.controller = 1;
+            s.objects.insert(o);
+            id
+        };
+        // "Lands you control are 1/1 creatures" — L4 add-type + L7b set-P/T.
+        let lands_you_control = crate::targets::ObjectFilter {
+            types: Some(TypeLine::LAND.into()),
+            ..Default::default()
+        }.controlled_by(crate::targets::ControllerConstraint::You);
+        s.add_continuous_effect(ContinuousEffect::filtered_add_type(
+            enchantment, lands_you_control.clone(), TypeLine::CREATURE.into(),
+            Duration::WhileSourceOnBattlefield));
+        s.add_continuous_effect(ContinuousEffect::filtered_set_base_pt(
+            enchantment, lands_you_control, 1, 1,
+            Duration::WhileSourceOnBattlefield));
+
+        let c = s.compute_characteristics(land).unwrap();
+        assert!(c.types.is_creature() && c.types.is_land(),
+            "your land is now a creature AND still a land");
+        assert_eq!(c.power, Some(PtValue::Fixed(1)));
+        assert_eq!(c.toughness, Some(PtValue::Fixed(1)));
+
+        let t = s.compute_characteristics(their_land).unwrap();
+        assert!(!t.types.is_creature(), "opponent's land is unaffected");
     }
 
     #[test]
