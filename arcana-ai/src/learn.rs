@@ -340,6 +340,76 @@ mod tests {
         println!("                low corr + worse log-loss ⇒ learned fit is weak.");
     }
 
+    /// DIAGNOSTIC (non-asserting): the overfit finding predicts that MORE
+    /// training games should drop out-of-sample log-loss toward / below
+    /// material's. Trains on 50/150/300 random self-play games and scores
+    /// each on a FIXED held-out set of fresh-game states (apples-to-apples)
+    /// vs MaterialValue + the always-0.5 baseline. If log-loss falls below
+    /// material's ~0.54 with more data, the learner works given enough
+    /// games (the tournaments under-trained at 24-30); if it plateaus
+    /// above, the bottleneck is features/calibration, not data. Release:
+    ///   cargo test -p arcana-ai --release --lib \
+    ///     learn::tests::diagnose_value_learning_curve -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn diagnose_value_learning_curve() {
+        use crate::search::{MaterialValue, RandomStatePolicy, StatePolicy, ValueFn};
+
+        let reg = arcana_cards::build_catalog();
+        let deck = arcana_cards::sample_deck(&reg, 7);
+
+        // Fixed held-out set: fresh games, seeds disjoint from training.
+        let mut states: Vec<GameState> = Vec::new();
+        let mut outcomes: Vec<f32> = Vec::new();
+        for g in 9000u64..9024 {
+            let mut pa = RandomStatePolicy::new(g * 2);
+            let mut pb = RandomStatePolicy::new(g * 2 + 1);
+            let (mut s, mut y) = new_game(vec![deck.clone(), deck.clone()], &reg, g);
+            let mut snap: Vec<GameState> = Vec::new();
+            let mut steps = 0u32;
+            let res = loop {
+                match y {
+                    EngineYield::GameOver(r) => break r,
+                    EngineYield::PendingDecision { player, legal_actions, .. } => {
+                        if steps >= 4000 || legal_actions.is_empty() { break GameResult::Draw; }
+                        if steps % 7 == 0 { snap.push(s.clone()); }
+                        let a = if player == 0 {
+                            pa.choose(&s, &reg, player, &legal_actions)
+                        } else {
+                            pb.choose(&s, &reg, player, &legal_actions)
+                        };
+                        let (ns, ny) = step(s, a, &reg); s = ns; y = ny; steps += 1;
+                    }
+                }
+            };
+            let label = match res {
+                GameResult::Win(0) => 1.0, GameResult::Win(_) => 0.0,
+                GameResult::Eliminated(0) => 0.0, GameResult::Eliminated(_) => 1.0,
+                GameResult::Draw => 0.5,
+            };
+            for st in snap { states.push(st); outcomes.push(label); }
+        }
+
+        fn oos_logloss(states: &[GameState], y: &[f32], vf: &dyn ValueFn) -> f32 {
+            let n = states.len() as f32;
+            states.iter().zip(y).map(|(s, yi)| {
+                let p = ((vf.value(s, 0) + 1.0) / 2.0).clamp(1e-4, 1.0 - 1e-4);
+                -(yi * p.ln() + (1.0 - yi) * (1.0 - p).ln())
+            }).sum::<f32>() / n
+        }
+
+        println!("\n=== value learning curve ({} held-out states) ===", states.len());
+        println!("baseline (always 0.5) log-loss = {:.4}", 0.693_f32);
+        println!("material            log-loss = {:.4}", oos_logloss(&states, &outcomes, &MaterialValue));
+        for &n_games in &[50u32, 150, 300] {
+            let lv = learn_value(
+                &deck, &reg, n_games, 4000,
+                &|s| Box::new(RandomStatePolicy::new(s)), 300, 0.3, 1e-4, 7);
+            println!("learned (n={n_games:>3} games) log-loss = {:.4}",
+                oos_logloss(&states, &outcomes, &lv));
+        }
+    }
+
     /// Logistic regression learns a linearly-separable toy problem: feature 0
     /// positive ⇒ label 1. After training, a clearly-positive input scores
     /// well above a clearly-negative one.
