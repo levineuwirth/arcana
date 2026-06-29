@@ -1559,6 +1559,7 @@ mod behavioral_triage {
             T::StepBegins{..} => "StepBegins", T::PhaseBegins{..} => "PhaseBegins",
             T::LifeGained{..} => "LifeGained", T::CounterAdded{..} => "CounterAdded(Saga)",
             T::CardDrawn{..} => "CardDrawn", T::CardDiscarded{..} => "CardDiscarded",
+            T::DiceRolled{..} => "DiceRolled",
             T::CreatureAttacks{..} => "CreatureAttacks", T::Sacrificed{..} => "Sacrificed",
             T::AttachedCreatureDoes{..} => "AttachedCreatureDoes",
             T::SelfLeavesBattlefield => "SelfLeavesBattlefield",

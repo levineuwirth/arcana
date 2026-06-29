@@ -825,7 +825,7 @@ Other permanents / events:
 - `TriggerCondition::ZoneChange { filter: ObjectFilter, from: Option<Zone>, to: Zone }` — "Whenever a creature enters under your control" → `filter: ObjectFilter::creature().controlled_by(ControllerConstraint::You), from: None, to: Zone::Battlefield`; "whenever a creature dies" → `from: Some(Zone::Battlefield), to: Zone::Graveyard(0)`.
 - `TriggerCondition::CreatureAttacks { filter: ObjectFilter }` — "Whenever a creature you control attacks".
 - `TriggerCondition::DamageDealt { source_filter: ObjectFilter, target_filter: TargetFilter, combat_only: bool }` — "Whenever ~ deals combat damage to a player" → `target_filter: TargetFilter::Player, combat_only: true`.
-- `TriggerCondition::LifeGained { player: ControllerConstraint }` · `TriggerCondition::CardDrawn { player: ControllerConstraint }` · `TriggerCondition::CardDiscarded { player: ControllerConstraint }`.
+- `TriggerCondition::LifeGained { player: ControllerConstraint }` · `TriggerCondition::CardDrawn { player: ControllerConstraint }` · `TriggerCondition::CardDiscarded { player: ControllerConstraint }` · `TriggerCondition::DiceRolled { player: ControllerConstraint }` ("whenever you roll one or more dice" — dice-matters; pairs with `Effect::RollDie`).
 - `TriggerCondition::Sacrificed { filter: ObjectFilter }` — "Whenever you sacrifice a permanent".
 - `TriggerCondition::CounterAdded { on: TriggerSelf, kind: Option<CounterKind>, chapter: Option<u32> }` — "Whenever a +1/+1 counter is put on ~" → `on: TriggerSelf::Source, kind: Some(CounterKind::PlusOnePlusOne), chapter: None`. For Saga chapter dispatch ("II — do X") use `kind: Some(CounterKind::Lore), chapter: Some(2)` — the trigger fires only when the lore-counter-add event's `count` equals 2.
 

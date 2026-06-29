@@ -381,6 +381,13 @@ pub enum TriggerCondition {
     CardDrawn { player: ControllerConstraint },
     /// "Whenever an opponent discards a card".
     CardDiscarded { player: ControllerConstraint },
+    /// CR 706 — "Whenever you roll one or more dice" ("dice matters").
+    /// Matches [`GameEvent::DieRolled`] whose roller passes `player`.
+    /// Phase 1: one event per die, so a single multi-die roll fires this
+    /// per die (the "one or more" wording reads naturally for the common
+    /// single-die case; a true once-per-roll-batch is a follow-up). The
+    /// rolled result is reachable in the effect via the trigger event.
+    DiceRolled { player: ControllerConstraint },
     /// "Whenever a creature you control attacks".
     CreatureAttacks { filter: ObjectFilter },
     /// "Whenever you sacrifice a permanent".
@@ -598,6 +605,12 @@ impl TriggerCondition {
 
             CardDiscarded { player } => {
                 let GameEvent::Discarded { player: p, .. } = event
+                    else { return false; };
+                player.matches(*p, source_controller)
+            }
+
+            DiceRolled { player } => {
+                let GameEvent::DieRolled { player: p, .. } = event
                     else { return false; };
                 player.matches(*p, source_controller)
             }
@@ -1708,6 +1721,22 @@ mod tests {
         };
         assert!(cond.matches(&event, 0, 0, &s));
         assert!(!cond.matches(&event, 0, 1, &s));
+    }
+
+    #[test]
+    fn dice_rolled_whose_constraint() {
+        let s = GameState::new(2, 0);
+        let event = GameEvent::DieRolled { player: 0, sides: 20, result: 17 };
+        let yours = TriggerCondition::DiceRolled { player: ControllerConstraint::You };
+        // Fires for the roller, not for the other player's perspective.
+        assert!(yours.matches(&event, 0, 0, &s));
+        assert!(!yours.matches(&event, 0, 1, &s));
+        // Any-roller form fires regardless of whose controller.
+        let any = TriggerCondition::DiceRolled { player: ControllerConstraint::Any };
+        assert!(any.matches(&event, 0, 1, &s));
+        // A non-DieRolled event never matches.
+        let other = GameEvent::CoinFlipped { player: 0, won: true };
+        assert!(!yours.matches(&other, 0, 0, &s));
     }
 
     #[test]

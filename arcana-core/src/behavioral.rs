@@ -370,6 +370,7 @@ fn synth_event(
         TC::LifeGained { player } => GE::LifeGained { player: who(player), amount: 1 },
         TC::CardDrawn { player } => GE::DrawCard { player: who(player), object_id: other },
         TC::CardDiscarded { player } => GE::Discarded { player: who(player), object_id: other },
+        TC::DiceRolled { player } => GE::DieRolled { player: who(player), sides: 20, result: 20 },
         TC::CreatureAttacks { .. } => GE::CreatureAttacks {
             attacker: other, defending: crate::combat::DefendingEntity::Player(1 - controller) },
         TC::Sacrificed { .. } => GE::Sacrifice { player: controller, object_id: other },
