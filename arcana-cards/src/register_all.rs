@@ -6411,6 +6411,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::m21::canopy_stalker::register(reg); n += 1;
     crate::m21::mistral_singer::register(reg); n += 1;
     crate::m21::enthralling_hold::register(reg); n += 1;
+    crate::m21::liliana_s_scrounger::register(reg); n += 1;
     // --- mom ---
     crate::mom::yargle_and_multani::register(reg); n += 1;
     crate::mom::kithkin_billyrider::register(reg); n += 1;
@@ -10529,6 +10530,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::clb::gray_harbor_merfolk::register(reg); n += 1;
     crate::clb::descent_into_avernus::register(reg); n += 1;
     crate::clb::inspiring_leader::register(reg); n += 1;
+    crate::clb::mahadi_emporium_master::register(reg); n += 1;
     // --- wth ---
     crate::wth::benalish_infantry::register(reg); n += 1;
     crate::wth::shadow_rider::register(reg); n += 1;
@@ -13810,6 +13812,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::c13::krosan_warchief::register(reg); n += 1;
     crate::c13::deathbringer_thoctar::register(reg); n += 1;
     crate::c13::contested_cliffs::register(reg); n += 1;
+    crate::c13::serene_master::register(reg); n += 1;
     // --- lgn ---
     crate::lgn::aven_envoy::register(reg); n += 1;
     crate::lgn::defiant_elf::register(reg); n += 1;
