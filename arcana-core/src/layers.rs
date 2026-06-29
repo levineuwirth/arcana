@@ -837,6 +837,22 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build a maximum-hand-size modifier for the source's controller —
+    /// `MaxHandSizeMod::NoMaximum` (Reliquary Tower), `SetTo(n)`, or
+    /// `Delta(n)`. Usually installed with `Duration::WhileSourceOnBattlefield`.
+    pub fn max_hand_size(source: ObjectId,
+                         modifier: MaxHandSizeMod,
+                         duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::MaxHandSize { modifier },
+        }
+    }
+
     /// Build a GLOBAL "[filter] creatures lose [keyword]" removal
     /// (Gravity Sphere) — the filtered sibling of
     /// [`Self::remove_keyword`].
@@ -1327,9 +1343,32 @@ pub enum ContinuousEffectKind {
     /// attacker's FLOATED mana pool at declaration (documented
     /// strictness: no float, no attack).
     AttackTax { generic: u32 },
+    /// Marker — modifies the SOURCE controller's maximum hand size
+    /// (CR 402.2 / 514.1): Reliquary Tower / Thought Vessel
+    /// (`NoMaximum`), Library of Leng-ish / "maximum hand size is N"
+    /// (`SetTo`), and "+N maximum hand size" (`Delta`). The affected
+    /// player is the source's CURRENT controller (so it follows control
+    /// changes). Consumed by [`GameState::effective_max_hand_size`] at
+    /// the cleanup discard, not by the layer-apply loop.
+    MaxHandSize { modifier: MaxHandSizeMod },
     /// Custom. Called with the object id under consideration, its
     /// in-flight characteristics, and the game state.
     Custom(fn(ObjectId, &mut Characteristics, &GameState)),
+}
+
+/// How a [`ContinuousEffectKind::MaxHandSize`] effect changes its
+/// controller's maximum hand size.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MaxHandSizeMod {
+    /// "You have no maximum hand size." (Reliquary Tower, Thought
+    /// Vessel, Spellbook, Venser's Journal.) Overrides everything.
+    NoMaximum,
+    /// "Your maximum hand size is N." Overrides the format base; the
+    /// most permissive `SetTo` wins if several apply.
+    SetTo(u32),
+    /// "Your maximum hand size is increased/reduced by N." Additive on
+    /// top of the (possibly `SetTo`-overridden) base.
+    Delta(i32),
 }
 
 impl ContinuousEffect {
@@ -1438,7 +1477,8 @@ impl ContinuousEffectKind {
             | Self::FilteredMaxBlockers { .. }
             | Self::SpellCostModifier { .. }
             | Self::AbilityCostModifier { .. }
-            | Self::AttackTax { .. } => false,
+            | Self::AttackTax { .. }
+            | Self::MaxHandSize { .. } => false,
             Self::Custom(_) => true, // Custom fn decides internally
         }
     }
@@ -1562,7 +1602,8 @@ impl ContinuousEffectKind {
             | Self::FilteredMaxBlockers { .. }
             | Self::SpellCostModifier { .. }
             | Self::AbilityCostModifier { .. }
-            | Self::AttackTax { .. } => {} // markers
+            | Self::AttackTax { .. }
+            | Self::MaxHandSize { .. } => {} // markers
             Self::AttachedCreatureAddColors { colors } => {
                 chars.colors = crate::types::ColorSet(chars.colors.0 | colors.0);
             }
@@ -1899,6 +1940,32 @@ impl GameState {
                         (filter.clone(), *max, s.controller)),
             _ => None,
         }).collect()
+    }
+
+    /// `player`'s effective maximum hand size (CR 402.2), folding live
+    /// [`ContinuousEffectKind::MaxHandSize`] statics over the format
+    /// base. `NoMaximum` (Reliquary Tower) wins outright →
+    /// [`usize::MAX`]; otherwise the most-permissive `SetTo` overrides
+    /// the base and `Delta`s sum on top (clamped ≥ 0). The affected
+    /// player is each effect's source's CURRENT controller.
+    pub fn effective_max_hand_size(&self, player: PlayerId) -> usize {
+        let mut no_max = false;
+        let mut set_to: Option<u32> = None;
+        let mut delta: i64 = 0;
+        for e in &self.continuous_effects {
+            let ContinuousEffectKind::MaxHandSize { modifier } = &e.kind else { continue };
+            if !e.is_live(self) { continue; }
+            let Some(ctrl) = self.objects.get(e.source).map(|s| s.controller) else { continue };
+            if ctrl != player { continue; }
+            match modifier {
+                MaxHandSizeMod::NoMaximum => no_max = true,
+                MaxHandSizeMod::SetTo(n) => set_to = Some(set_to.map_or(*n, |c| c.max(*n))),
+                MaxHandSizeMod::Delta(d) => delta += *d as i64,
+            }
+        }
+        if no_max { return usize::MAX; }
+        let base = set_to.unwrap_or(self.format.max_hand_size) as i64;
+        (base + delta).max(0) as usize
     }
 
     /// Net generic-cost delta for casting a spell whose CAST-FACE
@@ -3173,6 +3240,34 @@ mod tests {
             .push(KeywordAbility::Vigilance);
         assert!(s.has_keyword(c, &KeywordAbility::Vigilance));
         assert!(!s.has_keyword(c, &KeywordAbility::Flying));
+    }
+
+    #[test]
+    fn effective_max_hand_size_folds_continuous_effects() {
+        let mut s = GameState::new(2, 0);
+        // No effects ⇒ format base (7) for everyone.
+        assert_eq!(s.effective_max_hand_size(0), 7);
+        assert_eq!(s.effective_max_hand_size(1), 7);
+
+        // "You have no maximum hand size" on a source player 0 controls.
+        let tower = put_creature(&mut s, 0, 0, 0);
+        s.add_continuous_effect(ContinuousEffect::max_hand_size(
+            tower, MaxHandSizeMod::NoMaximum, Duration::WhileSourceOnBattlefield));
+        assert_eq!(s.effective_max_hand_size(0), usize::MAX,
+            "no maximum for the source's controller");
+        assert_eq!(s.effective_max_hand_size(1), 7, "opponent unaffected");
+
+        // SetTo overrides the base; a Delta stacks on top.
+        let mut s2 = GameState::new(2, 0);
+        let a = put_creature(&mut s2, 1, 0, 0);
+        s2.add_continuous_effect(ContinuousEffect::max_hand_size(
+            a, MaxHandSizeMod::SetTo(8), Duration::WhileSourceOnBattlefield));
+        assert_eq!(s2.effective_max_hand_size(1), 8);
+        let b = put_creature(&mut s2, 1, 0, 0);
+        s2.add_continuous_effect(ContinuousEffect::max_hand_size(
+            b, MaxHandSizeMod::Delta(2), Duration::WhileSourceOnBattlefield));
+        assert_eq!(s2.effective_max_hand_size(1), 10, "SetTo(8) + Delta(2)");
+        assert_eq!(s2.effective_max_hand_size(0), 7, "other player still base");
     }
 
     #[test]

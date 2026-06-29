@@ -2092,7 +2092,7 @@ fn apply_make_choice(state: &mut GameState, choice: ChoiceAction) {
             // otherwise re-prompt (compute_next_decision re-reads
             // `priority.special_action`).
             if state.objects.count_in_zone(Zone::Hand(player))
-                <= state.format.max_hand_size as usize
+                <= state.effective_max_hand_size(player)
             {
                 state.priority.end_special_action();
             }
@@ -3273,7 +3273,7 @@ fn cleanup_step(state: &mut GameState) {
     // SpecialAction::DiscardToHandSize here; that path exists in
     // legal_actions and apply_make_choice for future use.
     let hand_ids = state.objects.ids_in_zone_sorted(Zone::Hand(ap));
-    let over_by = hand_ids.len().saturating_sub(state.format.max_hand_size as usize);
+    let over_by = hand_ids.len().saturating_sub(state.effective_max_hand_size(ap));
     for id in hand_ids.into_iter().take(over_by) {
         state.move_object_to_zone(
             id, Zone::Graveyard(ap), MoveCause::Cost);
@@ -9270,6 +9270,32 @@ mod tests {
             state.objects.count_in_zone(Zone::Hand(ap)), 4,
             "custom max_hand_size = 4 should cap hand at 4",
         );
+    }
+
+    #[test]
+    fn cleanup_respects_no_maximum_hand_size_static() {
+        use crate::layers::{ContinuousEffect, MaxHandSizeMod, Duration};
+        let mut state = GameState::new(2, 0);
+        state.turn.phase = Phase::Ending;
+        state.turn.step = Step::Cleanup;
+        let ap = state.active_player();
+        // 10 cards in hand — would normally discard down to 7.
+        for _ in 0..10 {
+            let id = state.allocate_object_id();
+            state.objects.insert(GameObject::new(
+                id, ap, Zone::Hand(ap), 0, Characteristics::default()));
+        }
+        // A Reliquary-Tower-style source the active player controls.
+        let src = state.allocate_object_id();
+        state.objects.insert(GameObject::new(
+            src, ap, Zone::Battlefield, 0, Characteristics::default()));
+        state.add_continuous_effect(ContinuousEffect::max_hand_size(
+            src, MaxHandSizeMod::NoMaximum, Duration::WhileSourceOnBattlefield));
+
+        cleanup_step(&mut state);
+
+        assert_eq!(state.objects.count_in_zone(Zone::Hand(ap)), 10,
+            "no maximum hand size ⇒ nothing discarded at cleanup");
     }
 
     // =====================================================================
