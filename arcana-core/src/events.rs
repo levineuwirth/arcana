@@ -163,6 +163,10 @@ pub enum GameEvent {
     /// flip. Lets "whenever you win/lose a coin flip" triggers observe
     /// the result; also drives logging.
     CoinFlipped { player: PlayerId, won: bool },
+    /// CR 706 — a player rolled one die with `sides` faces and got
+    /// `result` (1..=sides). Lets "whenever you roll one or more dice"
+    /// ("dice matters") triggers observe the roll; also drives logging.
+    DieRolled { player: PlayerId, sides: u32, result: u32 },
 }
 
 // =============================================================================
@@ -308,7 +312,8 @@ impl GameEvent {
             | Surveil { .. }
             | Explore { .. }
             | LibraryShuffled { .. }
-            | CoinFlipped { .. } => Player,
+            | CoinFlipped { .. }
+            | DieRolled { .. } => Player,
         }
     }
 
@@ -375,6 +380,7 @@ impl GameEvent {
             | ManaAdded { .. } | SearchedLibrary { .. }
             | Scry { .. } | Surveil { .. }
             | CoinFlipped { .. }
+            | DieRolled { .. }
             | LibraryShuffled { .. } => return None,
         })
     }
@@ -398,6 +404,7 @@ impl GameEvent {
             | Scry { player, .. }
             | Surveil { player, .. }
             | CoinFlipped { player, .. }
+            | DieRolled { player, .. }
             | LibraryShuffled { player } => *player,
 
             SpellCast { controller, .. }

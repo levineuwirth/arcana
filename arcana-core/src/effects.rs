@@ -837,6 +837,18 @@ pub enum Effect {
         win: Box<Effect>,
         lose: Option<Box<Effect>>,
     },
+    /// CR 706 — "Roll a d`sides` (a fair die with faces 1..=`sides`)."
+    /// Rolls via the deterministic [`crate::state::GameState::rng_seed`]
+    /// (replayable), emits [`crate::events::GameEvent::DieRolled`], then
+    /// executes the effect of the FIRST [`RollOutcome`] whose inclusive
+    /// `[min, max]` range contains the result (AFR d20 outcome tables;
+    /// `20` → its own bucket). Outcomes are tried in order; a result
+    /// matching no range does nothing. A `sides` of 0 is a no-op.
+    RollDie {
+        player: PlayerId,
+        sides: u32,
+        outcomes: Vec<RollOutcome>,
+    },
     /// CR 726.2 — "it becomes day" / "it becomes night". Introduces the
     /// day/night designation (or switches it). Once set, the engine's
     /// CR 726.4 turn-start transition keeps flipping it from last turn's
@@ -2052,6 +2064,18 @@ impl Effect {
                     l.execute(state);
                 }
             }
+            Effect::RollDie { player, sides, outcomes } => {
+                if !valid_player(state, *player) || *sides == 0 { return; }
+                let result = roll_die(state, *player, *sides);
+                state.emit(GameEvent::DieRolled {
+                    player: *player, sides: *sides, result });
+                // First outcome whose inclusive range covers the result.
+                if let Some(outcome) = outcomes.iter()
+                    .find(|o| result >= o.min && result <= o.max)
+                {
+                    outcome.effect.execute(state);
+                }
+            }
             Effect::DelayedAction { source, controller, when, action } => {
                 use crate::triggers::{DelayedTrigger, TriggerCondition};
                 let condition = match when {
@@ -2468,6 +2492,22 @@ pub enum RevealDest {
     /// "…put it onto the battlefield." (e.g. land/creature ramp such as
     /// Oath of Druids, Bloodbond March).
     Battlefield,
+}
+
+/// One row of an [`Effect::RollDie`] outcome table (CR 706). When the
+/// rolled result falls in the inclusive `[min, max]` range, `effect`
+/// resolves. The dice-roll counterpart of [`Effect::FlipCoin`]'s
+/// win/lose branches; wrap multiple effects in `Effect::Sequence`.
+/// (Distinct from `crate::replacement::DieOutcome`, which is a *death*
+/// replacement result, not a die roll.)
+#[derive(Clone, Debug)]
+pub struct RollOutcome {
+    /// Lowest result (inclusive) that selects this row.
+    pub min: u32,
+    /// Highest result (inclusive) that selects this row.
+    pub max: u32,
+    /// What resolves when the roll lands in `[min, max]`.
+    pub effect: Box<Effect>,
 }
 
 /// Canonical commodity-token kinds whose printed activated abilities
@@ -3861,6 +3901,18 @@ fn flip_fair_coin(state: &mut GameState, player: PlayerId) -> bool {
         state.rng_seed.wrapping_add(player as u64).wrapping_add(0xC0));
     state.rng_seed = state.rng_seed.wrapping_add(1);
     rng.gen::<bool>()
+}
+
+/// Roll a fair `sides`-faced die for `player`, returning a result in
+/// `1..=sides`. Advances the deterministic RNG so the roll is replayable
+/// (mirrors [`flip_fair_coin`]). Callers guard `sides == 0`.
+fn roll_die(state: &mut GameState, player: PlayerId, sides: u32) -> u32 {
+    use rand::Rng;
+    use rand::SeedableRng;
+    let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(
+        state.rng_seed.wrapping_add(player as u64).wrapping_add(0xD1CE));
+    state.rng_seed = state.rng_seed.wrapping_add(1);
+    rng.gen_range(1..=sides)
 }
 
 /// [`Effect::RevealUntil`] — reveal from the top of `player`'s library
@@ -6348,6 +6400,66 @@ mod tests {
         }
         assert!(results.iter().any(|&w| w), "saw at least one win");
         assert!(results.iter().any(|&w| !w), "saw at least one loss");
+    }
+
+    #[test]
+    fn roll_die_fires_the_outcome_bucket_containing_the_result() {
+        // AFR-style d20 table: 1–9 gain 1, 10–19 gain 2, 20 gain 3.
+        // Whichever bucket ran must contain the emitted result — proves
+        // the range dispatch keys off the actual roll.
+        let outcomes = vec![
+            RollOutcome { min: 1, max: 9,
+                effect: Box::new(Effect::GainLife { player: 0, amount: 1 }) },
+            RollOutcome { min: 10, max: 19,
+                effect: Box::new(Effect::GainLife { player: 0, amount: 2 }) },
+            RollOutcome { min: 20, max: 20,
+                effect: Box::new(Effect::GainLife { player: 0, amount: 3 }) },
+        ];
+        for seed in 0..30u64 {
+            let mut s = GameState::new(2, seed);
+            let before = s.player(0).life;
+            Effect::RollDie { player: 0, sides: 20, outcomes: outcomes.clone() }
+                .execute(&mut s);
+            let result = s.event_log.iter().rev().find_map(|e| match e {
+                GameEvent::DieRolled { result, sides: 20, player: 0 } => Some(*result),
+                _ => None,
+            }).expect("a DieRolled event is emitted");
+            assert!((1..=20).contains(&result), "d20 result in range: {result}");
+            let gained = (s.player(0).life - before) as u32;
+            let expected = match result { 1..=9 => 1, 10..=19 => 2, 20 => 3, _ => 0 };
+            assert_eq!(gained, expected,
+                "result {result} fired the bucket gaining {expected}");
+        }
+    }
+
+    #[test]
+    fn roll_die_advances_rng_and_covers_the_face_range() {
+        // Over many rolls with an advancing seed we see more than one
+        // distinct face (not a stuck constant) and never out of range.
+        let mut s = GameState::new(2, 0);
+        let mut seen = std::collections::HashSet::new();
+        for _ in 0..40 {
+            Effect::RollDie { player: 0, sides: 6, outcomes: vec![] }.execute(&mut s);
+            if let Some(GameEvent::DieRolled { result, .. }) = s.event_log.last() {
+                assert!((1..=6).contains(result));
+                seen.insert(*result);
+            }
+        }
+        assert!(seen.len() > 1, "RNG advances → varied d6 faces, got {seen:?}");
+    }
+
+    #[test]
+    fn roll_die_zero_sides_is_a_noop() {
+        let mut s = GameState::new(2, 0);
+        let before = s.player(0).life;
+        Effect::RollDie {
+            player: 0, sides: 0,
+            outcomes: vec![RollOutcome { min: 0, max: 0,
+                effect: Box::new(Effect::GainLife { player: 0, amount: 9 }) }],
+        }.execute(&mut s);
+        assert_eq!(s.player(0).life, before, "no roll, no effect");
+        assert!(!s.event_log.iter().any(|e| matches!(e, GameEvent::DieRolled { .. })),
+            "0-sided die emits no DieRolled event");
     }
 
     #[test]

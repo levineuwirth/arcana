@@ -76,6 +76,7 @@ pub fn describe_event(
             "{} gets {count} {} counter{}",
             name(*object_id), counter_label(kind, registry), if *count == 1 { "" } else { "s" }),
         TokenCreated { object_id, controller } => format!("{} {}", act(*controller, "create"), name(*object_id)),
+        DieRolled { player, sides, result } => format!("{} a d{sides} → {result}", act(*player, "roll")),
         _ => return None,
     })
 }
