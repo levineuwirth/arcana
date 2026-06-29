@@ -67,7 +67,8 @@ const PIMC_MAX_CANDIDATES: usize = 8;
 /// not policies, so the seats are symmetric).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Referee {
-    /// Uniform-random legal action. Cheapest; for screening + fast tests.
+    /// Progress-biased random legal action ([`RandomStatePolicy`]). Cheapest;
+    /// for screening + fast tests.
     Random,
     /// `ValueMc(Material)` at the deckeval fixed budget — the standard cheap
     /// referee (see [`crate::deckeval::fixed_policy`]).

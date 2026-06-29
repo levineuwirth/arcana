@@ -346,7 +346,9 @@ fn convert_to_py_result(
     let (winner, terminated, truncated) = match &outcome.final_yield {
         EngineYield::GameOver(GameResult::Win(p)) => (Some(*p as u8), true, false),
         EngineYield::GameOver(GameResult::Draw) => (None, true, false),
-        EngineYield::GameOver(GameResult::Eliminated(p)) => (Some(*p as u8), true, false),
+        // Eliminated(p) means player p LOST (matches arcana-ai reward.rs /
+        // learn.rs); run_episode is heads-up, so the OTHER player is the winner.
+        EngineYield::GameOver(GameResult::Eliminated(p)) => (Some(1 - *p as u8), true, false),
         EngineYield::PendingDecision { .. } => (None, false, true),
     };
     let py_outcome = Py::new(
