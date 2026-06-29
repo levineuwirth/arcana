@@ -777,6 +777,16 @@ pub enum Effect {
         filter: ObjectFilter,
         tapped: bool,
     },
+    /// Entomb / Buried Alive — CR 701.20a: search `player`'s library for
+    /// a matching card, put it into the graveyard, then shuffle. `reveal`
+    /// adds a public-info mark. Single-card (`min 0, max 1`) like
+    /// [`Self::TutorToHand`]; "up to N" multi-tutors are a future
+    /// generalization of the shared search-choice path.
+    TutorToGraveyard {
+        player: PlayerId,
+        filter: ObjectFilter,
+        reveal: bool,
+    },
 
     // --- combat-like -------------------------------------------------------
     Fight { a: ObjectId, b: ObjectId },
@@ -1076,7 +1086,8 @@ impl Effect {
             | Effect::Reanimate { player, .. }
             | Effect::PutFromHandOntoBattlefield { player, .. }
             | Effect::TutorToHand { player, .. }
-            | Effect::TutorToBattlefield { player, .. } => *player = p,
+            | Effect::TutorToBattlefield { player, .. }
+            | Effect::TutorToGraveyard { player, .. } => *player = p,
             Effect::DealDamage { target, .. } => {
                 *target = DamageTarget::Player(p);
             }
@@ -1967,6 +1978,11 @@ impl Effect {
             Effect::TutorToBattlefield { player, filter, tapped } => {
                 push_tutor_to_battlefield_choice(
                     state, *player, filter, *tapped);
+            }
+            Effect::TutorToGraveyard { player, filter, reveal } => {
+                push_search_choice(
+                    state, *player, Zone::Library(*player), filter,
+                    Zone::Graveyard(*player), *reveal);
             }
 
             // --- fight ---------------------------------------------------
@@ -7423,6 +7439,38 @@ mod tests {
                 assert_eq!(got, want, "only the two name-42 cards are tutorable");
             }
             other => panic!("expected PickCards, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn tutor_to_graveyard_picks_a_matching_card_for_the_graveyard() {
+        use crate::actions::{ChoiceFollowUp, ChoiceKind};
+        // Entomb: library has a creature and an instant; a creature-filtered
+        // tutor-to-graveyard offers only the creature and routes it to the
+        // graveyard (then shuffles).
+        let mut s = GameState::new(2, 0);
+        let _inst = put_instant(&mut s, 0, Zone::Library(0));
+        let cat = put_creature(&mut s, 0, Zone::Library(0), 1, 1);
+        s.currently_resolving = Some(999);
+        Effect::TutorToGraveyard {
+            player: 0,
+            filter: ObjectFilter::creature(),
+            reveal: false,
+        }.execute(&mut s);
+        match &s.pending_choice.as_ref().unwrap().kind {
+            ChoiceKind::PickCards { candidates, min, max } => {
+                assert_eq!((*min, *max), (0, 1));
+                assert!(candidates.contains(&cat));
+                assert_eq!(candidates.len(), 1, "instant is filtered out");
+            }
+            other => panic!("expected PickCards, got {other:?}"),
+        }
+        match s.pending_choice_follow_up.as_ref().unwrap() {
+            ChoiceFollowUp::MoveToZone { destination, shuffle_library_owner, .. } => {
+                assert_eq!(*destination, Zone::Graveyard(0));
+                assert_eq!(*shuffle_library_owner, Some(0));
+            }
+            other => panic!("expected MoveToZone, got {other:?}"),
         }
     }
 

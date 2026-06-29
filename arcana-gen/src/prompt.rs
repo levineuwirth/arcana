@@ -720,6 +720,7 @@ Sacrifice:
 Search the library (shuffle is automatic):
 - `Effect::TutorToHand { player: p, filter: ObjectFilter::creature(), reveal: true }`
 - `Effect::TutorToBattlefield { player: p, filter: ObjectFilter::creature(), tapped: false }`
+- `Effect::TutorToGraveyard { player: p, filter: ObjectFilter::creature(), reveal: false }` — Entomb / Buried Alive: 'search your library for a card, put it into your graveyard, then shuffle' (single card; combine with a type/name filter). Use this for 'search → graveyard' instead of GAP-ing.
 - SEARCH BY EXACT CARD NAME ("search your library for a card named Llanowar Sentinel") IS expressible: `ObjectFilter` has a `name: Option<SmallString>` field, and the effect fn's `reg` gives a read-only handle lookup. In the effect fn write `let nm = reg.interner().lookup("Llanowar Sentinel");` then `Effect::TutorToHand { player: p, filter: ObjectFilter { name: nm, ..ObjectFilter::default() }, reveal: true }`. (`lookup` returns `Option<SmallString>`; an `Option` is exactly the field type, so pass it straight through — a name never interned this game yields `None` and matches nothing, which is correct: you found no such card.) Combine with a type filter if the text restricts it ("a creature card named ~"). Use this instead of GAP-ing "tutor by name not expressible".
 - `Effect::Reanimate { player: p, filter: ObjectFilter::creature(), from_zone: Zone::Graveyard(p) }`  — non-targeted "return a creature from a graveyard"; for the targeted form prefer `ReturnFromGraveyardToBattlefield { target: id }` (above).
 - `Effect::PutFromHandOntoBattlefield { player: p, filter: ObjectFilter::creature(), tapped: false }`  — "put a [filter] card from your hand onto the battlefield" (Elvish Piper / Quicksilver Amulet class). Posts a pick over the player's OWN hand; no-op if nothing matches. Use this instead of GAP-ing hand→battlefield puts.
@@ -1005,6 +1006,7 @@ Sacrifice:
 Search the library (shuffle is automatic):
 - `Effect::TutorToHand {{ player: p, filter: ObjectFilter::creature(), reveal: true }}`
 - `Effect::TutorToBattlefield {{ player: p, filter: ObjectFilter::creature(), tapped: false }}`
+- `Effect::TutorToGraveyard {{ player: p, filter: ObjectFilter::creature(), reveal: false }}` — Entomb / Buried Alive: 'search your library for a card, put it into your graveyard, then shuffle' (single card; combine with a type/name filter). Use for 'search → graveyard' instead of GAP-ing.
 - SEARCH BY EXACT CARD NAME is expressible: `ObjectFilter` has `name: Option<SmallString>`. In the effect fn, `let nm = reg.interner().lookup('Card Name');` (use real double-quotes in your code) then `Effect::TutorToHand {{ player: p, filter: ObjectFilter {{ name: nm, ..ObjectFilter::default() }}, reveal: true }}`. `lookup` returns `Option<SmallString>` — pass it straight into the field. Use this for 'search for a card named ~' instead of GAP-ing.
 - `ObjectFilter` builders: `ObjectFilter::creature()`, `ObjectFilter::permanent()`, `ObjectFilter::new().with_types(TypeLine::LAND.into())` (chain `.with_colors(ColorSet::...)`, `.with_types_any(TypeLine::X.into())`, `.without_types(TypeLine::X.into())`).
 
