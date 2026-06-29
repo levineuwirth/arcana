@@ -1001,6 +1001,9 @@ fn legal_priority_actions(
     for id in sorted_ids_in_zone(state, Zone::Hand(player)) {
         let obj = state.objects.get(id).unwrap();
         if obj.is_land() { continue; } // not a cast
+        // Rule of Law-class restriction: can't cast if a per-turn
+        // spell-cast limit on this player is already met.
+        if state.spell_cast_limit_reached(obj, player) { continue; }
         // CR 702.8 — Flash lets a non-instant be cast any time its
         // controller could cast an instant. A "cast as though it had
         // flash" timing permission (Vedalken Orrery) grants the same.
@@ -1278,6 +1281,7 @@ fn legal_priority_actions(
     for id in sorted_ids_in_zone(state, Zone::Graveyard(player)) {
         let obj = state.objects.get(id).unwrap();
         if obj.is_land() { continue; }
+        if state.spell_cast_limit_reached(obj, player) { continue; }
         let is_instant_speed = obj.is_instant()
             || state.has_keyword(id, &crate::effects::KeywordAbility::Flash)
             || state.can_cast_as_though_flash(obj, player);

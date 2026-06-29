@@ -343,6 +343,31 @@ pub fn spells_cast_this_turn(
     n
 }
 
+/// Number of spells matching `filter` that `caster` (specifically) has
+/// cast this turn — the per-CASTER sibling of [`spells_cast_this_turn`]
+/// (which counts across all players). For "each player can't cast more
+/// than one spell each turn" (Rule of Law / Arcane Laboratory) and its
+/// filtered kin (Deafening Silence's noncreature, Ethersworn Canonist's
+/// artifact). `caster` resolves the filter's controller constraint too.
+pub fn spells_cast_this_turn_by(
+    state: &GameState,
+    filter: &ObjectFilter,
+    caster: PlayerId,
+) -> u32 {
+    let mut n = 0u32;
+    for ev in this_turn_events(state) {
+        if let crate::events::GameEvent::SpellCast { object_id, controller, .. } = ev {
+            if *controller != caster { continue; }
+            let obj = state.objects.get(*object_id)
+                .or_else(|| state.lki.get(object_id));
+            if let Some(o) = obj {
+                if filter.matches(o, state, caster) { n += 1; }
+            }
+        }
+    }
+    n
+}
+
 /// Number of cards `player` has drawn this turn. Counts
 /// [`crate::events::GameEvent::CardDrawn`] events filtered to
 /// `player`. (`0` for an invalid player.)

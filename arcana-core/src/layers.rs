@@ -870,6 +870,25 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build a "each [player] can't cast more than `max` [spell_filter]
+    /// spell(s) each turn" restriction (Rule of Law = any spell / `Any`
+    /// player / max 1; Deafening Silence narrows the filter to
+    /// noncreature). Enforced in `legal_actions`.
+    pub fn spell_cast_limit(source: ObjectId,
+                            spell_filter: crate::targets::ObjectFilter,
+                            player: crate::targets::ControllerConstraint,
+                            max: u32,
+                            duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::SpellCastLimit { spell_filter, player, max },
+        }
+    }
+
     /// Build a GLOBAL "[filter] creatures lose [keyword]" removal
     /// (Gravity Sphere) — the filtered sibling of
     /// [`Self::remove_keyword`].
@@ -1376,6 +1395,17 @@ pub enum ContinuousEffectKind {
     /// Consumed by `legal_actions` (folds into the instant-speed check),
     /// not by the layer-apply loop.
     CastAsThoughFlash { spell_filter: crate::targets::ObjectFilter },
+    /// Marker — "Each [player] can't cast more than `max` [spell_filter]
+    /// spell(s) each turn" (Rule of Law / Eidolon of Rhetoric / Arcane
+    /// Laboratory = any spell, max 1; Deafening Silence = noncreature;
+    /// Ethersworn Canonist = artifact). Enforced in `legal_actions`
+    /// against the per-caster this-turn cast count. `player` selects
+    /// WHICH players are limited (`Any` = every player).
+    SpellCastLimit {
+        spell_filter: crate::targets::ObjectFilter,
+        player: crate::targets::ControllerConstraint,
+        max: u32,
+    },
     /// Custom. Called with the object id under consideration, its
     /// in-flight characteristics, and the game state.
     Custom(fn(ObjectId, &mut Characteristics, &GameState)),
@@ -1504,7 +1534,8 @@ impl ContinuousEffectKind {
             | Self::AbilityCostModifier { .. }
             | Self::AttackTax { .. }
             | Self::MaxHandSize { .. }
-            | Self::CastAsThoughFlash { .. } => false,
+            | Self::CastAsThoughFlash { .. }
+            | Self::SpellCastLimit { .. } => false,
             Self::Custom(_) => true, // Custom fn decides internally
         }
     }
@@ -1630,7 +1661,8 @@ impl ContinuousEffectKind {
             | Self::AbilityCostModifier { .. }
             | Self::AttackTax { .. }
             | Self::MaxHandSize { .. }
-            | Self::CastAsThoughFlash { .. } => {} // markers
+            | Self::CastAsThoughFlash { .. }
+            | Self::SpellCastLimit { .. } => {} // markers
             Self::AttachedCreatureAddColors { colors } => {
                 chars.colors = crate::types::ColorSet(chars.colors.0 | colors.0);
             }
@@ -2009,6 +2041,31 @@ impl GameState {
             {
                 self.objects.get(e.source).is_some_and(|s| s.controller == player)
                     && spell_filter.matches_base(spell, self, player)
+            }
+            _ => false,
+        })
+    }
+
+    /// Would casting `spell` exceed a per-turn spell-cast limit on
+    /// `caster` (Rule of Law-class)? True when a live
+    /// [`ContinuousEffectKind::SpellCastLimit`] applies to `caster`, the
+    /// spell is subject to its filter, and `caster` has already cast
+    /// `max` matching spells this turn. Folded into the cast gate in
+    /// `legal_actions`.
+    pub fn spell_cast_limit_reached(
+        &self, spell: &crate::objects::GameObject, caster: PlayerId,
+    ) -> bool {
+        self.continuous_effects.iter().any(|e| match &e.kind {
+            ContinuousEffectKind::SpellCastLimit { spell_filter, player, max }
+                if e.is_live(self) =>
+            {
+                let src_ctrl = match self.objects.get(e.source) {
+                    Some(s) => s.controller,
+                    None => return false,
+                };
+                player.matches(caster, src_ctrl)
+                    && spell_filter.matches_base(spell, self, caster)
+                    && crate::script::spells_cast_this_turn_by(self, spell_filter, caster) >= *max
             }
             _ => false,
         })
@@ -3354,6 +3411,69 @@ mod tests {
         let sorc = s2.objects.get(cs).unwrap();
         assert!(!s2.can_cast_as_though_flash(sorc, 0),
             "creature-only flash permission doesn't cover a sorcery");
+    }
+
+    #[test]
+    fn spell_cast_limit_blocks_after_the_cap() {
+        use crate::targets::{ObjectFilter, ControllerConstraint};
+        let mut s = GameState::new(2, 0);
+        s.turn_event_log_start = 0;
+        // A sorcery player 0 wants to cast.
+        let sorc_id = s.allocate_object_id();
+        let mut sc = Characteristics::default();
+        sc.types = crate::types::TypeLine::SORCERY.into();
+        s.objects.insert(GameObject::new(sorc_id, 0, Zone::Hand(0), 0, sc));
+        // Rule of Law: each player can't cast more than 1 spell per turn.
+        let src = put_creature(&mut s, 0, 0, 0);
+        s.add_continuous_effect(ContinuousEffect::spell_cast_limit(
+            src, ObjectFilter::default(), ControllerConstraint::Any, 1,
+            Duration::WhileSourceOnBattlefield));
+
+        // Nothing cast yet ⇒ not reached for either player.
+        {
+            let sorc = s.objects.get(sorc_id).unwrap();
+            assert!(!s.spell_cast_limit_reached(sorc, 0));
+            assert!(!s.spell_cast_limit_reached(sorc, 1));
+        }
+        // Player 0 casts a spell this turn (record the event).
+        s.emit(crate::events::GameEvent::SpellCast {
+            object_id: sorc_id, card_id: 0, controller: 0,
+            targets: crate::targets::TargetSelection::new(), mana_spent: 0 });
+        {
+            let sorc = s.objects.get(sorc_id).unwrap();
+            assert!(s.spell_cast_limit_reached(sorc, 0),
+                "player 0 already cast 1 ⇒ a 2nd is blocked");
+            assert!(!s.spell_cast_limit_reached(sorc, 1),
+                "player 1 hasn't cast ⇒ unaffected (per-caster count)");
+        }
+    }
+
+    #[test]
+    fn spell_cast_limit_respects_its_filter() {
+        use crate::targets::{ObjectFilter, ControllerConstraint};
+        let mut s = GameState::new(2, 0);
+        s.turn_event_log_start = 0;
+        // Deafening Silence: each player can't cast more than 1 NONCREATURE
+        // spell per turn. Player 0 has cast one noncreature (the sorcery).
+        let sorc_id = s.allocate_object_id();
+        let mut sc = Characteristics::default();
+        sc.types = crate::types::TypeLine::SORCERY.into();
+        s.objects.insert(GameObject::new(sorc_id, 0, Zone::Hand(0), 0, sc));
+        let cre_id = s.allocate_object_id();
+        let mut cc = Characteristics::default();
+        cc.types = crate::types::TypeLine::CREATURE.into();
+        s.objects.insert(GameObject::new(cre_id, 0, Zone::Hand(0), 0, cc));
+        let src = put_creature(&mut s, 0, 0, 0);
+        s.add_continuous_effect(ContinuousEffect::spell_cast_limit(
+            src, ObjectFilter::new().without_types(crate::types::TypeLine::CREATURE.into()),
+            ControllerConstraint::Any, 1, Duration::WhileSourceOnBattlefield));
+        s.emit(crate::events::GameEvent::SpellCast {
+            object_id: sorc_id, card_id: 0, controller: 0,
+            targets: crate::targets::TargetSelection::new(), mana_spent: 0 });
+        // A 2nd noncreature is blocked; a creature spell is still castable.
+        assert!(s.spell_cast_limit_reached(s.objects.get(sorc_id).unwrap(), 0));
+        assert!(!s.spell_cast_limit_reached(s.objects.get(cre_id).unwrap(), 0),
+            "the creature spell isn't subject to the noncreature limit");
     }
 
     #[test]
