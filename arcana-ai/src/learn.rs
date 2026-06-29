@@ -507,8 +507,11 @@ mod tests {
         let reg = arcana_cards::build_catalog();
         let deck = arcana_cards::sample_deck(&reg, 7);
 
+        // Train on 150 games, not 30: the learning-curve diagnostic showed
+        // the value is overfit (worse-than-chance) at ~30 games but a
+        // BETTER outcome predictor than material by ~150.
         let lv = learn_value(
-            &deck, &reg, 30, 4000,
+            &deck, &reg, 150, 4000,
             &|s| Box::new(RandomStatePolicy::new(s)),
             300, 0.3, 1e-4, 1);
 
