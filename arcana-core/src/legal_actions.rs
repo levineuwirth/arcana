@@ -1002,9 +1002,11 @@ fn legal_priority_actions(
         let obj = state.objects.get(id).unwrap();
         if obj.is_land() { continue; } // not a cast
         // CR 702.8 — Flash lets a non-instant be cast any time its
-        // controller could cast an instant.
+        // controller could cast an instant. A "cast as though it had
+        // flash" timing permission (Vedalken Orrery) grants the same.
         let is_instant_speed = obj.is_instant()
-            || state.has_keyword(id, &crate::effects::KeywordAbility::Flash);
+            || state.has_keyword(id, &crate::effects::KeywordAbility::Flash)
+            || state.can_cast_as_though_flash(obj, player);
         if !is_instant_speed && !sorcery_speed_ok { continue; }
 
         // CR 711.4 — for a Split card the object's off-stack chars are
@@ -1277,7 +1279,8 @@ fn legal_priority_actions(
         let obj = state.objects.get(id).unwrap();
         if obj.is_land() { continue; }
         let is_instant_speed = obj.is_instant()
-            || state.has_keyword(id, &crate::effects::KeywordAbility::Flash);
+            || state.has_keyword(id, &crate::effects::KeywordAbility::Flash)
+            || state.can_cast_as_though_flash(obj, player);
         if !is_instant_speed && !sorcery_speed_ok { continue; }
 
         // Layer-aware lookup: honors Snapcaster-style granted flashback.

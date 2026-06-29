@@ -853,6 +853,23 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build a "you may cast [matching] spells as though they had flash"
+    /// timing permission for the source's controller (Vedalken Orrery /
+    /// Leyline of Anticipation = `ObjectFilter::default()` matching every
+    /// spell; type-narrowed for "cast creature spells as though …").
+    pub fn cast_as_though_flash(source: ObjectId,
+                                spell_filter: crate::targets::ObjectFilter,
+                                duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::CastAsThoughFlash { spell_filter },
+        }
+    }
+
     /// Build a GLOBAL "[filter] creatures lose [keyword]" removal
     /// (Gravity Sphere) — the filtered sibling of
     /// [`Self::remove_keyword`].
@@ -1351,6 +1368,14 @@ pub enum ContinuousEffectKind {
     /// changes). Consumed by [`GameState::effective_max_hand_size`] at
     /// the cleanup discard, not by the layer-apply loop.
     MaxHandSize { modifier: MaxHandSizeMod },
+    /// Marker — "You may cast [spells matching `spell_filter`] as though
+    /// they had flash" (CR 702.8 timing permission: Vedalken Orrery /
+    /// Leyline of Anticipation with an all-matching filter, "cast
+    /// creature spells as though they had flash" with a type filter).
+    /// The permission applies to the SOURCE's current controller.
+    /// Consumed by `legal_actions` (folds into the instant-speed check),
+    /// not by the layer-apply loop.
+    CastAsThoughFlash { spell_filter: crate::targets::ObjectFilter },
     /// Custom. Called with the object id under consideration, its
     /// in-flight characteristics, and the game state.
     Custom(fn(ObjectId, &mut Characteristics, &GameState)),
@@ -1478,7 +1503,8 @@ impl ContinuousEffectKind {
             | Self::SpellCostModifier { .. }
             | Self::AbilityCostModifier { .. }
             | Self::AttackTax { .. }
-            | Self::MaxHandSize { .. } => false,
+            | Self::MaxHandSize { .. }
+            | Self::CastAsThoughFlash { .. } => false,
             Self::Custom(_) => true, // Custom fn decides internally
         }
     }
@@ -1603,7 +1629,8 @@ impl ContinuousEffectKind {
             | Self::SpellCostModifier { .. }
             | Self::AbilityCostModifier { .. }
             | Self::AttackTax { .. }
-            | Self::MaxHandSize { .. } => {} // markers
+            | Self::MaxHandSize { .. }
+            | Self::CastAsThoughFlash { .. } => {} // markers
             Self::AttachedCreatureAddColors { colors } => {
                 chars.colors = crate::types::ColorSet(chars.colors.0 | colors.0);
             }
@@ -1966,6 +1993,25 @@ impl GameState {
         if no_max { return usize::MAX; }
         let base = set_to.unwrap_or(self.format.max_hand_size) as i64;
         (base + delta).max(0) as usize
+    }
+
+    /// May `player` cast `spell` as though it had flash (CR 702.8)? True
+    /// when a live [`ContinuousEffectKind::CastAsThoughFlash`] effect
+    /// whose source `player` controls matches the spell (Vedalken Orrery
+    /// = all spells; type-filtered variants narrow it). Folded into the
+    /// instant-speed check in `legal_actions`.
+    pub fn can_cast_as_though_flash(
+        &self, spell: &crate::objects::GameObject, player: PlayerId,
+    ) -> bool {
+        self.continuous_effects.iter().any(|e| match &e.kind {
+            ContinuousEffectKind::CastAsThoughFlash { spell_filter }
+                if e.is_live(self) =>
+            {
+                self.objects.get(e.source).is_some_and(|s| s.controller == player)
+                    && spell_filter.matches_base(spell, self, player)
+            }
+            _ => false,
+        })
     }
 
     /// Net generic-cost delta for casting a spell whose CAST-FACE
@@ -3268,6 +3314,46 @@ mod tests {
             b, MaxHandSizeMod::Delta(2), Duration::WhileSourceOnBattlefield));
         assert_eq!(s2.effective_max_hand_size(1), 10, "SetTo(8) + Delta(2)");
         assert_eq!(s2.effective_max_hand_size(0), 7, "other player still base");
+    }
+
+    #[test]
+    fn can_cast_as_though_flash_respects_filter_and_controller() {
+        let mut s = GameState::new(2, 0);
+        // A sorcery in player 0's hand.
+        let sorc_id = s.allocate_object_id();
+        let mut chars = Characteristics::default();
+        chars.types = crate::types::TypeLine::SORCERY.into();
+        s.objects.insert(GameObject::new(sorc_id, 0, Zone::Hand(0), 0, chars));
+
+        // No permission yet.
+        {
+            let sorc = s.objects.get(sorc_id).unwrap();
+            assert!(!s.can_cast_as_though_flash(sorc, 0));
+        }
+        // Vedalken Orrery: ALL spells, for its controller (player 0).
+        let orrery = put_creature(&mut s, 0, 0, 0);
+        s.add_continuous_effect(ContinuousEffect::cast_as_though_flash(
+            orrery, crate::targets::ObjectFilter::default(),
+            Duration::WhileSourceOnBattlefield));
+        {
+            let sorc = s.objects.get(sorc_id).unwrap();
+            assert!(s.can_cast_as_though_flash(sorc, 0), "controller gets flash timing");
+            assert!(!s.can_cast_as_though_flash(sorc, 1), "opponent does not");
+        }
+
+        // A creature-only permission does NOT cover a sorcery.
+        let mut s2 = GameState::new(2, 0);
+        let cs = s2.allocate_object_id();
+        let mut sc = Characteristics::default();
+        sc.types = crate::types::TypeLine::SORCERY.into();
+        s2.objects.insert(GameObject::new(cs, 0, Zone::Hand(0), 0, sc));
+        let src = put_creature(&mut s2, 0, 0, 0);
+        s2.add_continuous_effect(ContinuousEffect::cast_as_though_flash(
+            src, crate::targets::ObjectFilter::creature(),
+            Duration::WhileSourceOnBattlefield));
+        let sorc = s2.objects.get(cs).unwrap();
+        assert!(!s2.can_cast_as_though_flash(sorc, 0),
+            "creature-only flash permission doesn't cover a sorcery");
     }
 
     #[test]
