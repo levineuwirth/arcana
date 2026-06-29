@@ -245,6 +245,101 @@ mod tests {
             "material value: winner positive, loser negative");
     }
 
+    /// DIAGNOSTIC (non-asserting): why is the learned value a worse search
+    /// leaf than MaterialValue (both baselines showed it)? Hypothesis: the
+    /// value learned from weak (random) self-play is FLAT — under random
+    /// continuation, outcomes barely depend on the position, so the fitted
+    /// win-prob has little discriminative spread and is a poor leaf. This
+    /// measures, on the SAME mid-game self-play states: spread (std/range)
+    /// of learned vs material value, their correlation, and which better
+    /// predicts the eventual MC outcome (log-loss). Run in release:
+    ///   cargo test -p arcana-ai --release --lib \
+    ///     learn::tests::diagnose_learned_vs_material_value -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn diagnose_learned_vs_material_value() {
+        use crate::search::{MaterialValue, RandomStatePolicy, StatePolicy, ValueFn};
+
+        let reg = arcana_cards::build_catalog();
+        let deck = arcana_cards::sample_deck(&reg, 7);
+        let lv = learn_value(
+            &deck, &reg, 30, 4000,
+            &|s| Box::new(RandomStatePolicy::new(s)), 300, 0.3, 1e-4, 1);
+        let mv = MaterialValue;
+
+        // Collect mid-game states (p0 perspective) + eventual MC outcome.
+        let mut states: Vec<GameState> = Vec::new();
+        let mut outcomes: Vec<f32> = Vec::new();
+        for g in 0u64..20 {
+            let mut pa = RandomStatePolicy::new(1000 + g * 2);
+            let mut pb = RandomStatePolicy::new(1001 + g * 2);
+            let (mut s, mut y) = new_game(vec![deck.clone(), deck.clone()], &reg, 500 + g);
+            let mut snap: Vec<GameState> = Vec::new();
+            let mut steps = 0u32;
+            let res = loop {
+                match y {
+                    EngineYield::GameOver(r) => break r,
+                    EngineYield::PendingDecision { player, legal_actions, .. } => {
+                        if steps >= 4000 || legal_actions.is_empty() { break GameResult::Draw; }
+                        if steps % 7 == 0 { snap.push(s.clone()); }
+                        let a = if player == 0 {
+                            pa.choose(&s, &reg, player, &legal_actions)
+                        } else {
+                            pb.choose(&s, &reg, player, &legal_actions)
+                        };
+                        let (ns, ny) = step(s, a, &reg); s = ns; y = ny; steps += 1;
+                    }
+                }
+            };
+            let label = match res {
+                GameResult::Win(0) => 1.0, GameResult::Win(_) => 0.0,
+                GameResult::Eliminated(0) => 0.0, GameResult::Eliminated(_) => 1.0,
+                GameResult::Draw => 0.5,
+            };
+            for st in snap { states.push(st); outcomes.push(label); }
+        }
+
+        let lvs: Vec<f32> = states.iter().map(|s| lv.value(s, 0)).collect();
+        let mvs: Vec<f32> = states.iter().map(|s| mv.value(s, 0)).collect();
+
+        fn stats(v: &[f32]) -> (f32, f32, f32, f32) {
+            let n = v.len() as f32;
+            let mean = v.iter().sum::<f32>() / n;
+            let var = v.iter().map(|x| (x - mean).powi(2)).sum::<f32>() / n;
+            (mean, var.sqrt(),
+             v.iter().cloned().fold(f32::INFINITY, f32::min),
+             v.iter().cloned().fold(f32::NEG_INFINITY, f32::max))
+        }
+        fn pearson(a: &[f32], b: &[f32]) -> f32 {
+            let n = a.len() as f32;
+            let (ma, mb) = (a.iter().sum::<f32>() / n, b.iter().sum::<f32>() / n);
+            let mut cov = 0.0; let mut va = 0.0; let mut vb = 0.0;
+            for (x, yv) in a.iter().zip(b) {
+                cov += (x - ma) * (yv - mb); va += (x - ma).powi(2); vb += (yv - mb).powi(2);
+            }
+            cov / (va.sqrt() * vb.sqrt()).max(1e-9)
+        }
+        // value in [-1,1] → prob; log-loss vs MC outcome.
+        fn logloss(v: &[f32], y: &[f32]) -> f32 {
+            let n = v.len() as f32;
+            v.iter().zip(y).map(|(vi, yi)| {
+                let p = ((vi + 1.0) / 2.0).clamp(1e-4, 1.0 - 1e-4);
+                -(yi * p.ln() + (1.0 - yi) * (1.0 - p).ln())
+            }).sum::<f32>() / n
+        }
+
+        let (lm, ls, lmin, lmax) = stats(&lvs);
+        let (mm, ms, mmin, mmax) = stats(&mvs);
+        println!("\n=== learned-vs-material value diagnosis ({} states) ===", states.len());
+        println!("learned : mean={lm:+.3} std={ls:.3} range=[{lmin:+.3},{lmax:+.3}]");
+        println!("material: mean={mm:+.3} std={ms:.3} range=[{mmin:+.3},{mmax:+.3}]");
+        println!("corr(learned,material) = {:.3}", pearson(&lvs, &mvs));
+        println!("log-loss  learned={:.4}  material={:.4}  (lower=better outcome predictor)",
+            logloss(&lvs, &outcomes), logloss(&mvs, &outcomes));
+        println!("interpretation: learned std << material std ⇒ flat value (poor leaf);");
+        println!("                low corr + worse log-loss ⇒ learned fit is weak.");
+    }
+
     /// Logistic regression learns a linearly-separable toy problem: feature 0
     /// positive ⇒ label 1. After training, a clearly-positive input scores
     /// well above a clearly-negative one.
