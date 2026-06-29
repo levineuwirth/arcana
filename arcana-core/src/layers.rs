@@ -889,6 +889,19 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build a "you may play the top card of your library" permission for
+    /// the source's controller (Future Sight / Oracle of Mul Daya).
+    pub fn play_from_top_of_library(source: ObjectId, duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::PlayFromTopOfLibrary,
+        }
+    }
+
     /// Build a GLOBAL "[filter] creatures lose [keyword]" removal
     /// (Gravity Sphere) — the filtered sibling of
     /// [`Self::remove_keyword`].
@@ -1430,6 +1443,13 @@ pub enum ContinuousEffectKind {
         player: crate::targets::ControllerConstraint,
         max: u32,
     },
+    /// Marker — "You may play the top card of your library" (CR 601.3e:
+    /// Future Sight, Oracle of Mul Daya's land half, Vance's Blasting
+    /// Cannons). The affected player is the source's CURRENT controller.
+    /// `legal_actions` offers the top card as a land play (if a land) or
+    /// a `CastModifier::TopOfLibrary` cast (if a nonland spell). The top
+    /// card is implicitly visible to its controller for this decision.
+    PlayFromTopOfLibrary,
     /// Custom. Called with the object id under consideration, its
     /// in-flight characteristics, and the game state.
     Custom(fn(ObjectId, &mut Characteristics, &GameState)),
@@ -1560,7 +1580,8 @@ impl ContinuousEffectKind {
             | Self::AttackTax { .. }
             | Self::MaxHandSize { .. }
             | Self::CastAsThoughFlash { .. }
-            | Self::SpellCastLimit { .. } => false,
+            | Self::SpellCastLimit { .. }
+            | Self::PlayFromTopOfLibrary => false,
             Self::Custom(_) => true, // Custom fn decides internally
         }
     }
@@ -1687,7 +1708,8 @@ impl ContinuousEffectKind {
             | Self::AttackTax { .. }
             | Self::MaxHandSize { .. }
             | Self::CastAsThoughFlash { .. }
-            | Self::SpellCastLimit { .. } => {} // markers
+            | Self::SpellCastLimit { .. }
+            | Self::PlayFromTopOfLibrary => {} // markers
             Self::AttachedCreatureAddColors { colors } => {
                 chars.colors = crate::types::ColorSet(chars.colors.0 | colors.0);
             }
@@ -2095,6 +2117,17 @@ impl GameState {
             }
             _ => false,
         })
+    }
+
+    /// May `player` play the top card of their library (CR 601.3e —
+    /// Future Sight / Oracle of Mul Daya)? True when a live
+    /// [`ContinuousEffectKind::PlayFromTopOfLibrary`] effect's source is
+    /// controlled by `player`. Consumed by `legal_actions`.
+    pub fn can_play_from_top_of_library(&self, player: PlayerId) -> bool {
+        self.continuous_effects.iter().any(|e| matches!(
+            e.kind, ContinuousEffectKind::PlayFromTopOfLibrary)
+            && e.is_live(self)
+            && self.objects.get(e.source).is_some_and(|s| s.controller == player))
     }
 
     /// Net generic-cost delta for casting a spell whose CAST-FACE

@@ -964,13 +964,29 @@ fn legal_priority_actions(
     actions.push(Action::PassPriority);
     actions.push(Action::Concede);
 
+    // Future Sight / Oracle of Mul Daya — "you may play the top card of
+    // your library". The top card joins the hand for cast/land-play
+    // enumeration (CR 601.3e): a land via `PlayLand`, a nonland via a
+    // `CastModifier::TopOfLibrary` cast.
+    let top_lib = if state.can_play_from_top_of_library(player) {
+        state.player(player).library_top_to_bottom.first().copied()
+    } else {
+        None
+    };
+    let top_lib_land = top_lib.filter(|&t|
+        state.objects.get(t).is_some_and(|o| o.is_land()));
+    let top_lib_cast = top_lib.filter(|&t|
+        state.objects.get(t).is_some_and(|o| !o.is_land()));
+
     // Play a land. CR 712.4 — an MDFC whose back face is a land is
     // playable as the back face via `PlayLand { mdfc_back: true }`,
     // counting the same single land drop as any other land play.
     // Only one of the two faces can be chosen per play — the agent
     // picks which face the drop goes to.
     if can_play_land_now(state, player) {
-        for id in sorted_ids_in_zone(state, Zone::Hand(player)) {
+        let mut land_ids = sorted_ids_in_zone(state, Zone::Hand(player));
+        land_ids.extend(top_lib_land);
+        for id in land_ids {
             let obj = state.objects.get(id).unwrap();
             if obj.is_land() {
                 actions.push(Action::PlayLand {
@@ -998,7 +1014,9 @@ fn legal_priority_actions(
         && state.turn.is_main_phase()
         && state.stack_is_empty();
 
-    for id in sorted_ids_in_zone(state, Zone::Hand(player)) {
+    let mut cast_ids = sorted_ids_in_zone(state, Zone::Hand(player));
+    cast_ids.extend(top_lib_cast);
+    for id in cast_ids {
         let obj = state.objects.get(id).unwrap();
         if obj.is_land() { continue; } // not a cast
         // Rule of Law-class restriction: can't cast if a per-turn
@@ -1167,7 +1185,11 @@ fn legal_priority_actions(
                             mana_payment: plan.clone(),
                             additional_costs: kicker_additional.clone(),
                             x_value,
-                            cast_modifier: crate::actions::CastModifier::None,
+                            cast_modifier: if Some(id) == top_lib_cast {
+                                crate::actions::CastModifier::TopOfLibrary
+                            } else {
+                                crate::actions::CastModifier::None
+                            },
                             cost_reductions: crate::actions::CostReductions {
                                 delve_exiles: if delve_available {
                                     Some(subset.clone())
@@ -3287,6 +3309,51 @@ mod tests {
         let actions = legal_actions(&s, &CardRegistry::new());
         assert!(actions.iter().any(|a|
             matches!(a, Action::PlayLand { object_id, .. } if *object_id == l)));
+    }
+
+    #[test]
+    fn play_from_top_of_library_offers_the_top_land() {
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        // A land sitting on top of player 0's library.
+        let top = put(&mut s, 0, Zone::Library(0), land_chars());
+        s.player_mut(0).library_top_to_bottom = vec![top];
+        // No permission yet ⇒ the top land is not playable.
+        assert!(!legal_actions(&s, &CardRegistry::new()).iter().any(|a|
+            matches!(a, Action::PlayLand { object_id, .. } if *object_id == top)));
+        // Oracle of Mul Daya / Future Sight — source controlled by p0.
+        let src = put(&mut s, 0, Zone::Battlefield, land_chars());
+        s.add_continuous_effect(
+            crate::layers::ContinuousEffect::play_from_top_of_library(
+                src, crate::layers::Duration::WhileSourceOnBattlefield));
+        assert!(legal_actions(&s, &CardRegistry::new()).iter().any(|a|
+            matches!(a, Action::PlayLand { object_id, .. } if *object_id == top)),
+            "the top library land is now playable");
+        // The opponent gets no such permission from p0's source.
+        assert!(!s.can_play_from_top_of_library(1));
+    }
+
+    #[test]
+    fn play_from_top_of_library_offers_the_top_spell_cast() {
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        // A free ({0}) sorcery on top of p0's library (free so it's
+        // enumerable without seeding a mana pool).
+        let mut sc = Characteristics::default();
+        sc.types = TypeLine::SORCERY.into();
+        sc.mana_cost = Some(crate::mana::ManaCost::parse("{0}").unwrap());
+        let top = put(&mut s, 0, Zone::Library(0), sc);
+        s.player_mut(0).library_top_to_bottom = vec![top];
+        let src = put(&mut s, 0, Zone::Battlefield, land_chars());
+        s.add_continuous_effect(
+            crate::layers::ContinuousEffect::play_from_top_of_library(
+                src, crate::layers::Duration::WhileSourceOnBattlefield));
+        assert!(legal_actions(&s, &CardRegistry::new()).iter().any(|a|
+            matches!(a, Action::CastSpell { object_id, cast_modifier, .. }
+                if *object_id == top
+                && matches!(cast_modifier,
+                    crate::actions::CastModifier::TopOfLibrary))),
+            "the top library spell is castable via the TopOfLibrary modifier");
     }
 
     #[test]

@@ -378,6 +378,20 @@ fn apply_cast_spell(
                 return;
             }
         }
+        crate::actions::CastModifier::TopOfLibrary => {
+            // CR 601.3e — "you may play the top card of your library"
+            // (Future Sight). Source must be the top card of the
+            // caster's library, a nonland, with the permission active.
+            // Pure zone override; normal cost and post-resolution path.
+            let is_top = state.player(controller).library_top_to_bottom
+                .first() == Some(&object_id);
+            let nonland = state.objects.get(object_id)
+                .is_some_and(|o| !o.is_land());
+            if !(is_top && nonland
+                && state.can_play_from_top_of_library(controller)) {
+                return;
+            }
+        }
     }
 
     // Modal validation (CR 700.2). A modal spell requires the caster to
@@ -439,7 +453,8 @@ fn apply_cast_spell(
         let cost_opt = match cast_modifier {
             crate::actions::CastModifier::None
             | crate::actions::CastModifier::AdventureCreature
-            | crate::actions::CastModifier::ImpulsePlay =>
+            | crate::actions::CastModifier::ImpulsePlay
+            | crate::actions::CastModifier::TopOfLibrary =>
                 state.objects.get(object_id)
                     .and_then(|o| o.characteristics.mana_cost.clone()),
             crate::actions::CastModifier::Flashback =>
@@ -560,7 +575,8 @@ fn apply_cast_spell(
         let cost_opt = match cast_modifier {
             crate::actions::CastModifier::None
             | crate::actions::CastModifier::AdventureCreature
-            | crate::actions::CastModifier::ImpulsePlay =>
+            | crate::actions::CastModifier::ImpulsePlay
+            | crate::actions::CastModifier::TopOfLibrary =>
                 state.objects.get(object_id)
                     .and_then(|o| o.characteristics.mana_cost.clone()),
             crate::actions::CastModifier::Flashback =>

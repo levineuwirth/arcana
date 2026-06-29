@@ -108,6 +108,14 @@ pub enum CastModifier {
     /// always "go to owner's graveyard" via the normal non-permanent
     /// spell finalize.
     SplitRight,
+    /// CR 601.3e — cast a NONLAND spell from the top of the caster's
+    /// library ("you may play the top card of your library" — Future
+    /// Sight). Source must be the top card of the caster's library; a
+    /// pure zone override (normal cost, normal post-resolution
+    /// destination) analogous to [`Self::ImpulsePlay`]. Playing the top
+    /// card when it's a LAND goes through `Action::PlayLand`, not this
+    /// modifier (Oracle of Mul Daya's land half).
+    TopOfLibrary,
 }
 
 /// Bundle of *cost-reduction* choices (CR 601.2f category: "cost
