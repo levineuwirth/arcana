@@ -941,6 +941,17 @@ pub fn dump_prompts(
     let prompts_dir = out_dir.join("prompts");
     std::fs::create_dir_all(&prompts_dir)
         .with_context(|| format!("creating {}", prompts_dir.display()))?;
+    // De-duplication: the global SYSTEM prompt + each shape's shared
+    // builder catalog (everything before the per-card `=== TARGET CARD
+    // ===` marker) is identical across every card of that shape. Write
+    // it ONCE to `conventions/<shape>.txt` and make per-card prompt files
+    // thin (just the card spec + a pointer). Lets a chunk hold many more
+    // cards before overflowing an agent's context, and cuts redundant
+    // token reads. `conv_written` tracks which shape catalogs are on disk.
+    let conventions_dir = out_dir.join("conventions");
+    std::fs::create_dir_all(&conventions_dir)
+        .with_context(|| format!("creating {}", conventions_dir.display()))?;
+    let mut conv_written: std::collections::HashSet<String> = Default::default();
 
     let sampled = sample_cards(pool, config);
     eprintln!(
@@ -1003,20 +1014,58 @@ pub fn dump_prompts(
                     }
                 }
                 let fname = format!("{idx:03}_{slug}.txt");
-                let body = format!(
-                    "# Arcana card-gen prompt — {name} (T{tier}, {shape})\n\
-                     #\n\
-                     # Write ONLY the Rust source for this card to a sibling file\n\
-                     # named {idx:03}_{slug}.rs. No markdown fences, no prose.\n\
-                     #\n\
-                     ===== SYSTEM =====\n{system}\n\
-                     ===== USER =====\n{user}\n",
-                    name = card.name,
-                    tier = tier.as_number(),
-                    shape = prompt_shape_name(prompt.shape),
-                    system = prompt.system,
-                    user = prompt.user,
-                );
+                // Split the user prompt into the shared shape catalog
+                // (before the marker) and the per-card spec (after it).
+                const MARKER: &str = "=== TARGET CARD ===";
+                let body = if let Some((preamble, spec)) =
+                    prompt.user.split_once(MARKER)
+                {
+                    let conv_name = format!("{shape_name}.txt");
+                    if conv_written.insert(shape_name.to_string()) {
+                        let conv_body = format!(
+                            "===== SYSTEM =====\n{system}\n\
+                             ===== ENGINE CONVENTIONS ({shape}) =====\n{preamble}\n",
+                            system = prompt.system,
+                            shape = shape_name,
+                            preamble = preamble.trim_end(),
+                        );
+                        std::fs::write(conventions_dir.join(&conv_name), conv_body)
+                            .with_context(|| {
+                                format!("writing conventions {conv_name}")
+                            })?;
+                    }
+                    format!(
+                        "# Arcana card-gen prompt — {name} (T{tier}, {shape})\n\
+                         #\n\
+                         # SHARED ENGINE CONVENTIONS (read ONCE per chunk, then\n\
+                         # reuse for every card): conventions/{conv_name}\n\
+                         # Write ONLY the Rust source for this card to a sibling\n\
+                         # file named {idx:03}_{slug}.rs. No markdown fences, no prose.\n\
+                         #\n\
+                         ===== TARGET CARD ====={spec}",
+                        name = card.name,
+                        tier = tier.as_number(),
+                        shape = shape_name,
+                        conv_name = conv_name,
+                        spec = spec,
+                    )
+                } else {
+                    // Shape without the marker — self-contained fallback.
+                    format!(
+                        "# Arcana card-gen prompt — {name} (T{tier}, {shape})\n\
+                         #\n\
+                         # Write ONLY the Rust source for this card to a sibling\n\
+                         # file named {idx:03}_{slug}.rs. No markdown fences, no prose.\n\
+                         #\n\
+                         ===== SYSTEM =====\n{system}\n\
+                         ===== USER =====\n{user}\n",
+                        name = card.name,
+                        tier = tier.as_number(),
+                        shape = shape_name,
+                        system = prompt.system,
+                        user = prompt.user,
+                    )
+                };
                 std::fs::write(prompts_dir.join(&fname), body)
                     .with_context(|| format!("writing prompt {fname}"))?;
                 row.supported = true;

@@ -54,27 +54,41 @@ Prompt files are numbered `000…1024`. Assign agent _k_ the range
 `model: sonnet` (proven sufficient for this class; faster/cheaper
 than opus at ~equal yield here).
 
+**Prompt layout (de-duplicated).** The shared per-shape engine catalog
+(the global SYSTEM prompt + that shape's `ContinuousEffect` / `Effect`
+builder reference) is written ONCE to `conventions/<Shape>.txt`. Each
+`prompts/NNN_slug.txt` is now THIN: a `#` header naming its conventions
+file, then a `===== TARGET CARD =====` section with just that card's
+spec. The agent reads the shared conventions file ONCE per chunk, then
+applies it to every card — so a chunk can hold many more cards before
+overflowing context. (A shape whose prompt lacks the `=== TARGET CARD
+===` marker falls back to a self-contained `SYSTEM`/`USER` file.)
+
 **Verbatim per-agent prompt template** (substitute LO, HI, and the
 dir):
 
 > Code-generation task for the Arcana MTG engine. Directory:
 > `<ABS>/target/cardgen/run01`
 >
-> List the files in `prompts/`. Process EVERY file whose 3-digit
-> numeric prefix NNN is in the range `LO`–`HI` inclusive (some
-> numbers may be absent — process whatever exists).
+> FIRST read every file in `conventions/` — these hold the shared,
+> authoritative engine API + builder catalog for each card shape.
+> They are the SAME for all cards of a shape, so read each once and
+> keep it in mind.
 >
-> For each: the file has `#` header lines, then `===== SYSTEM =====`
-> (authoritative system instructions), then `===== USER =====` (the
-> task). Produce EXACTLY the Rust source the prompt asks for — no
-> markdown fences, no prose, just the `.rs` body starting with
-> `//!`. Obey the prompt's API-DISCIPLINE rule strictly: use ONLY
-> types/constructors/variants/methods shown in that prompt's
-> reference example; never invent APIs; do NOT read other
-> repository files. Write each result with the Write tool to the
-> sibling path = same directory (NOT `prompts/`), filename = prompt
-> filename with `.txt`→`.rs`. Do not run cargo. Report the files
-> you wrote.
+> Then list `prompts/`. Process EVERY file whose 3-digit numeric
+> prefix NNN is in the range `LO`–`HI` inclusive (some numbers may be
+> absent — process whatever exists). Each thin prompt's `#` header
+> names its `conventions/<Shape>.txt`; the `===== TARGET CARD =====`
+> section is the card to build.
+>
+> Produce EXACTLY the Rust source the prompt asks for — no markdown
+> fences, no prose, just the `.rs` body starting with `//!`. Obey the
+> API-DISCIPLINE rule strictly: use ONLY types/constructors/variants/
+> methods shown in the conventions file or the card's reference
+> example; never invent APIs; do NOT read other repository files.
+> Write each result with the Write tool to the sibling path = same
+> directory (NOT `prompts/`), filename = prompt filename with
+> `.txt`→`.rs`. Do not run cargo. Report the files you wrote.
 
 These are vanilla/french-vanilla creatures: stats, types, colors,
 subtypes, and (french-vanilla) evergreen keywords only. No
