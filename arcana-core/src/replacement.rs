@@ -192,6 +192,15 @@ pub enum ReplacementCondition {
         object_filter: ObjectFilter,
         kinds: CounterKindFilter,
     },
+    /// "If `player` taps a `producer_filter` permanent for mana, …" —
+    /// matches a [`ReplacementEvent::ProduceMana`] whose controller
+    /// passes `player` and whose producer matches the filter. Mana
+    /// Reflection = `{ producer_filter: ObjectFilter::default(), player:
+    /// You }`; tribe/land-restricted variants narrow the filter.
+    WouldProduceMana {
+        producer_filter: ObjectFilter,
+        player: crate::targets::ControllerConstraint,
+    },
     /// Custom predicate.
     Custom(fn(&ReplacementEvent, &GameState) -> bool),
 }
@@ -295,6 +304,15 @@ impl ReplacementCondition {
                 }
             }
 
+            (
+                WouldProduceMana { producer_filter, player },
+                ReplacementEvent::ProduceMana { producer, controller, .. },
+            ) => {
+                player.matches(*controller, source_controller)
+                    && state.objects.get(*producer).is_some_and(|o|
+                        producer_filter.matches(o, state, source_controller))
+            }
+
             (Custom(f), _) => f(event, state),
 
             _ => false,
@@ -373,6 +391,12 @@ pub enum ReplacementKind {
     /// (Doubling Season = MultiplyCounters(2)). N counters → N * m.
     MultiplyCounters(u32),
 
+    // --- Mana-production-event kinds ---
+    /// "It produces N times as much of that mana instead" (Mana
+    /// Reflection = MultiplyMana(2), Nyxbloom Ascendancy = MultiplyMana(3)).
+    /// Each produced [`crate::mana::ManaUnit`] is duplicated m times.
+    MultiplyMana(u32),
+
     // --- Draw-event kinds ---
     /// "If you would draw a card, draw two cards instead" (Howling Mine
     /// style; simplified).
@@ -449,6 +473,17 @@ pub enum ReplacementEvent {
         target: CounterTarget,
         kind: CounterKind,
         count: u32,
+    },
+    /// A would-produce-mana event — mana about to be added by a MANA
+    /// ABILITY (tapping a permanent for mana, CR 605). Lets Mana
+    /// Reflection / Nyxbloom Ascendancy intercept the produced mana and
+    /// multiply it. Each [`crate::mana::ManaUnit`] is one mana. Routed
+    /// from the mana-ability resolution only — NOT from spell/ability
+    /// "add mana" effects (Dark Ritual), which don't tap for mana.
+    ProduceMana {
+        producer: ObjectId,
+        controller: PlayerId,
+        mana: Vec<crate::mana::ManaUnit>,
     },
 }
 
@@ -691,6 +726,57 @@ impl GameState {
         Some((final_kind, final_count))
     }
 
+    /// Apply mana-production replacements (Mana Reflection / Nyxbloom)
+    /// to the mana a mana ability is about to produce. `producer` is the
+    /// tapped permanent; `controller` is who's tapping. Returns the
+    /// (possibly multiplied) mana to add to the pool. Read-only — the
+    /// caller's `Effect::AddMana` commits it. Mirrors the
+    /// [`Self::place_counters`] resolution loop (multiple doublers
+    /// stack, each applied once; CR 614.15 self-replacement first).
+    pub fn replace_produced_mana(
+        &self,
+        producer: ObjectId,
+        controller: PlayerId,
+        mana: Vec<crate::mana::ManaUnit>,
+    ) -> Vec<crate::mana::ManaUnit> {
+        if mana.is_empty() { return mana; }
+        let mut current = ReplacementEvent::ProduceMana { producer, controller, mana };
+        let mut used: crate::collections::HashSet<u64> = crate::collections::HashSet::default();
+        loop {
+            let candidates: Vec<u64> = self.replacement_effects.iter()
+                .filter(|e| {
+                    if used.contains(&e.id) { return false; }
+                    let source_ctrl = source_controller_of(e, self);
+                    if let Some(gate) = e.state_gate {
+                        if !gate(self, e.source, source_ctrl) { return false; }
+                    }
+                    e.condition.matches(&current, source_ctrl, self)
+                })
+                .map(|e| e.id)
+                .collect();
+            if candidates.is_empty() { break; }
+            let pick = {
+                let self_first = self.replacement_effects.iter()
+                    .find(|e| candidates.contains(&e.id) && e.is_self_replacement)
+                    .map(|e| e.id);
+                self_first.or_else(|| candidates.first().copied())
+            };
+            let Some(pick_id) = pick else { break; };
+            used.insert(pick_id);
+            let Some(rk) = self.replacement_effects.iter()
+                .find(|e| e.id == pick_id).map(|e| e.kind.clone())
+            else { break; };
+            match apply_kind_to_event(&rk, &current, self) {
+                Some(ev) => current = ev,
+                None => return Vec::new(), // multiplier of 0 — no mana
+            }
+        }
+        match current {
+            ReplacementEvent::ProduceMana { mana, .. } => mana,
+            _ => Vec::new(),
+        }
+    }
+
     /// Collect ETB replacement modifications for an object about to
     /// enter the battlefield. Does NOT mutate state — the caller
     /// commits the modifications.
@@ -916,6 +1002,17 @@ fn apply_kind_to_event(
             let new_count = count.saturating_mul(*m);
             if new_count == 0 { None }
             else { Some(PlaceCounters { target: *target, kind: *kind, count: new_count }) }
+        }
+
+        (MultiplyMana(m), ProduceMana { producer, controller, mana }) => {
+            if *m == 0 { return Some(ProduceMana {
+                producer: *producer, controller: *controller, mana: Vec::new() }); }
+            // Each unit is one mana; duplicate every unit m times.
+            let mut scaled = Vec::with_capacity(mana.len() * *m as usize);
+            for u in mana {
+                for _ in 0..*m { scaled.push(u.clone()); }
+            }
+            Some(ProduceMana { producer: *producer, controller: *controller, mana: scaled })
         }
 
         (Custom(f), _) => f(event, state),
@@ -1699,6 +1796,56 @@ mod tests {
         let out = s.place_counters(
             CounterTarget::Object(c), CounterKind::PlusOnePlusOne, 2);
         assert_eq!(out, Some((CounterKind::PlusOnePlusOne, 4)));
+    }
+
+    fn green(n: usize) -> Vec<crate::mana::ManaUnit> {
+        (0..n).map(|_| crate::mana::ManaUnit::plain(
+            crate::types::ManaColor::Green, 0)).collect()
+    }
+    fn install_mana_reflection(s: &mut GameState) {
+        // "If you tap a permanent for mana, it produces twice as much …"
+        s.add_replacement_effect(base_effect(
+            /*source (no object ⇒ controller 0)=*/ 997,
+            ReplacementCondition::WouldProduceMana {
+                producer_filter: ObjectFilter::default(),
+                player: ControllerConstraint::You,
+            },
+            ReplacementKind::MultiplyMana(2),
+        ));
+    }
+
+    #[test]
+    fn mana_reflection_doubles_a_mana_ability() {
+        let mut s = GameState::new(2, 0);
+        let land = put_creature(&mut s, 0, 0, 0); // stand-in producer p0 controls
+        install_mana_reflection(&mut s);
+        // Player 0 (the Reflection's controller) taps for {G} ⇒ {G}{G}.
+        let out = s.replace_produced_mana(land, 0, green(1));
+        assert_eq!(out.len(), 2, "1 mana doubled to 2");
+        assert!(out.iter().all(|u| u.color == crate::types::ManaColor::Green));
+        // The opponent's tap is NOT doubled ("you" = the Reflection's controller).
+        assert_eq!(s.replace_produced_mana(land, 1, green(1)).len(), 1);
+        // No-effect baseline: a fresh state doesn't change the mana.
+        let s2 = GameState::new(2, 0);
+        assert_eq!(s2.replace_produced_mana(land, 0, green(2)).len(), 2);
+    }
+
+    #[test]
+    fn mana_doublers_stack_multiplicatively() {
+        // Mana Reflection (×2) + Nyxbloom Ascendancy (×3) ⇒ ×6, each
+        // replacement applied once (CR 614.5).
+        let mut s = GameState::new(2, 0);
+        let land = put_creature(&mut s, 0, 0, 0);
+        install_mana_reflection(&mut s);
+        s.add_replacement_effect(base_effect(
+            /*nyxbloom=*/ 996,
+            ReplacementCondition::WouldProduceMana {
+                producer_filter: ObjectFilter::default(),
+                player: ControllerConstraint::You,
+            },
+            ReplacementKind::MultiplyMana(3),
+        ));
+        assert_eq!(s.replace_produced_mana(land, 0, green(1)).len(), 6);
     }
 
     #[test]

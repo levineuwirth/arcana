@@ -1107,6 +1107,18 @@ fn apply_activate_ability(
         // off `card_id`) resolve correctly.
         let effects = (effect_fn)(state, &ctx, registry);
         for effect in effects {
+            // CR 605 — the produced mana passes through mana-production
+            // replacements (Mana Reflection / Nyxbloom multiply it). Only
+            // the mana ability's own AddMana is affected; this is the
+            // "tap a permanent for mana" hook, so spell "add mana" effects
+            // elsewhere aren't doubled.
+            let effect = match effect {
+                crate::effects::Effect::AddMana { player, mana } => {
+                    let mana = state.replace_produced_mana(source, player, mana);
+                    crate::effects::Effect::AddMana { player, mana }
+                }
+                other => other,
+            };
             effect.execute(state);
         }
     } else {
