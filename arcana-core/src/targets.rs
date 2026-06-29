@@ -623,6 +623,13 @@ pub struct ObjectFilter {
     /// `Some(true)` = only commanders (CR 903.3 designation —
     /// Background statics); `Some(false)` = only non-commanders.
     pub is_commander: Option<bool>,
+    /// Match a predefined commodity token by kind (Treasure / Clue /
+    /// Food / Powerstone / Incubator / Blood / Map). These artifact
+    /// subtypes are token-only in real Magic and are minted engine-side
+    /// without an interner, so they carry a [`CommodityToken`] marker
+    /// (`GameObject::commodity`) rather than a subtype symbol. "sacrifice
+    /// a Treasure" / "for each Clue you control" filters match on this.
+    pub commodity: Option<crate::effects::CommodityToken>,
     pub custom: Option<fn(&GameObject, &GameState) -> bool>,
 }
 
@@ -816,6 +823,17 @@ impl ObjectFilter {
     /// Builder: not attacking ("nonattacking creature").
     pub fn nonattacking_only(mut self) -> Self {
         self.combat_status = Some(CombatStatusFilter::NotAttacking);
+        self
+    }
+    /// Builder: only *blocked* attackers ("target blocked creature").
+    pub fn blocked_only(mut self) -> Self {
+        self.combat_status = Some(CombatStatusFilter::Blocked);
+        self
+    }
+    /// Builder: match a commodity token of the given kind ("sacrifice a
+    /// Treasure", "Food you control"). See [`Self::commodity`].
+    pub fn commodity_kind(mut self, kind: crate::effects::CommodityToken) -> Self {
+        self.commodity = Some(kind);
         self
     }
     /// Builder: only tapped permanents.
@@ -1025,6 +1043,9 @@ impl ObjectFilter {
                     .and_then(|c| c.attacker(obj.id))
                     .is_some_and(|a| a.defending_player == source_controller),
                 CombatStatusFilter::NotAttacking => !attacking,
+                CombatStatusFilter::Blocked => combat
+                    .and_then(|c| c.attacker(obj.id))
+                    .is_some_and(|a| a.is_blocked),
             };
             if !ok {
                 return false;
@@ -1098,6 +1119,15 @@ impl ObjectFilter {
             }
         }
 
+        // --- commodity token (Treasure / Clue / Food / …): minted
+        // engine-side with no interner, so matched by the kind marker
+        // rather than a subtype symbol. ---
+        if let Some(kind) = self.commodity {
+            if obj.commodity != Some(kind) {
+                return false;
+            }
+        }
+
         // --- custom escape hatch ---
         if let Some(f) = self.custom {
             if !f(obj, state) {
@@ -1131,6 +1161,11 @@ pub enum CombatStatusFilter {
     /// NOT declared as an attacker ("nonattacking creature"). Matches
     /// everything outside combat.
     NotAttacking,
+    /// A *blocked* attacker — declared as an attacker AND assigned at
+    /// least one blocker (CR 509.1h). "target blocked creature" /
+    /// "whenever a creature you control becomes blocked" effects that
+    /// read state. Distinct from `Blocking`, which is the blocker side.
+    Blocked,
 }
 
 // =============================================================================
@@ -1944,6 +1979,7 @@ mod tests {
         let in_combat    = ObjectFilter::creature().attacking_or_blocking_only();
         let attacking_me = ObjectFilter::creature().attacking_you_only();
         let nonattacking = ObjectFilter::creature().nonattacking_only();
+        let blocked      = ObjectFilter::creature().blocked_only();
 
         // Outside combat: nothing attacks/blocks; NotAttacking matches all.
         assert!(!attacking.matches(s.objects.get(atk_vs_p1).unwrap(), &s, 1));
@@ -1981,6 +2017,14 @@ mod tests {
 
         assert!(!nonattacking.matches(s.objects.get(atk_vs_p1).unwrap(), &s, 1));
         assert!( nonattacking.matches(s.objects.get(bystander).unwrap(), &s, 1));
+
+        // "blocked": true only for the attacker that has a blocker assigned.
+        assert!( blocked.matches(s.objects.get(atk_vs_p1).unwrap(),  &s, 1),
+            "atk_vs_p1 is blocked by `blocker`");
+        assert!(!blocked.matches(s.objects.get(atk_vs_p0_).unwrap(), &s, 1),
+            "atk_vs_p0_ attacks unblocked");
+        assert!(!blocked.matches(s.objects.get(blocker).unwrap(),    &s, 1),
+            "the blocker itself is not a *blocked* creature");
     }
 
     #[test]

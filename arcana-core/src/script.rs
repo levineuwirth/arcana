@@ -47,6 +47,14 @@ use crate::zones::Zone;
 /// `.creature()`-style refinements if a card truly means "creatures of
 /// this subtype".
 pub fn subtype_filter(reg: &CardRegistry, subtype: &str) -> ObjectFilter {
+    // Commodity-token "subtypes" (Treasure/Clue/Food/…) are token-only
+    // in real Magic and are minted engine-side without an interner, so
+    // they never carry a subtype symbol — match them by the kind marker
+    // instead. One chokepoint fixes every "sacrifice a Treasure" /
+    // "for each Food you control" card.
+    if let Some(kind) = commodity_kind_by_name(subtype) {
+        return ObjectFilter::permanent().commodity_kind(kind);
+    }
     match reg.interner().lookup(subtype) {
         Some(sym) => ObjectFilter::permanent().with_subtype_sym(sym),
         // Never interned ⇒ a filter that matches no object.
@@ -55,6 +63,23 @@ pub fn subtype_filter(reg: &CardRegistry, subtype: &str) -> ObjectFilter {
             ..ObjectFilter::default()
         },
     }
+}
+
+/// Map a commodity-token subtype name to its [`CommodityToken`] kind, or
+/// `None` for any ordinary subtype. Mirrors
+/// [`crate::effects::CommodityToken::display_name`].
+pub fn commodity_kind_by_name(subtype: &str) -> Option<crate::effects::CommodityToken> {
+    use crate::effects::CommodityToken::*;
+    Some(match subtype {
+        "Treasure" => Treasure,
+        "Clue" => Clue,
+        "Food" => Food,
+        "Powerstone" => Powerstone,
+        "Incubator" => Incubator,
+        "Blood" => Blood,
+        "Map" => Map,
+        _ => return None,
+    })
 }
 
 /// `true` iff `p` indexes a real player (guards the panicking
@@ -536,6 +561,72 @@ pub fn max_power_of(state: &GameState, filter: &ObjectFilter, you: PlayerId) -> 
         .unwrap_or(0)
 }
 
+/// The interned name handle of `id` (or `None` if it's gone). Compare two
+/// handles for "a creature with the same name" — name equality is symbol
+/// equality within one registry. No registry param needed; the handle lives on
+/// the object's characteristics.
+pub fn name_of(state: &GameState, id: ObjectId) -> Option<crate::types::SmallString> {
+    state.objects.get(id).map(|o| o.characteristics.name)
+}
+
+/// Number of DISTINCT card types among cards in `player`'s graveyard (delirium —
+/// "four or more card types"; "draw for each card type in your graveyard").
+/// Counts the eight card-type categories present at least once.
+pub fn distinct_card_types_in_graveyard(state: &GameState, player: PlayerId) -> u32 {
+    if !valid(state, player) { return 0; }
+    let g: Vec<_> = state.objects.objects_in_zone(Zone::Graveyard(player)).collect();
+    let mut n = 0u32;
+    if g.iter().any(|o| o.characteristics.types.is_artifact()) { n += 1; }
+    if g.iter().any(|o| o.characteristics.types.is_battle()) { n += 1; }
+    if g.iter().any(|o| o.characteristics.types.is_creature()) { n += 1; }
+    if g.iter().any(|o| o.characteristics.types.is_enchantment()) { n += 1; }
+    if g.iter().any(|o| o.characteristics.types.is_instant()) { n += 1; }
+    if g.iter().any(|o| o.characteristics.types.is_land()) { n += 1; }
+    if g.iter().any(|o| o.characteristics.types.is_planeswalker()) { n += 1; }
+    if g.iter().any(|o| o.characteristics.types.is_sorcery()) { n += 1; }
+    n
+}
+
+/// Number of DISTINCT mana values among battlefield permanents matching `filter`
+/// (Lunar Insight-style "for each different mana value"). `you` resolves the
+/// filter's controller constraints.
+pub fn distinct_mana_values(state: &GameState, filter: &ObjectFilter, you: PlayerId) -> u32 {
+    let mut set: std::collections::HashSet<u32> = Default::default();
+    for o in state.objects.objects_in_zone(Zone::Battlefield) {
+        if filter.matches(o, state, you) { set.insert(o.characteristics.mana_value()); }
+    }
+    set.len() as u32
+}
+
+/// Creatures (and planeswalkers — both emit `Dies`) that died this turn while
+/// `player` controlled them. The controller-scoped variant of
+/// [`creatures_died_this_turn`] — for "for each creature YOU CONTROL that died
+/// this turn" (Fresh Meat-class), which the all-player count over-states.
+/// Controller-at-death is read from LKI (CR 603.10) when the object has moved.
+pub fn creatures_died_this_turn_controlled_by(state: &GameState, player: PlayerId) -> u32 {
+    if !valid(state, player) { return 0; }
+    this_turn_events(state).iter().filter(|ev| match ev {
+        crate::events::GameEvent::Dies { object_id } => {
+            state.objects.get(*object_id).or_else(|| state.lki.get(object_id))
+                .is_some_and(|o| o.controller == player)
+        }
+        _ => false,
+    }).count() as u32
+}
+
+/// The IDs (not just the count) of cards in `player`'s graveyard matching
+/// `filter`, stable order — feed into `Effect::ForEach` for "return ALL X from
+/// your graveyard" (Wake the Past-class). Sibling of [`graveyard_matching`].
+pub fn graveyard_ids_matching(
+    state: &GameState, filter: &ObjectFilter, player: PlayerId, you: PlayerId,
+) -> Vec<ObjectId> {
+    if !valid(state, player) { return Vec::new(); }
+    state.objects.objects_in_zone(Zone::Graveyard(player))
+        .filter(|o| filter.matches(o, state, you))
+        .map(|o| o.id)
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -818,5 +909,134 @@ mod tests {
             "the Goblin object had no subtype set in this helper test");
         // Unknown subtype (never interned) -> 0.
         assert_eq!(creatures_of_subtype_died_this_turn(&s, &reg, "Sliver"), 0);
+    }
+
+    // --- Tier 1 accessors -------------------------------------------------
+
+    #[test]
+    fn name_of_returns_the_interned_handle_for_same_name_matching() {
+        use crate::registry::CardRegistry;
+        let mut reg = CardRegistry::new();
+        let llanowar = reg.interner_mut().intern("Llanowar Elves");
+        let mut s = GameState::new(2, 0);
+        let named = Characteristics {
+            name: llanowar, types: TypeLine::CREATURE.into(),
+            ..Default::default()
+        };
+        let id = put(&mut s, Zone::Battlefield, 0, named);
+        // Two objects of the same name share one handle ⇒ name equality is
+        // handle equality (Doubling Chant-class "same name" matching).
+        let id2 = put(&mut s, Zone::Library(0), 0, Characteristics {
+            name: llanowar, ..Default::default()
+        });
+        assert_eq!(name_of(&s, id), Some(llanowar));
+        assert_eq!(name_of(&s, id), name_of(&s, id2));
+        assert_eq!(name_of(&s, 99_999), None, "absent object → None, no panic");
+    }
+
+    #[test]
+    fn distinct_card_types_in_graveyard_counts_categories_once() {
+        let mut s = GameState::new(2, 0);
+        let chars = |tl: TypeLine| Characteristics { types: tl, ..Default::default() };
+        // Two creatures (one category), one instant, one land ⇒ 3 distinct.
+        put(&mut s, Zone::Graveyard(0), 0, chars(TypeLine::CREATURE.into()));
+        put(&mut s, Zone::Graveyard(0), 0, chars(TypeLine::CREATURE.into()));
+        put(&mut s, Zone::Graveyard(0), 0, chars(TypeLine::INSTANT.into()));
+        put(&mut s, Zone::Graveyard(0), 0, chars(TypeLine::LAND.into()));
+        // A multi-type card contributes each of its categories.
+        put(&mut s, Zone::Graveyard(0), 0, chars(
+            TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE)));
+        // Opponent's graveyard is independent.
+        put(&mut s, Zone::Graveyard(1), 1, chars(TypeLine::SORCERY.into()));
+        assert_eq!(distinct_card_types_in_graveyard(&s, 0), 4,
+            "creature + instant + land + artifact");
+        assert_eq!(distinct_card_types_in_graveyard(&s, 1), 1);
+        assert_eq!(distinct_card_types_in_graveyard(&s, 99), 0, "invalid → 0");
+    }
+
+    #[test]
+    fn distinct_mana_values_dedupes_across_matching_permanents() {
+        use crate::mana::ManaCost;
+        let mut s = GameState::new(2, 0);
+        let cre = |cost: &str| Characteristics {
+            mana_cost: Some(ManaCost::parse(cost).unwrap()),
+            types: TypeLine::CREATURE.into(),
+            ..Default::default()
+        };
+        // mv 1, 2, 3, and a duplicate mv 1 ⇒ 3 distinct.
+        put(&mut s, Zone::Battlefield, 0, cre("{G}"));
+        put(&mut s, Zone::Battlefield, 0, cre("{1}{G}"));
+        put(&mut s, Zone::Battlefield, 0, cre("{2}{G}"));
+        put(&mut s, Zone::Battlefield, 0, cre("{W}"));
+        // A land (no cost ⇒ mv 0) is excluded by the creature filter.
+        put(&mut s, Zone::Battlefield, 0, Characteristics {
+            types: TypeLine::LAND.into(), ..Default::default() });
+        assert_eq!(distinct_mana_values(&s, &ObjectFilter::creature(), 0), 3);
+    }
+
+    #[test]
+    fn creatures_died_controlled_by_is_per_controller() {
+        let mut s = GameState::new(2, 0);
+        // p0 controls two dying creatures, p1 controls one.
+        let a = put(&mut s, Zone::Battlefield, 0, creature_chars(1, 1));
+        let b = put(&mut s, Zone::Battlefield, 0, creature_chars(1, 1));
+        let c = put(&mut s, Zone::Battlefield, 1, creature_chars(1, 1));
+        // Snapshot into LKI to mimic post-death lookup.
+        for id in [a, b, c] {
+            let obj = s.objects.get(id).unwrap().clone();
+            s.lki.insert(id, obj);
+        }
+        s.turn_event_log_start = 0;
+        s.emit(crate::events::GameEvent::Dies { object_id: a });
+        s.emit(crate::events::GameEvent::Dies { object_id: b });
+        s.emit(crate::events::GameEvent::Dies { object_id: c });
+        assert_eq!(creatures_died_this_turn_controlled_by(&s, 0), 2,
+            "Fresh Meat-class: only creatures YOU controlled");
+        assert_eq!(creatures_died_this_turn_controlled_by(&s, 1), 1);
+        // The all-player count is the (larger) sum.
+        assert_eq!(creatures_died_this_turn(&s), 3);
+        assert_eq!(creatures_died_this_turn_controlled_by(&s, 99), 0);
+    }
+
+    #[test]
+    fn graveyard_ids_matching_returns_the_matching_ids() {
+        let mut s = GameState::new(2, 0);
+        let cre = put(&mut s, Zone::Graveyard(0), 0, creature_chars(2, 2));
+        put(&mut s, Zone::Graveyard(0), 0, Characteristics {
+            types: TypeLine::INSTANT.into(), ..Default::default() });
+        let ids = graveyard_ids_matching(&s, &ObjectFilter::creature(), 0, 0);
+        assert_eq!(ids, vec![cre], "only the creature card's id");
+        // Count and id-list agree.
+        assert_eq!(ids.len() as u32,
+            graveyard_matching(&s, &ObjectFilter::creature(), 0, 0));
+        assert!(graveyard_ids_matching(&s, &ObjectFilter::creature(), 99, 0).is_empty());
+    }
+
+    #[test]
+    fn commodity_subtype_filter_matches_by_kind_marker() {
+        use crate::registry::CardRegistry;
+        use crate::effects::CommodityToken;
+        let reg = CardRegistry::new(); // no cards interned — works anyway
+        let mut s = GameState::new(2, 0);
+        let art = || Characteristics {
+            types: TypeLine::ARTIFACT.into(), ..Default::default() };
+        // A Treasure, a Clue, and a plain (unmarked) artifact.
+        let treasure = put(&mut s, Zone::Battlefield, 0, art());
+        s.objects.get_mut(treasure).unwrap().commodity = Some(CommodityToken::Treasure);
+        let clue = put(&mut s, Zone::Battlefield, 0, art());
+        s.objects.get_mut(clue).unwrap().commodity = Some(CommodityToken::Clue);
+        put(&mut s, Zone::Battlefield, 0, art()); // plain artifact, no marker
+
+        // Each commodity name matches only its own kind; an unminted
+        // commodity (Food) matches nothing; the plain artifact is no Treasure.
+        assert_eq!(count_matching(&s, &subtype_filter(&reg, "Treasure"), 0), 1);
+        assert_eq!(count_matching(&s, &subtype_filter(&reg, "Clue"), 0), 1);
+        assert_eq!(count_matching(&s, &subtype_filter(&reg, "Food"), 0), 0);
+        assert_eq!(ids_matching(&s, &subtype_filter(&reg, "Treasure"), 0), vec![treasure]);
+
+        assert_eq!(commodity_kind_by_name("Treasure"), Some(CommodityToken::Treasure));
+        assert_eq!(commodity_kind_by_name("Map"), Some(CommodityToken::Map));
+        assert!(commodity_kind_by_name("Goblin").is_none(),
+            "ordinary subtypes fall through to interner lookup");
     }
 }
