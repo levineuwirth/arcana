@@ -207,6 +207,44 @@ pub fn learn_value(
 mod tests {
     use super::*;
 
+    /// Fast, NON-ignored smoke test for the RL value pipeline (the slow
+    /// learn→yardstick measurements live behind `#[ignore]`). It guards
+    /// against silent bit-rot of the self-play → encode → logistic-fit →
+    /// value-fn path as the engine evolves: it runs the WHOLE pipeline on
+    /// tiny params and checks the value function is plumbed sanely (finite
+    /// + bounded; correct terminal sign for winner/loser). It deliberately
+    /// does NOT assert win-rate superiority — that's noisy and slow, and is
+    /// what the `#[ignore]` tournaments measure.
+    #[test]
+    fn smoke_value_pipeline_runs_and_value_is_sane() {
+        use crate::search::{MaterialValue, RandomStatePolicy, ValueFn};
+        use arcana_core::state::GameResult;
+
+        let reg = arcana_cards::build_catalog();
+        let deck = arcana_cards::sample_deck(&reg, 7);
+
+        // 1) The full pipeline (self-play → encode → logistic fit) runs on
+        //    tiny params without panicking, and yields a finite, bounded value.
+        let lv = learn_value(
+            &deck, &reg, /*n_games=*/ 2, /*max_steps=*/ 200,
+            &|s| Box::new(RandomStatePolicy::new(s)),
+            /*epochs=*/ 10, /*lr=*/ 0.3, /*l2=*/ 1e-4, /*seed=*/ 1);
+        let (start, _y) = new_game(vec![deck.clone(), deck.clone()], &reg, 5);
+        let v = lv.value(&start, 0);
+        assert!(v.is_finite() && (-1.0..=1.0).contains(&v),
+            "learned value must be finite & bounded, got {v}");
+
+        // 2) Terminal-outcome plumbing: a won game scores positive for the
+        //    winner and negative for the loser — for BOTH the learned value
+        //    and the hand-tuned material leaf.
+        let mut won = start.clone();
+        won.result = Some(GameResult::Win(0));
+        assert!(lv.value(&won, 0) > 0.0 && lv.value(&won, 1) < 0.0,
+            "learned value: winner positive, loser negative");
+        assert!(MaterialValue.value(&won, 0) > 0.0 && MaterialValue.value(&won, 1) < 0.0,
+            "material value: winner positive, loser negative");
+    }
+
     /// Logistic regression learns a linearly-separable toy problem: feature 0
     /// positive ⇒ label 1. After training, a clearly-positive input scores
     /// well above a clearly-negative one.
