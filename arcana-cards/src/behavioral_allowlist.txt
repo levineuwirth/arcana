@@ -443,7 +443,6 @@ The Unspeakable
 The Vast Scrier
 The Wandering Minstrel
 Thermo-Alchemist
-Thing in the Ice
 Thistledown Players
 Thrull Champion
 Thundering Djinn
@@ -502,3 +501,4 @@ One with the Machine
 Traverse Eternity
 Dream Salvage
 Gift of Immortality
+Morningtide

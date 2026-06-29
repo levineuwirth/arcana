@@ -430,6 +430,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::mh2::arcbound_shikari::register(reg); n += 1;
     crate::mh2::sea_drake::register(reg); n += 1;
     crate::mh2::raving_visionary::register(reg); n += 1;
+    crate::mh2::lucid_dreams::register(reg); n += 1;
     // --- rav ---
     crate::rav::chord_of_calling::register(reg); n += 1;
     crate::rav::glass_golem::register(reg); n += 1;
@@ -945,6 +946,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::tor::reborn_hero::register(reg); n += 1;
     crate::tor::gloomdrifter::register(reg); n += 1;
     crate::tor::floating_shield::register(reg); n += 1;
+    crate::tor::morningtide::register(reg); n += 1;
     // --- eld ---
     crate::eld::bonecrusher_giant::register(reg); n += 1;
     crate::eld::knight_of_the_keep::register(reg); n += 1;
@@ -12785,6 +12787,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::dmr::phantom_flock::register(reg); n += 1;
     crate::dmr::aven_fateshaper::register(reg); n += 1;
     crate::dmr::terravore::register(reg); n += 1;
+    crate::dmr::entomb::register(reg); n += 1;
     // --- one ---
     crate::one::branchblight_stalker::register(reg); n += 1;
     crate::one::swooping_lookout::register(reg); n += 1;
