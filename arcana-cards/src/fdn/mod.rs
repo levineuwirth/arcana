@@ -312,3 +312,5 @@ pub mod confiscate;
 pub mod goblin_oriflamme;
 pub mod enigma_drake;
 pub mod inspiring_call;
+pub mod lunar_insight;
+pub mod raise_the_past;

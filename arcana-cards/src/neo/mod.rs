@@ -188,3 +188,4 @@ pub mod ironhoof_boar;
 pub mod moonfolk_puzzlemaker;
 pub mod dokuchi_silencer;
 pub mod silver_fur_master;
+pub mod brilliant_restoration;

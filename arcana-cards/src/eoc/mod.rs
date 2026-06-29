@@ -69,3 +69,5 @@ pub mod szarel_genesis_shepherd;
 pub mod soul_of_windgrace;
 pub mod god_eternal_bontu;
 pub mod insight_engine;
+pub mod wake_the_past;
+pub mod splendid_reclamation;

@@ -167,3 +167,4 @@ pub mod stingerfling_spider;
 pub mod sifter_wurm;
 pub mod benevolent_blessing;
 pub mod belbe_corrupted_observer;
+pub mod triumphant_reckoning;

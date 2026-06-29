@@ -431,6 +431,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::mh2::sea_drake::register(reg); n += 1;
     crate::mh2::raving_visionary::register(reg); n += 1;
     crate::mh2::lucid_dreams::register(reg); n += 1;
+    crate::mh2::unmarked_grave::register(reg); n += 1;
     // --- rav ---
     crate::rav::chord_of_calling::register(reg); n += 1;
     crate::rav::glass_golem::register(reg); n += 1;
@@ -2003,6 +2004,8 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::fdn::goblin_oriflamme::register(reg); n += 1;
     crate::fdn::enigma_drake::register(reg); n += 1;
     crate::fdn::inspiring_call::register(reg); n += 1;
+    crate::fdn::lunar_insight::register(reg); n += 1;
+    crate::fdn::raise_the_past::register(reg); n += 1;
     // --- m13 ---
     crate::m13::merfolk_of_the_pearl_trident::register(reg); n += 1;
     crate::m13::silvercoat_lion::register(reg); n += 1;
@@ -10113,6 +10116,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::uds::heart_warden::register(reg); n += 1;
     crate::uds::treachery::register(reg); n += 1;
     crate::uds::mask_of_law_and_grace::register(reg); n += 1;
+    crate::uds::replenish::register(reg); n += 1;
     // --- tmt ---
     crate::tmt::squirrelanoids::register(reg); n += 1;
     crate::tmt::punk_frogs::register(reg); n += 1;
@@ -11988,6 +11992,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::scg::trap_digger::register(reg); n += 1;
     crate::scg::cabal_conditioning::register(reg); n += 1;
     crate::scg::accelerated_mutation::register(reg); n += 1;
+    crate::scg::torrent_of_fire::register(reg); n += 1;
     // --- lci ---
     crate::lci::colossadactyl::register(reg); n += 1;
     crate::lci::cosmium_blast::register(reg); n += 1;
@@ -13312,6 +13317,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::cmr::sifter_wurm::register(reg); n += 1;
     crate::cmr::benevolent_blessing::register(reg); n += 1;
     crate::cmr::belbe_corrupted_observer::register(reg); n += 1;
+    crate::cmr::triumphant_reckoning::register(reg); n += 1;
     // --- dst ---
     crate::dst::arcbound_bruiser::register(reg); n += 1;
     crate::dst::ritual_of_restoration::register(reg); n += 1;
@@ -14524,6 +14530,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::neo::moonfolk_puzzlemaker::register(reg); n += 1;
     crate::neo::dokuchi_silencer::register(reg); n += 1;
     crate::neo::silver_fur_master::register(reg); n += 1;
+    crate::neo::brilliant_restoration::register(reg); n += 1;
     // --- pca ---
     crate::pca::enlisted_wurm::register(reg); n += 1;
     crate::pca::thunder_thrash_elder::register(reg); n += 1;
@@ -18277,6 +18284,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::mh3::thriving_skyclaw::register(reg); n += 1;
     crate::mh3::utter_insignificance::register(reg); n += 1;
     crate::mh3::branching_evolution::register(reg); n += 1;
+    crate::mh3::buried_alive::register(reg); n += 1;
     // --- ylci ---
     crate::ylci::herald_s_reveille::register(reg); n += 1;
     crate::ylci::dusk_s_landing::register(reg); n += 1;
@@ -18831,6 +18839,8 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::eoc::soul_of_windgrace::register(reg); n += 1;
     crate::eoc::god_eternal_bontu::register(reg); n += 1;
     crate::eoc::insight_engine::register(reg); n += 1;
+    crate::eoc::wake_the_past::register(reg); n += 1;
+    crate::eoc::splendid_reclamation::register(reg); n += 1;
     // --- c19 ---
     crate::c19::sundering_growth::register(reg); n += 1;
     crate::c19::trostani_s_judgment::register(reg); n += 1;

@@ -37,3 +37,4 @@ pub mod sliver_overlord;
 pub mod trap_digger;
 pub mod cabal_conditioning;
 pub mod accelerated_mutation;
+pub mod torrent_of_fire;
