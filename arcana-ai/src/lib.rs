@@ -11,4 +11,5 @@ pub mod learn;
 pub mod mlp;
 pub mod session;
 pub mod deckeval;
+pub mod deckeval_runner;
 pub mod calibrate;
