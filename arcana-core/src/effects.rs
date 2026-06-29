@@ -386,6 +386,17 @@ pub enum Effect {
         player: PlayerId,
         target: ObjectId,
     },
+    /// Cast `target` from exile without paying its mana cost — the
+    /// "exile [a card], then (you may) cast it without paying" pattern
+    /// after the card has already been moved to exile (foretell
+    /// finishers, "exile target card and cast it", Discover-style riders
+    /// whose hit is parked in exile). No-op if `target` isn't in exile.
+    /// Same Phase 1 target/mode limitation as [`Self::CastFromHandFree`];
+    /// the cast is mandatory — wrap a "you may" in a yes/no choice.
+    CastFromExileFree {
+        player: PlayerId,
+        target: ObjectId,
+    },
 
     // --- state flip --------------------------------------------------------
     ChangeControl { target: ObjectId, new_controller: PlayerId },
@@ -1567,6 +1578,11 @@ impl Effect {
                 cast_from_zone_free(
                     state, *player, *target,
                     |z| matches!(z, Zone::Graveyard(_)));
+            }
+            Effect::CastFromExileFree { player, target } => {
+                cast_from_zone_free(
+                    state, *player, *target,
+                    |z| matches!(z, Zone::Exile));
             }
 
             // --- state flips --------------------------------------------
@@ -4278,8 +4294,9 @@ fn counter_stack_entry(state: &mut GameState, target: ObjectId) {
     }
 }
 
-/// Shared body for [`Effect::CastFromHandFree`] and
-/// [`Effect::CastFromGraveyard`]. `zone_ok` is the origin-zone
+/// Shared body for [`Effect::CastFromHandFree`],
+/// [`Effect::CastFromGraveyard`], and [`Effect::CastFromExileFree`].
+/// `zone_ok` is the origin-zone
 /// predicate; the cast is aborted if `target` isn't currently in an
 /// acceptable zone. No targets/modes are chosen (Phase 1 limitation,
 /// TODO(decision)); the cast pays no mana.
@@ -6974,6 +6991,29 @@ mod tests {
         let mut s = GameState::new(2, 0);
         let card = put_instant(&mut s, 0, Zone::Hand(0));
         Effect::CastFromGraveyard { player: 0, target: card }.execute(&mut s);
+        assert_eq!(s.objects.get(card).unwrap().zone, Zone::Hand(0));
+        assert_eq!(s.stack_size(), 0);
+    }
+
+    #[test]
+    fn cast_from_exile_free_places_spell_on_stack_without_mana() {
+        let mut s = GameState::new(2, 0);
+        let card = put_instant(&mut s, 0, Zone::Exile);
+        let before_mana = s.player(0).mana_pool.clone();
+        Effect::CastFromExileFree { player: 0, target: card }.execute(&mut s);
+        assert_eq!(s.stack_size(), 1);
+        let stack_id = s.top_of_stack().unwrap().id;
+        assert_eq!(s.objects.get(stack_id).unwrap().zone, Zone::Stack);
+        assert_eq!(s.player(0).mana_pool, before_mana, "cast was free");
+        assert!(s.event_log.iter().any(|e|
+            matches!(e, GameEvent::SpellCast { object_id, .. } if *object_id == stack_id)));
+    }
+
+    #[test]
+    fn cast_from_exile_free_noop_when_target_not_in_exile() {
+        let mut s = GameState::new(2, 0);
+        let card = put_instant(&mut s, 0, Zone::Hand(0));
+        Effect::CastFromExileFree { player: 0, target: card }.execute(&mut s);
         assert_eq!(s.objects.get(card).unwrap().zone, Zone::Hand(0));
         assert_eq!(s.stack_size(), 0);
     }
