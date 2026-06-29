@@ -2054,15 +2054,7 @@ fn apply_choice_follow_up(
             // no longer resolves to it — which is the CR-faithful
             // behavior.
             for id in chosen {
-                let Some(obj) = state.objects.get(*id) else { continue; };
-                let Some(printed_cost) = obj.characteristics.mana_cost.clone()
-                    else { continue; };
-                state.add_continuous_effect(
-                    crate::layers::ContinuousEffect::grant_keyword(
-                        source, *id,
-                        crate::effects::KeywordAbility::Flashback(printed_cost),
-                        duration,
-                    ));
+                crate::effects::grant_flashback_to(state, source, *id, duration);
             }
         }
         ChoiceFollowUp::OptionalPaymentBranch { .. } => {

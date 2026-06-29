@@ -386,6 +386,14 @@ pub enum Effect {
         player: PlayerId,
         target: ObjectId,
     },
+    /// CR 702.33 — "Target instant or sorcery card in your graveyard
+    /// gains flashback until end of turn; its flashback cost equals its
+    /// mana cost" (Flashback the card; Recoup-class riders). Installs a
+    /// layer-6 `Flashback(printed_cost)` grant keyed on `target` (the
+    /// same mechanism Snapcaster Mage's ETB pick uses), so `legal_actions`
+    /// then offers a flashback cast from the graveyard. No-op if `target`
+    /// has no mana cost.
+    GrantFlashback { target: ObjectId },
     /// Cast `target` from exile without paying its mana cost — the
     /// "exile [a card], then (you may) cast it without paying" pattern
     /// after the card has already been moved to exile (foretell
@@ -1583,6 +1591,12 @@ impl Effect {
                 cast_from_zone_free(
                     state, *player, *target,
                     |z| matches!(z, Zone::Exile));
+            }
+            Effect::GrantFlashback { target } => {
+                let source = state.currently_resolving
+                    .unwrap_or(crate::objects::NULL_OBJECT_ID);
+                grant_flashback_to(
+                    state, source, *target, crate::layers::Duration::EndOfTurn);
             }
 
             // --- state flips --------------------------------------------
@@ -4311,6 +4325,23 @@ fn counter_stack_entry(state: &mut GameState, target: ObjectId) {
 /// predicate; the cast is aborted if `target` isn't currently in an
 /// acceptable zone. No targets/modes are chosen (Phase 1 limitation,
 /// TODO(decision)); the cast pays no mana.
+/// Install a layer-6 `Flashback(printed_cost)` grant on `target` (a
+/// graveyard card), keyed on its ObjectId, for `duration`. Shared by
+/// [`Effect::GrantFlashback`] and Snapcaster Mage's pick follow-up. No-op
+/// if `target` is gone or has no printed mana cost. Per CR 400.7 the
+/// grant lapses if the card re-ids out of the graveyard.
+pub(crate) fn grant_flashback_to(
+    state: &mut GameState,
+    source: ObjectId,
+    target: ObjectId,
+    duration: crate::layers::Duration,
+) {
+    let Some(obj) = state.objects.get(target) else { return; };
+    let Some(printed_cost) = obj.characteristics.mana_cost.clone() else { return; };
+    state.add_continuous_effect(crate::layers::ContinuousEffect::grant_keyword(
+        source, target, KeywordAbility::Flashback(printed_cost), duration));
+}
+
 fn cast_from_zone_free<F: Fn(Zone) -> bool>(
     state: &mut GameState,
     player: PlayerId,
@@ -7027,6 +7058,34 @@ mod tests {
         Effect::CastFromExileFree { player: 0, target: card }.execute(&mut s);
         assert_eq!(s.objects.get(card).unwrap().zone, Zone::Hand(0));
         assert_eq!(s.stack_size(), 0);
+    }
+
+    #[test]
+    fn grant_flashback_gives_a_graveyard_card_flashback() {
+        let mut s = GameState::new(2, 0);
+        // An instant in the graveyard with a printed cost.
+        let id = s.allocate_object_id();
+        let chars = Characteristics {
+            mana_cost: Some(crate::mana::ManaCost::parse("{1}{R}").unwrap()),
+            types: TypeLine::INSTANT.into(),
+            ..Default::default()
+        };
+        s.objects.insert(GameObject::new(id, 0, Zone::Graveyard(0), 0, chars));
+        assert!(!s.effective_keywords(id).iter()
+            .any(|k| matches!(k, KeywordAbility::Flashback(_))));
+
+        Effect::GrantFlashback { target: id }.execute(&mut s);
+        assert!(s.effective_keywords(id).iter().any(|k|
+            matches!(k, KeywordAbility::Flashback(c) if c.mana_value() == 2)),
+            "granted Flashback equal to its {{1}}{{R}} mana cost");
+
+        // A card with no mana cost (a land) can't gain a flashback cost.
+        let land = s.allocate_object_id();
+        s.objects.insert(GameObject::new(land, 0, Zone::Graveyard(0), 0,
+            Characteristics { types: TypeLine::LAND.into(), ..Default::default() }));
+        Effect::GrantFlashback { target: land }.execute(&mut s);
+        assert!(!s.effective_keywords(land).iter()
+            .any(|k| matches!(k, KeywordAbility::Flashback(_))));
     }
 
     #[test]

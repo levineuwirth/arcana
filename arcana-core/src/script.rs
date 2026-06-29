@@ -623,6 +623,23 @@ pub fn distinct_mana_values(state: &GameState, filter: &ObjectFilter, you: Playe
     set.len() as u32
 }
 
+/// Number of DISTINCT mana values among cards in `player`'s graveyard
+/// matching `filter` — the GRAVEYARD-scoped sibling of
+/// [`distinct_mana_values`] (which reads the battlefield). For "draw a
+/// card for each different mana value among [nonland] cards in your
+/// graveyard" (Sudden Insight / Seasons Past-class). `you` resolves the
+/// filter's controller constraints.
+pub fn distinct_mana_values_in_graveyard(
+    state: &GameState, filter: &ObjectFilter, player: PlayerId, you: PlayerId,
+) -> u32 {
+    if !valid(state, player) { return 0; }
+    let mut set: std::collections::HashSet<u32> = Default::default();
+    for o in state.objects.objects_in_zone(Zone::Graveyard(player)) {
+        if filter.matches(o, state, you) { set.insert(o.characteristics.mana_value()); }
+    }
+    set.len() as u32
+}
+
 /// Creatures (and planeswalkers — both emit `Dies`) that died this turn while
 /// `player` controlled them. The controller-scoped variant of
 /// [`creatures_died_this_turn`] — for "for each creature YOU CONTROL that died
@@ -997,6 +1014,31 @@ mod tests {
         put(&mut s, Zone::Battlefield, 0, Characteristics {
             types: TypeLine::LAND.into(), ..Default::default() });
         assert_eq!(distinct_mana_values(&s, &ObjectFilter::creature(), 0), 3);
+    }
+
+    #[test]
+    fn distinct_mana_values_in_graveyard_reads_the_graveyard() {
+        use crate::mana::ManaCost;
+        let mut s = GameState::new(2, 0);
+        let gy = |cost: &str, land: bool| Characteristics {
+            mana_cost: Some(ManaCost::parse(cost).unwrap()),
+            types: if land { TypeLine::LAND.into() } else { TypeLine::INSTANT.into() },
+            ..Default::default()
+        };
+        // p0 graveyard: mv 1, 2, 1 (dup), + a land (excluded by nonland).
+        put(&mut s, Zone::Graveyard(0), 0, gy("{R}", false));
+        put(&mut s, Zone::Graveyard(0), 0, gy("{1}{R}", false));
+        put(&mut s, Zone::Graveyard(0), 0, gy("{G}", false));
+        put(&mut s, Zone::Graveyard(0), 0, gy("{2}{G}{G}", true)); // land
+        // Battlefield card must NOT count (this reads the graveyard).
+        put(&mut s, Zone::Battlefield, 0, gy("{5}", false));
+        let nonland = ObjectFilter::new().without_types(TypeLine::LAND.into());
+        assert_eq!(
+            distinct_mana_values_in_graveyard(&s, &nonland, 0, 0), 2,
+            "distinct mv {{1,2}} among nonland graveyard cards");
+        assert_eq!(
+            distinct_mana_values_in_graveyard(&s, &nonland, 99, 0), 0,
+            "invalid player → 0");
     }
 
     #[test]
