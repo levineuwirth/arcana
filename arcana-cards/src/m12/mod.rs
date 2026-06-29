@@ -58,3 +58,4 @@ pub mod devouring_swarm;
 pub mod crumbling_colossus;
 pub mod mind_control;
 pub mod mind_unbound;
+pub mod doubling_chant;

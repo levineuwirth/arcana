@@ -2425,6 +2425,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::mmq::cho_manno_s_blessing::register(reg); n += 1;
     crate::mmq::worry_beads::register(reg); n += 1;
     crate::mmq::mercadia_s_downfall::register(reg); n += 1;
+    crate::mmq::bifurcate::register(reg); n += 1;
     // --- gs1 ---
     crate::gs1::leopard_spotted_jiao::register(reg); n += 1;
     crate::gs1::ferocious_zheng::register(reg); n += 1;
@@ -3079,6 +3080,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::m12::crumbling_colossus::register(reg); n += 1;
     crate::m12::mind_control::register(reg); n += 1;
     crate::m12::mind_unbound::register(reg); n += 1;
+    crate::m12::doubling_chant::register(reg); n += 1;
     // --- s7ed ---
     crate::s7ed::trained_orgg::register(reg); n += 1;
     crate::s7ed::redwood_treefolk::register(reg); n += 1;
@@ -11215,6 +11217,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::afr::flumph::register(reg); n += 1;
     crate::afr::nadaar_selfless_paladin::register(reg); n += 1;
     crate::afr::owlbear::register(reg); n += 1;
+    crate::afr::sudden_insight::register(reg); n += 1;
     // --- s5dn ---
     crate::s5dn::arachnoid::register(reg); n += 1;
     crate::s5dn::lose_hope::register(reg); n += 1;
@@ -13510,6 +13513,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::sos::charging_strifeknight::register(reg); n += 1;
     crate::sos::deluge_virtuoso::register(reg); n += 1;
     crate::sos::garrison_excavator::register(reg); n += 1;
+    crate::sos::flashback::register(reg); n += 1;
     // --- ddq ---
     crate::ddq::chapel_geist::register(reg); n += 1;
     crate::ddq::human_frailty::register(reg); n += 1;

@@ -180,3 +180,4 @@ pub mod air_cult_elemental;
 pub mod flumph;
 pub mod nadaar_selfless_paladin;
 pub mod owlbear;
+pub mod sudden_insight;

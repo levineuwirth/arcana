@@ -126,3 +126,4 @@ pub mod fractal_mascot;
 pub mod charging_strifeknight;
 pub mod deluge_virtuoso;
 pub mod garrison_excavator;
+pub mod flashback;
