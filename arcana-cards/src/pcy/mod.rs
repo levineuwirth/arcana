@@ -74,3 +74,4 @@ pub mod troublesome_spirit;
 pub mod chilling_apparition;
 pub mod mercenary_informer;
 pub mod pit_raptor;
+pub mod wing_storm;

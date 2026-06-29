@@ -47,3 +47,4 @@ pub mod brass_talon_chimera;
 pub mod talruum_champion;
 pub mod lichenthrope;
 pub mod kyscu_drake;
+pub mod vampirism;

@@ -50,3 +50,4 @@ pub mod fiend_of_the_shadows;
 pub mod dragonborn_champion;
 pub mod piper_of_the_swarm;
 pub mod sunblast_angel;
+pub mod bucknard_s_everfull_purse;

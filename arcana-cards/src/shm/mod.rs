@@ -113,3 +113,4 @@ pub mod barrenton_medic;
 pub mod witherscale_wurm;
 pub mod biting_tether;
 pub mod raking_canopy;
+pub mod dream_salvage;

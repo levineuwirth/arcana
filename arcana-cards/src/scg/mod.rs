@@ -35,3 +35,5 @@ pub mod cabal_interrogator;
 pub mod dragon_tyrant;
 pub mod sliver_overlord;
 pub mod trap_digger;
+pub mod cabal_conditioning;
+pub mod accelerated_mutation;

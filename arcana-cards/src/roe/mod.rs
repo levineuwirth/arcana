@@ -53,3 +53,4 @@ pub mod deathless_angel;
 pub mod stalwart_shield_bearers;
 pub mod dormant_gomazoa;
 pub mod soulsurge_elemental;
+pub mod lightmine_field;

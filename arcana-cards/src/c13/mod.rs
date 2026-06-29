@@ -38,3 +38,4 @@ pub mod goblin_sharpshooter;
 pub mod drumhunter;
 pub mod krosan_warchief;
 pub mod deathbringer_thoctar;
+pub mod contested_cliffs;

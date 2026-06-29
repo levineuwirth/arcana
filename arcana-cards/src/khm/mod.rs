@@ -179,3 +179,4 @@ pub mod a_narfi_betrayer_king;
 pub mod pilfering_hawk;
 pub mod elvish_warmaster;
 pub mod koma_s_faithful;
+pub mod bearded_axe;

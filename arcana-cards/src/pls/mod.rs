@@ -51,3 +51,4 @@ pub mod razing_snidd;
 pub mod volcano_imp;
 pub mod thunderscape_familiar;
 pub mod questing_phelddagrif;
+pub mod sleeping_potion;

@@ -154,3 +154,4 @@ pub mod solphim_mayhem_dominus;
 pub mod stinging_hivemaster;
 pub mod unctus_grand_metatect;
 pub mod mesmerizing_dose;
+pub mod kaito_dancing_shadow;

@@ -95,3 +95,4 @@ pub mod necromaster_dragon;
 pub mod ambuscade_shaman;
 pub mod boltwing_marauder;
 pub mod illusory_gains;
+pub mod berserkers_onslaught;

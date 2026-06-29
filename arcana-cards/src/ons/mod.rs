@@ -113,3 +113,4 @@ pub mod dive_bomber;
 pub mod goblin_pyromancer;
 pub mod crowd_favorites;
 pub mod crown_of_awe;
+pub mod overwhelming_instinct;

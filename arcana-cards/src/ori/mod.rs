@@ -79,3 +79,4 @@ pub mod aven_battle_priest;
 pub mod possessed_skaab;
 pub mod charging_griffin;
 pub mod avaricious_dragon;
+pub mod sigil_of_valor;

@@ -26,3 +26,4 @@ pub mod tyvar_the_bellicose;
 pub mod jirina_dauntless_general;
 pub mod pia_nalaar_consul_of_revival;
 pub mod narset_enlightened_exile;
+pub mod feast_of_the_victorious_dead;
