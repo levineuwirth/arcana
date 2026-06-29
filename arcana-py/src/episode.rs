@@ -102,8 +102,8 @@ impl Policy for PolicyImpl {
 }
 
 /// Bridge a Python callable to a [`PolicyChoice::Index`]. Copies
-/// the observation slice into a fresh numpy array (396 bytes for
-/// the v0 99-dim obs — negligible) so the Python callback owns its
+/// the observation slice into a fresh numpy array (492 bytes for
+/// the v0 123-dim obs — negligible) so the Python callback owns its
 /// data and doesn't alias the Rust buffer.
 fn call_python_policy(
     py: Python<'_>,
@@ -199,7 +199,7 @@ impl PyEpisodeOutcome {
 pub struct PyTrajectory {
     #[pyo3(get)]
     pub perspective: u8,
-    /// `(N, 99)` float32, row-major. Each row is the encoded
+    /// `(N, BASIC_E2_DIM_TWO_PLAYERS)` = `(N, 123)` float32, row-major. Each row is the encoded
     /// observation at decision time, projected from this
     /// perspective.
     #[pyo3(get)]

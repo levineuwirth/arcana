@@ -48,7 +48,7 @@ def test_trajectory_arrays_are_struct_of_arrays_and_contiguous():
         policy_b=arcana.policies.progress_biased(seed=2),
     )
     for traj in result.trajectories:
-        # observations: (N, 99) float32, contiguous.
+        # observations: (N, 123) float32, contiguous.
         obs = traj.observations
         assert isinstance(obs, np.ndarray)
         assert obs.dtype == np.float32

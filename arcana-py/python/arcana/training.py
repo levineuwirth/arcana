@@ -120,7 +120,7 @@ def build_batch(
     """Assemble a flat training batch from a list of episodes.
 
     Returns a dict with keys:
-      observations:   (B, 99)  float32
+      observations:   (B, 123) float32  # B x BASIC_E2_DIM_TWO_PLAYERS
       action_indices: (B,)     int32
       n_legals:       (B,)     int32  — legal-action count per step
       returns:        (B,)     float32 — discounted future reward
