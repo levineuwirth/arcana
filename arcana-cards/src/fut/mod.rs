@@ -33,3 +33,4 @@ pub mod bogardan_lancer;
 pub mod korlash_heir_to_blackblade;
 pub mod scourge_of_kher_ridges;
 pub mod baru_fist_of_krosa;
+pub mod tarmogoyf;

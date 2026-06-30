@@ -8850,6 +8850,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::fut::korlash_heir_to_blackblade::register(reg); n += 1;
     crate::fut::scourge_of_kher_ridges::register(reg); n += 1;
     crate::fut::baru_fist_of_krosa::register(reg); n += 1;
+    crate::fut::tarmogoyf::register(reg); n += 1;
     // --- chk ---
     crate::chk::wandering_ones::register(reg); n += 1;
     crate::chk::river_kaijin::register(reg); n += 1;
