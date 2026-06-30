@@ -643,6 +643,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::hou::ruin_rat::register(reg); n += 1;
     crate::hou::wall_of_forgotten_pharaohs::register(reg); n += 1;
     crate::hou::apocalypse_demon::register(reg); n += 1;
+    crate::hou::strategic_planning::register(reg); n += 1;
     // --- m15 ---
     crate::m15::chandra_pyromaster::register(reg); n += 1;
     crate::m15::goblin_roughrider::register(reg); n += 1;
@@ -1099,6 +1100,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::eld::castle_garenbrig::register(reg); n += 1;
     crate::eld::castle_ardenvale::register(reg); n += 1;
     crate::eld::castle_embereth::register(reg); n += 1;
+    crate::eld::once_upon_a_time::register(reg); n += 1;
     // --- znr ---
     crate::znr::tangled_florahedron::register(reg); n += 1;
     crate::znr::highborn_vampire::register(reg); n += 1;
