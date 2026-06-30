@@ -1383,6 +1383,8 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::ktk::scaldkin::register(reg); n += 1;
     crate::ktk::singing_bell_strike::register(reg); n += 1;
     crate::ktk::stubborn_denial::register(reg); n += 1;
+    crate::ktk::treasure_cruise::register(reg); n += 1;
+    crate::ktk::dig_through_time::register(reg); n += 1;
     // --- akh ---
     crate::akh::ahn_crop_crasher::register(reg); n += 1;
     crate::akh::colossapede::register(reg); n += 1;

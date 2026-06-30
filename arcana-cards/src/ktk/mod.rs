@@ -90,3 +90,5 @@ pub mod mistfire_weaver;
 pub mod scaldkin;
 pub mod singing_bell_strike;
 pub mod stubborn_denial;
+pub mod treasure_cruise;
+pub mod dig_through_time;
