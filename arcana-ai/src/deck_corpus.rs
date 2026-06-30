@@ -358,31 +358,42 @@ mod tests {
         println!("\n{}", report.format_table());
     }
 
-    /// EXAMPLE TEMPLATE: load a real decklist corpus from a directory of `*.txt`
-    /// Arena lists, report coverage, then run the gauntlet on the playable
-    /// subset. Point `DIR` at the dropped corpus and run in release:
-    /// `cargo test -p arcana-ai --release corpus_gauntlet -- --ignored --nocapture`
+    /// Load a real decklist corpus (`KAGGLE_DECKS/<CORPUS_FORMAT>/*.txt`), report
+    /// coverage, then run the gauntlet on the fully-covered subset. Env knobs:
+    /// `CORPUS_FORMAT` (default PI), `CORPUS_REFEREE` (random|vmc|pimc, default
+    /// vmc), `CORPUS_DUELS` (paired duels/pair, default 5). Run:
+    /// `KAGGLE_DECKS=/path CORPUS_FORMAT=PI cargo test -p arcana-ai --release corpus_gauntlet -- --ignored --nocapture`
     #[test]
     #[ignore]
     fn corpus_gauntlet() {
         use crate::deckeval_runner::{run_gauntlet, ExperimentConfig, Referee};
-        const DIR: &str = "/path/to/decklists"; // e.g. converted MTGTop8 lists
-        const FORMAT: &str = "modern";
+        let base = std::env::var("KAGGLE_DECKS").expect("set KAGGLE_DECKS");
+        let format = std::env::var("CORPUS_FORMAT").unwrap_or_else(|_| "PI".into());
+        let referee = match std::env::var("CORPUS_REFEREE").as_deref() {
+            Ok("random") => Referee::Random,
+            Ok("pimc") => Referee::Pimc,
+            _ => Referee::VmcMaterial,
+        };
+        let duels: u32 = std::env::var("CORPUS_DUELS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(5);
 
         let reg = arcana_cards::build_catalog();
-        let loaded = decks_from_dir(DIR, FORMAT, &reg).expect("read corpus dir");
+        let dir = std::path::Path::new(&base).join(&format);
+        let loaded = decks_from_dir(&dir, &format, &reg).expect("read corpus dir");
         let report = coverage_report(&loaded, 60, 60);
         println!("\n{}", report.format_table());
 
         let decks = playable_decks(&loaded, 60, 60);
-        println!("playable decks: {}", decks.len());
+        println!("\nplayable {format} decks: {}", decks.len());
         if decks.len() < 2 {
             println!("not enough playable decks to run a gauntlet");
             return;
         }
         let cfg = ExperimentConfig {
-            referee: Referee::VmcMaterial,
-            paired_duels_per_pair: 25,
+            referee,
+            paired_duels_per_pair: duels,
             max_steps: 4000,
             base_seed: 0,
             bootstrap_samples: 2000,
