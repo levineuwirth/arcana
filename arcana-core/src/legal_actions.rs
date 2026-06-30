@@ -2542,6 +2542,33 @@ fn enumerate_cost_taps(
     player: crate::types::PlayerId,
     source: ObjectId,
 ) -> Vec<Vec<ObjectId>> {
+    // Crew N (CR 702.122): tap untapped creatures the activator controls (not
+    // the source — a Vehicle isn't a creature until crewed) with total power
+    // >= N. Canonical single payment: smallest-power-first (leaves big
+    // attackers free), skipping non-positive-power creatures. Empty outer Vec
+    // when the available power can't reach N (ability not activatable).
+    if let Some(crew_n) = ability.cost.crew {
+        let candidate_ids: Vec<ObjectId> = state.objects
+            .objects_in_zone(Zone::Battlefield)
+            .filter(|o| o.controller == player && o.id != source
+                && !o.is_tapped() && o.is_creature())
+            .map(|o| o.id)
+            .collect();
+        let mut crewers: Vec<(ObjectId, i32)> = candidate_ids.into_iter()
+            .filter_map(|id| state.computed_power(id)
+                .filter(|&p| p > 0)
+                .map(|p| (id, p)))
+            .collect();
+        crewers.sort_by_key(|&(_, p)| p);
+        let mut taps = Vec::new();
+        let mut total = 0i32;
+        for (id, p) in crewers {
+            if total >= crew_n as i32 { break; }
+            taps.push(id);
+            total += p;
+        }
+        return if total >= crew_n as i32 { vec![taps] } else { Vec::new() };
+    }
     let Some(filter) = ability.cost.tap_other.as_ref() else {
         return vec![vec![]];
     };
@@ -4929,6 +4956,73 @@ mod tests {
                     effect: |_, _, _| Vec::new(),
                 })
         )
+    }
+
+    fn register_crew_stub(reg: &mut CardRegistry, crew_n: u32, name: &str) -> CardId {
+        use crate::registry::{ActivatedAbilityDef, ActivationCost, CardDefinition};
+        let nm = reg.interner_mut().intern(name);
+        let mut chars = creature_chars(3, 3);
+        chars.types = TypeLine::ARTIFACT.into(); // a Vehicle isn't a creature until crewed
+        reg.register(
+            CardDefinition::new(nm, chars).with_activated_ability(ActivatedAbilityDef {
+                text: "Crew".into(),
+                cost: ActivationCost { crew: Some(crew_n), ..ActivationCost::default() },
+                target_requirements: vec![],
+                is_mana_ability: false,
+                is_loyalty_ability: false,
+                activation_zone: crate::registry::ActivationZone::Battlefield,
+                is_instant_speed: true,
+                face_gate: None,
+                effect: |_, _, _| Vec::new(),
+            }),
+        )
+    }
+
+    #[test]
+    fn crew_enumerates_tap_payment_and_gates_on_insufficient_power() {
+        use crate::actions::AdditionalCostPayment;
+        let mut reg = CardRegistry::new();
+        let cid1 = register_crew_stub(&mut reg, 1, "Copter Stub");
+        let cid5 = register_crew_stub(&mut reg, 5, "Tank Stub");
+        let mut s = GameState::new(2, 0);
+        set_main_phase(&mut s);
+        let vehicle_chars = || {
+            let mut c = creature_chars(3, 3);
+            c.types = TypeLine::ARTIFACT.into();
+            c
+        };
+        let v1 = state_put_with_card(&mut s, 0, Zone::Battlefield, vehicle_chars(), cid1);
+        let v5 = state_put_with_card(&mut s, 0, Zone::Battlefield, vehicle_chars(), cid5);
+
+        // No creatures to tap → neither Vehicle can be crewed.
+        assert!(!legal_actions(&s, &reg).iter().any(|a| matches!(a,
+            Action::ActivateAbility { source, .. } if *source == v1 || *source == v5)));
+
+        // A single 2-power creature: Crew 1 is payable (taps it); Crew 5 is not.
+        // The crewer is summoning-sick, which crewing explicitly allows (CR 702.122c).
+        let crewer = put(&mut s, 0, Zone::Battlefield, creature_chars(2, 2));
+        let acts: Vec<_> = legal_actions(&s, &reg)
+            .into_iter()
+            .filter(|a| matches!(a, Action::ActivateAbility { .. }))
+            .collect();
+        let v1_acts: Vec<_> = acts
+            .iter()
+            .filter(|a| matches!(a, Action::ActivateAbility { source, .. } if *source == v1))
+            .collect();
+        assert_eq!(v1_acts.len(), 1, "Crew 1 payable with a 2-power creature");
+        let Action::ActivateAbility { additional_costs, .. } = v1_acts[0] else {
+            unreachable!()
+        };
+        assert!(
+            additional_costs.iter().any(|c| matches!(c,
+                AdditionalCostPayment::TapCreatures(ids) if ids == &vec![crewer])),
+            "crew payment taps the available creature"
+        );
+        assert!(
+            !acts.iter().any(|a| matches!(a,
+                Action::ActivateAbility { source, .. } if *source == v5)),
+            "Crew 5 unpayable with only 2 power available"
+        );
     }
 
     #[test]

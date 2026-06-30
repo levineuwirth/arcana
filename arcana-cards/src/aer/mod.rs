@@ -97,3 +97,4 @@ pub mod herald_of_anguish;
 pub mod foundry_hornet;
 pub mod ice_over;
 pub mod fatal_push;
+pub mod heart_of_kiran;

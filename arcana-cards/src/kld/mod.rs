@@ -114,3 +114,5 @@ pub mod master_trinketeer;
 pub mod aethertorch_renegade;
 pub mod hightide_hermit;
 pub mod multiform_wonder;
+pub mod smugglers_copter;
+pub mod aethersphere_harvester;

@@ -295,6 +295,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::aer::foundry_hornet::register(reg); n += 1;
     crate::aer::ice_over::register(reg); n += 1;
     crate::aer::fatal_push::register(reg); n += 1;
+    crate::aer::heart_of_kiran::register(reg); n += 1;
     // --- mh2 ---
     crate::mh2::murktide_regent::register(reg); n += 1;
     crate::mh2::shardless_agent::register(reg); n += 1;
@@ -7280,6 +7281,8 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::kld::aethertorch_renegade::register(reg); n += 1;
     crate::kld::hightide_hermit::register(reg); n += 1;
     crate::kld::multiform_wonder::register(reg); n += 1;
+    crate::kld::smugglers_copter::register(reg); n += 1;
+    crate::kld::aethersphere_harvester::register(reg); n += 1;
     // --- stx ---
     crate::stx::spined_karok::register(reg); n += 1;
     crate::stx::ageless_guardian::register(reg); n += 1;

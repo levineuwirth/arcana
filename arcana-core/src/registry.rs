@@ -1274,6 +1274,14 @@ pub struct ActivationCost {
     /// when `tap_other` is set — same convention as
     /// `sacrifice_other_count`).
     pub tap_other_count: u32,
+    /// CR 702.122 — "Crew N": this Vehicle becomes an artifact creature until
+    /// end of turn by tapping any number of untapped creatures the activator
+    /// controls whose total power is `N` or greater (the Vehicle itself is
+    /// excluded — it isn't a creature until crewed). Enumerated as a canonical
+    /// tap payment in [`crate::legal_actions`] and applied as an
+    /// [`crate::actions::AdditionalCostPayment::TapCreatures`]. `None` = not a
+    /// crew cost.
+    pub crew: Option<u32>,
     /// "Discard a [filtered card]: …" — discard one chosen card from
     /// the activator's hand as an additional cost (CR 118.3). Distinct
     /// from [`Self::discard_self`] (cycling, which discards the source
