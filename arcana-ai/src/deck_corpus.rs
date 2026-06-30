@@ -94,11 +94,15 @@ pub fn load_deck(
     list_text: &str,
     reg: &CardRegistry,
 ) -> LoadedDeck {
-    LoadedDeck {
-        name: name.into(),
-        format: format.into(),
-        parsed: parse_deck_text(list_text, reg),
-    }
+    let parsed = parse_deck_text(list_text, reg);
+    // An `About`/`Name` header (e.g. the archetype) wins; the passed `name`
+    // (file stem) is the fallback when the list carries no name.
+    let name = if parsed.name.is_empty() {
+        name.into()
+    } else {
+        parsed.name.clone()
+    };
+    LoadedDeck { name, format: format.into(), parsed }
 }
 
 /// Convenience: load every `*.txt` decklist in `dir` under one format tag (the

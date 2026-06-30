@@ -55,6 +55,21 @@ def main():
         for row in csv.DictReader(io.TextIOWrapper(f, "utf-8")):
             ev_fmt[row["event__id"]] = row["event_format"]
 
+    # Per-event player__id -> archetype (player_title), lazily loaded + cached.
+    pinfo_cache = {}
+
+    def archetype(event_id, player_id):
+        if event_id not in pinfo_cache:
+            d = {}
+            try:
+                with z.open(f"events/{event_id}/players_info.csv") as f:
+                    for row in csv.DictReader(io.TextIOWrapper(f, "utf-8")):
+                        d[row["player__id"]] = (row.get("player_title") or "").strip()
+            except KeyError:
+                pass  # no players_info for this event
+            pinfo_cache[event_id] = d
+        return pinfo_cache[event_id].get(player_id, "")
+
     want = set(args.formats)
     seen = {fmt: set() for fmt in want}
     written = collections.Counter()
@@ -87,7 +102,12 @@ def main():
         os.makedirs(out_dir, exist_ok=True)
         pid = re.search(r"player_(\d+)_deck", name).group(1)
         fname = f"{m.group(1)}_{pid}.txt"
+        arch = archetype(m.group(1), pid)
         with open(os.path.join(out_dir, fname), "w", encoding="utf-8") as out:
+            # An `About`/`Name` header carries the archetype through
+            # parse_deck_text -> ParsedDeck.name (the deck's display name).
+            if arch:
+                out.write(f"About\nName {arch}\n")
             out.write("Deck\n")
             for cardname, cnt in entries:
                 out.write(f"{int(cnt)} {cardname}\n")
