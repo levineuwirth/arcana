@@ -1,0 +1,45 @@
+# Pioneer capsule — deckbuilding optimizer result
+# (1+1) hill-climb, 120 iters, 5 games/opp vs the 5-deck field, VmcMaterial referee.
+# Run: CAPSULE_DIR=$(pwd)/docs/capsule-pioneer/seeds CAPSULE_ITERS=120 CAPSULE_GAMES=5 \
+#      cargo test -p arcana-ai --release deckbuild_capsule_run -- --ignored --nocapture
+
+capsule field: 5 seed decks
+legal pool: 57 distinct cards
+test deckbuild::tests::deckbuild_capsule_run has been running for over 60 seconds
+fitness: start 0.040 -> best 0.520 (accepted improvements: 9)
+optimized deck:
+60 cards: 23 lands, 37 nonland (distinct nonland 22), avg nonland MV 2.24
+  4x Voracious Hydra (MV 2)
+  3x Hardened Scales (MV 1)
+  3x Chandra, Torch of Defiance (MV 4)
+  2x Hangarback Walker (MV 0)
+  2x Soul-Scar Mage (MV 1)
+  2x Bomat Courier (MV 1)
+  2x Once Upon a Time (MV 3)
+  2x Goblin Chainwhirler (MV 3)
+  2x Nissa, Voice of Zendikar (MV 3)
+  2x Rekindling Phoenix (MV 4)
+  2x Glorybringer (MV 5)
+  1x Spectral Sailor (MV 1)
+  1x Curious Obsession (MV 1)
+  1x Spell Pierce (MV 1)
+  1x Experiment One (MV 1)
+  1x Winding Constrictor (MV 2)
+test deckbuild::tests::deckbuild_capsule_run ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 100 filtered out; finished in 2033.90s
+     Running tests/concede_regression.rs (target/release/deps/concede_regression-5720ea4f200b160b)
+
+## Diagnostic read (the point of the loop):
+# - Loop CLOSES: 0.04 (random pile, loses ~96% vs field) -> 0.52 (~even). Build->eval->improve works.
+# - Converges to RECOGNIZABLE Magic: 23 lands, avg MV 2.24, coherent Gruul-ish curve.
+#   NOT the predicted failure modes (no mana nonsense; didn't min-land to jam threats).
+# - GREEDY GOOD-STUFF tendency: grabs the individually-strongest cards across all 5
+#   archetypes (4x Voracious Hydra, Chandra/Nissa planeswalkers, Glorybringer/Phoenix)
+#   rather than one coherent archetype. vmc rewards efficient bodies + planeswalkers.
+# - Did KEEP synergy pieces (Hardened Scales 3x, Winding Constrictor, Hangarback) -> a
+#   counters-midrange hybrid, not pure aggro-abuse.
+# CAVEATS: noisy + shallow — 25 games/eval (5 opp x 5) => fitness noise => 'best 0.52'
+#   is selection-on-noise optimistic; (1+1) single-swap = limited exploration; the
+#   good-stuff outcome partly reflects the pool being a 5-archetype toolbox.
+# NEXT (reviewer #5): persist this deck + run HIGH-BUDGET PIMC on it vs the seeds.
+#   If its vmc gain evaporates/inverts under PIMC => real objective-misalignment.
