@@ -1,241 +1,258 @@
-# Arcana RL — status & findings (for peer review)
+# Arcana RL — status & findings, refresh 2 (for peer review)
 
-*A self-contained write-up of where our game-playing AI stands, the experiments
-we ran, and the open questions. Goal: enough context for an outside researcher
-to say "here's what I'd do."*
+*A self-contained write-up of where our game-playing AI + deck-evaluation work
+stands, the experiments we ran, and the open questions. Goal: enough context for
+an outside researcher to say "here's what I'd do." This refresh adds the major
+arc since the last write-up: acting on the prior feedback to pivot toward
+**deckbuilding-as-evaluation**, building a real-deck gauntlet harness, and what
+we learned running it on real tournament decklists.*
 
 ---
 
-## 1. The domain
+## 0. What changed since refresh 1 (TL;DR of the delta)
+
+Last time the headline was about **play strength**: PIMC (search, no learning)
+dominates; a self-play-learned value function is a *worse* search leaf than a
+hand-tuned material heuristic; "good predictor ≠ good search leaf." That still
+stands and is summarized in §2.
+
+The peer feedback was: *park the learned-value-leaf, pivot to deckbuilding as a
+black-box optimization problem using the cheap material-in-search policy as a
+referee, turn the deck evaluator into a real experiment runner with proper
+statistics, and source real decklists.* We did the **infrastructure half** of
+that, and it surfaced a result we didn't expect: the binding constraint isn't
+the RL/optimization at all — it's **catalog coverage** (an engineering problem),
+and the **evaluation referee's bias** dominates any ranking we produce. Details
+in §3–§6.
+
+---
+
+## 1. The domain (unchanged)
 
 **Arcana** is a from-scratch Rust implementation of a Magic: the Gathering–style
-trading-card game engine plus a catalog of ~20,500 cards. The engine is a
-faithful rules simulator (stack, priority, layers/continuous effects,
-replacement effects, combat, triggered/activated abilities, ~105 distinct effect
-primitives). Games are:
-
-- **Two-player, zero-sum, turn-based.**
-- **Imperfect information** — each player's hand and library are hidden; libraries
-  are also stochastic (shuffled). So this is an imperfect-information,
-  stochastic game (closer to poker/Stratego than chess/Go).
-- **Long horizon & high branching** — games run dozens to hundreds of decision
-  points; the legal-action set at a decision can be large (every castable card ×
-  target/mode/X-cost combination, plus attacks/blocks/activated abilities).
-- **Huge, open-ended action/state space** — 20k cards, and the catalog keeps
-  growing. Any agent must generalize across cards it has never specifically been
-  trained on.
-
-The AI lives in a crate `arcana-ai` (~6.3k LOC). It is a **value-function RL
-pipeline**, not a full AlphaZero-style policy+value network. Everything is pure
-Rust (no PyTorch/JAX); the "network" is a small in-house logistic / MLP.
+engine plus a catalog of **~20,600 implemented cards** (out of ~31k printed). The
+engine is a faithful rules simulator (stack, priority, layers/continuous effects,
+replacement effects, combat, triggered/activated abilities, ~105 effect
+primitives). Games are two-player, zero-sum, turn-based, **imperfect-information**
+(hidden hands/libraries; shuffled = stochastic), **long-horizon / high-branching**,
+over a **huge open-ended action+card space**. Pure Rust, single machine, no GPU,
+no PyTorch/JAX.
 
 ---
 
-## 2. The system
+## 2. Track A — play-strength RL (recap; conclusions unchanged)
 
-### 2.1 State encoding (`observation.rs`)
-A `BasicE2Encoder` turns a game state into **123 floats** (2 × 50 per-player +
-20 game-level + 3 perspective), perspective-relative (the to-move player's blocks
-come first). Features are **identity-free aggregates** — they go beyond raw
-material counts (CMC bins, keyword-presence aggregates) but never name a specific
-card:
+A value-function pipeline (`arcana-ai`), not AlphaZero. State → 123 identity-free
+float features (counts, CMC bins, keyword presence — no card identity). Policies:
+`MaterialValue` (hand-tuned leaf), `ValueMcPolicy` (short MC rollouts with a
+value leaf), `PimcPolicy` (perfect-information Monte-Carlo), and a learned
+`LinearValue`/MLP. Yardstick = round-robin on a mirror deck.
 
-- per player: life, poison/energy/experience counters, lands-played, mana pool,
-  zone sizes (library/hand/graveyard/exile), battlefield permanent counts by
-  type (creature/land/artifact/enchantment/PW), tapped-by-type, by-color,
-  **total power / total toughness / total damage** on board, an **8-bucket CMC
-  histogram** of controlled permanents, and **per-keyword presence** (flying,
-  deathtouch, …) on controlled creatures (layer-aware — counts granted keywords).
-- game level: turn/phase/step, combat state, stack size, etc.
+**Findings (still current):**
+- **PIMC dominates**; a **material leaf inside lookahead ≈ PIMC** (e.g. 18 vs 20
+  / 30) with *zero learning*.
+- The **self-play-learned value is a worse leaf** than the hand-tuned material
+  one, even after we fixed its predictor accuracy (held-out log-loss 0.51 < the
+  heuristic's 0.54 by ~150 games) — **"good predictor ≠ good search leaf."**
+- The learned-value-leaf branch is **parked**; the deployable AI is PIMC /
+  ValueMc-material. The pipeline is guarded by a smoke test + diagnostics so it
+  doesn't bit-rot.
 
-**Important limitation:** the encoder still has **no card identity** — it can see
-the *shape* of the board (a CMC-3 creature with flying) but not *which* card it
-is: it cannot tell a Llanowar Elves from a Black Lotus, only "1 creature, power
-1, CMC 0." So a learned value can at best learn a function of *aggregate
-material/tempo/curve*, which is close to what the hand-tuned heuristic already
-encodes.
-
-### 2.2 Policies / search (`search.rs`)
-A `StatePolicy` picks an action from a state. A `ValueFn` scores a (state,
-player) → [-1, 1] (terminal ±1). Implemented:
-
-- **`MaterialValue`** — hand-tuned leaf: `0.9·tanh((my_material − opp_material)/30)`,
-  where material is a board+life heuristic. No learning.
-- **`GreedyValuePolicy`** — 1-ply: take the action maximizing a `ValueFn`.
-- **`ValueMcPolicy`** — short Monte-Carlo rollouts from each action, leaves scored
-  by a `ValueFn` (lookahead; not myopic). Budget e.g. (depth 6, 25 rollouts).
-- **`PimcPolicy`** — **Perfect-Information Monte-Carlo**: sample determinizations
-  of the hidden information, solve each with flat-MC rollouts, vote. Budget e.g.
-  (15 determinizations, 150 rollouts). *No learned component.*
-- An IS-MCTS exists but **underperforms PIMC** (consistent with the known
-  "PIMC beats IS-MCTS for trick/card games" folklore result).
-
-### 2.3 Learner (`learn.rs`, `mlp.rs`)
-Monte-Carlo value learning:
-
-1. `collect_value_data`: play self-play games under a chosen *referee* policy; at
-   every visited state, record the encoded features from **both** perspectives,
-   labeled with that player's **eventual game outcome** (win=1 / loss=0 /
-   draw=0.5). I.e. Monte-Carlo value targets.
-2. Standardize features (per-feature mean/var).
-3. `train_logistic`: full-batch gradient descent + L2 → win-probability.
-   (`LinearValue::value = 2·σ(w·x+b) − 1`, terminal overridden to ±1.)
-4. An MLP variant exists (`train_mlp_value`) but isn't the focus below.
-
-### 2.4 Evaluation — the "yardstick"
-A **round-robin tournament**: each policy pair plays N games (seats swapped to
-cancel first-player bias); report a win matrix + totals. Plus a calibration
-module that fits value→win-probability and reports log-loss/Brier/reliability.
-
-All of the above is **mirror-matchup** on a single fixed sampled deck (both
-players play the same deck), so results are deck-specific.
+This matters here because the cheap, no-learning **ValueMc(Material)** policy is
+exactly the "referee" we reuse below to evaluate *decks*.
 
 ---
 
-## 3. Experiments & results (this round)
+## 3. Track B — deckbuilding as evaluation (the new work)
 
-All runs are `--release`, on the mirror deck. Tournament cells are row-vs-column
-wins; totals are out of 3 opponents × N games.
+The pivot's premise: if we can't easily learn a better *player*, can we use the
+players we have to evaluate *decks* — rank real decklists, measure card value,
+eventually optimize decklists? Step one is a trustworthy **deck gauntlet**.
 
-### 3.1 Greedy + value-learned-from-greedy-material self-play
-Learned from **24** greedy-material self-play games; round-robin 12 games/pair:
+### 3.1 The gauntlet harness (`deckeval_runner.rs`)
+A reproducible round-robin over a set of decks with the statistics needed to make
+a *claim*, not just a point estimate:
+
+- **Seat-swapped, common-seed duels.** Each deck pair plays *duels* of two games
+  that share one engine seed + per-deck policy seeds but swap seats, so policy
+  RNG cancels per deck and seat/shuffle luck is balanced at the duel level.
+- **Block bootstrap CIs.** The experimental unit is the duel (its two games share
+  seeds and are correlated), so per-deck 95% CIs resample *duel blocks*, not iid
+  games — resampling games would make intervals too optimistic.
+- **Referee knob.** The policy *both* seats play (we measure decks, not policies):
+  `Random` (screening), **`VmcMaterial`** (the cheap material-in-search policy
+  from Track A — our standard referee), or `Pimc` (strongest, slowest).
+- Output: win matrix + per-deck point-rate (draws = ½) with CIs + CSV.
+- Sizing rule of thumb (from your feedback): ~100 games/deck = a screen, 400+ for
+  a firm claim.
+
+### 3.2 The deck space + the binding constraint
+We sourced **real decklists** from the Kaggle MTGTop8 dataset (~125k tournament
+decks across Standard/Modern/Legacy/Vintage/Pioneer/EDH), de-duplicated and
+tagged by archetype. A loader normalizes each list against the catalog and
+reports which cards don't resolve.
+
+**The surprise:** a decklist is only playable if **every** card is implemented,
+and our catalog — though ~20.6k cards — was generated by breadth, not by
+competitive relevance. Initial result: **0% of real competitive decks were fully
+playable in any format** (mean per-deck coverage 56–67%; a single missing staple
+disqualifies a 60-card deck). The bottleneck was not RL, optimization, or eval —
+it was **card implementation**.
+
+The miss list is concentrated, though: only ~300–370 distinct cards were missing
+per format, and they cluster (dual/shock/fetch lands, a handful of ubiquitous
+spells, format-defining creatures). So it's a tractable, frequency-ranked
+worklist, not a long tail.
+
+### 3.3 The card-grind (what it took to get real formats playable)
+We implemented the highest-leverage missing cards — **62 new cards + 2 engine
+features** across ~14 batches — driven by a "which cards block the most
+*almost-playable* decks" analysis:
+
+- Lands: 10 Ravnica shocklands (+ a small engine feature: "enters tapped unless
+  you pay N life"), 10 original dual lands, 5 ELD Castles, 5 utility lands, 5
+  Worldwake **manlands**.
+- A real engine feature: **Crew / Vehicles** (a Vehicle is an artifact that
+  becomes a creature when crewed — tap creatures with total power ≥ N), reused by
+  the manlands' "becomes a creature" animation.
+- Spells: burn, board wipes, counters, library-dig, **modal "Commands"/Charms**
+  (Kolaghan's/Izzet/Boros), delve (Treasure Cruise, Dig Through Time).
+- Creatures incl. **Tarmogoyf** (modeled as a fixed 4/5 — its dynamic
+  graveyard-scaled P/T is a known, deferred engine task).
+
+Several "engine levers" we'd budgeted turned out to already exist (**delve** and
+**fetchlands** were fully wired — fetchlands now fetch the subtype-bearing lands
+we added). Net effect on playable real decks (of 800 distinct/format sampled):
 
 ```
-ranking: pimc(32) > random(25) > g-learned(15) > g-material(0)   [/36]
+                Pioneer    Modern    Legacy    Vintage
+fully playable    0→64      0→43      0→1        0
+mean coverage   ~67→88%   ~73→77%   ~67→69%   ~62→64%
 ```
-- **`g-material` = 0/36 — loses to *random* 0–12.** A 1-ply material maximizer
-  never attacks (attacking spends material for no immediate gain), so it durdles
-  to a deck-out/timeout loss. → MaterialValue is a useful *search leaf* but a
-  pathological *greedy policy*.
-- `g-learned` (15) beats its teacher 12–0 but loses to random — it learned from
-  degenerate data.
 
-### 3.2 Value as a *search leaf* (ValueMc), learned from random self-play
-Learned from **30** random self-play games; value deployed inside `ValueMcPolicy`;
-10 games/pair:
+This is itself a finding: **a modest, well-targeted card-implementation push
+moves a real-deck eval from "impossible" to "runnable."**
+
+### 3.4 Gauntlet results — Pioneer (62 decks, 122 games/deck)
+Referee = VmcMaterial, block-bootstrap 95% CIs. Point-rate (draws ½):
 
 ```
-ranking: pimc(20) > vmc-material(17) > random(12) > vmc-learned(11)   [/30]
+Gruul Aggro        89.3%  [83.6, 94.3]   ┐
+Red Deck Wins  73–84% (×5)               │ aggro tier
+Rg / Rakdos Aggro  70–80%                ┘
+Rakdos PW Control  67%
+Azorius Aggro      63%
+Sultai Control     ~50%
+Golgari / Hardened-Scales (×7)  27–35%   ← +1/+1-counter synergy decks
+Temur Midrange      9.0%  [4.1, 14.8]    ← worst
 ```
-- **`vmc-material` ≈ `pimc`** (17 vs 20; tied 5–5 head-to-head) — a material leaf
-  inside lookahead is already near top. *Search does the work.*
-- **`vmc-learned` is worst** — the learned leaf is *worse* than the hand-tuned one.
 
-### 3.3 Diagnostic: is the learned value a good static predictor?
-On 3,264 mid-game self-play states, learned value (from 30 games) vs material:
+Well-separated and **coherent — but it's an artifact of the referee**: aggro
+decks (curve out creatures, attack) are exactly what a shallow material heuristic
+plays well; the +1/+1-counter synergy and grindy midrange decks rely on lines the
+referee can't pilot and on payoffs that are partly GAP'd in our catalog. So those
+decks are almost certainly **underrated, not bad.** 0 draws across 918 games.
 
-```
-learned : std 0.568  range [-1.000, +0.999]
-material: std 0.427  range [-0.897, +0.868]
-corr(learned, material) = 0.630
-log-loss  learned = 0.7165   material = 0.5408   (ln2 = 0.693 = chance)
-```
-- The learned value is **NOT flat** — it's *more* spread than material (confident
-  to ±1) **but predicts the outcome WORSE THAN CHANCE out-of-sample** (0.72 >
-  0.69), while material is genuinely informative (0.54). → **overfit /
-  overconfident.**
-- **Root cause:** ~30 games, but states within a game share one outcome label →
-  *effective* independent labels ≈ 60, against ~120 features → underdetermined.
-
-### 3.4 Learning curve: does more data fix the predictor?
-Out-of-sample log-loss on 3,476 held-out fresh-game states:
+### 3.5 Gauntlet results — Modern (43 decks, 84 games/deck)
+Same harness. The result is instructive in a different way:
 
 ```
-baseline (always 0.5)  0.6930
-material               0.5419
-learned n= 50          0.6015
-learned n=150          0.5133   ← beats material
-learned n=300          0.5269   ← beats material
+playable Modern field: 43 decks — of which 42 are "Jund" + 1 "4/5c Good Stuff"
+ranking: a tight band of Jund builds, 34%–63%, CIs heavily overlapping
 ```
-- **Yes** — by ~150 games the learned value is a *better outcome predictor* than
-  the hand-tuned heuristic. Crossover ~150; diminishing past it (300 ≈ 150,
-  possibly wanting LR/epochs scaled with n).
 
-### 3.5 Confirmation: does the better predictor play better?
-Re-ran 3.2's tournament with the leaf trained on **150** games (not 30):
-
-```
-ranking: pimc(20) > vmc-material(18) > vmc-learned(11)   [/30]
-  (vmc-material beats vmc-learned head-to-head 6–4)
-```
-- **No.** More data fixed the *predictor* (log-loss 0.51 < 0.54) but **NOT the
-  *player*** — `vmc-learned` is essentially unchanged (11 vs 18), still loses to
-  the material leaf.
+The Modern field **collapsed to a single archetype.** Why: our card-grind for
+Modern targeted Jund's exact cards (Tarmogoyf, Kolaghan's Command, shock/fetch
+lands, manlands), so the only fully-covered decks *are* Jund. The gauntlet then
+ranks **Jund builds against each other** — a near-mirror — where the material
+referee barely separates them (overlapping CIs). This is **selection bias in its
+starkest form: the field equals the cards you've implemented.** (Pioneer looked
+diverse only because its coverage happened to span several archetypes' staples.)
 
 ---
 
 ## 4. What we concluded
 
-1. **"Good predictor ≠ good search leaf."** Lower aggregate log-loss did not
-   translate into stronger play. Play strength depends on the leaf's *action-
-   ordering* at the states actually reached during search, not its average
-   accuracy on random-play states.
-2. **Search is the lever, not the learned leaf.** PIMC dominates everything (20);
-   a material leaf in lookahead ≈ PIMC (18); the learned value adds nothing for
-   play. The pragmatic deployed AI is PIMC (or ValueMc-material) — *zero learning
-   required.*
-3. The learned-value-as-leaf branch is **parked** as the path to a stronger
-   agent. (The pipeline is now guarded by a fast smoke test + two diagnostics so
-   it doesn't bit-rot.)
+1. **The harness works.** Paired seeds + block-bootstrap give well-separated,
+   CI-bounded rankings on real decklists, reproducibly. The plumbing is done.
+2. **Two confounds dominate any ranking it produces**, and both are bigger than
+   the statistics:
+   - **Referee bias.** Under VmcMaterial, "deck strength" ≈ "how well a shallow
+     material heuristic can pilot it." Aggro is flattered; synergy/control/value
+     is penalized. The ranking is *internally consistent*, not ground truth.
+   - **Coverage selection bias.** The playable field = the decks whose every card
+     we've implemented. A narrow card-grind yields a narrow (even single-archetype)
+     field — Modern became a Jund mirror.
+3. **The bottleneck for "evaluate real decks" was engineering, not ML.** Most of
+   the work that moved the needle was implementing cards and one engine feature,
+   not anything RL-shaped.
+4. **Tarmogoyf-as-keystone effect.** Coverage is super-additive: clearing a deck's
+   *other* missing cards first means one final card (Tarmogoyf) flips dozens of
+   decks from unplayable to playable at once. The order you implement in matters.
 
 ---
 
 ## 5. Caveats / threats to validity (please poke holes)
 
-- **Small samples:** 10–12 games/pair. Differences are *directional*, not firm;
-  several head-to-heads (e.g., 4–6) are within noise of 5–5.
-- **Single mirror deck.** No deck/matchup diversity; conclusions may be
-  deck-specific. (We do have a `deckeval` gauntlet but didn't use it here.)
-- **Self-referee win-probability.** MC targets are "P(win | *this referee* plays
-  on from here)", not P(win | optimal). Value learned under random/greedy
-  self-play is calibrated to a weak continuation.
-- **Train/deploy distribution mismatch.** The value is trained on random-play (or
-  greedy-material) states but deployed on ValueMc-rollout states.
-- **Identity-free features.** The encoder sees structural aggregates (counts,
-  CMC bins, keyword presence) but no card identity — a structural ceiling on
-  what any value head can learn beyond aggregate material/tempo/curve.
-- **Linear model.** Logistic regression; an MLP variant exists but wasn't pushed
-  (and on ~60 effective samples, more capacity would overfit harder).
-- **PIMC's known weakness ("strategy fusion"/non-locality)** — PIMC assumes
-  perfect information per determinization, so it can misplay genuine
-  information-hiding/bluff lines. It still wins here, but that's a theoretical
-  ceiling.
+- **Referee strength.** Everything above uses the cheap VmcMaterial referee. A
+  stronger referee (PIMC, or a value that can pilot synergy) might reorder decks
+  substantially — we don't yet know how *referee-dependent* the ranking is.
+- **No ground truth.** We have not validated any ranking against real tournament
+  win-rates. "Gruul Aggro #1 in our Pioneer gauntlet" is a statement about our
+  referee + our catalog, not the real metagame.
+- **Coverage selection bias** (see §3.5) — the field is not the real metagame; it
+  is a non-random subset determined by what we've implemented.
+- **Card-fidelity GAPs.** Some implemented cards approximate (Tarmogoyf = fixed
+  4/5; several "modes"/riders elided), which systematically weakens the affected
+  (often non-aggro) decks.
+- **Sample size.** 84–122 games/deck = screening tier (~±10% CIs); fine for the
+  clear top/bottom splits, not for close pairs.
+- **Track A caveats still apply** (small mirror-deck samples, identity-free
+  features, PIMC's strategy-fusion weakness).
 
 ---
 
 ## 6. Open questions — where we want your opinion
 
-1. **Is the learned value worth pursuing at all**, given material-in-search ≈
-   PIMC for free? Or is "make the search better/faster" the whole game?
-2. **If we pursue learning, how do we optimize for *play* not log-loss?**
-   Candidates we're weighing: (a) train the value on *deployment-distribution*
-   states (states reached by the search, à la DAgger/expert-iteration), (b) a
-   real **policy network + PUCT (AlphaZero-style)** rather than value-as-leaf,
-   (c) policy-gradient / regret-based methods suited to imperfect info
-   (DREAM/ReBeL/Player-of-Games lineage), (d) just distill PIMC's action choices
-   into a fast policy net (imitation) to remove PIMC's per-move search cost.
-3. **Features:** is adding **card-identity embeddings** (so the value can see
-   *what's* on board, not just counts) the highest-leverage change — or a
-   distraction given (1)?
-4. **Imperfect info:** PIMC vs IS-MCTS vs an explicit imperfect-info solver — for
-   a game this large/long, what's the realistic target?
-5. **Eval rigor:** what sample sizes / deck diversity / opponent pool would you
-   require before trusting a "policy A > policy B" claim here?
-6. **Compute reality check:** this is pure-Rust, single-machine, no GPU, no
-   external ML stack. Given that constraint, which direction has the best
-   effort-to-payoff?
+1. **What makes a deck-strength eval trustworthy?** Given the referee bias, is the
+   right move (a) invest in a stronger/faster referee (PIMC at scale; or finally a
+   learned value that *can* pilot synergy), (b) validate against real win-rates
+   (treat MTGTop8 placements / external meta win% as labels and check rank
+   correlation), or (c) accept "strength under referee X" as the definition and
+   move on to optimization?
+2. **Referee sensitivity.** Cheapest informative experiment: re-run the same field
+   under Random / VmcMaterial / PIMC and measure how much the ranking moves. If
+   it's stable, the cheap referee is fine; if it reorders, referee quality is the
+   whole game. Worth doing first?
+3. **Beating selection bias.** Do we (a) keep grinding cards to broaden the field
+   toward the real metagame (expensive, open-ended), (b) deliberately implement
+   *across* archetypes to get a diverse small field, or (c) restrict claims to
+   "best build within a covered archetype" (which the Modern Jund result actually
+   does well)?
+4. **Is deckbuilding-optimization premature** until (1)–(3) are settled? The
+   black-box-optimization loop (CEM/bandits/successive-halving over decklists with
+   the cheap referee) is ready to build, but optimizing against a biased objective
+   just finds decks that flatter the referee.
+5. **Card-identity features**, again: a value head that sees *which* cards are on
+   board is the plausible route to a referee that can pilot synergy — still the
+   highest-leverage ML change, or still a distraction?
+6. **Compute reality check** (unchanged): pure-Rust, single-machine, no GPU. Which
+   direction has the best effort-to-payoff?
 
 ---
 
 ## 7. TL;DR
 
-We have a working imperfect-information card-game engine and a value-function RL
-stack. **PIMC (search, no learning) is by far the strongest agent; a hand-tuned
-material heuristic inside lookahead nearly matches it.** A self-play-learned value
-function is currently *worse* as a search leaf than the hand-tuned heuristic.
-We diagnosed the obvious cause (overfit from too few games) and *fixed the
-predictor* (it now beats the heuristic on held-out log-loss) — **but that did not
-make it play better.** So our current read is: **search is the lever; the learned
-value is a research rabbit hole** unless we change the objective to optimize play
-directly (expert-iteration / policy net / imitating PIMC). We'd love opinions on
-whether that read is right and which direction you'd take.
+We acted on the deckbuilding pivot and built a **real-deck gauntlet** with proper
+paired-seed/bootstrap statistics, then fed it real MTGTop8 decklists. The
+unexpected lesson: the hard part was **catalog coverage** (0% of real decks were
+playable until we implemented ~62 targeted cards + a Crew engine feature), and
+once decks *were* playable, **two confounds dominate the rankings** — the cheap
+material referee flatters aggro and penalizes synergy (Pioneer: Gruul Aggro 89% →
+Temur Midrange 9%), and coverage selection bias can collapse a "format" to one
+archetype (Modern became a 42/43 Jund mirror). The harness is sound and the
+rankings are internally consistent, but they are *"strength under our referee,
+among the decks we can represent,"* not the real metagame. Our open question for
+you: before we build the deckbuilding *optimizer*, how much should we invest in
+**referee quality** and **ground-truth validation** so the objective is worth
+optimizing — and is referee-sensitivity the first experiment to run?
