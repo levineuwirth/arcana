@@ -272,18 +272,38 @@ diverse only because its coverage happened to span several archetypes' staples.)
    mildly **over-rates aggro** (Red Deck Wins falls under PIMC; aggro falls under
    random) and **under-rates +1/+1 synergy** (Golgari Scales / Hardened Scales
    rise under both stronger-than-material refs). Effect is modest (~0.10 mean
-   point-rate Δ) and partly noisy at 22 games/deck. **Tentative read:**
-   optimizing decks against VmcMaterial is *directionally* safe but will mildly
-   exploit aggro; confirm with a higher-budget PIMC and larger samples before any
-   firm claim. Next still: a larger-budget-PIMC arm + ground-truth check.
+   point-rate Δ) and partly noisy at 22 games/deck. The tentative read
+   ("directionally safe, mildly aggro-exploiting") was **too generous** — see (3)
+   and (4), which ran the higher-budget-PIMC arm and the ground-truth check and
+   found the misalignment is severe, not mild.
 2. **Coverage capsules, not broad coverage** — deliberately implement the
    blockers for 4–6 *chosen* archetypes per format, to get diverse experimental
-   domains instead of the current Jund/aggro skew.
-3. **Constrained deckbuilding inside a capsule** — "optimize under referee X
-   within this covered pool/archetype." Narrow, honest, and a useful diagnostic
-   (what degenerate decks does the referee reward?).
-4. **MTGTop8 placement as *validation*, not training truth** — noisy and
-   metagame-confounded; use for rank-correlation sanity checks after (1).
+   domains instead of the current Jund/aggro skew. (Built one honest Pioneer
+   capsule — 5 archetypes, 57-card pool — `docs/capsule-pioneer/`.)
+3. **Constrained deckbuilding inside a capsule — done; the objective is
+   MISALIGNED.** A (1+1) hill-climb over the capsule maximized the VmcMaterial
+   gauntlet score (fitness 0.04 → 0.52) and converged to a *recognizable* deck
+   (23 lands, avg MV 2.24, a Gruul-ish "good-stuff" pile: the individually
+   strongest bodies + planeswalkers from across all 5 archetypes). But the
+   reviewer's validation arm — score that deck + each seed under a higher-budget
+   PIMC (samples 16, cap 160) — shows the VMC gain doesn't just evaporate, it
+   **inverts**: the optimized deck is the *single worst* deck in the field under
+   PIMC (point-rate 0.133, below every seed ≥0.21), while the synergy seed the
+   material referee buried (Hardened Scales) *rises* (0.29 → 0.50). Textbook
+   reward-hacking: the pile maxes raw material but a referee that sequences games
+   punishes its incoherence + 3-color mana base. Full table:
+   `docs/capsule-pioneer/results.txt`.
+4. **MTGTop8 placement as *validation* — done; VmcMaterial fails it.** Per-archetype
+   real strength from the dump's tournament finishes (`player_result` over 528
+   Pioneer events) vs our gauntlet point-rate, collapsed into 7 confidently-matched
+   archetype buckets: **Spearman ρ = 0.00** (mean finish) / **−0.39** (top-8 share,
+   sharper). The extremes invert — our #1 Gruul/RG Aggro is real-world *weakest*
+   (0.000 top-8 share in ≥2-star events), our worst Scales-synergy cluster is
+   real-world mid-to-strong — and our referee manufactures a 0.30–0.82 spread where
+   reality compresses to ~0.51–0.60. Caveats (N=7 fuzzy buckets, narrow real band,
+   metagame confound) in `docs/gauntlet-results/gauntlet-vs-real-PI.txt`. Both (3)
+   and (4) point the same way: **PIMC tracks reality; VmcMaterial does not** — so
+   the next bottleneck is *referee quality*, not optimizer sophistication.
 5. **Defer the generic learned value-leaf** — deckbuilding needs a stable
    objective more than another value head; better ML later is
    action-ranking/distillation from search or a deck-level surrogate.
@@ -299,9 +319,21 @@ playable until we implemented ~62 targeted cards + a Crew engine feature), and
 once decks *were* playable, **two confounds dominate the rankings** — the cheap
 material referee flatters aggro and penalizes synergy (Pioneer: Gruul Aggro 89% →
 Temur Midrange 9%), and coverage selection bias can collapse a "format" to one
-archetype (Modern became a 42/43 Jund mirror). The harness is sound and the
-rankings are internally consistent, but they are *"strength under our referee,
-among the decks we can represent,"* not the real metagame. Our open question for
-you: before we build the deckbuilding *optimizer*, how much should we invest in
-**referee quality** and **ground-truth validation** so the objective is worth
-optimizing — and is referee-sensitivity the first experiment to run?
+archetype (Modern became a 42/43 Jund mirror).
+
+We then built one honest Pioneer **capsule** and closed the deckbuilding loop —
+and the loop *diagnosed its own objective*. Three results converge: the
+optimized deck (good under VmcMaterial) is the **worst** deck in its field under
+a higher-budget **PIMC** (point-rate 0.13 vs every seed ≥0.21); the VmcMaterial
+gauntlet has **zero-to-negative rank correlation with real MTGTop8 finishes**
+(ρ = 0.00 mean-finish, −0.39 top-8); and in both PIMC and the real metagame the
+*synergy* decks the material referee buries (Hardened Scales) come out ahead.
+
+The takeaway sharpened: it is **not** that VmcMaterial is "directionally right
+but noisy" — optimizing against it is reward-hacking, and the rankings are
+*"strength under a referee that does not track reality."* **Referee quality is
+now the binding constraint**, ahead of optimizer sophistication or more cards.
+The concrete next step is a better-but-still-cheap objective — PIMC as the
+referee, or a cheap policy/value distilled from PIMC — before any further
+deckbuilding optimization. The open question for you: invest in a PIMC-distilled
+referee next, or push PIMC budget directly and eat the cost?

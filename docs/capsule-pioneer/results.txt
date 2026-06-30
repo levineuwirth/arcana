@@ -41,5 +41,33 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 100 filtered out; fi
 # CAVEATS: noisy + shallow — 25 games/eval (5 opp x 5) => fitness noise => 'best 0.52'
 #   is selection-on-noise optimistic; (1+1) single-swap = limited exploration; the
 #   good-stuff outcome partly reflects the pool being a 5-archetype toolbox.
-# NEXT (reviewer #5): persist this deck + run HIGH-BUDGET PIMC on it vs the seeds.
-#   If its vmc gain evaporates/inverts under PIMC => real objective-misalignment.
+
+## VALIDATION (reviewer #5): does the VMC gain survive a stronger referee? NO — it INVERTS.
+# deckbuild_capsule_validate: the optimized deck reproduced EXACTLY (seed 0 deterministic),
+# then it + each seed scored vs the field, 6 games/opp, under vmc vs higher-budget PIMC
+# (samples 16, cap 160). Run: CAPSULE_DIR=... CAPSULE_ITERS=120 CAPSULE_GAMES=5 \
+#   CAPSULE_VAL_GAMES=6 CAPSULE_PIMC_SAMPLES=16 CAPSULE_PIMC_CAP=160 \
+#   cargo test -p arcana-ai --release deckbuild_capsule_validate -- --ignored --nocapture
+#
+#   deck                          vmc   pimc
+#   optimized                   0.400  0.133   <- the optimizer's output: WORST under PIMC
+#   UW Spirit Aggro             0.750  0.458
+#   Golgari Scales              0.250  0.208
+#   Hardened Scales             0.292  0.500   <- RISES under PIMC (material referee buried it)
+#   Rakdos Aggro                0.375  0.667   <- RISES
+#   Red Deck Wins               0.792  0.750
+#
+# READ: the optimizer's gains don't evaporate — they INVERT. The deck tuned to beat the
+#   field under VmcMaterial is the SINGLE WORST deck in the field under PIMC (0.133, below
+#   every seed). Textbook objective misalignment / reward-hacking: the "good-stuff pile"
+#   maxes the material referee (efficient bodies + planeswalkers, raw stats over a coherent
+#   plan), but a referee that actually sequences games punishes its incoherence + 3-color
+#   (RG + U splash) mana base that shallow material rollouts never tax.
+# CONVERGES with the ground-truth check (docs/gauntlet-results/gauntlet-vs-real-PI.txt):
+#   Hardened Scales RISES under PIMC (0.292->0.500) AND is real-world strong; the material
+#   referee suppresses exactly what BOTH PIMC and reality reward. => PIMC tracks reality
+#   better than VmcMaterial; the objective worth optimizing is PIMC (or a PIMC-distilled
+#   cheap referee), NOT VmcMaterial.
+# NOISE: 6 games/opp; the optimized deck's own vmc fell 0.52(opt)->0.40(re-eval), confirming
+#   the (1+1) hill-climb overfit to lucky evals. But the PIMC separation (optimized 0.133 vs
+#   every seed >=0.208) is wide enough to carry the conclusion.
