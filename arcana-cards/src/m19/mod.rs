@@ -98,3 +98,4 @@ pub mod pegasus_courser;
 pub mod skyrider_patrol;
 pub mod elvish_clancaller;
 pub mod one_with_the_machine;
+pub mod field_of_the_dead;

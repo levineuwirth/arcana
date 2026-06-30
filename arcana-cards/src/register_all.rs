@@ -644,6 +644,8 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::hou::wall_of_forgotten_pharaohs::register(reg); n += 1;
     crate::hou::apocalypse_demon::register(reg); n += 1;
     crate::hou::strategic_planning::register(reg); n += 1;
+    crate::hou::hashep_oasis::register(reg); n += 1;
+    crate::hou::ramunap_ruins::register(reg); n += 1;
     // --- m15 ---
     crate::m15::chandra_pyromaster::register(reg); n += 1;
     crate::m15::goblin_roughrider::register(reg); n += 1;
@@ -3591,6 +3593,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::war::goblin_assault_team::register(reg); n += 1;
     crate::war::grim_initiate::register(reg); n += 1;
     crate::war::dovins_veto::register(reg); n += 1;
+    crate::war::blast_zone::register(reg); n += 1;
     // --- me4 ---
     crate::me4::water_elemental::register(reg); n += 1;
     crate::me4::goblin_cavaliers::register(reg); n += 1;
@@ -6736,6 +6739,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::m19::skyrider_patrol::register(reg); n += 1;
     crate::m19::elvish_clancaller::register(reg); n += 1;
     crate::m19::one_with_the_machine::register(reg); n += 1;
+    crate::m19::field_of_the_dead::register(reg); n += 1;
     // --- vis ---
     crate::vis::phyrexian_walker::register(reg); n += 1;
     crate::vis::tempest_drake::register(reg); n += 1;
@@ -9341,6 +9345,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::bfz::ulamog_s_nullifier::register(reg); n += 1;
     crate::bfz::ruination_guide::register(reg); n += 1;
     crate::bfz::vile_aggregate::register(reg); n += 1;
+    crate::bfz::lumbering_falls::register(reg); n += 1;
     // --- td2 ---
     crate::td2::memnite::register(reg); n += 1;
     crate::td2::steel_wall::register(reg); n += 1;

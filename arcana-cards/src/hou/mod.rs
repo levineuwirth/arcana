@@ -94,3 +94,5 @@ pub mod ruin_rat;
 pub mod wall_of_forgotten_pharaohs;
 pub mod apocalypse_demon;
 pub mod strategic_planning;
+pub mod hashep_oasis;
+pub mod ramunap_ruins;
