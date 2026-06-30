@@ -13,4 +13,5 @@ pub mod session;
 pub mod deckeval;
 pub mod deckeval_runner;
 pub mod deck_corpus;
+pub mod deckbuild;
 pub mod calibrate;

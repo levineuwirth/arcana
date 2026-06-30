@@ -1,0 +1,62 @@
+# Capsule legal card pool — union of cards across the seed decks.
+# Deckbuilding rule applied by the optimizer: <=4 copies (nonbasic),
+# unlimited basics. The number here is how many of the 5 seeds use the card.
+# 57 distinct cards.
+
+  [3] Stonecoil Serpent
+  [2] Blooming Marsh
+  [2] Bonecrusher Giant
+  [2] Chandra, Torch of Defiance
+  [2] Experiment One
+  [2] Forest
+  [2] Glorybringer
+  [2] Goblin Chainwhirler
+  [2] Hangarback Walker
+  [2] Hardened Scales
+  [2] Llanowar Wastes
+  [2] Mountain
+  [2] Mutavault
+  [2] Nissa, Voice of Zendikar
+  [2] Once Upon a Time
+  [2] Overgrown Tomb
+  [2] Pelt Collector
+  [2] Rishkar, Peema Renegade
+  [2] Vivien, Arkbow Ranger
+  [2] Walking Ballista
+  [2] Winding Constrictor
+  [2] Woodland Cemetery
+  [1] Blood Crypt
+  [1] Bomat Courier
+  [1] Brazen Borrower
+  [1] Canyon Slough
+  [1] Castle Embereth
+  [1] Chandra, Acolyte of Flame
+  [1] Curious Obsession
+  [1] Dragonskull Summit
+  [1] Empyrean Eagle
+  [1] Foreboding Ruins
+  [1] Glacial Fortress
+  [1] Hallowed Fountain
+  [1] Hashep Oasis
+  [1] Hazoret the Fervent
+  [1] Heart of Kiran
+  [1] Island
+  [1] Kari Zev, Skyship Raider
+  [1] Karn's Bastion
+  [1] Lightning Strike
+  [1] Mausoleum Wanderer
+  [1] Plains
+  [1] Port Town
+  [1] Ramunap Ruins
+  [1] Rattlechains
+  [1] Rekindling Phoenix
+  [1] Scavenger Grounds
+  [1] Scrapheap Scrounger
+  [1] Soul-Scar Mage
+  [1] Spectral Sailor
+  [1] Spell Pierce
+  [1] Spell Queller
+  [1] Supreme Phantom
+  [1] Unlicensed Disintegration
+  [1] Voracious Hydra
+  [1] Wild Slash
