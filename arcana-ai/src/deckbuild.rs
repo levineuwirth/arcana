@@ -22,7 +22,7 @@ use arcana_core::types::{CardId, SupertypeSet};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
-use crate::deckeval::{fixed_policy, Deck};
+use crate::deckeval::Deck;
 use crate::search::{win_rate, StatePolicy};
 
 // =============================================================================
@@ -217,8 +217,10 @@ pub struct OptimizeResult {
     pub history: Vec<f32>,
 }
 
-/// (1+1) hill-climb: from a random valid deck, mutate and accept strict
-/// fitness improvements. `iters` candidate evaluations; VmcMaterial referee.
+/// (1+1) hill-climb: from a random valid deck, mutate and accept strict fitness
+/// improvements. `iters` candidate evaluations; the referee is the injected `mk`
+/// (e.g. [`fixed_policy`] for VmcMaterial, [`crate::deckeval::fixed_policy_v2`]
+/// for the rebalanced v2 leaf).
 pub fn optimize(
     cap: &Capsule,
     reg: &CardRegistry,
@@ -226,17 +228,17 @@ pub fn optimize(
     games_per_opp: u32,
     max_steps: u32,
     seed: u64,
+    mk: &dyn Fn(u64) -> Box<dyn StatePolicy>,
 ) -> OptimizeResult {
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
-    let mk = |s: u64| fixed_policy(s);
     let mut cur = random_deck(cap, reg, &mut rng);
-    let mut cur_fit = fitness(&flatten(&cur), cap, reg, games_per_opp, max_steps, seed, &mk);
+    let mut cur_fit = fitness(&flatten(&cur), cap, reg, games_per_opp, max_steps, seed, mk);
     let start_fitness = cur_fit;
     let mut history = vec![cur_fit];
     for it in 0..iters {
         let child = mutate(cap, reg, &cur, &mut rng);
         let f = fitness(&flatten(&child), cap, reg, games_per_opp, max_steps,
-                        seed.wrapping_add(it as u64 + 1), &mk);
+                        seed.wrapping_add(it as u64 + 1), mk);
         if f > cur_fit {
             cur = child;
             cur_fit = f;
@@ -290,7 +292,7 @@ pub fn describe(deck: &[CardId], reg: &CardRegistry) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::deckeval::mono_color_creature_deck;
+    use crate::deckeval::{fixed_policy, mono_color_creature_deck};
     use crate::search::RandomStatePolicy;
 
     #[test]
@@ -349,9 +351,125 @@ mod tests {
         println!("legal pool: {} distinct cards", cap.pool.len());
         let iters: u32 = std::env::var("CAPSULE_ITERS").ok().and_then(|s| s.parse().ok()).unwrap_or(80);
         let games: u32 = std::env::var("CAPSULE_GAMES").ok().and_then(|s| s.parse().ok()).unwrap_or(6);
-        let res = optimize(&cap, &reg, iters, games, 4000, 0);
+        let referee = std::env::var("CAPSULE_REFEREE").unwrap_or_default();
+        let mk: Box<dyn Fn(u64) -> Box<dyn StatePolicy>> = if referee == "v2" {
+            Box::new(|s| crate::deckeval::fixed_policy_v2(s))
+        } else {
+            Box::new(|s| fixed_policy(s))
+        };
+        println!("referee: {}", if referee == "v2" { "VmcMaterial-v2" } else { "VmcMaterial" });
+        let res = optimize(&cap, &reg, iters, games, 4000, 0, mk.as_ref());
         println!("\nfitness: start {:.3} -> best {:.3} (accepted improvements: {})",
                  res.start_fitness, res.best_fitness, res.history.len() - 1);
         println!("\noptimized deck:\n{}", describe(&res.best, &reg));
+    }
+
+    /// Validation arm (reviewer #5): does the optimizer's VMC gain survive a
+    /// STRONGER referee? Reproduces the optimized deck (deterministic seed 0),
+    /// then scores it AND each seed deck vs the field under both VmcMaterial and
+    /// a higher-budget PIMC. If the optimized deck tops the field under VMC but
+    /// drops to/below the seeds under PIMC, the VMC gain was a referee exploit.
+    /// `cargo test -p arcana-ai --release deckbuild_capsule_validate -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn deckbuild_capsule_validate() {
+        use arcana_core::deck::parse_deck_text;
+        use arcana_core::state::GameResult;
+        use arcana_core::types::PlayerId;
+        use crate::search::{play_match, PimcPolicy};
+
+        let base = std::env::var("CAPSULE_DIR").expect("set CAPSULE_DIR (dir of *.txt seed decks)");
+        let reg = arcana_cards::build_catalog();
+        let mut seeds = Vec::new();
+        let mut paths: Vec<_> = std::fs::read_dir(&base).unwrap()
+            .filter_map(|e| e.ok()).map(|e| e.path())
+            .filter(|p| p.extension().map(|x| x == "txt").unwrap_or(false)).collect();
+        paths.sort();
+        for p in paths {
+            let txt = std::fs::read_to_string(&p).unwrap();
+            let parsed = parse_deck_text(&txt, &reg);
+            if parsed.unresolved.is_empty() {
+                let cards: Vec<CardId> = parsed.main.iter().flat_map(|(c, n)| std::iter::repeat(*c).take(*n as usize)).collect();
+                let name = if parsed.name.is_empty() { "seed".into() } else { parsed.name };
+                seeds.push(Deck { name, cards });
+            }
+        }
+        // Reproduce the committed optimized deck deterministically (seed 0).
+        let cap = Capsule::from_decks("pioneer-capsule", seeds.clone(), &reg, 60, 17, 27);
+        let iters: u32 = std::env::var("CAPSULE_ITERS").ok().and_then(|s| s.parse().ok()).unwrap_or(80);
+        let games: u32 = std::env::var("CAPSULE_GAMES").ok().and_then(|s| s.parse().ok()).unwrap_or(6);
+        // Optimize once under EACH referee (deterministic seed 0). v1 reproduces
+        // the committed deck; v2 is the rebalanced-leaf optimizer's output.
+        let res_v1 = optimize(&cap, &reg, iters, games, 4000, 0, &|s| fixed_policy(s));
+        let res_v2 = optimize(&cap, &reg, iters, games, 4000, 0,
+                              &|s| crate::deckeval::fixed_policy_v2(s));
+        println!("v1-optimized (must match results.txt):\n{}", describe(&res_v1.best, &reg));
+        println!("v2-optimized:\n{}", describe(&res_v2.best, &reg));
+
+        // Higher-budget PIMC than the gauntlet screening budget (few decks scored).
+        let pimc_samples: u32 = std::env::var("CAPSULE_PIMC_SAMPLES").ok().and_then(|s| s.parse().ok()).unwrap_or(16);
+        let pimc_cap: u32 = std::env::var("CAPSULE_PIMC_CAP").ok().and_then(|s| s.parse().ok()).unwrap_or(160);
+        let val_games: u32 = std::env::var("CAPSULE_VAL_GAMES").ok().and_then(|s| s.parse().ok()).unwrap_or(4);
+        let max_steps = 4000u32;
+
+        // One matchup's point-rate for `cand` vs `opp`, seat-alternating, under
+        // referee `r` (0 = VmcMaterial v1, 1 = v2, 2 = PIMC). PIMC policies get the
+        // CORRECT physical seat decks each game (determinization).
+        let matchup = |cand: &[CardId], opp: &[CardId], r: u8| -> f32 {
+            let mut score = 0.0f32;
+            for g in 0..val_games {
+                let cand_seat = (g % 2) as PlayerId;
+                let seat_decks: Vec<Vec<CardId>> = if cand_seat == 0 {
+                    vec![cand.to_vec(), opp.to_vec()]
+                } else {
+                    vec![opp.to_vec(), cand.to_vec()]
+                };
+                let mk = |s: u64| -> Box<dyn StatePolicy> {
+                    match r {
+                        1 => crate::deckeval::fixed_policy_v2(s),
+                        2 => Box::new(PimcPolicy::with_budget(s, seat_decks.clone(), pimc_samples, pimc_cap, 8)),
+                        _ => fixed_policy(s),
+                    }
+                };
+                let mut p0 = mk(g as u64 * 2 + 1);
+                let mut p1 = mk(g as u64 * 2 + 2);
+                let mut slots: Vec<&mut dyn StatePolicy> = vec![p0.as_mut(), p1.as_mut()];
+                let gr = play_match(seat_decks.clone(), &reg, g as u64, &mut slots, max_steps);
+                score += match gr {
+                    GameResult::Win(p) if p == cand_seat => 1.0,
+                    GameResult::Win(_) => 0.0,
+                    GameResult::Eliminated(p) if p == cand_seat => 0.0,
+                    GameResult::Eliminated(_) => 1.0,
+                    GameResult::Draw => 0.5,
+                };
+            }
+            score / val_games as f32
+        };
+        // Mean point-rate vs the field (a deck never plays an identical list).
+        let field_pr = |cand: &[CardId], r: u8| -> f32 {
+            let (mut tot, mut n) = (0.0f32, 0u32);
+            for opp in &seeds {
+                if opp.cards == cand { continue; }
+                tot += matchup(cand, &opp.cards, r);
+                n += 1;
+            }
+            if n == 0 { 0.0 } else { tot / n as f32 }
+        };
+
+        // The question: does referee v2 rank the field more like PIMC than v1 does,
+        // and does the v2-OPTIMIZED deck hold up under PIMC (where v1's cratered)?
+        println!("\nfield point-rate ({val_games} games/opp), vmc-v1 / vmc-v2 / pimc \
+                  (samples {pimc_samples}, cap {pimc_cap}):");
+        println!("{:<26} {:>7} {:>7} {:>7}", "deck", "vmc-v1", "vmc-v2", "pimc");
+        let row = |label: &str, cards: &[CardId], tag: &str| {
+            println!("{:<26} {:>7.3} {:>7.3} {:>7.3}   {}", label,
+                     field_pr(cards, 0), field_pr(cards, 1), field_pr(cards, 2), tag);
+        };
+        row("v1-optimized", &res_v1.best, "<- maxed vmc-v1");
+        row("v2-optimized", &res_v2.best, "<- maxed vmc-v2");
+        for s in &seeds {
+            let name: String = s.name.chars().take(24).collect();
+            row(&name, &s.cards, "");
+        }
     }
 }

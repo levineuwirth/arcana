@@ -73,6 +73,18 @@ pub fn fixed_policy(seed: u64) -> Box<dyn StatePolicy> {
     ))
 }
 
+/// [`fixed_policy`] with the card-advantage-rebalanced [`MaterialValueV2`] leaf —
+/// the candidate "referee v2" whose ranking we test against PIMC / ground truth.
+pub fn fixed_policy_v2(seed: u64) -> Box<dyn StatePolicy> {
+    Box::new(ValueMcPolicy::with_budget(
+        Box::new(crate::search::MaterialValueV2),
+        seed,
+        FIXED_ROLLOUTS,
+        FIXED_ROLLOUT_CAP,
+        FIXED_MAX_CANDIDATES,
+    ))
+}
+
 // =============================================================================
 // Deck type
 // =============================================================================

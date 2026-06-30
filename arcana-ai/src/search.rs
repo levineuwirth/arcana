@@ -156,6 +156,60 @@ impl ValueFn for MaterialValue {
     fn value(&self, state: &GameState, player: PlayerId) -> f32 { value(state, player) }
 }
 
+/// Card-advantage-rebalanced material (referee **v2**). The naive [`material`]
+/// weights board ~9:1 over cards-in-hand and over-weights power (`2P+T`), which
+/// systematically over-rates go-wide aggro and under-rates grindy / card-advantage
+/// decks — measured directly: optimizing a deck against v1 reward-hacks and the
+/// result is the *worst* deck under PIMC, and v1 has ρ≈0 vs real tournament
+/// finishes (see `docs/capsule-pioneer/` + `docs/gauntlet-results/`). v2 keeps the
+/// same shape with three a-priori-motivated reweights (NOT tuned to any capsule):
+///   - creatures `P + T` (drop the power lean that favors aggressive stats),
+///   - hand cards count **double** (card advantage is future board, not 1/9th of it),
+///   - planeswalkers worth `2 + loyalty` (engines, not signposts).
+fn material_v2(state: &GameState, player: PlayerId) -> f32 {
+    use arcana_core::types::CounterKind;
+    let mut score = state.player(player).life as f32;
+    for obj in state.objects.objects_in_zone(Zone::Battlefield) {
+        if obj.controller != player { continue; }
+        if obj.is_creature() {
+            let p = state.computed_power(obj.id).unwrap_or(0).max(0) as f32;
+            let t = state.computed_toughness(obj.id).unwrap_or(0).max(0) as f32;
+            score += p + t;
+        } else if obj.is_planeswalker() {
+            score += 2.0 + obj.count_counters(CounterKind::Loyalty) as f32;
+        } else if obj.is_land() {
+            score += 1.0;
+        } else {
+            score += 2.0;
+        }
+    }
+    score += 2.0 * state.objects.objects_in_zone(Zone::Hand(player)).count() as f32;
+    score
+}
+
+/// [`value`] with the v2 material leaf — same terminal handling + tanh squash.
+pub fn value_v2(state: &GameState, player: PlayerId) -> f32 {
+    match state.result {
+        Some(GameResult::Win(p)) => if p == player { 1.0 } else { -1.0 },
+        Some(GameResult::Draw) => 0.0,
+        Some(GameResult::Eliminated(p)) => if p == player { -1.0 } else { 1.0 },
+        None => {
+            let me = material_v2(state, player);
+            let opp = state.opponents_of(player)
+                .map(|o| material_v2(state, o))
+                .fold(f32::NEG_INFINITY, f32::max);
+            let opp = if opp.is_finite() { opp } else { 0.0 };
+            0.9 * ((me - opp) / 30.0).tanh()
+        }
+    }
+}
+
+/// The card-advantage-rebalanced material heuristic ([`value_v2`]) as a [`ValueFn`].
+pub struct MaterialValueV2;
+impl ValueFn for MaterialValueV2 {
+    fn value(&self, state: &GameState, player: PlayerId) -> f32 { value_v2(state, player) }
+}
+
 /// One-ply greedy on a [`ValueFn`]: pick the action whose resulting state has
 /// the best evaluation for the decider. No rollouts — a direct, cheap test of
 /// the evaluator's quality (greedy(learned) vs greedy(material) isolates whether
