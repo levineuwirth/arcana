@@ -1083,6 +1083,11 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::eld::fireborn_knight::register(reg); n += 1;
     crate::eld::questing_beast::register(reg); n += 1;
     crate::eld::ferocity_of_the_wilds::register(reg); n += 1;
+    crate::eld::castle_locthwain::register(reg); n += 1;
+    crate::eld::castle_vantress::register(reg); n += 1;
+    crate::eld::castle_garenbrig::register(reg); n += 1;
+    crate::eld::castle_ardenvale::register(reg); n += 1;
+    crate::eld::castle_embereth::register(reg); n += 1;
     // --- znr ---
     crate::znr::tangled_florahedron::register(reg); n += 1;
     crate::znr::highborn_vampire::register(reg); n += 1;

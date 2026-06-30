@@ -136,3 +136,8 @@ pub mod steelgaze_griffin;
 pub mod fireborn_knight;
 pub mod questing_beast;
 pub mod ferocity_of_the_wilds;
+pub mod castle_locthwain;
+pub mod castle_vantress;
+pub mod castle_garenbrig;
+pub mod castle_ardenvale;
+pub mod castle_embereth;
