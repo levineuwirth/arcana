@@ -36,3 +36,8 @@ pub mod tideforce_elemental;
 pub mod thada_adel_acquisitor;
 pub mod bojuka_brigand;
 pub mod cunning_sparkmage;
+pub mod raging_ravine;
+pub mod treetop_village;
+pub mod celestial_colonnade;
+pub mod stirring_wildwood;
+pub mod creeping_tar_pit;

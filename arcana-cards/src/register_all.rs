@@ -8204,6 +8204,11 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::wwk::thada_adel_acquisitor::register(reg); n += 1;
     crate::wwk::bojuka_brigand::register(reg); n += 1;
     crate::wwk::cunning_sparkmage::register(reg); n += 1;
+    crate::wwk::raging_ravine::register(reg); n += 1;
+    crate::wwk::treetop_village::register(reg); n += 1;
+    crate::wwk::celestial_colonnade::register(reg); n += 1;
+    crate::wwk::stirring_wildwood::register(reg); n += 1;
+    crate::wwk::creeping_tar_pit::register(reg); n += 1;
     // --- rtr ---
     crate::rtr::golgari_longlegs::register(reg); n += 1;
     crate::rtr::axebane_stag::register(reg); n += 1;
