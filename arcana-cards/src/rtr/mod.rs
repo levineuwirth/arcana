@@ -92,3 +92,5 @@ pub mod steam_vents;
 pub mod overgrown_tomb;
 pub mod blood_crypt;
 pub mod supreme_verdict;
+pub mod abrupt_decay;
+pub mod sphinxs_revelation;

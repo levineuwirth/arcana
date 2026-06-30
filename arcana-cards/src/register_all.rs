@@ -8277,6 +8277,8 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::rtr::overgrown_tomb::register(reg); n += 1;
     crate::rtr::blood_crypt::register(reg); n += 1;
     crate::rtr::supreme_verdict::register(reg); n += 1;
+    crate::rtr::abrupt_decay::register(reg); n += 1;
+    crate::rtr::sphinxs_revelation::register(reg); n += 1;
     // --- ema ---
     crate::ema::elite_vanguard::register(reg); n += 1;
     crate::ema::glacial_wall::register(reg); n += 1;
