@@ -841,6 +841,14 @@ pub enum EntersWithSpec {
     /// surveil-land cycle. Enters UNTAPPED iff ANY player's life total is
     /// `<= life`; otherwise tapped. A pure life-total check, no board state.
     TappedUnlessAnyPlayerLifeAtMost { life: i32 },
+    /// "As CARDNAME enters, you may pay `life` life. If you don't, it enters
+    /// tapped." — the Ravnica shock-land cycle. The enters-with pipeline is
+    /// synchronous (no async "you may pay" choice), so this resolves with a
+    /// fixed policy: the controller pays the life and the land enters UNTAPPED
+    /// iff that leaves them above 0 (`life_total > life`); otherwise it enters
+    /// tapped. Faithful in the overwhelming common case (a constructed player
+    /// pays 2 for an untapped dual) and still captures the near-death downside.
+    TappedUnlessPayLife { life: u32 },
 }
 
 // =============================================================================

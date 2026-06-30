@@ -86,3 +86,8 @@ pub mod hellhole_flailer;
 pub mod zanikev_locust;
 pub mod grim_roustabout;
 pub mod paralyzing_grasp;
+pub mod hallowed_fountain;
+pub mod watery_grave;
+pub mod steam_vents;
+pub mod overgrown_tomb;
+pub mod blood_crypt;

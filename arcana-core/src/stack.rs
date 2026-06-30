@@ -955,6 +955,20 @@ pub(crate) fn apply_enters_with_clauses(
                     }
                 }
             }
+            EntersWithSpec::TappedUnlessPayLife { life } => {
+                // Shock land: pay `life` and enter untapped iff that keeps the
+                // controller above 0 life; otherwise enter tapped. Synchronous
+                // pipeline — see the variant's doc for why this is a fixed
+                // policy rather than an async "you may pay" choice.
+                let controller = state.objects.get(object_id).map(|o| o.controller);
+                if let Some(ctrl) = controller {
+                    if state.player(ctrl).life > *life as i32 {
+                        crate::effects::lose_life(state, ctrl, *life);
+                    } else if let Some(obj) = state.objects.get_mut(object_id) {
+                        obj.tap();
+                    }
+                }
+            }
         }
     }
 }
@@ -2022,5 +2036,31 @@ mod tests {
         assert!(resolve(20), "both players >13 life → enters tapped");
         assert!(!resolve(13), "a player at exactly 13 life → enters untapped");
         assert!(!resolve(5), "a player ≤13 life → enters untapped");
+    }
+
+    #[test]
+    fn enters_tapped_unless_pay_life_shockland() {
+        use crate::registry::EntersWithSpec;
+        use crate::types::TypeLine;
+        let land_chars = || crate::objects::Characteristics {
+            types: TypeLine::LAND.into(), ..Default::default() };
+        // Returns (tapped?, controller life after).
+        let resolve = |life0: i32| -> (bool, i32) {
+            let mut s = GameState::new(2, 0);
+            s.player_mut(0).life = life0;
+            let obj = put_object(&mut s, 0, Zone::Stack, land_chars());
+            let mut entry = StackEntry::new_spell(
+                obj, 0, 1, land_chars(), TargetSelection::new(), vec![], None);
+            entry.enters_with = vec![EntersWithSpec::TappedUnlessPayLife { life: 2 }];
+            s.finalize_resolved_spell(entry);
+            let id = only_battlefield_permanent(&s);
+            (s.objects.get(id).unwrap().is_tapped(), s.player(0).life)
+        };
+        // Comfortable life → pay 2, enter untapped.
+        assert_eq!(resolve(20), (false, 18));
+        // Paying would drop to 0 (lethal) → don't pay, enter tapped, life kept.
+        assert_eq!(resolve(2), (true, 2));
+        // Can't afford → tapped, life unchanged.
+        assert_eq!(resolve(1), (true, 1));
     }
 }

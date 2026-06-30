@@ -80,3 +80,8 @@ pub mod spark_trooper;
 pub mod fortress_cyclops;
 pub mod hold_the_gates;
 pub mod guildscorn_ward;
+pub mod breeding_pool;
+pub mod godless_shrine;
+pub mod stomping_ground;
+pub mod sacred_foundry;
+pub mod temple_garden;
