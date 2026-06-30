@@ -1,0 +1,65 @@
+# Referee-sensitivity experiment (deck rankings under different referees).
+# Q: can deckbuilding safely optimize against the cheap VmcMaterial referee,
+#    or would it mostly exploit the referee's bias?
+# Method: same deck field + base_seed under each referee; rank-correlate.
+# Regenerate: corpus_gauntlet with CORPUS_REFEREE in {random,vmc,pimc}.
+
+## VmcMaterial vs RANDOM  — Pioneer 64-deck field, 122 vs 122 games/deck
+   Spearman rho = 0.712   Kendall tau = +0.514   mean|Δ| = 0.105
+   archetype movement (first referee -> second), by Δ:
+     Naya Zoo                   0.54 -> 0.17  (Δ-0.37, n=1)
+     Rakdos Deck Wins           0.62 -> 0.40  (Δ-0.22, n=1)
+     Spirits                    0.47 -> 0.26  (Δ-0.21, n=1)
+     Rakdos Aggro               0.66 -> 0.47  (Δ-0.19, n=1)
+     Rakdos PW Control          0.62 -> 0.44  (Δ-0.17, n=1)
+     Red Deck Wins              0.76 -> 0.61  (Δ-0.15, n=6)
+     Sultai Aggro               0.60 -> 0.46  (Δ-0.14, n=1)
+     Ub Emerge                  0.52 -> 0.40  (Δ-0.11, n=1)
+     Gruul Aggro                0.81 -> 0.72  (Δ-0.09, n=3)
+     Devotion to Golgari        0.37 -> 0.36  (Δ-0.02, n=1)
+     UW Aggro                   0.48 -> 0.46  (Δ-0.01, n=2)
+     Rg Aggro                   0.77 -> 0.76  (Δ-0.01, n=1)
+     Golgari Scales Aggro       0.44 -> 0.44  (Δ+0.00, n=1)
+     Azorius Aggro              0.56 -> 0.56  (Δ+0.00, n=4)
+     Rhino Rock                 0.72 -> 0.73  (Δ+0.01, n=1)
+     Temur Aggro                0.51 -> 0.52  (Δ+0.01, n=1)
+     Hardened Golgari           0.37 -> 0.40  (Δ+0.03, n=2)
+     Golgari Aggro              0.31 -> 0.35  (Δ+0.03, n=3)
+     Golgari Scales             0.35 -> 0.39  (Δ+0.04, n=12)
+     Temur Midrange             0.09 -> 0.13  (Δ+0.05, n=1)
+     Sultai Control             0.49 -> 0.54  (Δ+0.05, n=3)
+     Spirit                     0.69 -> 0.75  (Δ+0.06, n=1)
+     Hardened Snakes            0.31 -> 0.40  (Δ+0.10, n=1)
+     Gb Hardened Scales         0.42 -> 0.53  (Δ+0.10, n=2)
+     Golgari Aggro Hardened Scales 0.37 -> 0.48  (Δ+0.11, n=1)
+     Harden Scales              0.37 -> 0.48  (Δ+0.11, n=1)
+     Golgari Hardened Scales    0.30 -> 0.41  (Δ+0.11, n=1)
+     UW Spirit Aggro            0.60 -> 0.71  (Δ+0.11, n=6)
+     Hardened Scales            0.33 -> 0.46  (Δ+0.12, n=3)
+
+## VmcMaterial vs small-PIMC — Pioneer 12-deck spanning subset (44 vs 22 games/deck)
+   Spearman rho = 0.884   Kendall tau = +0.774   mean|Δ| = 0.095
+   archetype movement (first referee -> second), by Δ:
+     Red Deck Wins              0.86 -> 0.68  (Δ-0.18, n=1)
+     Gb Hardened Scales         0.34 -> 0.18  (Δ-0.16, n=1)
+     UW Spirit Aggro            0.61 -> 0.50  (Δ-0.11, n=1)
+     Sultai Control             0.43 -> 0.36  (Δ-0.07, n=1)
+     Rakdos Aggro               0.68 -> 0.64  (Δ-0.05, n=1)
+     Azorius Aggro              0.50 -> 0.50  (Δ+0.00, n=1)
+     Temur Midrange             0.07 -> 0.09  (Δ+0.02, n=1)
+     Rhino Rock                 0.59 -> 0.64  (Δ+0.05, n=1)
+     Gruul Aggro                0.61 -> 0.68  (Δ+0.07, n=1)
+     Rg Aggro                   0.73 -> 0.82  (Δ+0.09, n=1)
+     Hardened Scales            0.20 -> 0.32  (Δ+0.11, n=1)
+     Golgari Scales             0.36 -> 0.59  (Δ+0.23, n=1)
+
+# READ:
+# - vmc<->small-PIMC (rho 0.88) is CLOSER than vmc<->random (rho 0.71): the cheap
+#   referee tracks a stronger one better than it tracks noise.
+# - Residual movement is STRUCTURED + as predicted: vmc mildly OVER-rates aggro
+#   (Red Deck Wins falls under PIMC; aggro falls under random) and UNDER-rates
+#   +1/+1 synergy (Golgari Scales/Hardened Scales rise under both stronger-than-
+#   -material refs). Effect is modest (~0.10 mean |Δ|) and partly noisy at 22 g/deck.
+# - TENTATIVE: optimizing decks against VmcMaterial is directionally OK but will
+#   mildly exploit aggro. CONFIRM with higher-budget PIMC and/or larger samples
+#   before any firm 'deck A > deck B' claim. small-PIMC here is small-budget.

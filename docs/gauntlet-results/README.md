@@ -44,6 +44,9 @@ The catalog name list used by the worklist analysis is dumped from
 | `missing-card-worklist.txt` | cards blocking the most *near-playable* (≤4-short) decks, per format |
 | `pi_gauntlet_62.csv` | Pioneer 62-deck gauntlet, vmc-material, 1 duel/pair (122 games/deck) |
 | `mo_gauntlet_43.csv` | Modern 43-deck gauntlet, vmc-material, 1 duel/pair (84 games/deck) |
+| `referee-sensitivity.txt` | rankings under Random / VmcMaterial / small-PIMC + rank correlations |
+| `pi_subset12_vmc.csv` | 12-deck spanning subset under vmc (referee-sensitivity arm) |
+| `pi_subset12_pimc.csv` | same 12-deck subset under small-PIMC |
 
 CSV columns: `deck,games,wins,draws,losses,score,point_rate,ci_lo,ci_hi`
 (`score`/`point_rate` count a draw as ½; CIs are block-bootstrap 95%).

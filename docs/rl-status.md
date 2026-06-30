@@ -262,11 +262,20 @@ diverse only because its coverage happened to span several archetypes' staples.)
 
 ## 6.5 Current plan (the order we're taking it)
 
-1. **Referee sensitivity first** — re-run the *same* covered fields under
-   Random / VmcMaterial / small-PIMC (+ a larger-PIMC budget on a small subset),
-   same seeds; report Spearman/Kendall rank correlation, per-deck point-rate
-   deltas, and archetype-level movement. This decides whether deckbuilding can
-   safely optimize against the cheap referee or would just exploit it.
+1. **Referee sensitivity — first result (done).** Same Pioneer field + seeds
+   under different referees (full numbers in
+   `docs/gauntlet-results/referee-sensitivity.txt`):
+   - vmc ↔ **Random** (64-deck field): Spearman **ρ = 0.71**.
+   - vmc ↔ **small-PIMC** (12-deck spanning subset): Spearman **ρ = 0.88**.
+   The cheap referee tracks a *stronger* one (0.88) better than it tracks noise
+   (0.71), and the residual movement is structured exactly as predicted — vmc
+   mildly **over-rates aggro** (Red Deck Wins falls under PIMC; aggro falls under
+   random) and **under-rates +1/+1 synergy** (Golgari Scales / Hardened Scales
+   rise under both stronger-than-material refs). Effect is modest (~0.10 mean
+   point-rate Δ) and partly noisy at 22 games/deck. **Tentative read:**
+   optimizing decks against VmcMaterial is *directionally* safe but will mildly
+   exploit aggro; confirm with a higher-budget PIMC and larger samples before any
+   firm claim. Next still: a larger-budget-PIMC arm + ground-truth check.
 2. **Coverage capsules, not broad coverage** — deliberately implement the
    blockers for 4–6 *chosen* archetypes per format, to get diverse experimental
    domains instead of the current Jund/aggro skew.
