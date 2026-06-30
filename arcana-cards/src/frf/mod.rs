@@ -58,3 +58,4 @@ pub mod goblin_heelcutter;
 pub mod torrent_elemental;
 pub mod mindscour_dragon;
 pub mod warden_of_the_first_tree;
+pub mod wild_slash;

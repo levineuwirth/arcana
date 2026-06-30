@@ -294,6 +294,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::aer::herald_of_anguish::register(reg); n += 1;
     crate::aer::foundry_hornet::register(reg); n += 1;
     crate::aer::ice_over::register(reg); n += 1;
+    crate::aer::fatal_push::register(reg); n += 1;
     // --- mh2 ---
     crate::mh2::murktide_regent::register(reg); n += 1;
     crate::mh2::shardless_agent::register(reg); n += 1;
@@ -5495,6 +5496,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::frf::torrent_elemental::register(reg); n += 1;
     crate::frf::mindscour_dragon::register(reg); n += 1;
     crate::frf::warden_of_the_first_tree::register(reg); n += 1;
+    crate::frf::wild_slash::register(reg); n += 1;
     // --- grn ---
     crate::grn::wild_ceratok::register(reg); n += 1;
     crate::grn::douser_of_lights::register(reg); n += 1;
@@ -7946,6 +7948,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::dom::merfolk_trickster::register(reg); n += 1;
     crate::dom::elfhame_druid::register(reg); n += 1;
     crate::dom::in_bolas_s_clutches::register(reg); n += 1;
+    crate::dom::opt::register(reg); n += 1;
     // --- tsr ---
     crate::tsr::blade_of_the_sixth_pride::register(reg); n += 1;
     crate::tsr::mass_of_ghouls::register(reg); n += 1;
@@ -8273,6 +8276,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::rtr::steam_vents::register(reg); n += 1;
     crate::rtr::overgrown_tomb::register(reg); n += 1;
     crate::rtr::blood_crypt::register(reg); n += 1;
+    crate::rtr::supreme_verdict::register(reg); n += 1;
     // --- ema ---
     crate::ema::elite_vanguard::register(reg); n += 1;
     crate::ema::glacial_wall::register(reg); n += 1;

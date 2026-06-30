@@ -96,3 +96,4 @@ pub mod scrapper_champion;
 pub mod herald_of_anguish;
 pub mod foundry_hornet;
 pub mod ice_over;
+pub mod fatal_push;
