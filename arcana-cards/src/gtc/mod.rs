@@ -85,3 +85,4 @@ pub mod godless_shrine;
 pub mod stomping_ground;
 pub mod sacred_foundry;
 pub mod temple_garden;
+pub mod boros_charm;

@@ -4647,6 +4647,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::dtk::boltwing_marauder::register(reg); n += 1;
     crate::dtk::illusory_gains::register(reg); n += 1;
     crate::dtk::berserkers_onslaught::register(reg); n += 1;
+    crate::dtk::kolaghans_command::register(reg); n += 1;
     // --- tdc ---
     crate::tdc::indomitable_ancients::register(reg); n += 1;
     crate::tdc::zetalpa_primal_dawn::register(reg); n += 1;
@@ -6884,6 +6885,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::gtc::stomping_ground::register(reg); n += 1;
     crate::gtc::sacred_foundry::register(reg); n += 1;
     crate::gtc::temple_garden::register(reg); n += 1;
+    crate::gtc::boros_charm::register(reg); n += 1;
     // --- cmm ---
     crate::cmm::yargle_glutton_of_urborg::register(reg); n += 1;
     crate::cmm::goliath_sphinx::register(reg); n += 1;
@@ -8305,6 +8307,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::rtr::supreme_verdict::register(reg); n += 1;
     crate::rtr::abrupt_decay::register(reg); n += 1;
     crate::rtr::sphinxs_revelation::register(reg); n += 1;
+    crate::rtr::izzet_charm::register(reg); n += 1;
     // --- ema ---
     crate::ema::elite_vanguard::register(reg); n += 1;
     crate::ema::glacial_wall::register(reg); n += 1;

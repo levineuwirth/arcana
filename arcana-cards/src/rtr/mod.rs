@@ -94,3 +94,4 @@ pub mod blood_crypt;
 pub mod supreme_verdict;
 pub mod abrupt_decay;
 pub mod sphinxs_revelation;
+pub mod izzet_charm;
