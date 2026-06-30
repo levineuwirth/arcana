@@ -1,26 +1,46 @@
 # GROUND-TRUTH CHECK (rl-status 6.5 #4): does the gauntlet's VmcMaterial ranking
-# track real MTGTop8 finishes? SHORT ANSWER: no rank signal on matched archetypes.
-# - Spearman rho = 0.000 over 7 confidently-matched Pioneer buckets.
-# - Extremes INVERT: gauntlet #1 Gruul/RG Aggro (0.822) is real-world WEAKEST
-#   (0.511, worst top-8 share); gauntlet's bottom Scales-synergy (0.349) is
-#   real-world MID-pack (0.542).
-# - SPREAD: gauntlet spans 0.30-0.82; reality compresses to 0.51-0.59 (~6x).
-# CAVEATS: N=7 fuzzy-matched buckets; real strengths sit in a narrow band (good
-#   players pick good decks -> regression to mean), so rank order is itself
-#   low-signal and rho is noisy. The ROBUST claim is the extremes + the spread,
-#   not the exact rho. Real strength is metagame-confounded, not training truth.
-# Regenerate: arcana-ai/scripts/placement_vs_gauntlet.py (see header).
+# track real MTGTop8 finishes? SHORT ANSWER: no — near-zero to mildly NEGATIVE.
+# - Spearman rho vs real mean-finish = 0.000; vs real top-8 share = -0.393.
+# - Extremes INVERT, and restricting to WEIGHTIER events sharpens it: our #1
+#   Gruul/RG Aggro has a 0.000 top-8 share in 40 >=2-star events (never converts);
+#   our WORST cluster (Golgari/Hardened Scales) has the BEST mean finish (0.600).
+# - SPREAD: gauntlet spans 0.30-0.82; reality compresses to ~0.51-0.60 (~6x).
+# CAVEATS: N=7 fuzzy-matched buckets; real strengths sit in a narrow band, so
+#   mean-finish rank is low-signal (hence the sharper top-8 metric + the min-stars
+#   sensitivity). Real strength is metagame-confounded, not training truth. The
+#   ROBUST claims are the inverted extremes + the negative top-8 rho + the spread.
+# Regenerate: arcana-ai/scripts/placement_vs_gauntlet.py [--min-stars N] (see header).
 
-# Gauntlet point-rate vs real MTGTop8 strength — format PI
-# bucket                  g_n gauntlet_pr  real_n  real_str
-  Gruul/RG Aggro            4       0.822      86     0.511
-  Mono-Red (RDW)            7       0.725     234     0.582
-  Rakdos Aggro              1       0.705     234     0.587
-  UW Spirit Aggro           8       0.592     151     0.594
-  Sultai Control            2       0.525      70     0.512
-  Golgari/HardScales       28       0.349      36     0.542
-  Mono-Green Aggro          1       0.303     135     0.535
+===== all Pioneer events =====
+# Gauntlet point-rate vs real MTGTop8 strength — format PI (min_stars=0)
+# bucket                  g_n gauntlet_pr  real_n  real_str  real_top8
+  Gruul/RG Aggro            4       0.822      86     0.511      0.093
+  Mono-Red (RDW)            7       0.725     234     0.582      0.167
+  Rakdos Aggro              1       0.705     234     0.587      0.145
+  UW Spirit Aggro           8       0.592     151     0.594      0.192
+  Sultai Control            2       0.525      70     0.512      0.186
+  Golgari/HardScales       28       0.349      36     0.542      0.111
+  Mono-Green Aggro          1       0.303     135     0.535      0.178
 
-# Spearman rho (gauntlet_pr vs real_str), N=7 buckets: 0.000
-# (sorted-by-gauntlet order above; a NEGATIVE/near-zero rho = the cheap
-#  referee does not track real-world strength on these archetypes.)
+# Spearman rho (gauntlet_pr vs ...), N=7 buckets:
+#   vs real_str (mean finish, compressed): 0.000
+#   vs real_top8 (top-1/8 share, sharper): -0.393
+# A NEGATIVE/near-zero rho on BOTH = the cheap referee does not track
+# real-world strength on these archetypes (robust to the metric choice).
+
+===== weightier events only (min_stars >= 2) =====
+# Gauntlet point-rate vs real MTGTop8 strength — format PI (min_stars=2)
+# bucket                  g_n gauntlet_pr  real_n  real_str  real_top8
+  Gruul/RG Aggro            4       0.822      40     0.481      0.000
+  Mono-Red (RDW)            7       0.725     129     0.603      0.186
+  Rakdos Aggro              1       0.705     152     0.594      0.151
+  UW Spirit Aggro           8       0.592      79     0.590      0.139
+  Sultai Control            2       0.525      39     0.534      0.179
+  Golgari/HardScales       28       0.349      23     0.600      0.130
+  Mono-Green Aggro          1       0.303      80     0.520      0.188
+
+# Spearman rho (gauntlet_pr vs ...), N=7 buckets:
+#   vs real_str (mean finish, compressed): 0.036
+#   vs real_top8 (top-1/8 share, sharper): -0.393
+# A NEGATIVE/near-zero rho on BOTH = the cheap referee does not track
+# real-world strength on these archetypes (robust to the metric choice).

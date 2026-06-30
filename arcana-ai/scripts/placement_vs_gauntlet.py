@@ -51,17 +51,23 @@ def parse_result(s):
     return None
 
 
-def real_strength_by_name(zip_path, fmt):
-    """name -> (entries, strength) over all events of `fmt`."""
+def real_strength_by_name(zip_path, fmt, min_stars=0):
+    """name -> (entries, strength, top_share) over all events of `fmt` with at
+    least `min_stars` stars. strength = 1 - mean normalized finish (compressed,
+    noisy); top_share = frac in top 1/8 of field (sharper "actually won")."""
     z = zipfile.ZipFile(zip_path)
     events = {}
     ev = csv.DictReader(io.StringIO(z.read("df_events_v2.csv").decode("utf-8", "replace")))
     for row in ev:
-        events[row["event__id"]] = row.get("event_format", "")
+        try:
+            stars = int(row.get("event_stars") or 0)
+        except ValueError:
+            stars = 0
+        events[row["event__id"]] = (row.get("event_format", ""), stars)
     names = set(z.namelist())
-    agg = defaultdict(lambda: {"entries": 0, "sum_norm": 0.0})
-    for eid, f in events.items():
-        if f != fmt:
+    agg = defaultdict(lambda: {"entries": 0, "sum_norm": 0.0, "top": 0})
+    for eid, (f, st) in events.items():
+        if f != fmt or st < min_stars:
             continue
         path = f"events/{eid}/players_info.csv"
         if path not in names:
@@ -78,7 +84,9 @@ def real_strength_by_name(zip_path, fmt):
         for t, (lo, _up) in parsed:
             agg[t]["entries"] += 1
             agg[t]["sum_norm"] += (lo - 1) / (field - 1)
-    return {t: (a["entries"], 1.0 - a["sum_norm"] / a["entries"])
+            if (lo - 1) / field < 0.125:
+                agg[t]["top"] += 1
+    return {t: (a["entries"], 1.0 - a["sum_norm"] / a["entries"], a["top"] / a["entries"])
             for t, a in agg.items() if a["entries"] > 0}
 
 
@@ -125,34 +133,41 @@ def main():
     ap.add_argument("--zip", required=True)
     ap.add_argument("--format", required=True)
     ap.add_argument("--gauntlet", required=True)
+    ap.add_argument("--min-stars", type=int, default=0,
+                    help="only count real events with at least this many stars")
     args = ap.parse_args()
     buckets = PI_BUCKETS  # only PI curated for now
 
-    real = real_strength_by_name(args.zip, args.format)
+    real = real_strength_by_name(args.zip, args.format, args.min_stars)
     gaunt = gauntlet_pr(args.gauntlet)
 
     rows = []
     for canon, (g_subs, r_vars) in buckets.items():
         g_vals = [pr for name, prs in gaunt.items()
                   for pr in prs if any(s in name for s in g_subs)]
-        r_pairs = [real[v] for v in r_vars if v in real]
-        if not g_vals or not r_pairs:
+        r_recs = [real[v] for v in r_vars if v in real]
+        if not g_vals or not r_recs:
             continue
         g_mean = sum(g_vals) / len(g_vals)
-        r_ent = sum(e for e, _ in r_pairs)
-        r_str = sum(e * s for e, s in r_pairs) / r_ent
-        rows.append((canon, len(g_vals), g_mean, r_ent, r_str))
+        r_ent = sum(e for e, _, _ in r_recs)
+        r_str = sum(e * s for e, s, _ in r_recs) / r_ent
+        r_top = sum(e * t for e, _, t in r_recs) / r_ent
+        rows.append((canon, len(g_vals), g_mean, r_ent, r_str, r_top))
 
-    print(f"# Gauntlet point-rate vs real MTGTop8 strength — format {args.format}")
-    print(f"# {'bucket':<22} {'g_n':>4} {'gauntlet_pr':>11} {'real_n':>7} {'real_str':>9}")
+    print(f"# Gauntlet point-rate vs real MTGTop8 strength — format {args.format}"
+          f" (min_stars={args.min_stars})")
+    print(f"# {'bucket':<22} {'g_n':>4} {'gauntlet_pr':>11} {'real_n':>7} {'real_str':>9} {'real_top8':>10}")
     rows.sort(key=lambda t: t[2], reverse=True)
-    for canon, gn, gm, rn, rs in rows:
-        print(f"  {canon:<22} {gn:>4} {gm:>11.3f} {rn:>7} {rs:>9.3f}")
+    for canon, gn, gm, rn, rs, rt in rows:
+        print(f"  {canon:<22} {gn:>4} {gm:>11.3f} {rn:>7} {rs:>9.3f} {rt:>10.3f}")
     if len(rows) >= 3:
-        rho = spearman([r[2] for r in rows], [r[4] for r in rows])
-        print(f"\n# Spearman rho (gauntlet_pr vs real_str), N={len(rows)} buckets: {rho:.3f}")
-        print("# (sorted-by-gauntlet order above; a NEGATIVE/near-zero rho = the cheap")
-        print("#  referee does not track real-world strength on these archetypes.)")
+        rho_s = spearman([r[2] for r in rows], [r[4] for r in rows])
+        rho_t = spearman([r[2] for r in rows], [r[5] for r in rows])
+        print(f"\n# Spearman rho (gauntlet_pr vs ...), N={len(rows)} buckets:")
+        print(f"#   vs real_str (mean finish, compressed): {rho_s:.3f}")
+        print(f"#   vs real_top8 (top-1/8 share, sharper): {rho_t:.3f}")
+        print("# A NEGATIVE/near-zero rho on BOTH = the cheap referee does not track")
+        print("# real-world strength on these archetypes (robust to the metric choice).")
 
 
 if __name__ == "__main__":
