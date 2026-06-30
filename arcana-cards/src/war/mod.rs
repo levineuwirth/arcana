@@ -106,3 +106,4 @@ pub mod rubblebelt_rioters;
 pub mod dreadhorde_butcher;
 pub mod goblin_assault_team;
 pub mod grim_initiate;
+pub mod dovins_veto;

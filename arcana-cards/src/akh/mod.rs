@@ -95,3 +95,5 @@ pub mod samut_voice_of_dissent;
 pub mod temmet_vizier_of_naktamun;
 pub mod illusory_wrappings;
 pub mod lay_claim;
+pub mod censor;
+pub mod syncopate;

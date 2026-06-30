@@ -1376,6 +1376,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::ktk::mistfire_weaver::register(reg); n += 1;
     crate::ktk::scaldkin::register(reg); n += 1;
     crate::ktk::singing_bell_strike::register(reg); n += 1;
+    crate::ktk::stubborn_denial::register(reg); n += 1;
     // --- akh ---
     crate::akh::ahn_crop_crasher::register(reg); n += 1;
     crate::akh::colossapede::register(reg); n += 1;
@@ -1470,6 +1471,8 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::akh::temmet_vizier_of_naktamun::register(reg); n += 1;
     crate::akh::illusory_wrappings::register(reg); n += 1;
     crate::akh::lay_claim::register(reg); n += 1;
+    crate::akh::censor::register(reg); n += 1;
+    crate::akh::syncopate::register(reg); n += 1;
     // --- eve ---
     crate::eve::slippery_bogle::register(reg); n += 1;
     crate::eve::smoldering_butcher::register(reg); n += 1;
@@ -3585,6 +3588,7 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::war::dreadhorde_butcher::register(reg); n += 1;
     crate::war::goblin_assault_team::register(reg); n += 1;
     crate::war::grim_initiate::register(reg); n += 1;
+    crate::war::dovins_veto::register(reg); n += 1;
     // --- me4 ---
     crate::me4::water_elemental::register(reg); n += 1;
     crate::me4::goblin_cavaliers::register(reg); n += 1;
