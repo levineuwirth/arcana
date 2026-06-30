@@ -1,0 +1,27 @@
+# Catalog coverage snapshot over the 800-distinct-deck/format MTGTop8 sample.
+# 'full-cover' = every maindeck card resolves; 'playable' = full-cover AND main in 60..=60.
+# Regenerate: KAGGLE_DECKS=<dir> cargo test -p arcana-ai --release coverage_scan -- --ignored --nocapture
+
+coverage (playable = fully-covered & main in 60..=60):
+      format |  decks full-cover mean-cov  playable
+          LE |    800          1    69.4%         1
+          MO |    800         44    76.7%        43
+          PI |    800         65    87.9%        64
+          VI |    800          0    63.7%         0
+top missing (name: copies / #decks):
+  Force of Will: 3910 / 996
+  Ponder: 1734 / 752
+  Ancestral Recall: 564 / 564
+  Time Walk: 529 / 529
+  Gitaxian Probe: 1645 / 508
+  Mental Misstep: 1509 / 437
+  Flusterstorm: 606 / 373
+  Sensei's Divining Top: 760 / 341
+  Cavern of Souls: 633 / 274
+  Gush: 812 / 239
+  Daze: 818 / 231
+  Pyroblast: 350 / 230
+  Yawgmoth's Will: 227 / 227
+  Cabal Therapy: 773 / 223
+  Chalice of the Void: 564 / 217
+

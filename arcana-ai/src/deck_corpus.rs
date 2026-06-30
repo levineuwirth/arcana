@@ -14,6 +14,14 @@
 //! list and unimplemented staples), and [`playable_decks`] hands the fully-
 //! covered, size-valid lists to the gauntlet as [`Deck`]s.
 //!
+//! NOTE — maindeck-only / coverage ≠ fidelity: today's source (the MTGTop8
+//! converter) emits MAINDECKS only, and `unresolved` is tracked over the whole
+//! list. A future source that includes sideboards would need unresolved tracked
+//! per section, so a sideboard miss can't disqualify a playable maindeck. Also,
+//! "resolves" is not "faithful" — some registered cards are approximated (see
+//! `docs/gauntlet-results/approximated-cards.txt`); a per-deck fidelity score is
+//! a planned addition.
+//!
 //! A source-specific adapter (e.g. Kaggle MTGTop8 CSV → `(name, format, text)`)
 //! slots in on top; this module is everything downstream of that.
 

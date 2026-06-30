@@ -1,0 +1,106 @@
+# Missing-card worklist — cards blocking the most NEAR-PLAYABLE decks
+# (decks missing 1-4 cards), per format, from the 800-distinct-deck sample.
+# Regenerate: see README.md (convert + dump catalog names + this analysis).
+
+## PI: 515 decks within 4 cards. Top blockers (card: #near-decks):
+   88  Urborg, Tomb of Yawgmoth
+   54  Lightning Axe
+   53  Izzet Charm
+   46  Treasure Cruise
+   46  Embercleave
+   45  Wicked Wolf
+   42  Nissa, Who Shakes the World
+   37  Collected Company
+   28  Light Up the Stage
+   28  Ulamog, the Ceaseless Hunger
+   23  Dig Through Time
+   23  Nissa's Pilgrimage
+   21  Hydroid Krasis
+   19  World Breaker
+   18  Aether Hub
+   16  Oath of Nissa
+   15  Ghitu Lavarunner
+   15  Wizard's Lightning
+   15  Surrak, the Hunt Caller
+   15  Wandering Fumarole
+   13  Kolaghan's Command
+   13  Ghostfire Blade
+   13  Shrapnel Blast
+   13  Grisly Salvage
+   12  Azorius Charm
+
+## MO: 256 decks within 4 cards. Top blockers (card: #near-decks):
+   73  Kolaghan's Command
+   71  Tarmogoyf
+   49  Raging Ravine
+   43  Remand
+   39  Collected Company
+   38  Searing Blaze
+   37  Rift Bolt
+   37  Boros Charm
+   28  Atarka's Command
+   25  Cryptic Command
+   23  Splinter Twin
+   22  Treetop Village
+   21  Lingering Souls
+   20  Dryad Arbor
+   19  Anafenza, Kin-Tree Spirit
+   18  Restoration Angel
+   17  Electrolyze
+   16  Fiend Hunter
+   16  Celestial Colonnade
+   14  Demonic Dread
+   14  Living End
+   14  Violent Outburst
+   14  Dismember
+   14  Windbrisk Heights
+   11  Shard Volley
+
+## LE: 118 decks within 4 cards. Top blockers (card: #near-decks):
+   49  Tarmogoyf
+   49  Force of Will
+   36  Daze
+   34  Ponder
+   27  Fireblast
+   23  Rift Bolt
+   16  Sylvan Library
+   16  Gitaxian Probe
+   15  Aether Vial
+   15  Sulfuric Vortex
+   13  Searing Blaze
+   12  Goblin Lackey
+   11  Gempalm Incinerator
+    8  Umezawa's Jitte
+    7  Sensei's Divining Top
+    6  Cabal Therapy
+    5  Ancestral Vision
+    5  Pernicious Deed
+    5  Bloodbraid Elf
+    4  Warren Weirding
+    4  Mogg Fanatic
+    4  Kird Ape
+    4  Aluren
+    3  Cavern of Souls
+    3  Batterskull
+
+## VI: 11 decks within 4 cards. Top blockers (card: #near-decks):
+    7  Cavern of Souls
+    6  Null Rod
+    5  Thorn of Amethyst
+    5  Reality Smasher
+    2  Goblin Lackey
+    2  Gempalm Incinerator
+    2  Time Walk
+    2  Ancestral Recall
+    1  Aether Vial
+    1  Mogg Fanatic
+    1  Cabal Therapy
+    1  Aluren
+    1  Red Elemental Blast
+    1  Food Chain
+    1  Kataki, War's Wage
+    1  Umezawa's Jitte
+    1  Batterskull
+    1  Tarmogoyf
+    1  Force of Will
+

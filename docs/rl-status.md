@@ -73,15 +73,20 @@ eventually optimize decklists? Step one is a trustworthy **deck gauntlet**.
 A reproducible round-robin over a set of decks with the statistics needed to make
 a *claim*, not just a point estimate:
 
-- **Seat-swapped, common-seed duels.** Each deck pair plays *duels* of two games
-  that share one engine seed + per-deck policy seeds but swap seats, so policy
-  RNG cancels per deck and seat/shuffle luck is balanced at the duel level.
+- **Seat-swapped, shared-seed duels.** Each deck pair plays *duels* of two games
+  that share one top-level engine seed and per-deck policy seeds but swap seats.
+  Precisely: the engine keys each library shuffle by *physical seat*, so a deck
+  does **not** literally redraw the same library after the swap — the shared seed
+  instead balances seat/stream luck at the **duel-block** level (the unit the
+  bootstrap resamples). Per-deck policy RNG does cancel.
 - **Block bootstrap CIs.** The experimental unit is the duel (its two games share
   seeds and are correlated), so per-deck 95% CIs resample *duel blocks*, not iid
   games — resampling games would make intervals too optimistic.
 - **Referee knob.** The policy *both* seats play (we measure decks, not policies):
   `Random` (screening), **`VmcMaterial`** (the cheap material-in-search policy
-  from Track A — our standard referee), or `Pimc` (strongest, slowest).
+  from Track A — our standard referee), or **small-budget `Pimc`** (slowest;
+  note this is a small PIMC budget, not the full-budget Track-A PIMC that
+  dominated §2).
 - Output: win matrix + per-deck point-rate (draws = ½) with CIs + CSV.
 - Sizing rule of thumb (from your feedback): ~100 games/deck = a screen, 400+ for
   a firm claim.
@@ -133,6 +138,12 @@ mean coverage   ~67→88%   ~73→77%   ~67→69%   ~62→64%
 This is itself a finding: **a modest, well-targeted card-implementation push
 moves a real-deck eval from "impossible" to "runnable."**
 
+**Reproducibility.** The exact conversion command, dataset source + sha256, the
+coverage snapshot, both gauntlet result CSVs, and the missing-card worklist are
+checked in under [`docs/gauntlet-results/`](gauntlet-results/) so the tables
+below can be rerun and audited from the repo (the 90 MB Kaggle zip itself is
+gitignored; its checksum is recorded there).
+
 ### 3.4 Gauntlet results — Pioneer (62 decks, 122 games/deck)
 Referee = VmcMaterial, block-bootstrap 95% CIs. Point-rate (draws ½):
 
@@ -151,7 +162,8 @@ Well-separated and **coherent — but it's an artifact of the referee**: aggro
 decks (curve out creatures, attack) are exactly what a shallow material heuristic
 plays well; the +1/+1-counter synergy and grindy midrange decks rely on lines the
 referee can't pilot and on payoffs that are partly GAP'd in our catalog. So those
-decks are almost certainly **underrated, not bad.** 0 draws across 918 games.
+decks are almost certainly **underrated, not bad.** (0 draws across all 3,782
+physical games — 1,891 deck pairs × one seat-swapped duel × 2 games.)
 
 ### 3.5 Gauntlet results — Modern (43 decks, 84 games/deck)
 Same harness. The result is instructive in a different way:
@@ -202,9 +214,16 @@ diverse only because its coverage happened to span several archetypes' staples.)
   referee + our catalog, not the real metagame.
 - **Coverage selection bias** (see §3.5) — the field is not the real metagame; it
   is a non-random subset determined by what we've implemented.
-- **Card-fidelity GAPs.** Some implemented cards approximate (Tarmogoyf = fixed
-  4/5; several "modes"/riders elided), which systematically weakens the affected
-  (often non-aggro) decks.
+- **Coverage ≠ fidelity.** A deck counted "playable" has every maindeck card
+  *registered*, but some are **approximated** (Tarmogoyf = fixed 4/5; several
+  modal/triggered riders elided), which systematically weakens the affected
+  (often non-aggro) decks. Today "playable" means "resolves", not "faithful" —
+  the reports don't yet surface a per-deck fidelity/GAP-card score (a planned
+  addition; the approximations are listed in `docs/gauntlet-results/`).
+- **Maindeck-only input.** The MTGTop8 converter emits maindecks only, and the
+  loader treats unresolved cards over the whole list — fine here, but a future
+  source that includes sideboards would need unresolved tracked *per section* so
+  a sideboard miss can't disqualify an otherwise-playable maindeck.
 - **Sample size.** 84–122 games/deck = screening tier (~±10% CIs); fine for the
   clear top/bottom splits, not for close pairs.
 - **Track A caveats still apply** (small mirror-deck samples, identity-free
@@ -238,6 +257,27 @@ diverse only because its coverage happened to span several archetypes' staples.)
    highest-leverage ML change, or still a distraction?
 6. **Compute reality check** (unchanged): pure-Rust, single-machine, no GPU. Which
    direction has the best effort-to-payoff?
+
+---
+
+## 6.5 Current plan (the order we're taking it)
+
+1. **Referee sensitivity first** — re-run the *same* covered fields under
+   Random / VmcMaterial / small-PIMC (+ a larger-PIMC budget on a small subset),
+   same seeds; report Spearman/Kendall rank correlation, per-deck point-rate
+   deltas, and archetype-level movement. This decides whether deckbuilding can
+   safely optimize against the cheap referee or would just exploit it.
+2. **Coverage capsules, not broad coverage** — deliberately implement the
+   blockers for 4–6 *chosen* archetypes per format, to get diverse experimental
+   domains instead of the current Jund/aggro skew.
+3. **Constrained deckbuilding inside a capsule** — "optimize under referee X
+   within this covered pool/archetype." Narrow, honest, and a useful diagnostic
+   (what degenerate decks does the referee reward?).
+4. **MTGTop8 placement as *validation*, not training truth** — noisy and
+   metagame-confounded; use for rank-correlation sanity checks after (1).
+5. **Defer the generic learned value-leaf** — deckbuilding needs a stable
+   objective more than another value head; better ML later is
+   action-ranking/distillation from search or a deck-level surrogate.
 
 ---
 

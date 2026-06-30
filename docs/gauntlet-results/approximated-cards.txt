@@ -1,0 +1,41 @@
+# Approximated ("GAP'd") cards — fidelity worklist
+#
+# These cards RESOLVE (so decks containing them count as "playable" in the
+# coverage snapshot) but are modeled with a deliberate simplification. A deck's
+# true fidelity is lower than its coverage suggests; this is the input to a
+# planned per-deck fidelity/GAP-card score. Most simplifications weaken
+# non-aggro decks, compounding the material-referee bias.
+#
+# Format: <card> — <what's approximated>
+
+# --- creatures ---
+Tarmogoyf — fixed 4/5; dynamic */1+* (card types in all graveyards, a Layer-7a CDA) not modeled
+Steel Leaf Champion — "can't be blocked by creatures with power 2 or less" evasion elided
+Soul-Scar Mage — Prowess modeled; the "-1/-1 counters instead of noncombat damage" replacement elided
+Empyrean Eagle — Flying modeled; the "other fliers get +1/+1" anthem elided
+Supreme Phantom — Flying modeled; the "other Spirits get +1/+1" anthem elided
+Hangarback Walker — enters as an X/X (CountersFromX); death-Thopters + {1},{T} counter-pump elided
+Torbran, Thane of Red Fell — vanilla 2/4; the "+2 to red damage" replacement elided
+
+# --- vehicles (Crew is real; secondary abilities GAP'd) ---
+Smuggler's Copter — Crew 1 + Flying real; attack/block loot trigger elided
+Heart of Kiran — Crew 3 + Flying/Vigilance real; planeswalker-loyalty alternate crew elided
+Aethersphere Harvester — Crew 1 + Flying real; energy + lifelink ability elided
+
+# --- spells ---
+Dig Through Time — modeled as draw 2; the look-at-7-and-select-2 dig elided (delve is real)
+Wild Slash — 2 damage real; Ferocious "can't be prevented" elided
+Fatal Push — destroy MV<=2 real; Revolt (MV<=4) elided
+Boros Charm — 4-to-player + double-strike modes real; "indestructible to all your permanents" mode is a no-op; planeswalker target elided
+Censor — counter-unless-{1} real; Cycling elided
+Syncopate — counter-unless-{X} real; the "exile if countered" rider elided
+Stubborn Denial — counter-unless-{1} real; Ferocious upgrade to {3} elided
+Once Upon a Time — {2}{G} dig real; free-first-spell-of-the-game alt-cost elided
+
+# --- lands ---
+(shocklands) — "pay 2 life or enters tapped" resolved by a fixed policy (pay if life > cost), not a player choice
+Castle Garenbrig — restricted ramp uses OnlyCastCreatureSpells; "or activate abilities of creatures" half elided
+Raging Ravine — animates to 3/3; the attack-trigger +1/+1 counter elided
+Creeping Tar Pit — animates to 3/2; "can't be blocked" elided
+Field of the Dead — taps for {C}; the 7-differently-named-lands Zombie trigger elided
+Blast Zone — taps for {C}; charge-counter board-wipe elided
