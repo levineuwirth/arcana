@@ -31,6 +31,16 @@ pub fn register_all(reg: &mut CardRegistry) -> usize {
     crate::lea::giant_spider::register(reg); n += 1;
     crate::lea::llanowar_elves::register(reg); n += 1;
     crate::lea::prodigal_sorcerer::register(reg); n += 1;
+    crate::lea::tundra::register(reg); n += 1;
+    crate::lea::underground_sea::register(reg); n += 1;
+    crate::lea::badlands::register(reg); n += 1;
+    crate::lea::taiga::register(reg); n += 1;
+    crate::lea::savannah::register(reg); n += 1;
+    crate::lea::scrubland::register(reg); n += 1;
+    crate::lea::volcanic_island::register(reg); n += 1;
+    crate::lea::bayou::register(reg); n += 1;
+    crate::lea::plateau::register(reg); n += 1;
+    crate::lea::tropical_island::register(reg); n += 1;
     // --- lrw ---
     crate::lrw::elvish_visionary::register(reg); n += 1;
     crate::lrw::axegrinder_giant::register(reg); n += 1;
