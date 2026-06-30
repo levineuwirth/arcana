@@ -47,6 +47,14 @@ The catalog name list used by the worklist analysis is dumped from
 | `referee-sensitivity.txt` | rankings under Random / VmcMaterial / small-PIMC + rank correlations |
 | `pi_subset12_vmc.csv` | 12-deck spanning subset under vmc (referee-sensitivity arm) |
 | `pi_subset12_pimc.csv` | same 12-deck subset under small-PIMC |
+| `metagame-placement-PI.txt` | **ground truth** — real Pioneer archetype strength from MTGTop8 finishes |
+| `metagame-placement-MO.txt` | same, Modern |
+| `gauntlet-vs-real-PI.txt` | **ground-truth check** — gauntlet vmc point-rate vs real strength (Spearman ρ=0.00) |
+
+The placement artifacts are built from the dump's tournament results
+(`df_events_v2.csv` for each event's format; `events/<id>/players_info.csv` for
+each player's `player_result` finish + `player_title` archetype) via
+`arcana-ai/scripts/placement_strength.py` and `placement_vs_gauntlet.py`.
 
 CSV columns: `deck,games,wins,draws,losses,score,point_rate,ci_lo,ci_hi`
 (`score`/`point_rate` count a draw as ½; CIs are block-bootstrap 95%).

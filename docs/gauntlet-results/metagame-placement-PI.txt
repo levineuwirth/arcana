@@ -1,0 +1,30 @@
+# Real-world archetype strength — format PI (min 30 entries, min 0 stars)
+# events used: 528  total entries: 3312  distinct archetypes (>= min): 26
+# strength = 1 - mean normalized finish (higher=better); top_share = frac in top 1/8 of field
+# archetype                          entries  strength  top_share
+  Simic Aggro                             41     0.672      0.195
+  UW Spirit Aggro                         64     0.611      0.219
+  Boros Aggro                             34     0.605      0.118
+  RDW                                     78     0.599      0.192
+  Mono Black Aggro                       234     0.587      0.145
+  UW Control                             109     0.583      0.156
+  Spirit Aggro                            87     0.582      0.172
+  Temur Reclamation                       68     0.578      0.221
+  Red Deck Wins                          156     0.574      0.154
+  Hour of Promise Ramp                    34     0.562      0.118
+  Sultai Delirium                         62     0.561      0.177
+  Dimir Inverter                         170     0.555      0.141
+  Izzet Arclight                          38     0.550      0.132
+  Mono Green Aggro                        30     0.548      0.167
+  Niv-Mizzet Reborn                      123     0.547      0.179
+  Lotus Field                            105     0.544      0.152
+  Golgari Aggro                           36     0.542      0.111
+  Devotion to Green                      105     0.532      0.181
+  UR Ensoul Artifact                      35     0.530      0.143
+  Omnath Ramp                             47     0.525      0.149
+  Weenie White                            74     0.516      0.189
+  Sultai Control                          70     0.512      0.186
+  Orzhov Sram                             89     0.512      0.124
+  Gruul Aggro                             86     0.511      0.093
+  Fires of Invention                      48     0.448      0.104
+  Esper Yorion Control                    30     0.379      0.100

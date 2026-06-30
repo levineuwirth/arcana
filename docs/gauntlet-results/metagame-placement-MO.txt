@@ -1,0 +1,143 @@
+# Real-world archetype strength — format MO (min 30 entries, min 0 stars)
+# events used: 5821  total entries: 36851  distinct archetypes (>= min): 139
+# strength = 1 - mean normalized finish (higher=better); top_share = frac in top 1/8 of field
+# archetype                          entries  strength  top_share
+  Heliod Life                             40     0.665      0.275
+  Whirza                                  31     0.654      0.226
+  Green Tron                              57     0.643      0.228
+  Abzan Midrange                          44     0.637      0.091
+  5c Humans                               61     0.637      0.148
+  Ur Storm                                58     0.635      0.224
+  Bant Spirits                           124     0.634      0.129
+  Tokens                                  38     0.621      0.237
+  Sultai Control                          56     0.619      0.143
+  Urza Oko                               107     0.614      0.140
+  Izzet Phoenix                          317     0.614      0.155
+  Hardened Scales                        143     0.612      0.119
+  Bant Eldrazi                           124     0.612      0.161
+  Abzan Company                           88     0.611      0.114
+  Esper Control                           78     0.608      0.141
+  EldraTron                               42     0.608      0.214
+  Bant Stoneblade                         30     0.606      0.233
+  Urza                                   203     0.604      0.128
+  Eldrazi Tron                           223     0.602      0.157
+  Storm                                   70     0.602      0.171
+  Ponza                                   38     0.602      0.211
+  Counters Company                        32     0.601      0.219
+  Humans                                 824     0.601      0.180
+  Kci                                     48     0.600      0.125
+  Abzan                                  112     0.599      0.152
+  Puresteel Paladin                       40     0.598      0.200
+  Amulet Titan                           419     0.597      0.162
+  Titanshift                              98     0.597      0.153
+  Phoenix Deck Wins                       89     0.596      0.124
+  Eldratron                               51     0.591      0.157
+  Uw Control                             233     0.586      0.137
+  Goblins                                119     0.586      0.185
+  8 Rack                                  34     0.585      0.206
+  Naya Burn                              211     0.584      0.147
+  Delver Scepter                          31     0.583      0.323
+  4/5c Good Stuff                         54     0.579      0.185
+  Grixis Death's Shadow                  132     0.578      0.129
+  Jeskai Ascendancy                       85     0.576      0.176
+  Snow Bant Control                       62     0.574      0.177
+  Grixis Control                         253     0.574      0.174
+  Bogles                                  87     0.574      0.184
+  Spirit Aggro                            67     0.570      0.134
+  Jeskai Control                         273     0.570      0.179
+  Mono G Tron                             41     0.569      0.098
+  Creatures Toolbox                      296     0.568      0.166
+  Genesis Wave                            34     0.567      0.147
+  Prowess Deck Wins                      121     0.567      0.107
+  Tron                                    91     0.566      0.154
+  Grixis Shadow                           92     0.565      0.130
+  Azorius Control                         46     0.564      0.174
+  Rakdos Aggro                            47     0.564      0.085
+  Ur Phoenix                              40     0.563      0.100
+  Living End                             389     0.563      0.152
+  Melira Pod                              77     0.561      0.195
+  Gruul Land Loss                         64     0.559      0.172
+  Valakut                                555     0.559      0.160
+  Infect                                 695     0.558      0.154
+  Jund                                  1894     0.558      0.167
+  Podless Collected                       75     0.558      0.160
+  Bant                                    53     0.555      0.151
+  Dredge                                 970     0.555      0.139
+  Burn                                  1228     0.550      0.119
+  Selesnya Value                          44     0.550      0.159
+  Scapeshift                             562     0.549      0.189
+  Boros Burn                              76     0.548      0.158
+  Infect Combo                           118     0.547      0.280
+  Merfolk                                686     0.546      0.173
+  UWr Midrange Kiki                       46     0.545      0.239
+  Hardened Modular                        90     0.544      0.111
+  UB Mill                                 57     0.544      0.123
+  UW Control                             684     0.544      0.123
+  Death's Shadow                         846     0.543      0.145
+  Dredgevine                              51     0.541      0.216
+  Eldra Tron                             499     0.541      0.138
+  Ad Nauseam                             419     0.541      0.134
+  Grixis Delver                          114     0.539      0.140
+  Snow Red                                32     0.539      0.250
+  Aggro Loam                              36     0.539      0.194
+  Affinity                              1830     0.538      0.168
+  Bloomless Titan                         86     0.538      0.186
+  Boros Nahiri                            57     0.537      0.140
+  Elves                                  312     0.536      0.115
+  Junk                                   554     0.536      0.157
+  Bant Spirit                            125     0.534      0.152
+  Boremandos                              70     0.533      0.171
+  Kiln Fiend Aggro                        46     0.533      0.174
+  Lantern Control                        178     0.532      0.152
+  UrzaTron                               939     0.532      0.153
+  4c Ramp Control                         53     0.531      0.151
+  RUG Aggro                              118     0.531      0.246
+  Mardu Pyromancer                       158     0.530      0.127
+  Twin Exarch                            873     0.529      0.178
+  Uw Spirits                              32     0.528      0.125
+  Nahiri Control                          43     0.528      0.209
+  UR Storm                               551     0.528      0.156
+  Eldrazi Aggro                          466     0.528      0.144
+  Bloom Titan                            203     0.527      0.167
+  Mardu Midrange                          69     0.527      0.116
+  UWx Midrange                           305     0.527      0.144
+  Hollow One                             227     0.526      0.093
+  BW Tokens                               35     0.526      0.171
+  The Rock                               380     0.525      0.121
+  Aura Hexproof                          312     0.522      0.151
+  Zoo                                    174     0.521      0.126
+  Naya Zoo                                53     0.521      0.075
+  Hatebear                               567     0.521      0.141
+  UR Aggro                               444     0.520      0.164
+  Mono Green Tron                         93     0.520      0.151
+  Red Deck Wins                          449     0.519      0.147
+  Blue Moon                              197     0.519      0.157
+  Lanternless                             31     0.518      0.129
+  UWr Midrange                           158     0.518      0.171
+  Caw-Blade                               67     0.517      0.224
+  Gift Tron                               48     0.517      0.167
+  CopyCat                                 75     0.513      0.120
+  UR Faeries                              34     0.512      0.147
+  Birthing Pod                           739     0.511      0.211
+  Hogaak Dredge                           58     0.510      0.138
+  Bushwhacker Zoo                         71     0.509      0.070
+  Death's Shadow Zoo                     132     0.509      0.129
+  Boros                                   32     0.509      0.125
+  Bant Control                            55     0.508      0.109
+  Gruul Aggro                             61     0.507      0.230
+  Instant Reanimator                     147     0.507      0.129
+  Gr Tron                                449     0.504      0.183
+  Collected Bant                          58     0.503      0.207
+  KCI                                     79     0.497      0.127
+  Faeries                                125     0.494      0.160
+  Chord Toolbox                           62     0.486      0.177
+  Allosaurus Combo                        37     0.485      0.108
+  UWR Control                            117     0.484      0.171
+  Martyr Life                            246     0.480      0.187
+  Niv-Mizzet Reborn                       52     0.480      0.115
+  Gift Control                            81     0.475      0.185
+  Pyro Prison                             43     0.472      0.116
+  Orzhov Midrange                         35     0.470      0.171
+  Gruul Utopia                            59     0.447      0.169
+  Heliod                                  36     0.438      0.083
+  Mono Black Control                      30     0.431      0.200
