@@ -38,3 +38,7 @@ arcana-py/python/arcana/*.pyd
 # still compiles before verify has ever run.
 arcana-cards/src/generated/_scratch/candidate.rs
 arcana-cards/src/generated/_scratch/candidate_*.rs
+
+# Kaggle MTGTop8 dataset (90MB) + converted decklists — not committed
+kaggle.zip
+kaggle_decks/

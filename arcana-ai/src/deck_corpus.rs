@@ -332,6 +332,32 @@ mod tests {
         assert_eq!(playable_decks(&[small], 60, 60).len(), 0);
     }
 
+    /// Scan a converted corpus (base dir with per-format subdirs of `*.txt`)
+    /// and print catalog coverage per format — the "which format is viable"
+    /// measurement. Run:
+    /// `KAGGLE_DECKS=/path cargo test -p arcana-ai --release coverage_scan -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn coverage_scan() {
+        let base = std::env::var("KAGGLE_DECKS").expect("set KAGGLE_DECKS to the corpus base dir");
+        let reg = arcana_cards::build_catalog();
+        let mut all = Vec::new();
+        let mut subdirs: Vec<_> = std::fs::read_dir(&base)
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .filter(|p| p.is_dir())
+            .collect();
+        subdirs.sort();
+        for sub in subdirs {
+            let fmt = sub.file_name().unwrap().to_str().unwrap().to_string();
+            let decks = decks_from_dir(&sub, &fmt, &reg).unwrap();
+            all.extend(decks);
+        }
+        let report = coverage_report(&all, 60, 60);
+        println!("\n{}", report.format_table());
+    }
+
     /// EXAMPLE TEMPLATE: load a real decklist corpus from a directory of `*.txt`
     /// Arena lists, report coverage, then run the gauntlet on the playable
     /// subset. Point `DIR` at the dropped corpus and run in release:
