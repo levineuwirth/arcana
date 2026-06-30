@@ -96,3 +96,4 @@ pub mod house_guildmage;
 pub mod swathcutter_giant;
 pub mod torch_courier;
 pub mod street_riot;
+pub mod supreme_phantom;

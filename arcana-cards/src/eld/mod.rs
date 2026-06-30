@@ -142,3 +142,4 @@ pub mod castle_garenbrig;
 pub mod castle_ardenvale;
 pub mod castle_embereth;
 pub mod once_upon_a_time;
+pub mod torbran_thane_of_red_fell;

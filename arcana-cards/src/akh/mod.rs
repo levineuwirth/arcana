@@ -97,3 +97,4 @@ pub mod illusory_wrappings;
 pub mod lay_claim;
 pub mod censor;
 pub mod syncopate;
+pub mod soul_scar_mage;

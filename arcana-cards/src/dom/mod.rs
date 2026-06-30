@@ -98,3 +98,4 @@ pub mod merfolk_trickster;
 pub mod elfhame_druid;
 pub mod in_bolas_s_clutches;
 pub mod opt;
+pub mod steel_leaf_champion;
