@@ -206,12 +206,15 @@ diverse only because its coverage happened to span several archetypes' staples.)
 
 ## 5. Caveats / threats to validity (please poke holes)
 
-- **Referee strength.** Everything above uses the cheap VmcMaterial referee. A
+- **Referee strength.** Everything in §§3–4 uses the cheap VmcMaterial referee. A
   stronger referee (PIMC, or a value that can pilot synergy) might reorder decks
-  substantially — we don't yet know how *referee-dependent* the ranking is.
-- **No ground truth.** We have not validated any ranking against real tournament
-  win-rates. "Gruul Aggro #1 in our Pioneer gauntlet" is a statement about our
-  referee + our catalog, not the real metagame.
+  substantially. **Answered in §6.5:** the ranking IS strongly referee-dependent
+  at the extremes (aggro/synergy), and optimizing against VmcMaterial reward-hacks.
+- **No ground truth.** The §§3–4 rankings are not validated against real tournament
+  results — "Gruul Aggro #1 in our Pioneer gauntlet" is a statement about our
+  referee + our catalog, not the real metagame. **Answered in §6.5 (4):** now
+  checked — VmcMaterial has ρ≈0 vs real MTGTop8 finishes (it *fails* this check);
+  a direct PIMC-vs-real check is still outstanding.
 - **Coverage selection bias** (see §3.5) — the field is not the real metagame; it
   is a non-random subset determined by what we've implemented.
 - **Coverage ≠ fidelity.** A deck counted "playable" has every maindeck card
@@ -232,6 +235,11 @@ diverse only because its coverage happened to span several archetypes' staples.)
 ---
 
 ## 6. Open questions — where we want your opinion
+
+> **These were the refresh-1 framing.** Questions 1, 2, and 4 are largely
+> **answered in §6.5** (referee sensitivity + ground-truth check ran; deckbuilding
+> optimization *was* premature against the biased objective) — kept here for
+> provenance. Questions 3, 5, 6 are still live.
 
 1. **What makes a deck-strength eval trustworthy?** Given the referee bias, is the
    right move (a) invest in a stronger/faster referee (PIMC at scale; or finally a
@@ -262,20 +270,25 @@ diverse only because its coverage happened to span several archetypes' staples.)
 
 ## 6.5 Current plan (the order we're taking it)
 
-1. **Referee sensitivity — first result (done).** Same Pioneer field + seeds
-   under different referees (full numbers in
-   `docs/gauntlet-results/referee-sensitivity.txt`):
-   - vmc ↔ **Random** (64-deck field): Spearman **ρ = 0.71**.
-   - vmc ↔ **small-PIMC** (12-deck spanning subset): Spearman **ρ = 0.88**.
-   The cheap referee tracks a *stronger* one (0.88) better than it tracks noise
-   (0.71), and the residual movement is structured exactly as predicted — vmc
-   mildly **over-rates aggro** (Red Deck Wins falls under PIMC; aggro falls under
-   random) and **under-rates +1/+1 synergy** (Golgari Scales / Hardened Scales
-   rise under both stronger-than-material refs). Effect is modest (~0.10 mean
-   point-rate Δ) and partly noisy at 22 games/deck. The tentative read
-   ("directionally safe, mildly aggro-exploiting") was **too generous** — see (3)
-   and (4), which ran the higher-budget-PIMC arm and the ground-truth check and
-   found the misalignment is severe, not mild.
+1. **Referee sensitivity — first result (done).** Two *separate* rank-correlation
+   checks (full numbers in `docs/gauntlet-results/referee-sensitivity.txt`):
+   - vmc ↔ **Random**, on a **64-deck** Pioneer field (122 vs 122 games/deck):
+     Spearman **ρ = 0.71**.
+   - vmc ↔ **small-PIMC**, on a **12-deck** spanning subset (44 vs 22 games/deck):
+     Spearman **ρ = 0.88**.
+   *Provenance caveat:* the Random arm's 64-deck playable snapshot predates the
+   headline `pi_gauntlet_62.csv` (62-deck) snapshot — the two coverage scans
+   differ by a couple of decks, and the 64-deck arm's per-deck CSVs are only
+   summarized in the `.txt`, not checked in (a reproducibility gap to close).
+   The cheap referee tracks the *stronger* small-PIMC (0.88) more closely than it
+   tracks *random noise* (0.71), and the residual movement is structured as
+   predicted — vmc mildly **over-rates aggro** (Red Deck Wins falls moving off
+   material; aggro falls under Random) and **under-rates +1/+1 synergy** (Golgari
+   Scales / Hardened Scales rise under **both non-material referees**, Random *and*
+   PIMC). The effect looked modest here (~0.10 mean point-rate Δ, noisy at 22
+   games/deck), so the tentative read ("directionally safe, mildly aggro-
+   exploiting") was **too generous** — the higher-budget-PIMC arm (3) and the
+   ground-truth check (4) found the misalignment is severe, not mild.
 2. **Coverage capsules, not broad coverage** — deliberately implement the
    blockers for 4–6 *chosen* archetypes per format, to get diverse experimental
    domains instead of the current Jund/aggro skew. (Built one honest Pioneer
@@ -314,12 +327,30 @@ diverse only because its coverage happened to span several archetypes' staples.)
    (0.000 top-8 share in ≥2-star events), our worst Scales-synergy cluster is
    real-world mid-to-strong — and our referee manufactures a 0.30–0.82 spread where
    reality compresses to ~0.51–0.60. Caveats (N=7 fuzzy buckets, narrow real band,
-   metagame confound) in `docs/gauntlet-results/gauntlet-vs-real-PI.txt`. Both (3)
-   and (4) point the same way: **PIMC tracks reality; VmcMaterial does not** — so
-   the next bottleneck is *referee quality*, not optimizer sophistication.
+   metagame confound) in `docs/gauntlet-results/gauntlet-vs-real-PI.txt`.
+   Together (3) and (4) establish that **VmcMaterial fails the real-world check**
+   (ρ≈0) and that **PIMC disagrees with VmcMaterial in the more plausible
+   direction** on the key Scales/aggro cases (synergy up, the aggro pile down).
+   They do **not** yet show PIMC *itself* correlating with real tournament buckets
+   — a **direct PIMC-vs-real validation is the outstanding check** (a naive glance
+   even shows tensions: PIMC-in-capsule over-rates RDW and under-rates UW Spirit
+   vs their real strength, but that's confounded by the 5-deck capsule field, not
+   the metagame). Either way the next bottleneck is *referee quality*, not
+   optimizer sophistication.
 5. **Defer the generic learned value-leaf** — deckbuilding needs a stable
    objective more than another value head; better ML later is
    action-ranking/distillation from search or a deck-level surrogate.
+6. **Next — objective validation before more optimization.**
+   (a) **Direct PIMC-vs-real check** (the outstanding one): run PIMC over the same
+   Pioneer archetype buckets and rank-correlate against real MTGTop8 strength —
+   small and expensive is fine; the §6.5 (3)/(4) narrative *depends* on knowing
+   whether PIMC itself tracks reality, which we have not shown.
+   (b) **Pragmatic deckbuilding loop = cheap candidate generation + PIMC
+   selection/hold-out**, not optimization against any single cheap scalar (the v2
+   A/B showed even an improved cheap referee stays gameable). The
+   `deckbuild_capsule_pimc_select` experiment is the first test of (b): is
+   *selection* the fix, or are the cheap-generated candidates all proxy-corner
+   decks that PIMC tanks regardless?
 
 ---
 
@@ -339,14 +370,20 @@ and the loop *diagnosed its own objective*. Three results converge: the
 optimized deck (good under VmcMaterial) is the **worst** deck in its field under
 a higher-budget **PIMC** (point-rate 0.13 vs every seed ≥0.21); the VmcMaterial
 gauntlet has **zero-to-negative rank correlation with real MTGTop8 finishes**
-(ρ = 0.00 mean-finish, −0.39 top-8); and in both PIMC and the real metagame the
-*synergy* decks the material referee buries (Hardened Scales) come out ahead.
+(ρ = 0.00 mean-finish, −0.39 top-8); and **PIMC moves the buried *synergy* decks
+(Hardened Scales) back up** — the direction the real metagame favors them — though
+a *direct* PIMC-vs-real correlation is not yet run.
 
 The takeaway sharpened: it is **not** that VmcMaterial is "directionally right
 but noisy" — optimizing against it is reward-hacking, and the rankings are
 *"strength under a referee that does not track reality."* **Referee quality is
 now the binding constraint**, ahead of optimizer sophistication or more cards.
-The concrete next step is a better-but-still-cheap objective — PIMC as the
-referee, or a cheap policy/value distilled from PIMC — before any further
-deckbuilding optimization. The open question for you: invest in a PIMC-distilled
-referee next, or push PIMC budget directly and eat the cost?
+The concrete next step is **objective validation, not more optimization**: a
+*direct* PIMC-vs-real check on the same Pioneer archetype buckets (small and
+expensive is fine) — because the central claim above depends on it. After that,
+the pragmatic deckbuilding loop is **cheap candidate generation + PIMC
+selection/hold-out**, not optimization against any single cheap scalar — the v2
+A/B (§6.5 (3)) showed that even an *improved* cheap referee stays gameable as a
+target. A `deckbuild_capsule_pimc_select` experiment testing exactly that — "is
+selection the fix, or are the cheap-generated candidates all proxy-corner
+decks?" — is running now.
