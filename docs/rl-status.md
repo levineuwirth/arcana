@@ -293,6 +293,19 @@ diverse only because its coverage happened to span several archetypes' staples.)
    reward-hacking: the pile maxes raw material but a referee that sequences games
    punishes its incoherence + 3-color mana base. Full table:
    `docs/capsule-pioneer/results.txt`.
+   - **Referee v2 A/B (the "hand-tune a cheap value" fix) — a split verdict.** A
+     card-advantage-rebalanced material leaf (creatures P+T not 2P+T; hand cards
+     ×2; PW 2+loyalty; `MaterialValueV2`) is a **much better JUDGE**: mean-abs-error
+     vs PIMC on the 5 seeds *halves* (0.175 → 0.092), fixing the two worst v1 biases
+     (UW Spirit over-rating 0.75→0.46 = PIMC exactly; Hardened Scales under-rating
+     0.29→0.42 toward PIMC 0.50). But it is **still exploitable as a TARGET**: a
+     hill-climb against v2 scores 0.43 under v2 yet only 0.20 under PIMC (still
+     near-bottom), and the exploit merely *relocated* — v2's hand-card weight pushed
+     the optimizer to cut lands (23→19) and jam a 4-color pile. Textbook Goodhart:
+     improving the cheap referee helps *evaluation* but a single static cheap target
+     stays gameable. **Take:** adopt v2 as the gauntlet judge; for optimization use
+     PIMC-in-the-loop / PIMC-distilled, or a referee *ensemble* + PIMC hold-out —
+     not any single cheap proxy.
 4. **MTGTop8 placement as *validation* — done; VmcMaterial fails it.** Per-archetype
    real strength from the dump's tournament finishes (`player_result` over 528
    Pioneer events) vs our gauntlet point-rate, collapsed into 7 confidently-matched

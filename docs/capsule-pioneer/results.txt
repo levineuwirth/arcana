@@ -71,3 +71,39 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 100 filtered out; fi
 # NOISE: 6 games/opp; the optimized deck's own vmc fell 0.52(opt)->0.40(re-eval), confirming
 #   the (1+1) hill-climb overfit to lucky evals. But the PIMC separation (optimized 0.133 vs
 #   every seed >=0.208) is wide enough to carry the conclusion.
+
+## REFEREE v2 A/B (the "hand-tune a cheap value" fix): does a card-advantage-rebalanced
+## material leaf (creatures P+T not 2P+T; hand cards x2; PW 2+loyalty) do better?
+## Optimize under BOTH referees, score v1-opt + v2-opt + seeds under vmc-v1 / vmc-v2 / PIMC.
+#
+#   deck                        vmc-v1  vmc-v2   pimc
+#   v1-optimized                 0.400   0.400   0.133   <- maxed vmc-v1
+#   v2-optimized                 0.133   0.433   0.200   <- maxed vmc-v2
+#   UW Spirit Aggro              0.750   0.458   0.458
+#   Golgari Scales               0.250   0.208   0.208
+#   Hardened Scales              0.292   0.417   0.500
+#   Rakdos Aggro                 0.375   0.375   0.667
+#   Red Deck Wins                0.792   0.833   0.750
+#
+# DUAL RESULT — the two halves point opposite ways:
+# (1) v2 is a much better JUDGE of real decks. Mean-abs-error vs PIMC on the 5 seeds
+#     HALVES: v1 0.175 -> v2 0.092. It fixes the two worst v1 biases — UW Spirit Aggro
+#     over-rating (0.750 -> 0.458, EXACTLY PIMC) and Hardened Scales under-rating
+#     (0.292 -> 0.417, toward PIMC 0.500) — matches Golgari (0.208), keeps RDW strong.
+#     Residual miss: Rakdos Aggro still under-rated (0.375 vs PIMC 0.667).
+# (2) v2 is STILL exploitable as an optimization TARGET. The v2-optimized deck scores
+#     0.433 under vmc-v2 but only 0.200 under PIMC (still near-bottom) and 0.133 under
+#     vmc-v1. Both optimized decks are referee-SPECIFIC exploits that collapse under the
+#     other two referees. The exploit even relocated: v2's doubled hand-card weight pushed
+#     the optimizer to CUT lands (23 -> 19) and jam a 4-color pile (RG counters + red
+#     top-end + a WU Spirits splash) — an incoherent manabase PIMC's real sequencing tanks.
+# CONCLUSION (textbook Goodhart): improving the cheap referee helps EVALUATION (ranking
+#   real, coherent decks) but does NOT fix OPTIMIZATION — a single static cheap target stays
+#   gameable; a strong optimizer just relocates the exploit. => ADOPT v2 as the gauntlet
+#   JUDGE (better ranking), but for deckbuilding-as-OPTIMIZATION you need PIMC-in-the-loop
+#   (or PIMC-distilled), or robust/adversarial optimization (a referee ENSEMBLE + a PIMC
+#   hold-out), not a single cheap proxy.
+# NOISE: 6 games/opp (+-~0.1); the v2-opt 0.200 vs v1-opt 0.133 PIMC gap is WITHIN noise
+#   (don't claim v2-opt is "better under PIMC"); n=5 for the judge comparison. Robust claims:
+#   v2's absolute agreement with PIMC on the seeds clearly improved (two big biases fixed to
+#   near-exact), AND both optimized decks are referee-specific exploits that fail PIMC.
