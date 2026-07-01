@@ -472,4 +472,121 @@ mod tests {
             row(&name, &s.cards, "");
         }
     }
+
+    /// PIMC-SELECT experiment (the "a single cheap target is gameable" fix): a
+    /// single cheap referee is exploitable, so generate a POOL of candidate decks
+    /// by cheap optimization (both v1 & v2 leaves, several seeds each) and pick the
+    /// final deck by a small PIMC tournament vs the field — "PIMC only on optimizer
+    /// outputs" (the reviewer's idea). The question: does PIMC-selection find a
+    /// candidate meaningfully better under PIMC than the cheap judge's own argmax
+    /// (which games the proxy) — or is candidate GENERATION, not selection, the
+    /// bottleneck (every cheap-optimized deck is a proxy-corner that PIMC tanks)?
+    /// `cargo test -p arcana-ai --release deckbuild_capsule_pimc_select -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn deckbuild_capsule_pimc_select() {
+        use arcana_core::deck::parse_deck_text;
+        use arcana_core::state::GameResult;
+        use arcana_core::types::PlayerId;
+        use crate::search::{play_match, PimcPolicy};
+
+        let base = std::env::var("CAPSULE_DIR").expect("set CAPSULE_DIR (dir of *.txt seed decks)");
+        let reg = arcana_cards::build_catalog();
+        let mut seeds = Vec::new();
+        let mut paths: Vec<_> = std::fs::read_dir(&base).unwrap()
+            .filter_map(|e| e.ok()).map(|e| e.path())
+            .filter(|p| p.extension().map(|x| x == "txt").unwrap_or(false)).collect();
+        paths.sort();
+        for p in paths {
+            let txt = std::fs::read_to_string(&p).unwrap();
+            let parsed = parse_deck_text(&txt, &reg);
+            if parsed.unresolved.is_empty() {
+                let cards: Vec<CardId> = parsed.main.iter().flat_map(|(c, n)| std::iter::repeat(*c).take(*n as usize)).collect();
+                let name = if parsed.name.is_empty() { "seed".into() } else { parsed.name };
+                seeds.push(Deck { name, cards });
+            }
+        }
+        let cap = Capsule::from_decks("pioneer-capsule", seeds.clone(), &reg, 60, 17, 27);
+        let iters: u32 = std::env::var("CAPSULE_ITERS").ok().and_then(|s| s.parse().ok()).unwrap_or(80);
+        let games: u32 = std::env::var("CAPSULE_GAMES").ok().and_then(|s| s.parse().ok()).unwrap_or(5);
+        let cands: u32 = std::env::var("CAPSULE_CANDIDATES").ok().and_then(|s| s.parse().ok()).unwrap_or(3);
+        let pimc_samples: u32 = std::env::var("CAPSULE_PIMC_SAMPLES").ok().and_then(|s| s.parse().ok()).unwrap_or(16);
+        let pimc_cap: u32 = std::env::var("CAPSULE_PIMC_CAP").ok().and_then(|s| s.parse().ok()).unwrap_or(160);
+        let val_games: u32 = std::env::var("CAPSULE_VAL_GAMES").ok().and_then(|s| s.parse().ok()).unwrap_or(6);
+        let max_steps = 4000u32;
+
+        // Candidate pool: cheap optimization under BOTH leaves, `cands` seeds each.
+        let mut pool: Vec<(String, Vec<CardId>)> = Vec::new();
+        for k in 0..cands {
+            let r1 = optimize(&cap, &reg, iters, games, max_steps, k as u64, &|s| fixed_policy(s));
+            pool.push((format!("v1#{k}"), r1.best));
+            let r2 = optimize(&cap, &reg, iters, games, max_steps, k as u64,
+                              &|s| crate::deckeval::fixed_policy_v2(s));
+            pool.push((format!("v2#{k}"), r2.best));
+        }
+
+        // Matchup point-rate for `cand` vs `opp` under referee r (1 = v2 cheap judge,
+        // 2 = PIMC), seat-alternating with correct determinization decks.
+        let matchup = |cand: &[CardId], opp: &[CardId], r: u8| -> f32 {
+            let mut score = 0.0f32;
+            for g in 0..val_games {
+                let cand_seat = (g % 2) as PlayerId;
+                let seat_decks: Vec<Vec<CardId>> = if cand_seat == 0 {
+                    vec![cand.to_vec(), opp.to_vec()]
+                } else {
+                    vec![opp.to_vec(), cand.to_vec()]
+                };
+                let mk = |s: u64| -> Box<dyn StatePolicy> {
+                    if r == 2 {
+                        Box::new(PimcPolicy::with_budget(s, seat_decks.clone(), pimc_samples, pimc_cap, 8))
+                    } else {
+                        crate::deckeval::fixed_policy_v2(s)
+                    }
+                };
+                let mut p0 = mk(g as u64 * 2 + 1);
+                let mut p1 = mk(g as u64 * 2 + 2);
+                let mut slots: Vec<&mut dyn StatePolicy> = vec![p0.as_mut(), p1.as_mut()];
+                let gr = play_match(seat_decks.clone(), &reg, g as u64, &mut slots, max_steps);
+                score += match gr {
+                    GameResult::Win(p) if p == cand_seat => 1.0,
+                    GameResult::Win(_) => 0.0,
+                    GameResult::Eliminated(p) if p == cand_seat => 0.0,
+                    GameResult::Eliminated(_) => 1.0,
+                    GameResult::Draw => 0.5,
+                };
+            }
+            score / val_games as f32
+        };
+        let field_pr = |cand: &[CardId], r: u8| -> f32 {
+            let (mut tot, mut n) = (0.0f32, 0u32);
+            for opp in &seeds {
+                if opp.cards == cand { continue; }
+                tot += matchup(cand, &opp.cards, r);
+                n += 1;
+            }
+            if n == 0 { 0.0 } else { tot / n as f32 }
+        };
+
+        // Score every candidate under the cheap v2 judge AND under PIMC.
+        println!("\ncandidate pool ({} decks): cheap v2-judge vs PIMC ({val_games} games/opp, \
+                  pimc {pimc_samples}/{pimc_cap})", pool.len());
+        println!("{:<8} {:>8} {:>8}", "cand", "v2", "pimc");
+        let mut scored: Vec<(String, f32, f32, usize)> = Vec::new();
+        for (i, (label, deck)) in pool.iter().enumerate() {
+            let cheap = field_pr(deck, 1);
+            let strong = field_pr(deck, 2);
+            println!("{:<8} {:>8.3} {:>8.3}", label, cheap, strong);
+            scored.push((label.clone(), cheap, strong, i));
+        }
+        let cheap_pick = scored.iter().cloned()
+            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)).unwrap();
+        let pimc_pick = scored.iter().cloned()
+            .max_by(|a, b| a.2.partial_cmp(&b.2).unwrap_or(std::cmp::Ordering::Equal)).unwrap();
+        println!("\ncheap(v2)-argmax : {} (v2 {:.3}, PIMC {:.3})", cheap_pick.0, cheap_pick.1, cheap_pick.2);
+        println!("PIMC-argmax      : {} (v2 {:.3}, PIMC {:.3})", pimc_pick.0, pimc_pick.1, pimc_pick.2);
+        println!("value of PIMC-select (PIMC-pick − cheap-pick, under PIMC): {:.3}",
+                 pimc_pick.2 - cheap_pick.2);
+        println!("(field baseline: best seed under PIMC was RDW ≈0.75 in the committed A/B run.)");
+        println!("\nPIMC-selected deck:\n{}", describe(&pool[pimc_pick.3].1, &reg));
+    }
 }
