@@ -1,0 +1,55 @@
+# Pioneer capsule — PIMC-SELECT experiment (cheap candidate generation + PIMC selection)
+# The v2 A/B showed a single cheap target is gameable even when improved. This tests the
+# reviewer's pragmatic loop: GENERATE a pool of cheap-optimized candidates, then SELECT the
+# final deck by a small PIMC tournament ("PIMC only on optimizer outputs").
+# deckbuild_capsule_pimc_select: 3 seeds x {v1,v2 leaf} = 6 candidates (optimize iters 70,
+# 5 games/opp); score each under the cheap v2 judge AND PIMC (5 games/opp, PIMC 16/160).
+# Runtime 15692s.
+#
+# candidate pool:
+#   cand      v2     pimc
+#   v1#0    0.240   0.240
+#   v2#0    0.360   0.120
+#   v1#1    0.320   0.360
+#   v2#1    0.240   0.120
+#   v1#2    0.480   0.520
+#   v2#2    0.480   0.360
+#
+# cheap(v2)-argmax : v2#2  (v2 0.480, PIMC 0.360)
+# PIMC-argmax      : v1#2  (v2 0.480, PIMC 0.520)
+# value of PIMC-select (PIMC-pick - cheap-pick, under PIMC): +0.160 (best case; see NUANCE)
+# field baseline (committed A/B): best seed under PIMC = RDW ~0.75; mid-field ~0.46-0.50.
+#
+# READ — PIMC-selection WORKS, with a clear ceiling:
+# 1. SELECTION HELPS. Among the SAME pool, PIMC picks v1#2 (PIMC 0.520) where the cheap
+#    judge cannot: v1#2 and v2#2 TIE at v2=0.480 but differ by 0.160 under PIMC. And v2
+#    score does not rank by PIMC generally (v2#0 at v2=0.360 is PIMC-worst-tier 0.120). So a
+#    PIMC pass over the finalists is worthwhile.
+#    NUANCE: the +0.160 is BEST CASE (cheap judge ships the worse tied deck). Accounting for
+#    the tie (random tie-break over the two v2=0.480 decks averages PIMC 0.44), the EXPECTED
+#    value of PIMC-select here is ~+0.08. Either way positive; the honest claim is "PIMC
+#    resolves near-ties the cheap judge can't," not "overturns a confident cheap pick."
+# 2. NOT all cheap candidates are proxy-corners. PIMC scores span 0.12-0.52 across seeds
+#    (high variance). The two PIMC-worst (0.120) are BOTH v2-generated — consistent with v2
+#    hard-optimizing into PIMC-bad corners (cf. the A/B) — while v1-generated candidates were
+#    more PIMC-robust here (0.24/0.36/0.52). So cheap-gen + PIMC-select over a few seeds
+#    RECOVERS a decent deck the single-seed optimizer missed (A/B decks were 0.133 / 0.200).
+# 3. CEILING. Even the PIMC-selected best (0.520) sits mid-field, below the top seeds
+#    (RDW 0.75, Rakdos 0.67); it would rank ~3rd among the 5 seeds. Cheap-gen + PIMC-select
+#    buys "mid-field competitive," not "beats the best real decks." Next lever: WIDEN the
+#    pool (PIMC-select's value scales with pool size/diversity) and/or guide generation
+#    (ensemble objective), then PIMC-select over the larger finalist set.
+# 4. COHERENCE. Unlike the A/B exploit piles (v1 good-stuff; v2 4-color cut-land), the
+#    PIMC-selected deck looks like REAL Magic: 23 lands, avg MV 2.11, an aggressive
+#    Boros/Naya midrange curve. The deck PIMC prefers also reads as a sane list.
+# NOISE: 5 games/opp (+-~0.15) + a 6-deck pool -> rough point estimates; the tie caps how
+#   hard to read +0.160. ROBUST claims: cheap-gen yields high-variance-under-PIMC candidates,
+#   the cheap v2 score does not rank them by PIMC, and a PIMC finalist pass recovers a
+#   coherent mid-field deck the single-shot optimizer missed.
+#
+# PIMC-selected deck (v1#2): 60 cards, 23 lands, 37 nonland, avg nonland MV 2.11
+#   4x Kari Zev, Skyship Raider   3x Spectral Sailor   3x Pelt Collector
+#   3x Scrapheap Scrounger        3x Chandra, Torch of Defiance   2x Stonecoil Serpent
+#   2x Spell Pierce   2x Chandra, Acolyte of Flame   2x Rishkar, Peema Renegade
+#   2x Goblin Chainwhirler   2x Spell Queller   1x Soul-Scar Mage   1x Curious Obsession
+#   1x Hardened Scales   1x Heart of Kiran   1x Bonecrusher Giant

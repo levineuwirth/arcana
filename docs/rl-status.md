@@ -347,10 +347,19 @@ diverse only because its coverage happened to span several archetypes' staples.)
    whether PIMC itself tracks reality, which we have not shown.
    (b) **Pragmatic deckbuilding loop = cheap candidate generation + PIMC
    selection/hold-out**, not optimization against any single cheap scalar (the v2
-   A/B showed even an improved cheap referee stays gameable). The
-   `deckbuild_capsule_pimc_select` experiment is the first test of (b): is
-   *selection* the fix, or are the cheap-generated candidates all proxy-corner
-   decks that PIMC tanks regardless?
+   A/B showed even an improved cheap referee stays gameable). **First result
+   (`deckbuild_capsule_pimc_select`, `docs/capsule-pioneer/pimc-select.txt`):
+   selection helps, with a ceiling.** Cheap-gen (6 candidates, v1 & v2 leaves ×3
+   seeds) yields *high-variance-under-PIMC* decks (PIMC 0.12–0.52); the cheap v2
+   score does not rank them by PIMC (two v2=0.48 decks differ by 0.16 under PIMC),
+   so a PIMC finalist pass recovers a coherent, mid-field deck (0.52) the
+   single-shot optimizer missed (A/B decks were 0.13/0.20) — an aggressive Boros
+   midrange that reads like real Magic, *not* an exploit pile. But even the
+   PIMC-selected best (0.52) sits below the top seeds (RDW 0.75); the loop buys
+   "mid-field competitive," not "beats the best real decks." Next lever: widen the
+   candidate pool (selection value scales with it) and/or guide generation. Caveat:
+   5 games/opp is noisy and the headline +0.16 is partly PIMC breaking a cheap-judge
+   *tie* (expected ~+0.08).
 
 ---
 

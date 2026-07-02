@@ -54,4 +54,12 @@ CAPSULE_DIR=$(pwd)/docs/capsule-pioneer/seeds CAPSULE_ITERS=120 CAPSULE_GAMES=5 
 Optimizer: a simple (1+1) hill-climb (`arcana-ai/src/deckbuild.rs`) — the
 simplest thing that closes the loop. **Its purpose is diagnostic:** does the
 objective reward recognizable Magic structure, or aggro-abuse / mana-nonsense /
-a narrow referee exploit? Results land in `results.txt` (this dir).
+a narrow referee exploit?
+
+Results:
+- `results.txt` — the optimizer diagnostic + the PIMC-validation A/B (v1/v2/PIMC):
+  the VmcMaterial gain *inverts* under PIMC; v2 is a better judge but still a
+  gameable target (Goodhart).
+- `pimc-select.txt` — cheap candidate generation + PIMC selection: selection helps
+  (recovers a coherent mid-field deck the single-shot optimizer missed), with a
+  ceiling below the top seed decks.
