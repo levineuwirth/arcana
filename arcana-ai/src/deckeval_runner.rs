@@ -108,12 +108,17 @@ fn maker_for(
         }
         Referee::Pimc => {
             let decks: Vec<DeckList> = seat_decks.to_vec();
+            // Budget overridable for higher-fidelity referee arms (default 8/80).
+            let samples: u32 = std::env::var("CORPUS_PIMC_SAMPLES")
+                .ok().and_then(|s| s.parse().ok()).unwrap_or(PIMC_SAMPLES);
+            let cap: u32 = std::env::var("CORPUS_PIMC_CAP")
+                .ok().and_then(|s| s.parse().ok()).unwrap_or(PIMC_CAP);
             Box::new(move |s: u64| -> Box<dyn StatePolicy> {
                 Box::new(PimcPolicy::with_budget(
                     s,
                     decks.clone(),
-                    PIMC_SAMPLES,
-                    PIMC_CAP,
+                    samples,
+                    cap,
                     PIMC_MAX_CANDIDATES,
                 ))
             }) as Box<dyn Fn(u64) -> Box<dyn StatePolicy>>
