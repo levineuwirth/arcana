@@ -351,9 +351,22 @@ diverse only because its coverage happened to span several archetypes' staples.)
    bias implicates **card fidelity** (approximated non-aggro payoffs weaken
    synergy/control *regardless* of referee) + **field confound**, not only referee
    strength; referee quality is *necessary but not sufficient*. Caveat: small-PIMC
-   (8/80) is under-powered vs the capsule's 16/160 — a higher-budget-PIMC direct
-   check + a fidelity-controlled deck set are the honest next steps.
+   (8/80) is under-powered vs the capsule's 16/160.
    `docs/gauntlet-results/pimc-vs-real-PI.txt`.
+   - **Fidelity-controlled control set — attempted; the field COLLAPSES.** To
+     separate referee-bias from card-fidelity-bias, restrict to Pioneer decks with
+     *no* GAP-approximated cards. Of 800 dumped / 65 fully-covered decks: **0 are
+     zero-GAP (strict)**, and only **4** survive even a relaxed tier that allows the
+     low-impact shocklands (3 archetypes: Gruul/Azorius Aggro + Hardened Scales). So
+     **100% of the covered field is approximated** — fidelity-bias contaminates every
+     gauntlet result, and no clean control set exists on this corpus. The blocker
+     histogram is the key: after shocklands (highest count, lowest impact), the
+     load-bearing approximations are **synergy payoffs** — Hangarback Walker (19
+     decks), Supreme Phantom / Empyrean Eagle anthems (9/8), Soul-Scar Mage, Torbran
+     — i.e. exactly the non-aggro payoffs whose elision weakens synergy decks under
+     *any* referee. This is the plausible **mechanism** behind the direct-check
+     failure: even PIMC over-rates aggro vs real partly *because the synergy payoffs
+     are GAP'd*. `docs/gauntlet-results/fidelity-subset-PI.txt`.
    (b) **Pragmatic deckbuilding loop = cheap candidate generation + PIMC
    selection/hold-out**, not optimization against any single cheap scalar (the v2
    A/B showed even an improved cheap referee stays gameable). **First result

@@ -51,6 +51,7 @@ The catalog name list used by the worklist analysis is dumped from
 | `metagame-placement-MO.txt` | same, Modern |
 | `gauntlet-vs-real-PI.txt` | **ground-truth check** — gauntlet vmc point-rate vs real strength (Spearman ρ=0.00) |
 | `pimc-vs-real-PI.txt` | **direct PIMC-vs-real** — small-PIMC ALSO fails the real-world correlation (ρ≈−0.09/−0.49); implicates fidelity + field, not only referee |
+| `fidelity-subset-PI.txt` | **fidelity control** — 0/65 covered decks are zero-GAP; field collapses; blockers concentrate on synergy payoffs (worklist by leverage) |
 
 The placement artifacts are built from the dump's tournament results
 (`df_events_v2.csv` for each event's format; `events/<id>/players_info.csv` for

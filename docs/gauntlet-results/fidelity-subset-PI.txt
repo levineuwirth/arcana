@@ -1,0 +1,44 @@
+# FIDELITY-CONTROLLED Pioneer subset (rl-status §6.5 (6a) follow-up): can we separate
+# referee-bias from card-fidelity-bias by restricting to decks with NO GAP-approximated
+# cards? RESULT: NO — the field COLLAPSES. The approximations are load-bearing across the
+# ENTIRE covered Pioneer field, so no fidelity-clean control set exists on this corpus.
+# Build: `build_fidelity_subset` (arcana-ai/src/deck_corpus.rs). Coverage is authoritative
+# (parse_deck_text().unresolved.is_empty()); GAP list mirrors approximated-cards.txt with
+# (shocklands) expanded to the 10 exact names.
+#
+# PI survival (of 800 dumped, 65 fully-covered):
+#   strict  (zero GAP):             0 decks
+#   relaxed (+shocklands allowed):  4 decks  (2 Gruul Aggro, 1 Azorius Aggro, 1 Hardened Scales)
+# => 0 strict; 3 archetypes at relaxed. This is a FIELD-COLLAPSE finding, NOT a correlation
+#    finding (< ~5 matched buckets): the vmc/PIMC-vs-real check cannot be re-run on a clean
+#    field because there isn't one. (No gauntlet was run on 4 decks / 3 aggro-ish archetypes.)
+#
+# GAP cards by # of covered decks blocked (of 65) — the fidelity worklist BY LEVERAGE:
+#   33 Overgrown Tomb    19 Hangarback Walker   15 Once Upon a Time   14 Hallowed Fountain
+#   11 Fatal Push         9 Smuggler's Copter    9 Supreme Phantom     8 Empyrean Eagle
+#    7 Breeding Pool      7 Stomping Ground      7 Wild Slash          6 Heart of Kiran
+#    5 Castle Garenbrig   5 Soul-Scar Mage       5 Watery Grave        4 Torbran, Thane of Red Fell
+#    3 Blood Crypt        2 Steam Vents          2 Steel Leaf Champion 2 Stubborn Denial
+#    2 Temple Garden      1 Boros Charm  1 Censor  1 Dig Through Time  1 Godless Shrine  1 Sacred Foundry
+#
+# READ:
+# - FIDELITY IS PERVASIVE, not marginal: 100% of the 65 covered decks contain >=1
+#   approximated card. Every gauntlet result to date is played with approximated decks;
+#   fidelity-bias contaminates ALL of them, not a handful.
+# - Shocklands dominate the COUNT (Overgrown Tomb 33, Hallowed Fountain 14, ...) but are the
+#   lowest fidelity-impact per card (pay-life-or-tapped). The decisive blockers for a clean
+#   field are the NON-land staples that survive even the relaxed tier.
+# - Those non-land approximations are CONCENTRATED ON SYNERGY PAYOFFS: Hangarback Walker
+#   (counter engine + death-Thopters), Supreme Phantom / Empyrean Eagle (Spirit/flier
+#   anthems), Soul-Scar Mage, Torbran — exactly the non-aggro payoffs whose elision weakens
+#   synergy decks REGARDLESS of referee. This is the plausible MECHANISM behind the
+#   direct-check finding (pimc-vs-real-PI.txt): even PIMC over-rates aggro vs real partly
+#   BECAUSE the synergy payoffs are GAP'd, so synergy decks can't execute their plan under
+#   any referee.
+# - So referee quality is necessary but NOT sufficient; FIDELITY is a co-equal, pervasive,
+#   payoff-concentrated confound that field-restriction cannot dodge on this corpus.
+# NEXT: to un-collapse the field, a targeted FIDELITY grind of the top NON-LAND blockers
+#   (Hangarback Walker, Once Upon a Time, Fatal Push, Smuggler's Copter, Supreme Phantom,
+#   Empyrean Eagle, Wild Slash, Heart of Kiran, Soul-Scar Mage) — then re-run this survival
+#   and the vmc/PIMC-vs-real correlation on the recovered field. Fix the synergy payoffs
+#   first (they carry the fidelity-vs-referee disentanglement); shocklands last.

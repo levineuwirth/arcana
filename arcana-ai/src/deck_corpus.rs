@@ -414,4 +414,96 @@ mod tests {
         println!("\n{}\n", gauntlet.format_table());
         println!("{}", gauntlet.to_csv());
     }
+
+    /// Build FIDELITY-CONTROLLED Pioneer subsets to separate referee-bias from
+    /// card-fidelity-bias: fully-covered maindecks with NO GAP-approximated cards
+    /// (`strict`), plus a relaxed tier that allows only the low-impact shockland
+    /// "pay 2 life or tapped" payment approximation. Coverage is authoritative
+    /// (`parse_deck_text().unresolved.is_empty()`); the GAP list mirrors
+    /// `docs/gauntlet-results/approximated-cards.txt` with `(shocklands)` expanded
+    /// to the ten exact names. Copies passing decklists to
+    /// `FIDELITY_OUT/{strict,relaxed}/PI` and prints a survival report (counts +
+    /// archetype buckets) BEFORE any scoring.
+    /// `KAGGLE_DECKS=<dir> FIDELITY_OUT=<dir> cargo test -p arcana-ai --release build_fidelity_subset -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn build_fidelity_subset() {
+        use std::collections::{BTreeMap, HashSet};
+        let base = std::env::var("KAGGLE_DECKS").expect("set KAGGLE_DECKS");
+        let out = std::env::var("FIDELITY_OUT").expect("set FIDELITY_OUT");
+        let reg = arcana_cards::build_catalog();
+
+        // The low-impact "pay 2 life or enters tapped" payment approximation.
+        let shocklands: HashSet<&str> = [
+            "Blood Crypt", "Breeding Pool", "Godless Shrine", "Hallowed Fountain",
+            "Overgrown Tomb", "Sacred Foundry", "Steam Vents", "Stomping Ground",
+            "Temple Garden", "Watery Grave",
+        ].into_iter().collect();
+        // Every GAP-approximated card (approximated-cards.txt), shocklands expanded.
+        let mut gap: HashSet<String> = [
+            "Tarmogoyf", "Steel Leaf Champion", "Soul-Scar Mage", "Empyrean Eagle",
+            "Supreme Phantom", "Hangarback Walker", "Torbran, Thane of Red Fell",
+            "Smuggler's Copter", "Heart of Kiran", "Aethersphere Harvester",
+            "Dig Through Time", "Wild Slash", "Fatal Push", "Boros Charm", "Censor",
+            "Syncopate", "Stubborn Denial", "Once Upon a Time",
+            "Castle Garenbrig", "Raging Ravine", "Creeping Tar Pit",
+            "Field of the Dead", "Blast Zone",
+        ].into_iter().map(String::from).collect();
+        for s in &shocklands { gap.insert(s.to_string()); }
+
+        let dir = std::path::Path::new(&base).join("PI");
+        let mut files: Vec<_> = std::fs::read_dir(&dir).unwrap().filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .filter(|p| p.extension().map(|x| x == "txt").unwrap_or(false)).collect();
+        files.sort();
+
+        let strict_dir = std::path::Path::new(&out).join("strict").join("PI");
+        let relaxed_dir = std::path::Path::new(&out).join("relaxed").join("PI");
+        std::fs::create_dir_all(&strict_dir).unwrap();
+        std::fs::create_dir_all(&relaxed_dir).unwrap();
+
+        let (mut n_total, mut n_covered, mut n_strict, mut n_relaxed) = (0u32, 0u32, 0u32, 0u32);
+        let mut strict_arch: BTreeMap<String, u32> = BTreeMap::new();
+        let mut relaxed_arch: BTreeMap<String, u32> = BTreeMap::new();
+        // How many COVERED decks each GAP card blocks (fidelity worklist by leverage).
+        let mut gap_blocks: BTreeMap<String, u32> = BTreeMap::new();
+        for p in &files {
+            n_total += 1;
+            let txt = std::fs::read_to_string(p).unwrap();
+            let parsed = parse_deck_text(&txt, &reg);
+            if !parsed.unresolved.is_empty() { continue; } // not fully covered
+            n_covered += 1;
+            let names: Vec<String> = parsed.main.iter()
+                .filter_map(|(cid, _)| reg.get(*cid)
+                    .and_then(|d| reg.interner().resolve(d.name)).map(String::from))
+                .collect();
+            for n in names.iter().collect::<HashSet<_>>() {
+                if gap.contains(n) { *gap_blocks.entry(n.clone()).or_insert(0) += 1; }
+            }
+            let strict_ok = names.iter().all(|n| !gap.contains(n));
+            let relaxed_ok = names.iter().all(|n| !gap.contains(n) || shocklands.contains(n.as_str()));
+            let arch = if parsed.name.is_empty() { "?".into() } else { parsed.name.clone() };
+            let fname = p.file_name().unwrap();
+            if relaxed_ok {
+                n_relaxed += 1;
+                *relaxed_arch.entry(arch.clone()).or_insert(0) += 1;
+                std::fs::copy(p, relaxed_dir.join(fname)).unwrap();
+            }
+            if strict_ok {
+                n_strict += 1;
+                *strict_arch.entry(arch.clone()).or_insert(0) += 1;
+                std::fs::copy(p, strict_dir.join(fname)).unwrap();
+            }
+        }
+        println!("PI fidelity survival: total={n_total} covered={n_covered} \
+                  strict(zero-GAP)={n_strict} relaxed(+shocklands)={n_relaxed}");
+        println!("\nstrict archetypes ({} distinct):", strict_arch.len());
+        for (a, n) in &strict_arch { println!("  {n:>3}  {a}"); }
+        println!("\nrelaxed archetypes ({} distinct):", relaxed_arch.len());
+        for (a, n) in &relaxed_arch { println!("  {n:>3}  {a}"); }
+        let mut blocks: Vec<(&String, &u32)> = gap_blocks.iter().collect();
+        blocks.sort_by(|a, b| b.1.cmp(a.1));
+        println!("\nGAP cards by # of covered decks blocked (of {n_covered}):");
+        for (card, n) in blocks { println!("  {n:>3}  {card}"); }
+    }
 }
