@@ -52,6 +52,8 @@ The catalog name list used by the worklist analysis is dumped from
 | `gauntlet-vs-real-PI.txt` | **ground-truth check** — gauntlet vmc point-rate vs real strength (Spearman ρ=0.00) |
 | `pimc-vs-real-PI.txt` | **direct PIMC-vs-real** — small-PIMC ALSO fails the real-world correlation (ρ≈−0.09/−0.49); implicates fidelity + field, not only referee |
 | `fidelity-subset-PI.txt` | **fidelity control** — 0/65 covered decks are zero-GAP; field collapses; blockers concentrate on synergy payoffs (worklist by leverage) |
+| `fidelity32_vmc.csv` | VMC gauntlet on the recovered 32-deck fidelity-fixed relaxed field |
+| `fidelity-vmc-vs-real-PI.txt` | **fidelity payoff check** — after the grind, VMC still fails vs real (ρ=−0.40/−0.20); only the immediate-material synergy (Spirits) came into alignment → residual is referee-bound |
 
 The placement artifacts are built from the dump's tournament results
 (`df_events_v2.csv` for each event's format; `events/<id>/players_info.csv` for

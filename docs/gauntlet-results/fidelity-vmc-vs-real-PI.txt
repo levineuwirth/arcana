@@ -1,0 +1,47 @@
+# FIDELITY PAYOFF CHECK: did the fidelity grind (recovering the synergy payoffs the
+# diagnostic fingered) move VMC's correlation with real MTGTop8 results off the floor?
+# Method: run the VMC gauntlet on the RECOVERED relaxed field (32 decks / 15 archetypes,
+# now synergy-payoff-faithful; shocklands still approximated), correlate vs real via the
+# same placement_vs_gauntlet.py bucket script, compare to the two prior VMC baselines.
+# Build the field: build_fidelity_subset -> FIDELITY_OUT/relaxed/PI; gauntlet: corpus_gauntlet
+# CORPUS_REFEREE=vmc CORPUS_DUELS=1 (62 games/deck).
+#
+# SHORT ANSWER: VMC still fails. No global improvement; it stays at the floor.
+#
+#   VMC field                          rho vs real mean   rho vs real top-8   N buckets
+#   62-deck broad (gauntlet-vs-real)         0.00              -0.39              7
+#   12-deck subset (pimc-vs-real)           +0.26              -0.03              6
+#   32-deck recovered (this, fidelity-fixed) -0.40              -0.20              4
+#
+# Recovered-field buckets (gauntlet_pr vs real_str / real_top8):
+#   Gruul/RG Aggro     0.782   real 0.511 / 0.093   <- STILL over-rated (aggro bias, untouched)
+#   UW Spirit Aggro    0.651   real 0.594 / 0.192   <- NOW ~ALIGNED (anthem fix = immediate material)
+#   Sultai Control     0.476   real 0.512 / 0.186   <- ~aligned
+#   Golgari/HardScales 0.368   real 0.542 / 0.111   <- STILL under-rated (grindy payoff)
+#
+# READ (nuanced): the global rho did not improve, but the BUCKET-LEVEL mechanism sharpened.
+# - Fidelity moved the synergy whose payoff is IMMEDIATE BOARD MATERIAL: UW Spirit Aggro's
+#   anthems (Supreme Phantom / Empyrean Eagle) now pump the board, VMC's material heuristic
+#   SEES it, and the deck lands at 0.65 ~ real 0.59. Fidelity + a material-visible payoff =
+#   the referee tracks reality for that archetype.
+# - Fidelity did NOT rescue GRINDY synergy: Golgari/Scales executes now (Hangarback death-
+#   Thopters, Winding Constrictor counter-doubling) but its payoff is incremental/over-time,
+#   which 4-rollout material can't pilot or value -> still bottom (0.37 vs real 0.54).
+# - Fidelity is IRRELEVANT to the aggro over-rating: Gruul 0.78 vs real 0.51 is a pure
+#   material-referee bias.
+# => The payoff-fidelity fix helped where it mechanically could (immediate-material synergy)
+#    and confirmed the residual is REFEREE-BOUND (shallow material over-rates aggro + cannot
+#    pilot grind). This POINTS HARDER AT REFEREE/FIELD, not fidelity, as the binding constraint
+#    — consistent with the direct-PIMC failure (pimc-vs-real-PI.txt).
+# CAVEATS: N=4 matched buckets (down from 6-7): the recovered field is SYNERGY-HEAVY
+#   (Golgari ×12, Spirits ×8 of 32) and still missing the aggro/midrange decks blocked by the
+#   engine-feature cards (Once Upon a Time, Soul-Scar, Torbran, Tarmogoyf), so the correlation
+#   is noisy and not a balanced field. The three VMC fields are different decks (not a
+#   controlled before/after). Relaxed tier = shocklands approximated. Robust claim: across
+#   THREE fields VMC never tracks real (rho in [-0.40, +0.26] mean / [-0.39, -0.03] top-8),
+#   and fidelity moved only the immediate-material synergy bucket.
+#
+# DECISION (per the plan's step 5): VMC failing after the payoff-fidelity fix points to
+# referee/field. Next = (a) higher-budget PIMC direct check (the referee arm), and/or
+# (b) more field diversity via the engine-feature batch to escape the synergy-heavy N=4 —
+# NOT more fidelity grinding in hope of a VMC-vs-real correlation.
