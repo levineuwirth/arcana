@@ -1,0 +1,31 @@
+# PRE-REGISTERED predictions — higher-budget PIMC referee arm (16/160) on the 8-deck
+# fidelity-fixed spanning subset (2 each: Golgari Scales, UW Spirit Aggro, Gruul Aggro,
+# Sultai Control). COMMITTED BEFORE the PIMC result to keep the readout honest.
+# Controlled comparison: the SAME 8 decks under VMC (done) and PIMC (running).
+# (PIMC on all 32 decks = ~992 games ~15h -> compute-infeasible; hence a balanced subset
+#  with VMC re-run on the same decks.)
+#
+# VMC-on-subset (DONE) vs real:
+#   archetype        vmc     real_str  real_top8
+#   Gruul Aggro      0.750    0.511     0.093    (VMC OVER-rates)
+#   UW Spirit Aggro  0.625    0.594     0.192    (~aligned)
+#   Sultai Control   0.357    0.512     0.186    (VMC under-rates)
+#   Golgari Scales   0.268    0.542     0.111    (VMC UNDER-rates)
+#   VMC-vs-real Spearman on these 4 buckets ~ -0.40 (Gruul #1 yet real-weakest; Golgari
+#   last yet real ~#2 — the same inversion as every prior VMC field).
+#
+# PRE-REGISTERED expectations IF a stronger referee (PIMC 16/160) tracks real better:
+#   1. Gruul Aggro moves DOWN   (0.750 -> expect < 0.60; toward real 0.511).
+#   2. Golgari Scales moves UP   (0.268 -> expect > 0.40; toward real 0.542).
+#   3. Sultai Control moves UP   (0.357 -> expect > 0.40; toward real 0.512).
+#   4. UW Spirit Aggro ~stable   (~0.50-0.65; real 0.594).
+#   5. Gruul is no longer the single top; the spread is less aggro-skewed.
+#   6. PIMC-vs-real rho AND top-8 rho IMPROVE (less negative / positive) vs VMC's -0.40/-0.20.
+#
+# FAILURE READ (registered in advance): if PIMC 16/160 does NOT move toward real (Gruul
+# stays top, Scales stays bottom, rho no better), then the residual is NOT merely VMC's
+# material bias — it is field / metric / engine / fidelity-beyond-current-blockers. Leading
+# candidates: the N=4 capsule-field-vs-real-metagame confound (point-rate in an 8-deck field
+# != metagame strength), PIMC's own strategy-fusion weakness, and the still-approximated
+# shocklands. That outcome says a stronger cheap-ish referee is NOT sufficient and the
+# objective problem is deeper than referee strength alone.
