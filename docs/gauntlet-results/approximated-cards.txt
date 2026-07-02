@@ -17,14 +17,14 @@ Torbran, Thane of Red Fell — vanilla 2/4; the "+2 to red damage" replacement e
 # Hangarback Walker (death-Thopters + {1},{T} pump), Winding Constrictor (counter replacement)
 
 # --- vehicles (Crew is real; secondary abilities GAP'd) ---
-Smuggler's Copter — Crew 1 + Flying real; attack/block loot trigger elided
 Heart of Kiran — Crew 3 + Flying/Vigilance real; planeswalker-loyalty alternate crew elided
 Aethersphere Harvester — Crew 1 + Flying real; energy + lifelink ability elided
+# DONE (fidelity grind): Smuggler's Copter (attack/block loot trigger)
 
 # --- spells ---
 Dig Through Time — modeled as draw 2; the look-at-7-and-select-2 dig elided (delve is real)
 Wild Slash — 2 damage real; Ferocious "can't be prevented" elided
-Fatal Push — destroy MV<=2 real; Revolt (MV<=4) elided
+# DONE (fidelity grind): Fatal Push (Revolt MV<=4 via permanent_left_battlefield_this_turn)
 Boros Charm — 4-to-player + double-strike modes real; "indestructible to all your permanents" mode is a no-op; planeswalker target elided
 Censor — counter-unless-{1} real; Cycling elided
 Syncopate — counter-unless-{X} real; the "exile if countered" rider elided

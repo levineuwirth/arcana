@@ -1,11 +1,10 @@
 //! Fatal Push — `{B}` instant. "Destroy target creature if it has mana value 2
 //! or less."
 //!
-//! GAP: the Revolt clause ("Destroy that creature if it has mana value 4 or
-//! less instead if a permanent left the battlefield under your control this
-//! turn") is NOT modeled — the base mana-value-2 condition only. Revolt needs a
-//! this-turn "a permanent you controlled left the battlefield" event-history
-//! accessor, which the engine doesn't expose yet; a follow-up.
+//! Revolt (CR 702.116) WIRED: the threshold rises to mana value 4 if a permanent
+//! you controlled left the battlefield this turn, via the new
+//! `script::permanent_left_battlefield_this_turn` event-history accessor
+//! (LeavesBattlefield events in the per-turn slice, controller read from LKI).
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -46,7 +45,14 @@ fn resolve(
         _ => return Vec::new(),
     };
     let Some(obj) = state.objects.get(id) else { return Vec::new(); };
-    if obj.characteristics.mana_value() <= 2 {
+    // Revolt (CR 702.116): threshold rises to MV 4 if a permanent you controlled
+    // left the battlefield this turn, else MV 2.
+    let threshold = if arcana_core::script::permanent_left_battlefield_this_turn(state, entry.controller) {
+        4
+    } else {
+        2
+    };
+    if obj.characteristics.mana_value() <= threshold {
         vec![Effect::DestroyPermanent { target: id }]
     } else {
         Vec::new()

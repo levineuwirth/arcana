@@ -443,11 +443,11 @@ mod tests {
         let mut gap: HashSet<String> = [
             // NB: keep in sync with docs/gauntlet-results/approximated-cards.txt.
             // Done (fidelity grind, removed): Empyrean Eagle, Supreme Phantom,
-            // Hangarback Walker, Winding Constrictor.
+            // Hangarback Walker, Winding Constrictor, Smuggler's Copter, Fatal Push.
             "Tarmogoyf", "Steel Leaf Champion", "Soul-Scar Mage",
             "Torbran, Thane of Red Fell",
-            "Smuggler's Copter", "Heart of Kiran", "Aethersphere Harvester",
-            "Dig Through Time", "Wild Slash", "Fatal Push", "Boros Charm", "Censor",
+            "Heart of Kiran", "Aethersphere Harvester",
+            "Dig Through Time", "Wild Slash", "Boros Charm", "Censor",
             "Syncopate", "Stubborn Denial", "Once Upon a Time",
             "Castle Garenbrig", "Raging Ravine", "Creeping Tar Pit",
             "Field of the Dead", "Blast Zone",

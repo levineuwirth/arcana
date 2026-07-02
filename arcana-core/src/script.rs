@@ -464,6 +464,22 @@ pub fn player_attacked_this_turn(state: &GameState, player: PlayerId) -> bool {
     })
 }
 
+/// Did a permanent under `player`'s control leave the battlefield this turn?
+/// (Revolt — CR 702.116.) The controller is read from the live arena or LKI,
+/// since a left permanent is gone; a control change before it left is not
+/// tracked (documented approximation, as with [`player_attacked_this_turn`]).
+pub fn permanent_left_battlefield_this_turn(state: &GameState, player: PlayerId) -> bool {
+    this_turn_events(state).iter().any(|ev| {
+        if let crate::events::GameEvent::LeavesBattlefield { object_id, .. } = ev {
+            state.objects.get(*object_id)
+                .or_else(|| state.lki.get(object_id))
+                .is_some_and(|o| o.controller == player)
+        } else {
+            false
+        }
+    })
+}
+
 /// Creatures (and planeswalkers — both emit `Dies`) that died this
 /// turn, ANY controller. Morbid ("if a creature died this turn") and
 /// "for each creature that died this turn" scaling.
