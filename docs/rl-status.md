@@ -367,6 +367,21 @@ diverse only because its coverage happened to span several archetypes' staples.)
      *any* referee. This is the plausible **mechanism** behind the direct-check
      failure: even PIMC over-rates aggro vs real partly *because the synergy payoffs
      are GAP'd*. `docs/gauntlet-results/fidelity-subset-PI.txt`.
+   - **Fidelity grind + payoff check — fidelity helps where it *mechanically can*,
+     but VMC still fails.** A targeted grind recovered the synergy payoffs (Hangarback
+     death-Thopters + counter-pump, Supreme Phantom / Empyrean Eagle anthems, Winding
+     Constrictor, Smuggler's Copter loot, Fatal Push Revolt + a new
+     `permanent_left_battlefield_this_turn` accessor) — un-collapsing the relaxed field
+     **4 → 32 decks / 3 → 15 archetypes**. Re-running VMC-vs-real on that fidelity-fixed
+     field: **ρ = −0.40 / −0.20** (mean/top-8, N=4) — no global improvement over the
+     0.00–0.26 baselines. But the *decomposition* is the result: the fix brought the
+     synergy whose payoff is **immediate board material** into alignment (UW Spirit
+     anthems: vmc 0.65 ≈ real 0.59), while **grindy** synergy stayed under-rated
+     (Golgari Scales 0.37 vs real 0.54 — executes now, but 4-rollout material can't
+     pilot it) and **aggro over-rating** was untouched (Gruul 0.78 vs 0.51). So the two
+     confounds separate by mechanism: **fidelity** governs material-visible synergy;
+     **referee strength** governs grindy synergy + aggro calibration. Caveat: N=4,
+     synergy-heavy field. `docs/gauntlet-results/fidelity-vmc-vs-real-PI.txt`.
    (b) **Pragmatic deckbuilding loop = cheap candidate generation + PIMC
    selection/hold-out**, not optimization against any single cheap scalar (the v2
    A/B showed even an improved cheap referee stays gameable). **First result
