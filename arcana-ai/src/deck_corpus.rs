@@ -441,8 +441,11 @@ mod tests {
         ].into_iter().collect();
         // Every GAP-approximated card (approximated-cards.txt), shocklands expanded.
         let mut gap: HashSet<String> = [
-            "Tarmogoyf", "Steel Leaf Champion", "Soul-Scar Mage", "Empyrean Eagle",
-            "Supreme Phantom", "Hangarback Walker", "Torbran, Thane of Red Fell",
+            // NB: keep in sync with docs/gauntlet-results/approximated-cards.txt.
+            // Done (fidelity grind, removed): Empyrean Eagle, Supreme Phantom,
+            // Hangarback Walker, Winding Constrictor.
+            "Tarmogoyf", "Steel Leaf Champion", "Soul-Scar Mage",
+            "Torbran, Thane of Red Fell",
             "Smuggler's Copter", "Heart of Kiran", "Aethersphere Harvester",
             "Dig Through Time", "Wild Slash", "Fatal Push", "Boros Charm", "Censor",
             "Syncopate", "Stubborn Denial", "Once Upon a Time",

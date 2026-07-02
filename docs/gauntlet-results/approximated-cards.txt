@@ -12,10 +12,9 @@
 Tarmogoyf — fixed 4/5; dynamic */1+* (card types in all graveyards, a Layer-7a CDA) not modeled
 Steel Leaf Champion — "can't be blocked by creatures with power 2 or less" evasion elided
 Soul-Scar Mage — Prowess modeled; the "-1/-1 counters instead of noncombat damage" replacement elided
-Empyrean Eagle — Flying modeled; the "other fliers get +1/+1" anthem elided
-Supreme Phantom — Flying modeled; the "other Spirits get +1/+1" anthem elided
-Hangarback Walker — enters as an X/X (CountersFromX); death-Thopters + {1},{T} counter-pump elided
 Torbran, Thane of Red Fell — vanilla 2/4; the "+2 to red damage" replacement elided
+# DONE (fidelity grind): Empyrean Eagle (flying anthem), Supreme Phantom (Spirit anthem),
+# Hangarback Walker (death-Thopters + {1},{T} pump), Winding Constrictor (counter replacement)
 
 # --- vehicles (Crew is real; secondary abilities GAP'd) ---
 Smuggler's Copter — Crew 1 + Flying real; attack/block loot trigger elided
