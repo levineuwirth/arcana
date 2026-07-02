@@ -50,6 +50,7 @@ The catalog name list used by the worklist analysis is dumped from
 | `metagame-placement-PI.txt` | **ground truth** — real Pioneer archetype strength from MTGTop8 finishes |
 | `metagame-placement-MO.txt` | same, Modern |
 | `gauntlet-vs-real-PI.txt` | **ground-truth check** — gauntlet vmc point-rate vs real strength (Spearman ρ=0.00) |
+| `pimc-vs-real-PI.txt` | **direct PIMC-vs-real** — small-PIMC ALSO fails the real-world correlation (ρ≈−0.09/−0.49); implicates fidelity + field, not only referee |
 
 The placement artifacts are built from the dump's tournament results
 (`df_events_v2.csv` for each event's format; `events/<id>/players_info.csv` for

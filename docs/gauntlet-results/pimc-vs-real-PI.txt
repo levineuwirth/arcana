@@ -1,0 +1,58 @@
+# DIRECT PIMC-vs-real check (rl-status §6.5 (6a)) — first cut, on the SAME 12-deck
+# Pioneer subset scored under both referees (pi_subset12_{vmc,pimc}.csv). This is the
+# check the earlier drafts said was 'outstanding' — now run. SHORT ANSWER: PIMC also
+# fails; it is LESS aggro-biased than vmc but still not aligned with real strength.
+#
+# Spearman rho vs real MTGTop8 strength (6 matched archetype buckets):
+#                    vs real mean-finish   vs real top-8 share
+#   VmcMaterial            +0.257               -0.029
+#   small-PIMC             -0.086               -0.486
+#
+# READ:
+# - Neither referee tracks real-world Pioneer archetype strength on the matched
+#   buckets. small-PIMC is if anything WORSE here (rho vs top-8 = -0.49): its #1 deck
+#   Gruul/RG Aggro (0.750) is real-world WEAKEST (top-8 share 0.093), while its low
+#   decks (UW Spirit 0.500, Sultai Control 0.364) are real-world strong.
+# - PIMC IS less aggro-biased than vmc (moves synergy up: Golgari/HardScales
+#   0.303 vmc -> 0.364 PIMC), consistent with the capsule A/B. But 'less biased'
+#   is NOT 'aligned with real' — PIMC still over-rates aggro in absolute rank.
+# - So 'PIMC tracks reality' is FALSE even directly. The residual bias likely reflects
+#   CARD FIDELITY (our approximated non-aggro payoffs weaken synergy/control decks
+#   regardless of referee) + FIELD confound (point-rate-in-subset != metagame strength),
+#   not only referee strength. Referee quality is necessary but NOT sufficient.
+# CAVEATS: small-PIMC budget (8/80) is under-powered vs the capsule's 16/160; N=6 fuzzy
+#   buckets; 22 games/deck; narrow real band; metagame confound. A HIGHER-BUDGET-PIMC
+#   direct check + a fidelity-controlled deck set are the honest next steps.
+# Regenerate: placement_vs_gauntlet.py --gauntlet pi_subset12_{pimc,vmc}.csv
+
+===== small-PIMC subset vs real =====
+# Gauntlet point-rate vs real MTGTop8 strength — format PI (min_stars=0)
+# bucket                  g_n gauntlet_pr  real_n  real_str  real_top8
+  Gruul/RG Aggro            2       0.750      86     0.511      0.093
+  Mono-Red (RDW)            1       0.682     234     0.582      0.167
+  Rakdos Aggro              1       0.636     234     0.587      0.145
+  UW Spirit Aggro           1       0.500     151     0.594      0.192
+  Golgari/HardScales        3       0.364      36     0.542      0.111
+  Sultai Control            1       0.364      70     0.512      0.186
+
+# Spearman rho (gauntlet_pr vs ...), N=6 buckets:
+#   vs real_str (mean finish, compressed): -0.086
+#   vs real_top8 (top-1/8 share, sharper): -0.486
+# A NEGATIVE/near-zero rho on BOTH = the cheap referee does not track
+# real-world strength on these archetypes (robust to the metric choice).
+
+===== VmcMaterial subset vs real (same 12 decks) =====
+# Gauntlet point-rate vs real MTGTop8 strength — format PI (min_stars=0)
+# bucket                  g_n gauntlet_pr  real_n  real_str  real_top8
+  Mono-Red (RDW)            1       0.864     234     0.582      0.167
+  Rakdos Aggro              1       0.682     234     0.587      0.145
+  Gruul/RG Aggro            2       0.670      86     0.511      0.093
+  UW Spirit Aggro           1       0.614     151     0.594      0.192
+  Sultai Control            1       0.432      70     0.512      0.186
+  Golgari/HardScales        3       0.303      36     0.542      0.111
+
+# Spearman rho (gauntlet_pr vs ...), N=6 buckets:
+#   vs real_str (mean finish, compressed): 0.257
+#   vs real_top8 (top-1/8 share, sharper): -0.029
+# A NEGATIVE/near-zero rho on BOTH = the cheap referee does not track
+# real-world strength on these archetypes (robust to the metric choice).
