@@ -7,6 +7,13 @@ arc since the last write-up: acting on the prior feedback to pivot toward
 **deckbuilding-as-evaluation**, building a real-deck gauntlet harness, and what
 we learned running it on real tournament decklists.*
 
+> **The deckbuilding-as-evaluation arc is now frozen with a standalone
+> peer-review package: [`docs/deckbuild-eval-synthesis.md`](deckbuild-eval-synthesis.md)**
+> — thesis, the full experiment chain, the pre-registered referee-arm result, artifact
+> links, and the "small-N ρ is secondary; bucket movement is the robust claim" caveat.
+> Conclusion: the objective is *jointly* limited by referee strength, card fidelity, and
+> field breadth — no single lever is the fix. §6.5 below has the per-experiment detail.
+
 ---
 
 ## 0. What changed since refresh 1 (TL;DR of the delta)
