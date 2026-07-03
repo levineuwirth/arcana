@@ -1,6 +1,6 @@
 # Controlled RL benchmark — Magic play-strength on a fixed capsule
 
-**Status: live (experiment 1 done).** The internally-valid successor to the
+**Status: live (experiments 1–2 done).** The internally-valid successor to the
 deckbuilding-as-evaluation arc. That arc tried to make deck rankings track the
 *real MTGTop8 metagame*; a review + a same-referee control
 ([`gauntlet-results/control-arm-PI.txt`](gauntlet-results/control-arm-PI.txt))
@@ -84,20 +84,57 @@ against the strong opponents — consistent with the data-limited caveat.
 - **Per-deck training.** Each leaf is trained on its own deck's mirror self-play,
   so "learned" here means archetype-specialized, not a single general value.
 
-## What the first experiment says + next levers
+## Experiment 2 — card-identity ablation (representation)
 
-The cheap hand-tuned material leaf is hard to beat, and — the actionable part —
-**the bottleneck is not the training data's distribution but the value model /
-data budget.** The two honest next levers, in order:
+**Question.** Experiment 1 isolated the null to the value *representation* (a
+linear MC-outcome model over 123 identity-**free** aggregates can't see synergy).
+Does adding **card-identity features** rescue the learned leaf? Two `ValueMc`
+leaves trained from the **same random self-play at the same seed** — the *only*
+difference is the encoder: `basic` (123) vs `id` (123 + 57-card capsule vocabulary
+× 5 visible zones = 408). **Pre-registered** (before the run): identity should
+lift the leaf, especially on synergy decks (Scales/Spirits), and improve held-out
+vs material/pimc; if it stays ~0.5, identity alone is not the lever and the next
+move is dense target quality. → [`rl-benchmark/capsule-identity.txt`](rl-benchmark/capsule-identity.txt)
 
-1. **Card-identity features** (rl-status's long-standing highest-leverage ML
-   change): the 123-feature encoder is deliberately identity-free, so it cannot
-   see synergy; a value that reads *which* cards are in play is the plausible route
-   to beating material on synergy decks (Scales/Spirits). Cheap to try, big upside.
-2. **Distill PIMC's VALUE, not just its distribution** — regress the leaf on
-   PIMC's own position value (expose `PimcPolicy`'s per-candidate `sums`) instead
-   of MC 0/1 outcomes, a richer target than this experiment's outcome labels.
+**Result (mean point-rate across the 5 decks):**
 
-Deprioritized: simply scaling self-play games (expensive under PIMC, and the null
-suggests distribution source is not the lever); a bigger net on the same features
-(the parked MLP already refuted the linear-ceiling hypothesis).
+| policy | mean pr |
+|---|---:|
+| vmc-material | **0.771** |
+| pimc (12/120) | 0.654 |
+| vmc-learned-id | 0.484 |
+| vmc-learned-basic | 0.483 |
+| random | 0.108 |
+
+**Fires the pre-registered FAILURE branch.** `id` (0.484) ≈ `basic` (0.483), mean
+Δ = **+0.000**. On the synergy decks it *should* help most, Δ = **+0.007** (Spirit
++0.042, Golgari +0.042, Hardened −0.062 — noise). Held-out reads got **worse** with
+identity (vs material 0.30→0.25, vs pimc 0.38→0.32) — the +285 features add overfit
+surface on the data-limited fit. So **card identity alone does not lift the learned
+leaf**, and `vmc-material` (0.77) tops the capsule a third time.
+
+## Where the benchmark stands + next lever
+
+**Two controlled negatives now bound the problem:** neither a better training
+**distribution** (exp 1, PIMC self-play) nor a better **representation** (exp 2,
+card identity) rescues the learned leaf; both sit at ~0.48, below hand-tuned
+material (0.77). The bottleneck is what's left: the **target**. The value regresses
+sparse, high-variance **terminal 0/½/1 MC outcomes** at a 30-game budget — no
+feature space or state distribution fixes a fit to a noisy label.
+
+**Next experiment (pre-committed):** **distill PIMC's *value*, not its
+distribution.** Expose `PimcPolicy`'s per-candidate rollout scores (`sums`) as a
+reusable scoring API, and regress the cheap leaf on those **dense** position values
+instead of terminal outcomes. This is the one lever the two negatives point at, and
+it directly tests "compress the expensive search's *evaluation* into a cheap
+forward pass."
+
+**Standing caveats:** 30-game data-limited leaves (identity's extra features make
+this worse, not better); bounded PIMC 12/120; screen-tier per cell (12 games/pair,
+240 aggregated); per-deck (archetype-specialized) training. The robust, repeated
+finding across both experiments is `vmc-material` topping the aggro-leaning capsule
+— consistent with the deckbuild arc's "material-in-search flatters aggro."
+
+Deprioritized: scaling self-play games (expensive under PIMC; distribution is not
+the lever); a bigger net on the same features/target (the parked MLP already
+refuted the linear-ceiling hypothesis — same sparse target).

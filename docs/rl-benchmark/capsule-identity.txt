@@ -1,0 +1,79 @@
+# CAPSULE RL BENCHMARK — experiment 2 (card-identity ablation: representation lever)
+# 5 decks x 12 games/pair (240/policy). Both learned leaves trained from the SAME random
+# self-play at the SAME seed (1); ONLY the encoder differs. id-encoder: base 123 + 57*5 zones = 408.
+# 5 parallel per-deck jobs, 378-660s, no panics.
+
+## Aggregated policy strength (mean point-rate across 5 decks):
+  vmc-material       0.771   [0.60, 0.79, 0.83, 0.83, 0.79]
+  pimc (12/120)      0.654   [0.75, 0.62, 0.65, 0.58, 0.67]
+  vmc-learned-id     0.484   [0.54, 0.50, 0.42, 0.54, 0.42]
+  vmc-learned-basic  0.483   [0.50, 0.46, 0.48, 0.38, 0.60]
+  random             0.108   [0.10, 0.12, 0.12, 0.17, 0.02]
+
+## CRUX — Δ(id − basic), pre-registered to lift synergy decks:
+  UW Spirit Aggro  [synergy]  basic 0.500  id 0.542   Δ +0.042
+  Golgari Scales   [synergy]  basic 0.458  id 0.500   Δ +0.042
+  Hardened Scales  [synergy]  basic 0.479  id 0.417   Δ -0.062
+  Rakdos Aggro     [aggro]    basic 0.375  id 0.542   Δ +0.167
+  Red Deck Wins    [aggro]    basic 0.604  id 0.417   Δ -0.187
+  MEAN:                       basic 0.483  id 0.484   Δ +0.000
+  synergy Δ mean = +0.007   aggro Δ mean = -0.010   (both ~0; per-deck swings are noise)
+  head-to-head id vs basic: mean 0.534 (within noise)
+
+## HELD-OUT (identity did NOT improve; slightly WORSE — overfit surface):
+  vmc-learned-basic  vs material 0.300  vs pimc 0.384
+  vmc-learned-id     vs material 0.250  vs pimc 0.316
+
+## READ: fires the pre-registered FAILURE branch — identity alone does not lift the
+## learned leaf (Δ~0 overall + on synergy decks) and slightly hurts held-out. With
+## exp 1 (distribution null), TWO controlled negatives isolate the bottleneck to the
+## TARGET: a linear fit to sparse terminal 0/1/2 MC outcomes at 30 games. Next = dense
+## PIMC-value distillation. CAVEAT: 30-game data-limited; id adds 285 features (more
+## overfit surface) — but the held-out DEGRADATION points at target/overfit, not features.
+
+## PER-DECK RAW
+--- deck 0 ---
+capsule: 1 decks — UW Spirit Aggro [23729_364730]
+  pimc               pr= 0.750  (48 games)   vs random=1.00  vs vmc-material=0.67  vs vmc-learned-basic=0.58  vs vmc-learned-id=0.75
+  vmc-material       pr= 0.604  (48 games)   vs random=0.92  vs vmc-learned-basic=0.75  vs vmc-learned-id=0.42  vs pimc=0.33
+  vmc-learned-id     pr= 0.542  (48 games)   vs random=0.92  vs vmc-material=0.58  vs vmc-learned-basic=0.42  vs pimc=0.25
+  vmc-learned-basic  pr= 0.500  (48 games)   vs random=0.75  vs vmc-material=0.25  vs vmc-learned-id=0.58  vs pimc=0.42
+  random             pr= 0.104  (48 games)   vs vmc-material=0.08  vs vmc-learned-basic=0.25  vs vmc-learned-id=0.08  vs pimc=0.00
+  vmc-learned-basic  pr=0.500  held-out vs material=0.25  vs pimc=0.42
+  vmc-learned-id     pr=0.542  held-out vs material=0.58  vs pimc=0.25
+--- deck 1 ---
+capsule: 1 decks — Golgari Scales [23743_364886]
+  vmc-material       pr= 0.792  (48 games)   vs random=1.00  vs vmc-learned-basic=0.67  vs vmc-learned-id=0.83  vs pimc=0.67
+  pimc               pr= 0.625  (48 games)   vs random=0.92  vs vmc-material=0.33  vs vmc-learned-basic=0.50  vs vmc-learned-id=0.75
+  vmc-learned-id     pr= 0.500  (48 games)   vs random=0.83  vs vmc-material=0.17  vs vmc-learned-basic=0.75  vs pimc=0.25
+  vmc-learned-basic  pr= 0.458  (48 games)   vs random=0.75  vs vmc-material=0.33  vs vmc-learned-id=0.25  vs pimc=0.50
+  random             pr= 0.125  (48 games)   vs vmc-material=0.00  vs vmc-learned-basic=0.25  vs vmc-learned-id=0.17  vs pimc=0.08
+  vmc-learned-basic  pr=0.458  held-out vs material=0.33  vs pimc=0.50
+  vmc-learned-id     pr=0.500  held-out vs material=0.17  vs pimc=0.25
+--- deck 2 ---
+capsule: 1 decks — Hardened Scales [23846_365831]
+  vmc-material       pr= 0.833  (48 games)   vs random=1.00  vs vmc-learned-basic=0.75  vs vmc-learned-id=0.83  vs pimc=0.75
+  pimc               pr= 0.646  (48 games)   vs random=1.00  vs vmc-material=0.25  vs vmc-learned-basic=0.58  vs vmc-learned-id=0.75
+  vmc-learned-basic  pr= 0.479  (48 games)   vs random=0.75  vs vmc-material=0.25  vs vmc-learned-id=0.50  vs pimc=0.42
+  vmc-learned-id     pr= 0.417  (48 games)   vs random=0.75  vs vmc-material=0.17  vs vmc-learned-basic=0.50  vs pimc=0.25
+  random             pr= 0.125  (48 games)   vs vmc-material=0.00  vs vmc-learned-basic=0.25  vs vmc-learned-id=0.25  vs pimc=0.00
+  vmc-learned-basic  pr=0.479  held-out vs material=0.25  vs pimc=0.42
+  vmc-learned-id     pr=0.417  held-out vs material=0.17  vs pimc=0.25
+--- deck 3 ---
+capsule: 1 decks — Rakdos Aggro [24126_368389]
+  vmc-material       pr= 0.833  (48 games)   vs random=1.00  vs vmc-learned-basic=0.75  vs vmc-learned-id=0.75  vs pimc=0.83
+  pimc               pr= 0.583  (48 games)   vs random=0.92  vs vmc-material=0.17  vs vmc-learned-basic=0.75  vs vmc-learned-id=0.50
+  vmc-learned-id     pr= 0.542  (48 games)   vs random=0.75  vs vmc-material=0.25  vs vmc-learned-basic=0.67  vs pimc=0.50
+  vmc-learned-basic  pr= 0.375  (48 games)   vs random=0.67  vs vmc-material=0.25  vs vmc-learned-id=0.33  vs pimc=0.25
+  random             pr= 0.167  (48 games)   vs vmc-material=0.00  vs vmc-learned-basic=0.33  vs vmc-learned-id=0.25  vs pimc=0.08
+  vmc-learned-basic  pr=0.375  held-out vs material=0.25  vs pimc=0.25
+  vmc-learned-id     pr=0.542  held-out vs material=0.25  vs pimc=0.50
+--- deck 4 ---
+capsule: 1 decks — Red Deck Wins [24148_368536]
+  vmc-material       pr= 0.792  (48 games)   vs random=1.00  vs vmc-learned-basic=0.58  vs vmc-learned-id=0.92  vs pimc=0.67
+  pimc               pr= 0.667  (48 games)   vs random=1.00  vs vmc-material=0.33  vs vmc-learned-basic=0.67  vs vmc-learned-id=0.67
+  vmc-learned-basic  pr= 0.604  (48 games)   vs random=1.00  vs vmc-material=0.42  vs vmc-learned-id=0.67  vs pimc=0.33
+  vmc-learned-id     pr= 0.417  (48 games)   vs random=0.92  vs vmc-material=0.08  vs vmc-learned-basic=0.33  vs pimc=0.33
+  random             pr= 0.021  (48 games)   vs vmc-material=0.00  vs vmc-learned-basic=0.00  vs vmc-learned-id=0.08  vs pimc=0.00
+  vmc-learned-basic  pr=0.604  held-out vs material=0.42  vs pimc=0.33
+  vmc-learned-id     pr=0.417  held-out vs material=0.08  vs pimc=0.33
