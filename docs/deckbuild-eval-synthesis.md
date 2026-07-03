@@ -99,11 +99,25 @@ referee differs.
 
 Spearman (secondary, N=4): VMC **−0.40 / −0.20** → PIMC **−0.20 / −0.40**.
 
-**Verdict: mixed and partial.** The bucket movement is interesting and structured,
-but it is not a confirmation. Regression-to-the-mean is an uncalibrated null
-because the chosen buckets were VMC extremes, and no same-referee VMC re-run on
-the same 8 decks was run. The earlier 8/80 arm cannot justify "more budget →
-more movement" because deck set, field, and fidelity state all changed.
+**Verdict: one bucket survives the control.** The regression-to-the-mean null is
+now *calibrated*: VMC was re-run at four independent seeds on a fresh
+source-auditable spanning-8 (`control-arm-PI.txt`, `control_sub8_vmc_s{0..3}.csv`).
+The null band (2·SD of the per-bucket VMC mean across seeds) resolves the arm:
+
+| bucket | arm Δ (VMC→PIMC) | VMC null band (2·SD) | survives? |
+|---|---:|---:|---|
+| Golgari Scales | +0.143 | 0.040 | **yes** — Scales is stable under VMC |
+| Gruul/RG Aggro | −0.089 | 0.120 | **no** — Gruul's own VMC rate wanders 0.68–0.84 |
+| UW Spirit Aggro | −0.018 | 0.102 | n/a (stable, uninformative) |
+| spread compress | −0.142 | ±0.196 swing | **no** — spread itself is that noisy |
+
+So the arm's "directional confirmation" reduces to **one bucket**: a stronger
+referee moves *grindy synergy* (Scales) up toward the target, and that is real.
+The headline **Gruul-down move and the spread compression were regression to the
+mean** — exactly the risk this control was built to catch. "Referee strength is a
+real lever" holds for grindy synergy specifically, **not** for aggro calibration,
+and the earlier "more budget → more movement" gloss is unsupported (the 8/80 arm
+also differed in deck set / field / fidelity).
 
 ## Caveats
 

@@ -1,7 +1,11 @@
-# SAME-REFEREE CONTROL ARM (regression-to-the-mean null) — PLAN + RUNBOOK
+# SAME-REFEREE CONTROL ARM (regression-to-the-mean null) — RUN + RESULT
 #
-# STATUS: harness + source-auditable subset are set up; the gauntlet runs below
-# are NOT yet executed (results appended when they complete).
+# STATUS: DONE. Four VMC gauntlets (base_seed 0-3) on the source-auditable
+# spanning-8, CORPUS_DUELS=2 (28 games/deck), all passed clean, no panics.
+# CSVs: control_sub8_vmc_s{0,1,2,3}.csv. RESULT SECTION at the bottom.
+#
+# HEADLINE: the referee arm's Gruul-down move and spread-compression do NOT
+# survive the null; only Golgari Scales' +0.143 does. See RESULT.
 #
 # WHY (review finding U5, docs/deckbuild-eval-review.md)
 # ------------------------------------------------------
@@ -96,3 +100,47 @@
 # arcana-ai/src/deck_corpus.rs: build_control_subset (#[ignore]) + the new
 # CORPUS_BASE_SEED knob on corpus_gauntlet. LoadedDeck.source_id + the "[source_id]"
 # name suffix make every CSV row here source-auditable (unlike the historical arm).
+#
+# ============================ RESULT (4-seed null) ===========================
+# Per-bucket VMC point-rate mean (2 decks/bucket, 28 games/deck) across four
+# independent base_seeds, the same-referee re-measurement null. Null band = 2*SD
+# across the four seed means. Arm move = |VMC - PIMC| from pimc-arm-result-PI.txt.
+#
+#   bucket            s0     s1     s2     s3     SD    2*SD   armΔ   verdict
+#   Gruul Aggro     0.786  0.839  0.679  0.804  0.060  0.120  0.089  WITHIN null
+#   UW Spirit Aggro 0.536  0.518  0.643  0.607  0.051  0.102  0.018  WITHIN null (stable, uninformative)
+#   Golgari Scales  0.321  0.268  0.304  0.286  0.020  0.040  0.143  SURVIVES
+#   Sultai Control  0.357  0.375  0.375  0.304  0.029  0.059  0.036  WITHIN null (and wrong direction)
+#
+#   spread (max-min bucket mean) per seed: 0.464 / 0.571 / 0.375 / 0.518
+#     -> VMC spread alone swings by 0.196 across seeds; the arm's claimed
+#        compression 0.482 -> 0.340 (Δ0.142) is WITHIN that swing. Not robust.
+#
+# NULL-ESTIMATOR NOTE (honest sequencing): the pre-registered rule above used a
+# 2-seed |VMC(s0)-VMC(s1)| band. That is underpowered — a single difference draw.
+# After running s0,s1 (Gruul null 0.054, which the 0.089 arm move "cleared"), the
+# 2-seed band was clearly too noisy to trust, so two more seeds (s2,s3) were run
+# and the band tightened to the 4-seed 2*SD. The verdict RULE is unchanged (arm
+# move must exceed the null band); only the ESTIMATOR got more rigorous. The
+# theoretical binomial diff-SE at 56 games/bucket (~0.094) independently puts
+# Gruul's 0.089 move at the noise floor, agreeing with the 4-seed result.
+#
+# VERDICT (calibrates pimc-arm-result-PI.txt against the U5 control):
+# - Golgari Scales +0.143 SURVIVES: Scales is stable under VMC (2*SD 0.040), so
+#   the PIMC lift is real signal. "Referee strength moves grindy synergy up toward
+#   real" is SUPPORTED. This is the arc's one robust referee-strength result.
+# - Gruul Aggro -0.089 does NOT survive: Gruul's VMC point-rate itself wanders
+#   0.679-0.839 (2*SD 0.120) between seeds, so the "aggro over-rating fell toward
+#   real" pre-registered move #1 is NOT distinguishable from re-measurement noise.
+#   RETRACTED to "not established."
+# - Spread compression (pre-reg #5) is WITHIN the seed-to-seed swing. Not robust.
+# - UW Spirit stable / Sultai down are within the null and uninformative.
+# NET: the referee arm's "directional confirmation" reduces to ONE bucket
+# (Scales). The headline Gruul-down and spread-compression were regression to the
+# mean — exactly the U5 risk. A stronger referee helps grindy synergy specifically,
+# not aggro calibration.
+#
+# CLEAN FOLLOW-UP (optional step 4): PIMC 16/160 on THIS same source-auditable 8
+# would let the VMC->PIMC delta be measured on the identical decks the null was
+# built from (currently the arm's PIMC came from the unrecoverable historical 8).
+# Expect it to confirm Scales-up as the sole survivor.

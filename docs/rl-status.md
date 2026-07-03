@@ -384,10 +384,16 @@ diverse only because its coverage happened to span several archetypes' staples.)
      predictions (`pimc-arm-prereg-PI.txt`, committed before the result): Gruul fell
      (0.750→0.661) and Scales rose (0.268→0.411), the two most interesting movements.
      But strict scoring is mixed: Gruul missed the <0.60 threshold, Sultai moved down
-     at n=2, Gruul remained the single top deck, and event-win rho worsened. Regression
-     to the mean is an uncalibrated null because no same-referee VMC re-run on the same
-     8 decks was run. Net: referee choice matters, but PIMC 16/160 is not validated as
-     aligned with the external target. `docs/gauntlet-results/pimc-arm-result-PI.txt`.
+     at n=2, Gruul remained the single top deck, and event-win rho worsened.
+     **Same-referee CONTROL now run (`control-arm-PI.txt`): VMC re-run at 4 seeds on a
+     fresh source-auditable spanning-8 calibrates the regression-to-mean null. It
+     RETRACTS the Gruul-down move (−0.089, within the 2·SD null band 0.120 — Gruul's own
+     VMC rate wanders 0.68–0.84 across seeds) and the spread compression (within the
+     ±0.196 seed swing). ONLY Golgari Scales +0.143 survives (null band 0.040; stable
+     under VMC).** Net: a stronger referee reliably moves grindy synergy up toward the
+     target, but the aggro-down + spread-compression parts of the arm were noise —
+     referee choice matters for grind, not for aggro calibration.
+     `docs/gauntlet-results/pimc-arm-result-PI.txt`, `control-arm-PI.txt`.
    (b) **Pragmatic deckbuilding loop = cheap candidate generation + PIMC
    selection/hold-out**, not optimization against any single cheap scalar (the v2
    A/B showed even an improved cheap referee stays gameable). **First result

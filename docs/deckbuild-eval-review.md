@@ -96,6 +96,16 @@ correlation, and same-referee cross-field wander of the same buckets is comparab
 0.368). A fresh same-referee VMC re-run on the same 8 decks would have quantified the
 re-measurement null cheaply; it wasn't run. No document mentions this threat.
 
+**RESOLVED (control now run — `control-arm-PI.txt`, `control_sub8_vmc_s{0..3}.csv`).**
+VMC was re-run at four independent seeds on a fresh source-auditable spanning-8. The
+null band (2·SD across seeds) confirms the concern: **Gruul −0.089 is WITHIN the null
+(band 0.120; Gruul's own VMC rate wanders 0.68–0.84), and the spread compression is
+within the seed-to-seed swing (±0.196).** Only **Golgari Scales +0.143 survives** (band
+0.040; Scales is stable under VMC). So the referee arm's headline pre-registered move #1
+(Gruul-down) and #5 (spread) were regression to the mean; the sole robust
+referee-strength result is grindy-synergy (Scales) moving up. This finding is now folded
+into the synthesis crux verdict.
+
 ### U6. "More budget → more movement" is confounded and partly contradicted
 
 `deckbuild-eval-synthesis.md:99-100` claims the 8/80 arm "barely moved" vs 16/160. In

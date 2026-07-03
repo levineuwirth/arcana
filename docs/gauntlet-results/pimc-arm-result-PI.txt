@@ -2,6 +2,12 @@
 # Scored against pimc-arm-prereg-PI.txt (predictions committed 3da04f46 BEFORE this run).
 # CORPUS_DUELS=2 (28 games/deck). Controlled: identical decks under both referees.
 #
+# *** CONTROL UPDATE (control-arm-PI.txt): the same-referee regression-to-mean null was
+# *** since run (VMC x4 seeds). It RETRACTS the Gruul-down move (-0.089, WITHIN null band
+# *** 0.120) and the spread compression (WITHIN the ±0.196 seed swing). ONLY Golgari
+# *** Scales +0.143 survives (null band 0.040). Read the "toward real" bullets below with
+# *** that correction: the sole robust referee-strength result is grindy-synergy (Scales).
+#
 # Target-label repair: "recorded" and "event_win" are MTGTop8 recorded-conversion
 # proxies. The Kaggle rows are top-finish-censored, so these are not full-field
 # archetype strength or P(make top 8).
