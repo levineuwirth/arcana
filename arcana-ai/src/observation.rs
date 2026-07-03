@@ -54,11 +54,14 @@
 //!   where small-value resolution matters and the tail compresses
 //!   gracefully.
 
+use std::collections::HashMap;
+
 use arcana_core::effects::KeywordAbility;
 use arcana_core::objects::GameObject;
+use arcana_core::registry::CardRegistry;
 use arcana_core::state::GameState;
 use arcana_core::turn::{Phase, Step};
-use arcana_core::types::{Color, PlayerId, PtValue};
+use arcana_core::types::{CardId, Color, PlayerId, PtValue, SmallString};
 use arcana_core::zones::Zone;
 
 // =============================================================================
@@ -199,6 +202,118 @@ impl Encoder for BasicE2Encoder {
         cursor += PERSPECTIVE_FEATURES;
 
         debug_assert_eq!(cursor, dim);
+    }
+}
+
+// =============================================================================
+// IdentityEncoder — card-identity features over a fixed vocabulary
+// =============================================================================
+
+/// Visible zones the identity block reads, from the perspective player's view.
+/// Deliberately excludes opponent hand + all libraries (hidden information a
+/// real player cannot see). Order is the per-vocab-card feature-block layout.
+const ID_ZONES: usize = 5; // own hand, own bf, opp bf, own gy, opp gy
+
+/// [`BasicE2Encoder`] plus **card-identity** features over a fixed vocabulary
+/// (e.g. a capsule's card pool). It APPENDS, per vocabulary card, a count in
+/// each of [`ID_ZONES`] visible zones (own hand, own battlefield, opponent
+/// battlefield, own graveyard, opponent graveyard) — never opponent hand or any
+/// library. This is the identity-vs-identity-free ablation lever: the base 123
+/// features are board-shape aggregates that cannot see *which* cards are in play,
+/// so a learned value over base-only cannot represent synergy; the appended
+/// counts let it.
+///
+/// Layout: `[ base (base.dim()) | id (vocab_len * ID_ZONES) ]`, id indexed
+/// `zone_slot * vocab_len + vocab_index`. Perspective-relative (own/opp resolved
+/// from `perspective`, defaulting to player 0 when `None`).
+#[derive(Debug, Clone)]
+pub struct IdentityEncoder {
+    base: BasicE2Encoder,
+    /// Card-name (interned [`SmallString`]) → dense vocabulary index.
+    index: HashMap<SmallString, usize>,
+    vocab_len: usize,
+}
+
+impl IdentityEncoder {
+    /// Build the vocabulary from a set of card ids (their definition names) —
+    /// the capsule's legal pool. Duplicate ids collapse; unknown ids are skipped.
+    pub fn from_card_ids(num_players: u8, ids: &[CardId], reg: &CardRegistry) -> Self {
+        let mut index: HashMap<SmallString, usize> = HashMap::new();
+        let mut vocab_len = 0;
+        for &cid in ids {
+            if let Some(def) = reg.get(cid) {
+                if !index.contains_key(&def.name) {
+                    index.insert(def.name, vocab_len);
+                    vocab_len += 1;
+                }
+            }
+        }
+        Self { base: BasicE2Encoder::new(num_players), index, vocab_len }
+    }
+
+    /// Number of distinct cards in the identity vocabulary.
+    pub fn vocab_len(&self) -> usize {
+        self.vocab_len
+    }
+
+    /// Increment the count of every vocabulary card among `objects` at `slot`.
+    fn tally<'a>(
+        &self,
+        objects: impl Iterator<Item = &'a GameObject>,
+        slot: usize,
+        id: &mut [f32],
+    ) {
+        for o in objects {
+            if let Some(&idx) = self.index.get(&o.characteristics.name) {
+                id[slot * self.vocab_len + idx] += 1.0;
+            }
+        }
+    }
+}
+
+impl Encoder for IdentityEncoder {
+    fn dim(&self) -> usize {
+        self.base.dim() + self.vocab_len * ID_ZONES
+    }
+
+    fn encode_into(&self, state: &GameState, perspective: Option<PlayerId>, buf: &mut [f32]) {
+        let dim = self.dim();
+        assert!(buf.len() >= dim, "buf too small: need {dim}, got {}", buf.len());
+
+        let base_dim = self.base.dim();
+        self.base.encode_into(state, perspective, &mut buf[..base_dim]);
+
+        let id = &mut buf[base_dim..dim];
+        for x in id.iter_mut() {
+            *x = 0.0;
+        }
+        if self.vocab_len == 0 {
+            return;
+        }
+
+        let me = perspective.unwrap_or(0);
+        let opp = state.opponents_of(me).next();
+
+        // own hand (slot 0) — visible to the perspective player.
+        self.tally(state.objects.objects_in_zone(Zone::Hand(me)), 0, id);
+        // battlefields (slots 1 own / 2 opp) — public zone, controller-split.
+        for o in state.objects.objects_in_zone(Zone::Battlefield) {
+            let slot = if o.controller == me {
+                1
+            } else if Some(o.controller) == opp {
+                2
+            } else {
+                continue;
+            };
+            if let Some(&idx) = self.index.get(&o.characteristics.name) {
+                id[slot * self.vocab_len + idx] += 1.0;
+            }
+        }
+        // graveyards (slots 3 own / 4 opp) — public zones.
+        self.tally(state.objects.objects_in_zone(Zone::Graveyard(me)), 3, id);
+        if let Some(opp) = opp {
+            self.tally(state.objects.objects_in_zone(Zone::Graveyard(opp)), 4, id);
+        }
     }
 }
 
@@ -541,6 +656,33 @@ mod tests {
             three.dim(),
             3 * PER_PLAYER_FEATURES + GAME_LEVEL_FEATURES + PERSPECTIVE_FEATURES
         );
+    }
+
+    /// IdentityEncoder: dim = base + vocab*ID_ZONES; its first `base` features
+    /// exactly equal BasicE2Encoder's output (append-only); the identity block is
+    /// all-zero on a fresh game (nothing yet in any tracked zone); and encoding
+    /// never panics for either perspective.
+    #[test]
+    fn identity_encoder_appends_and_matches_base() {
+        use arcana_core::engine::new_game;
+        let reg = arcana_cards::build_catalog();
+        let deck = arcana_cards::sample_deck(&reg, 7);
+        // Vocabulary = the deck's cards.
+        let id = IdentityEncoder::from_card_ids(2, &deck, &reg);
+        let base = BasicE2Encoder::for_two_players();
+
+        assert!(id.vocab_len() > 0, "vocab should be non-empty");
+        assert_eq!(id.dim(), base.dim() + id.vocab_len() * ID_ZONES);
+
+        let (state, _y) = new_game(vec![deck.clone(), deck.clone()], &reg, 5);
+        let fb = base.encode(&state, Some(0));
+        let fi = id.encode(&state, Some(0));
+        assert_eq!(fi.len(), id.dim());
+        // Append-only: the base prefix is byte-identical.
+        assert_eq!(&fi[..base.dim()], &fb[..], "identity block must not disturb base features");
+        // Both perspectives encode without panic + right length.
+        assert_eq!(id.encode(&state, Some(1)).len(), id.dim());
+        assert_eq!(id.encode(&state, None).len(), id.dim());
     }
 
     // -- output shape ---------------------------------------------------

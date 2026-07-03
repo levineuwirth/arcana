@@ -201,7 +201,8 @@ mod tests {
     use super::*;
     use crate::deck_corpus::decks_from_dir;
     use crate::deckeval::Deck;
-    use crate::learn::learn_value;
+    use crate::learn::{learn_value, learn_value_with_encoder};
+    use crate::observation::{Encoder, IdentityEncoder};
     use crate::search::{
         MaterialValue, PimcPolicy, RandomStatePolicy, StatePolicy, ValueMcPolicy,
     };
@@ -328,7 +329,6 @@ mod tests {
 
             let lv_rand_c = lv_rand.clone();
             let lv_pimc_c = lv_pimc.clone();
-            let dp2 = d.clone();
             vec![
                 (
                     "random".into(),
@@ -373,6 +373,139 @@ mod tests {
                 let teacher = if name.ends_with("pimc") { "pimc (NOT held-out)" } else { "random" };
                 println!("  {name:<17} vs pimc={vp:.2}  vs material={vm:.2}  (teacher={teacher})");
             }
+        }
+    }
+
+    /// EXPERIMENT 2 — card-identity ablation (representation vs target).
+    /// Experiment 1 found distilling PIMC's *distribution* did not help; that
+    /// isolates the failure to the value *representation* (a linear MC-outcome
+    /// model over 123 identity-FREE aggregate features can't see synergy). This
+    /// A/Bs two ValueMc leaves trained from the SAME random self-play at the SAME
+    /// seed — the ONLY difference is the encoder: `basic` (123 features) vs `id`
+    /// (123 + capsule card-identity counts over visible zones). Panel adds random,
+    /// vmc-material, pimc as references.
+    ///
+    /// PRE-REGISTERED READOUT: (1) does `id` lift the learned leaf's point-rate
+    /// over `basic`, especially on the synergy decks (Golgari Scales, Hardened
+    /// Scales, UW Spirit)? (2) does `id` improve the held-out reads vs
+    /// vmc-material and vs pimc? If `id` stays ~`basic` (~0.5), feature identity
+    /// alone is not the lever, and the next move is dense target quality (distill
+    /// PIMC's per-candidate VALUE, not terminal 0/½/1 outcomes).
+    ///
+    /// Env: CAPSULE_DIR, CAP_GAMES (12), CAP_TRAIN (30), CAP_PIMC_SAMPLES/CAP
+    /// (12/120), CAP_DECK (single-deck index for parallel jobs). Release:
+    ///   CAPSULE_DIR=$(pwd)/docs/capsule-pioneer/seeds \
+    ///   cargo test -p arcana-ai --release benchmark::tests::capsule_identity_ablation -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn capsule_identity_ablation() {
+        let reg = arcana_cards::build_catalog();
+        let dir = std::env::var("CAPSULE_DIR")
+            .expect("set CAPSULE_DIR to docs/capsule-pioneer/seeds");
+        let games: u32 = envu("CAP_GAMES", 12);
+        let train: u32 = envu("CAP_TRAIN", 30);
+        let pimc_samples: u32 = envu("CAP_PIMC_SAMPLES", 12);
+        let pimc_cap: u32 = envu("CAP_PIMC_CAP", 120);
+        let max_steps = 4000u32;
+
+        // Full capsule vocabulary (union of ALL seed decks) so the identity
+        // encoder is capsule-local + identical across decks, regardless of CAP_DECK.
+        let all = load_capsule(&dir, &reg);
+        let vocab: Vec<CardId> = all.iter().flat_map(|d| d.cards.iter().copied()).collect();
+        let id_enc = IdentityEncoder::from_card_ids(2, &vocab, &reg);
+        println!(
+            "identity vocab: {} cards; id-encoder dim {} (base 123 + {}*5 zones)",
+            id_enc.vocab_len(), id_enc.dim(), id_enc.vocab_len()
+        );
+
+        let mut decks = all.clone();
+        if let Ok(idx) = std::env::var("CAP_DECK") {
+            let i: usize = idx.parse().expect("CAP_DECK int");
+            assert!(i < decks.len(), "CAP_DECK {i} out of range");
+            decks = vec![decks[i].clone()];
+        }
+        println!(
+            "capsule: {} decks — {}",
+            decks.len(),
+            decks.iter().map(|d| d.name.clone()).collect::<Vec<_>>().join(", ")
+        );
+
+        let reg_ref: &CardRegistry = &reg;
+        let id_enc_c = id_enc.clone();
+        let make = move |deck: &[CardId]| -> Vec<(String, Box<dyn Fn(u64) -> Box<dyn StatePolicy>>)> {
+            let d = deck.to_vec();
+            // BOTH leaves: identical random self-play data (same policy + same
+            // seed=1), so ONLY the encoder differs — a clean representation A/B.
+            let lv_basic = learn_value(
+                &d, reg_ref, train, max_steps,
+                &|s| Box::new(RandomStatePolicy::new(s)),
+                300, 0.3, 1e-4, 1,
+            );
+            let lv_id = learn_value_with_encoder(
+                &d, reg_ref, train, max_steps,
+                &|s| Box::new(RandomStatePolicy::new(s)),
+                300, 0.3, 1e-4, 1, id_enc_c.clone(),
+            );
+
+            let dp = d.clone();
+            let lv_basic_c = lv_basic.clone();
+            let lv_id_c = lv_id.clone();
+            vec![
+                (
+                    "random".into(),
+                    Box::new(|s: u64| Box::new(RandomStatePolicy::new(s)) as Box<dyn StatePolicy>)
+                        as Box<dyn Fn(u64) -> Box<dyn StatePolicy>>,
+                ),
+                (
+                    "vmc-material".into(),
+                    Box::new(|s: u64| {
+                        Box::new(ValueMcPolicy::with_budget(Box::new(MaterialValue), s, 6, 25, 10))
+                            as Box<dyn StatePolicy>
+                    }) as Box<dyn Fn(u64) -> Box<dyn StatePolicy>>,
+                ),
+                (
+                    "vmc-learned-basic".into(),
+                    Box::new(move |s: u64| {
+                        Box::new(ValueMcPolicy::with_budget(Box::new(lv_basic_c.clone()), s, 6, 25, 10))
+                            as Box<dyn StatePolicy>
+                    }) as Box<dyn Fn(u64) -> Box<dyn StatePolicy>>,
+                ),
+                (
+                    "vmc-learned-id".into(),
+                    Box::new(move |s: u64| {
+                        Box::new(ValueMcPolicy::with_budget(Box::new(lv_id_c.clone()), s, 6, 25, 10))
+                            as Box<dyn StatePolicy>
+                    }) as Box<dyn Fn(u64) -> Box<dyn StatePolicy>>,
+                ),
+                (
+                    "pimc".into(),
+                    Box::new(move |s: u64| {
+                        Box::new(PimcPolicy::with_budget(
+                            s, vec![dp.clone(), dp.clone()], pimc_samples, pimc_cap, 10,
+                        )) as Box<dyn StatePolicy>
+                    }) as Box<dyn Fn(u64) -> Box<dyn StatePolicy>>,
+                ),
+            ]
+        };
+
+        let y = run_capsule_yardstick(&decks, &reg, &make, games, max_steps);
+        println!("\n{}", y.format_table());
+        println!("\n# IDENTITY ABLATION (both leaves = random self-play, seed 1; only encoder differs):");
+        for name in ["vmc-learned-basic", "vmc-learned-id"] {
+            if let Some(p) = y.scores.iter().find(|p| p.name == name) {
+                println!(
+                    "  {name:<18} pr={:.3}  held-out vs material={:.2}  vs pimc={:.2}",
+                    p.point_rate,
+                    p.held_out_vs("vmc-material").unwrap_or(f32::NAN),
+                    p.held_out_vs("pimc").unwrap_or(f32::NAN),
+                );
+            }
+        }
+        if let (Some(b), Some(i)) = (
+            y.scores.iter().find(|p| p.name == "vmc-learned-basic"),
+            y.scores.iter().find(|p| p.name == "vmc-learned-id"),
+        ) {
+            println!("  Δ(id − basic) point-rate = {:+.3}", i.point_rate - b.point_rate);
         }
     }
 

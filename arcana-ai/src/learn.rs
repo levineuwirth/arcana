@@ -42,7 +42,7 @@ pub fn collect_value_data(
     n_games: u32,
     max_steps: u32,
     make_policy: &dyn Fn(u64) -> Box<dyn StatePolicy>,
-    encoder: &BasicE2Encoder,
+    encoder: &dyn Encoder,
     seed: u64,
 ) -> (Vec<Vec<f32>>, Vec<f32>) {
     let mut x: Vec<Vec<f32>> = Vec::new();
@@ -150,15 +150,15 @@ fn dot(a: &[f32], b: &[f32]) -> f32 {
 /// [`crate::search::GreedyValuePolicy`] (or any value-based policy). `Clone` so
 /// one trained model can seed a fresh policy per game in a tournament.
 #[derive(Clone)]
-pub struct LinearValue {
-    encoder: BasicE2Encoder,
+pub struct LinearValue<E: Encoder + Clone = BasicE2Encoder> {
+    encoder: E,
     means: Vec<f32>,
     stds: Vec<f32>,
     weights: Vec<f32>,
     bias: f32,
 }
 
-impl LinearValue {
+impl<E: Encoder + Clone> LinearValue<E> {
     /// Win probability for `player` in `[0, 1]` (no terminal override).
     pub fn win_prob(&self, state: &GameState, player: PlayerId) -> f32 {
         let f = self.encoder.encode(state, Some(player));
@@ -170,7 +170,7 @@ impl LinearValue {
     }
 }
 
-impl ValueFn for LinearValue {
+impl<E: Encoder + Clone> ValueFn for LinearValue<E> {
     fn value(&self, state: &GameState, player: PlayerId) -> f32 {
         match state.result {
             Some(GameResult::Win(p)) => if p == player { 1.0 } else { -1.0 },
@@ -181,8 +181,9 @@ impl ValueFn for LinearValue {
     }
 }
 
-/// End-to-end: collect self-play data with `make_policy`, standardize, fit
-/// logistic regression, and return the [`LinearValue`].
+/// End-to-end with the default identity-free [`BasicE2Encoder`] (123 features) —
+/// the stable path. See [`learn_value_with_encoder`] to swap the encoder (e.g.
+/// [`crate::observation::IdentityEncoder`] for the card-identity ablation).
 #[allow(clippy::too_many_arguments)]
 pub fn learn_value(
     deck: &[CardId],
@@ -195,7 +196,30 @@ pub fn learn_value(
     l2: f32,
     seed: u64,
 ) -> LinearValue {
-    let encoder = BasicE2Encoder::for_two_players();
+    learn_value_with_encoder(
+        deck, registry, n_games, max_steps, make_policy, epochs, lr, l2, seed,
+        BasicE2Encoder::for_two_players(),
+    )
+}
+
+/// End-to-end over ANY [`Encoder`]: collect self-play data with `make_policy`,
+/// standardize, fit logistic regression, and return the [`LinearValue`] that
+/// re-encodes with the SAME `encoder` at inference. This is the representation
+/// lever — pass an [`crate::observation::IdentityEncoder`] to give the learned
+/// value card-identity features the 123-feature base cannot see.
+#[allow(clippy::too_many_arguments)]
+pub fn learn_value_with_encoder<E: Encoder + Clone>(
+    deck: &[CardId],
+    registry: &CardRegistry,
+    n_games: u32,
+    max_steps: u32,
+    make_policy: &dyn Fn(u64) -> Box<dyn StatePolicy>,
+    epochs: usize,
+    lr: f32,
+    l2: f32,
+    seed: u64,
+    encoder: E,
+) -> LinearValue<E> {
     let (mut x, y) =
         collect_value_data(deck, registry, n_games, max_steps, make_policy, &encoder, seed);
     let (means, stds) = standardize(&mut x);
