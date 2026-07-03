@@ -1,0 +1,98 @@
+# SAME-REFEREE CONTROL ARM (regression-to-the-mean null) — PLAN + RUNBOOK
+#
+# STATUS: harness + source-auditable subset are set up; the gauntlet runs below
+# are NOT yet executed (results appended when they complete).
+#
+# WHY (review finding U5, docs/deckbuild-eval-review.md)
+# ------------------------------------------------------
+# The referee arm reported Gruul -0.089 and Scales +0.143 (VMC -> PIMC 16/160) as
+# movement "toward real." But Gruul and Scales were selected as the VMC EXTREMES,
+# so ANY independent re-measurement pulls the top down and the bottom up
+# (regression to the mean) even with the SAME referee. Nothing in the arc
+# calibrated that null. This control runs VMC TWICE on the same decks at two
+# independent seeds; the per-bucket |VMC(seed0) - VMC(seed1)| is the null band.
+# The VMC->PIMC movement is only evidence of "referee strength" to the extent it
+# EXCEEDS this band.
+#
+# PROVENANCE NOTE
+# ---------------
+# The historical 8-deck referee-arm subset's exact source decklists are NOT
+# recoverable (subset-provenance-PI.txt). This control therefore uses a FRESHLY
+# selected, source-auditable spanning-8 (build_control_subset), not the original
+# decks. It calibrates the null for the ARM DESIGN, not for those exact lists. A
+# fully clean redo would also re-run PIMC 16/160 on THIS subset (commands below).
+#
+# CONTROL SUBSET MANIFEST (deterministic; build_control_subset over the relaxed
+# fidelity-fixed field, 2 per bucket, picked by ascending source id):
+#   bucket            source_id      archetype (About/Name header)
+#   Gruul Aggro       24047_367755   Gruul Aggro
+#   Gruul Aggro       24258_369338   Gruul Aggro
+#   UW Spirit Aggro   23729_364730   UW Spirit Aggro
+#   UW Spirit Aggro   23824_365648   Spirits
+#   Golgari Scales    23975_367079   Hardened Snakes
+#   Golgari Scales    24035_367666   Gb Hardened Scales
+#   Sultai Control    23834_365722   Sultai Control
+#   Sultai Control    23834_365725   Sultai Control
+# CAVEAT: the two Sultai lists are the same event (23834), different players —
+# mildly correlated; acceptable for a null-band estimate, note it when reading.
+#
+# RUNBOOK (exact commands; PI, from repo root)
+# --------------------------------------------
+# 0. Regenerate the corpus decklists (fast; deterministic from kaggle.zip):
+#    python3 arcana-ai/scripts/kaggle_to_decklists.py \
+#        --zip kaggle.zip --out /tmp/kaggle_decks --formats PI --cap 800
+#
+# 1. Rebuild the fidelity-fixed relaxed field (32 decks / 15 archetypes / 0 strict):
+#    KAGGLE_DECKS=/tmp/kaggle_decks FIDELITY_OUT=/tmp/fidelity_out \
+#      cargo test -p arcana-ai --release build_fidelity_subset -- --ignored --nocapture
+#
+# 2. Select the source-auditable spanning-8 (reproduces the manifest above):
+#    CONTROL_IN=/tmp/fidelity_out/relaxed/PI CONTROL_OUT=/tmp/control_out \
+#      cargo test -p arcana-ai --release build_control_subset -- --ignored --nocapture
+#
+# 3a. VMC, seed 0 (28 games/deck, matches the referee arm's CORPUS_DUELS=2):
+#    KAGGLE_DECKS=/tmp/control_out CORPUS_FORMAT=PI CORPUS_REFEREE=vmc \
+#      CORPUS_DUELS=2 CORPUS_BASE_SEED=0 \
+#      cargo test -p arcana-ai --release corpus_gauntlet -- --ignored --nocapture \
+#      | tee /tmp/control_vmc_s0.out
+#    # save the CSV block -> docs/gauntlet-results/control_sub8_vmc_s0.csv
+#
+# 3b. VMC, seed 1 (the INDEPENDENT re-measurement — same referee, same decks):
+#    KAGGLE_DECKS=/tmp/control_out CORPUS_FORMAT=PI CORPUS_REFEREE=vmc \
+#      CORPUS_DUELS=2 CORPUS_BASE_SEED=1 \
+#      cargo test -p arcana-ai --release corpus_gauntlet -- --ignored --nocapture \
+#      | tee /tmp/control_vmc_s1.out
+#    # save the CSV block -> docs/gauntlet-results/control_sub8_vmc_s1.csv
+#
+# 4. (optional, for a provenance-clean referee-arm REDO) PIMC 16/160 on the SAME 8:
+#    KAGGLE_DECKS=/tmp/control_out CORPUS_FORMAT=PI CORPUS_REFEREE=pimc \
+#      CORPUS_DUELS=2 CORPUS_BASE_SEED=0 CORPUS_PIMC_SAMPLES=16 CORPUS_PIMC_CAP=160 \
+#      cargo test -p arcana-ai --release corpus_gauntlet -- --ignored --nocapture \
+#      | tee /tmp/control_pimc_s0.out
+#    # save the CSV block -> docs/gauntlet-results/control_sub8_pimc_s0.csv
+#    # (PIMC on 8 decks is minutes-to-an-hour; VMC is much faster. LONG PIMC runs
+#    #  have been killed intermittently — rerun/checkpoint if needed.)
+#
+# READING THE RESULT
+# ------------------
+# Per bucket, average the 2 decks' point_rate in each CSV (or run
+# placement_vs_gauntlet.py --gauntlet <csv>; its substring buckets still match the
+# "[source_id]"-suffixed names). Then:
+#   null_band(bucket) = | VMC_s0(bucket) - VMC_s1(bucket) |
+#   arm_move(bucket)  = | VMC(bucket) - PIMC(bucket) |   (from the referee arm)
+# VERDICT RULE (pre-registered here, before the run):
+#   - If arm_move(Gruul) and arm_move(Scales) are LARGER than the null band on
+#     BOTH buckets, the referee-arm movement survives the regression control:
+#     "referee strength is a real lever" is supported.
+#   - If either is WITHIN the null band, that bucket's "toward real" movement is
+#     not distinguishable from same-referee re-measurement noise, and the
+#     referee-arm claim for it is retracted to "not established."
+# Prior effect sizes to beat (from pimc-arm-result-PI.txt): Gruul 0.089,
+# Scales 0.143. Expect the VMC-VMC null at 28 games/deck to be ~0.05-0.12 per
+# bucket (2 decks each), so Scales likely clears and Gruul is the close call.
+#
+# HARNESS
+# -------
+# arcana-ai/src/deck_corpus.rs: build_control_subset (#[ignore]) + the new
+# CORPUS_BASE_SEED knob on corpus_gauntlet. LoadedDeck.source_id + the "[source_id]"
+# name suffix make every CSV row here source-auditable (unlike the historical arm).

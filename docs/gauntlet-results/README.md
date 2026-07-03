@@ -67,6 +67,7 @@ The catalog name list used by the worklist analysis is dumped from
 | `pimc-arm-prereg-PI.txt` | **pre-registered** predictions for the referee arm (committed before the result) |
 | `fidelity_sub8_{vmc,pimc}.csv` | VMC + higher-budget-PIMC (16/160) gauntlets on the same 8-deck fidelity-fixed spanning subset |
 | `pimc-arm-result-PI.txt` | **referee arm** — mixed/partial strict prereg score; Gruul↓ and Scales↑, but thresholds mostly miss, Sultai is n=2 down, and regression-to-mean is an uncalibrated null |
+| `control-arm-PI.txt` | **same-referee control (plan/runbook)** — regression-to-mean null for the referee arm: VMC re-run at two seeds on a fresh source-auditable spanning-8; manifest + commands + pre-registered verdict rule (results appended when run) |
 
 The placement artifacts are built from the dump's recorded finish rows
 (`df_events_v2.csv` for each event's format; `events/<id>/players_info.csv` for

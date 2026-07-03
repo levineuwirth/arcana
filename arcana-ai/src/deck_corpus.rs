@@ -398,7 +398,10 @@ mod tests {
     /// Load a real decklist corpus (`KAGGLE_DECKS/<CORPUS_FORMAT>/*.txt`), report
     /// coverage, then run the gauntlet on the fully-covered subset. Env knobs:
     /// `CORPUS_FORMAT` (default PI), `CORPUS_REFEREE` (random|vmc|pimc, default
-    /// vmc), `CORPUS_DUELS` (paired duels/pair, default 5). Run:
+    /// vmc), `CORPUS_DUELS` (paired duels/pair, default 5), `CORPUS_BASE_SEED`
+    /// (root seed, default 0 — vary it to get an INDEPENDENT re-measurement of the
+    /// same decks under the same referee, i.e. the regression-to-the-mean control
+    /// null for a referee arm). Run:
     /// `KAGGLE_DECKS=/path CORPUS_FORMAT=PI cargo test -p arcana-ai --release corpus_gauntlet -- --ignored --nocapture`
     #[test]
     #[ignore]
@@ -415,6 +418,10 @@ mod tests {
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(5);
+        let base_seed: u64 = std::env::var("CORPUS_BASE_SEED")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0);
 
         let reg = arcana_cards::build_catalog();
         let dir = std::path::Path::new(&base).join(&format);
@@ -432,7 +439,7 @@ mod tests {
             referee,
             paired_duels_per_pair: duels,
             max_steps: 4000,
-            base_seed: 0,
+            base_seed,
             bootstrap_samples: 2000,
         };
         let gauntlet = run_gauntlet(&decks, &reg, &cfg);
@@ -533,5 +540,108 @@ mod tests {
         blocks.sort_by(|a, b| b.1.cmp(a.1));
         println!("\nGAP cards by # of covered decks blocked (of {n_covered}):");
         for (card, n) in blocks { println!("  {n:>3}  {card}"); }
+    }
+
+    /// Select a SOURCE-AUDITABLE spanning-N control subset from the fidelity-fixed
+    /// relaxed field (`CONTROL_IN`, i.e. the `relaxed/PI` output of
+    /// [`build_fidelity_subset`]), deterministically by source id, for the four
+    /// referee-arm buckets — Gruul Aggro, UW Spirit Aggro, Golgari Scales, Sultai
+    /// Control. Copies the picks to `CONTROL_OUT/PI` and prints a manifest mapping
+    /// each chosen source file stem to its bucket + archetype.
+    ///
+    /// This closes the provenance gap the historical 8-deck subset had: the loader
+    /// preserves the file stem as [`LoadedDeck::source_id`] and the gauntlet now
+    /// appends `[source_id]` to the deck name (see `subset-provenance-PI.txt`), so
+    /// a gauntlet run over `CONTROL_OUT` emits source-auditable CSV rows. Its
+    /// intended use is the regression-to-the-mean CONTROL for a referee arm: run
+    /// [`corpus_gauntlet`] over `CONTROL_OUT` under VMC at two `CORPUS_BASE_SEED`
+    /// values to get the same-referee re-measurement null, then compare that null
+    /// band to the VMC->PIMC bucket movement.
+    ///
+    /// Bucket substrings mirror the gauntlet side of `placement_vs_gauntlet.py`;
+    /// the FIRST matching bucket in priority order wins (independent of fullness),
+    /// so a deck never spills into a secondary bucket. Run AFTER
+    /// `build_fidelity_subset`:
+    /// `CONTROL_IN=<fidelity_out>/relaxed/PI CONTROL_OUT=<dir> cargo test -p arcana-ai --release build_control_subset -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn build_control_subset() {
+        let in_dir = std::env::var("CONTROL_IN")
+            .expect("set CONTROL_IN to the relaxed fidelity field (…/relaxed/PI)");
+        let out = std::env::var("CONTROL_OUT").expect("set CONTROL_OUT");
+        let per_bucket: usize = std::env::var("CONTROL_PER_BUCKET")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(2);
+        let reg = arcana_cards::build_catalog();
+
+        // (bucket label, archetype-name substrings). First match by priority wins.
+        let buckets: [(&str, &[&str]); 4] = [
+            ("Gruul Aggro", &["gruul aggro", "rg aggro"]),
+            ("UW Spirit Aggro", &["uw spirit aggro", "spirit", "spirits"]),
+            (
+                "Golgari Scales",
+                &["golgari aggro", "gb hardened", "golgari scales", "hardened", "harden ", "scales", "snakes"],
+            ),
+            ("Sultai Control", &["sultai control"]),
+        ];
+
+        let mut files: Vec<_> = std::fs::read_dir(&in_dir)
+            .expect("read CONTROL_IN")
+            .filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .filter(|p| p.extension().map(|x| x == "txt").unwrap_or(false))
+            .collect();
+        files.sort(); // deterministic by source-id file stem
+
+        let out_dir = std::path::Path::new(&out).join("PI");
+        std::fs::create_dir_all(&out_dir).unwrap();
+
+        // (source_id, archetype) picks per bucket.
+        let mut picked: Vec<Vec<(String, String)>> = vec![Vec::new(); buckets.len()];
+        for p in &files {
+            let stem = p
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("deck")
+                .to_string();
+            let txt = std::fs::read_to_string(p).unwrap();
+            let loaded = load_deck(stem, "PI", &txt, &reg);
+            // The relaxed field is already covered, but re-check so the control
+            // set is self-validating and gauntlet-playable (60-card maindeck).
+            if !loaded.is_playable(60, 60) {
+                continue;
+            }
+            let arch = loaded.name.to_lowercase();
+            // First matching bucket by priority, independent of fullness.
+            let Some(bi) = buckets
+                .iter()
+                .position(|(_, subs)| subs.iter().any(|s| arch.contains(s)))
+            else {
+                continue;
+            };
+            if picked[bi].len() >= per_bucket {
+                continue;
+            }
+            picked[bi].push((loaded.source_id.clone(), loaded.name.clone()));
+            std::fs::copy(p, out_dir.join(p.file_name().unwrap())).unwrap();
+        }
+
+        println!("control subset manifest (CONTROL_OUT={out}, per_bucket={per_bucket}):");
+        println!("  {:<16}  {:<16}  archetype", "bucket", "source_id");
+        let mut total = 0;
+        for (bi, (label, _)) in buckets.iter().enumerate() {
+            for (sid, arch) in &picked[bi] {
+                println!("  {label:<16}  {sid:<16}  {arch}");
+                total += 1;
+            }
+            if picked[bi].len() < per_bucket {
+                println!(
+                    "  !! {label}: only {} of {per_bucket} found in CONTROL_IN",
+                    picked[bi].len()
+                );
+            }
+        }
+        println!("total control decks: {total} (target {})", per_bucket * buckets.len());
     }
 }
