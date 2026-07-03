@@ -54,6 +54,9 @@ The catalog name list used by the worklist analysis is dumped from
 | `fidelity-subset-PI.txt` | **fidelity control** — 0/65 covered decks are zero-GAP; field collapses; blockers concentrate on synergy payoffs (worklist by leverage) |
 | `fidelity32_vmc.csv` | VMC gauntlet on the recovered 32-deck fidelity-fixed relaxed field |
 | `fidelity-vmc-vs-real-PI.txt` | **fidelity payoff check** — after the grind, VMC still fails vs real (ρ=−0.40/−0.20); only the immediate-material synergy (Spirits) came into alignment → residual is referee-bound |
+| `pimc-arm-prereg-PI.txt` | **pre-registered** predictions for the referee arm (committed before the result) |
+| `fidelity_sub8_{vmc,pimc}.csv` | VMC + higher-budget-PIMC (16/160) gauntlets on the same 8-deck fidelity-fixed spanning subset |
+| `pimc-arm-result-PI.txt` | **referee arm** — PIMC moves the two problem buckets toward real (Gruul↓, Scales↑, spread compresses) but only partially; referee strength is a real lever, not a full fix at 16/160 |
 
 The placement artifacts are built from the dump's tournament results
 (`df_events_v2.csv` for each event's format; `events/<id>/players_info.csv` for

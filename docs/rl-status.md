@@ -382,6 +382,17 @@ diverse only because its coverage happened to span several archetypes' staples.)
      confounds separate by mechanism: **fidelity** governs material-visible synergy;
      **referee strength** governs grindy synergy + aggro calibration. Caveat: N=4,
      synergy-heavy field. `docs/gauntlet-results/fidelity-vmc-vs-real-PI.txt`.
+   - **Referee arm (higher-budget PIMC on the fixed field) — directional, partial.**
+     VMC vs PIMC **16/160** on the *same* 8-deck fidelity-fixed spanning subset (2 each
+     × the 4 mapped buckets; PIMC-on-32 is ~15h, infeasible). Against **pre-registered**
+     predictions (`pimc-arm-prereg-PI.txt`, committed before the result): the two headline
+     moves both happened and were the largest — Gruul's over-rating fell (0.750→0.661) and
+     Scales' under-rating rose (0.268→0.411), both *toward* real; the spread compressed
+     (0.48→0.34). So the residuals the fidelity fix left ARE referee-bound and shrink with
+     referee strength (vs the small-PIMC 8/80 arm that barely moved). **But partial:** Gruul
+     is still #1/over-rated, and the global ρ stays negative/mixed (N=4 noise). Net across
+     the arc: **no single lever suffices** — the objective needs referee strength *and*
+     fidelity *and* field breadth. `docs/gauntlet-results/pimc-arm-result-PI.txt`.
    (b) **Pragmatic deckbuilding loop = cheap candidate generation + PIMC
    selection/hold-out**, not optimization against any single cheap scalar (the v2
    A/B showed even an improved cheap referee stays gameable). **First result
