@@ -1,0 +1,68 @@
+# CAPSULE RL BENCHMARK — experiment 1 (distill PIMC distribution into a cheap ValueMc leaf)
+# 5 capsule decks x 12 games/pair (48 games/policy/deck; 240 aggregated). PIMC 12/120.
+# Leaves trained per-deck at EQUAL 30-game self-play budget (learned-pimc: PIMC self-play; learned-rand: random).
+# Runtime per deck 626-1386s, 5 parallel jobs, no panics. Source-auditable capsule (Kaggle stems).
+
+## Aggregated policy strength (mean point-rate across 5 decks):
+  vmc-material       0.767   [0.67, 0.77, 0.85, 0.79, 0.75]
+  pimc (12/120)      0.629   [0.75, 0.54, 0.60, 0.56, 0.69]
+  vmc-learned-pimc   0.500   [0.54, 0.52, 0.42, 0.62, 0.40]
+  vmc-learned-rand   0.492   [0.44, 0.52, 0.52, 0.35, 0.62]
+  random             0.113   [0.10, 0.15, 0.10, 0.17, 0.04]
+
+## CRUX (the hypothesis): learned-pimc vs learned-rand at equal 30-game budget
+  head-to-head per deck: [0.67, 0.50, 0.33, 0.75, 0.25]  mean = 0.500  -> NULL (no difference)
+  mean point-rate: learned-pimc 0.500 ~ learned-rand 0.492
+  => distilling PIMC's DISTRIBUTION did not beat random self-play as a cheap leaf.
+
+## HELD-OUT reads (leaf vs an opponent it was NOT trained against):
+  learned-rand vs PIMC (held-out):     [0.42,0.50,0.42,0.25,0.33]  mean 0.384
+  learned-pimc vs material (held-out): [0.33,0.25,0.08,0.42,0.25]  mean 0.266
+  learned-rand vs material (held-out): [0.25,0.33,0.25,0.25,0.42]  mean 0.300
+
+## PER-DECK RAW TABLES
+--- deck 0 ---
+capsule: 1 decks — UW Spirit Aggro [23729_364730]
+  pimc              pr= 0.750  (48 games)   vs random=1.00  vs vmc-material=0.67  vs vmc-learned-rand=0.58  vs vmc-learned-pimc=0.75
+  vmc-material      pr= 0.667  (48 games)   vs random=0.92  vs vmc-learned-rand=0.75  vs vmc-learned-pimc=0.67  vs pimc=0.33
+  vmc-learned-pimc  pr= 0.542  (48 games)   vs random=0.92  vs vmc-material=0.33  vs vmc-learned-rand=0.67  vs pimc=0.25
+  vmc-learned-rand  pr= 0.438  (48 games)   vs random=0.75  vs vmc-material=0.25  vs vmc-learned-pimc=0.33  vs pimc=0.42
+  random            pr= 0.104  (48 games)   vs vmc-material=0.08  vs vmc-learned-rand=0.25  vs vmc-learned-pimc=0.08  vs pimc=0.00
+  vmc-learned-rand  vs pimc=0.42  vs material=0.25  (teacher=random)
+  vmc-learned-pimc  vs pimc=0.25  vs material=0.33  (teacher=pimc (NOT held-out))
+--- deck 1 ---
+capsule: 1 decks — Golgari Scales [23743_364886]
+  vmc-material      pr= 0.771  (48 games)   vs random=1.00  vs vmc-learned-rand=0.67  vs vmc-learned-pimc=0.75  vs pimc=0.67
+  pimc              pr= 0.542  (48 games)   vs random=0.92  vs vmc-material=0.33  vs vmc-learned-rand=0.50  vs vmc-learned-pimc=0.42
+  vmc-learned-rand  pr= 0.521  (48 games)   vs random=0.75  vs vmc-material=0.33  vs vmc-learned-pimc=0.50  vs pimc=0.50
+  vmc-learned-pimc  pr= 0.521  (48 games)   vs random=0.75  vs vmc-material=0.25  vs vmc-learned-rand=0.50  vs pimc=0.58
+  random            pr= 0.146  (48 games)   vs vmc-material=0.00  vs vmc-learned-rand=0.25  vs vmc-learned-pimc=0.25  vs pimc=0.08
+  vmc-learned-rand  vs pimc=0.50  vs material=0.33  (teacher=random)
+  vmc-learned-pimc  vs pimc=0.58  vs material=0.25  (teacher=pimc (NOT held-out))
+--- deck 2 ---
+capsule: 1 decks — Hardened Scales [23846_365831]
+  vmc-material      pr= 0.854  (48 games)   vs random=1.00  vs vmc-learned-rand=0.75  vs vmc-learned-pimc=0.92  vs pimc=0.75
+  pimc              pr= 0.604  (48 games)   vs random=1.00  vs vmc-material=0.25  vs vmc-learned-rand=0.58  vs vmc-learned-pimc=0.58
+  vmc-learned-rand  pr= 0.521  (48 games)   vs random=0.75  vs vmc-material=0.25  vs vmc-learned-pimc=0.67  vs pimc=0.42
+  vmc-learned-pimc  pr= 0.417  (48 games)   vs random=0.83  vs vmc-material=0.08  vs vmc-learned-rand=0.33  vs pimc=0.42
+  random            pr= 0.104  (48 games)   vs vmc-material=0.00  vs vmc-learned-rand=0.25  vs vmc-learned-pimc=0.17  vs pimc=0.00
+  vmc-learned-rand  vs pimc=0.42  vs material=0.25  (teacher=random)
+  vmc-learned-pimc  vs pimc=0.42  vs material=0.08  (teacher=pimc (NOT held-out))
+--- deck 3 ---
+capsule: 1 decks — Rakdos Aggro [24126_368389]
+  vmc-material      pr= 0.792  (48 games)   vs random=1.00  vs vmc-learned-rand=0.75  vs vmc-learned-pimc=0.58  vs pimc=0.83
+  vmc-learned-pimc  pr= 0.625  (48 games)   vs random=0.75  vs vmc-material=0.42  vs vmc-learned-rand=0.75  vs pimc=0.58
+  pimc              pr= 0.562  (48 games)   vs random=0.92  vs vmc-material=0.17  vs vmc-learned-rand=0.75  vs vmc-learned-pimc=0.42
+  vmc-learned-rand  pr= 0.354  (48 games)   vs random=0.67  vs vmc-material=0.25  vs vmc-learned-pimc=0.25  vs pimc=0.25
+  random            pr= 0.167  (48 games)   vs vmc-material=0.00  vs vmc-learned-rand=0.33  vs vmc-learned-pimc=0.25  vs pimc=0.08
+  vmc-learned-rand  vs pimc=0.25  vs material=0.25  (teacher=random)
+  vmc-learned-pimc  vs pimc=0.58  vs material=0.42  (teacher=pimc (NOT held-out))
+--- deck 4 ---
+capsule: 1 decks — Red Deck Wins [24148_368536]
+  vmc-material      pr= 0.750  (48 games)   vs random=1.00  vs vmc-learned-rand=0.58  vs vmc-learned-pimc=0.75  vs pimc=0.67
+  pimc              pr= 0.688  (48 games)   vs random=1.00  vs vmc-material=0.33  vs vmc-learned-rand=0.67  vs vmc-learned-pimc=0.75
+  vmc-learned-rand  pr= 0.625  (48 games)   vs random=1.00  vs vmc-material=0.42  vs vmc-learned-pimc=0.75  vs pimc=0.33
+  vmc-learned-pimc  pr= 0.396  (48 games)   vs random=0.83  vs vmc-material=0.25  vs vmc-learned-rand=0.25  vs pimc=0.25
+  random            pr= 0.042  (48 games)   vs vmc-material=0.00  vs vmc-learned-rand=0.00  vs vmc-learned-pimc=0.17  vs pimc=0.00
+  vmc-learned-rand  vs pimc=0.33  vs material=0.42  (teacher=random)
+  vmc-learned-pimc  vs pimc=0.25  vs material=0.25  (teacher=pimc (NOT held-out))
