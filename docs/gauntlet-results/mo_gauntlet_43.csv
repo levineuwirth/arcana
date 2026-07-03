@@ -1,4 +1,5 @@
 # Modern 43-deck gauntlet — vmc-material referee, 1 paired duel/pair (84 games/deck), block-bootstrap 95% CIs
+# gauntlet referee=vmc-material base_seed=0 paired_duels_per_pair=1 max_steps=4000 bootstrap_samples=2000 ci=block-bootstrap
 # MTGTop8 (Kaggle) playable Modern subset; names = MTGTop8 archetype; sorted by point_rate desc
 deck,games,wins,draws,losses,score,point_rate,ci_lo,ci_hi
 Jund,84,53,0,31,53.000,0.6310,0.5357,0.7262

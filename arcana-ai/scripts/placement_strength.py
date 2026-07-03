@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
-"""Extract per-archetype real-world tournament strength from the Kaggle MTGTop8
-dump, as a GROUND-TRUTH reference for the gauntlet rankings (rl-status §6.5 #4).
+"""Extract per-archetype MTGTop8 recorded-finish conversion from the Kaggle
+dump, as a validation proxy for the gauntlet rankings (rl-status §6.5 #4).
 
 For one format, walk every event of that format, read each player's finish
 (`player_result`, e.g. "1", "3-4", "9-16") and archetype (`player_title`),
 normalize the finish within its event, and aggregate per archetype:
 
-  entries      how many times the archetype was played (metagame share signal)
-  strength     1 - mean(normalized finish); higher = finishes better on average
-               (normalized finish = (rank-1)/(fieldsize-1), 0 = event winner)
-  top_share    fraction of entries that placed in the top eighth of their event
+  entries            how many recorded top-finish rows the archetype has
+  recorded_strength  1 - mean(normalized finish); higher = converts better
+                     within the dump's recorded finish rows
+  event_win_share    fraction of recorded entries that won their event
 
-This is intentionally a coarse, metagame-CONFOUNDED signal (popular archetypes
-regress to the mean; field strength varies by event) — it is a sanity reference
-for rank-correlation, not training truth.
+Important limitation: MTGTop8/Kaggle player rows are top-finish-censored; for
+Pioneer in this dump every usable event has only 2-8 recorded rows. The inferred
+"field size" below is therefore max recorded finish, not full event attendance.
+This is a coarse, metagame- and reporting-confounded conversion signal, not
+ground truth or training truth.
 
 Usage:
   python3 arcana-ai/scripts/placement_strength.py --zip kaggle.zip --format PI \
@@ -71,7 +73,8 @@ def main():
 
     # 2. walk each event's players_info.csv
     names = set(z.namelist())
-    agg = defaultdict(lambda: {"entries": 0, "sum_norm": 0.0, "top": 0})
+    agg = defaultdict(lambda: {"entries": 0, "sum_norm": 0.0, "wins": 0})
+    field_hist = defaultdict(int)
     n_events = 0
     n_entries = 0
     for eid in target_ids:
@@ -96,13 +99,14 @@ def main():
         if field < 2:
             continue
         n_events += 1
+        field_hist[field] += 1
         for title, (lo, _up) in parsed:
             norm = (lo - 1) / (field - 1)        # 0 = winner, 1 = last
             a = agg[title]
             a["entries"] += 1
             a["sum_norm"] += norm
-            if (lo - 1) / field < 0.125:          # top eighth of the field
-                a["top"] += 1
+            if lo == 1:
+                a["wins"] += 1
             n_entries += 1
 
     # 3. rank archetypes by strength (min-entries gate)
@@ -111,18 +115,21 @@ def main():
         if a["entries"] < args.min_entries:
             continue
         mean_norm = a["sum_norm"] / a["entries"]
-        table.append((title, a["entries"], 1.0 - mean_norm, a["top"] / a["entries"]))
+        table.append((title, a["entries"], 1.0 - mean_norm, a["wins"] / a["entries"]))
     table.sort(key=lambda t: t[2], reverse=True)
 
-    print(f"# Real-world archetype strength — format {fmt} "
+    hist = ", ".join(f"{k}:{field_hist[k]}" for k in sorted(field_hist))
+    censored = "yes" if field_hist and max(field_hist) <= 8 else "mixed"
+    print(f"# MTGTop8 recorded-finish conversion — format {fmt} "
           f"(min {args.min_entries} entries, min {args.min_stars} stars)")
     print(f"# events used: {n_events}  total entries: {n_entries}  "
           f"distinct archetypes (>= min): {len(table)}")
-    print(f"# strength = 1 - mean normalized finish (higher=better); "
-          f"top_share = frac in top 1/8 of field")
-    print(f"# {'archetype':<34} {'entries':>7} {'strength':>9} {'top_share':>10}")
-    for title, entries, strength, top in table:
-        print(f"  {title:<34} {entries:>7} {strength:>9.3f} {top:>10.3f}")
+    print(f"# recorded field-size histogram: {hist}  top8-censored={censored}")
+    print("# recorded_strength = 1 - mean normalized recorded finish; "
+          "event_win_share = event wins / recorded rows")
+    print(f"# {'archetype':<34} {'entries':>7} {'recorded_strength':>17} {'event_win_share':>15}")
+    for title, entries, strength, wins in table:
+        print(f"  {title:<34} {entries:>7} {strength:>17.3f} {wins:>15.3f}")
 
 
 if __name__ == "__main__":

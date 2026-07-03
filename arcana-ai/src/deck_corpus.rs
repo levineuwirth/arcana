@@ -40,6 +40,9 @@ use crate::deckeval::Deck;
 /// names that didn't resolve (the per-deck coverage signal).
 #[derive(Clone, Debug)]
 pub struct LoadedDeck {
+    /// Stable source identifier, usually the decklist file stem.
+    pub source_id: String,
+    /// Human-facing deck name, usually the archetype from an `About/Name` header.
     pub name: String,
     pub format: String,
     pub parsed: ParsedDeck,
@@ -82,16 +85,18 @@ impl LoadedDeck {
     /// Flatten the maindeck into the [`Deck`] shape the gauntlet wants (a flat
     /// multiset of card ids). Only meaningful when [`Self::fully_covered`].
     pub fn to_deck(&self) -> Deck {
+        let name = if self.source_id == self.name {
+            self.name.clone()
+        } else {
+            format!("{} [{}]", self.name, self.source_id)
+        };
         let mut cards = Vec::with_capacity(self.main_count() as usize);
         for (id, n) in &self.parsed.main {
             for _ in 0..*n {
                 cards.push(*id);
             }
         }
-        Deck {
-            name: self.name.clone(),
-            cards,
-        }
+        Deck { name, cards }
     }
 }
 
@@ -102,15 +107,21 @@ pub fn load_deck(
     list_text: &str,
     reg: &CardRegistry,
 ) -> LoadedDeck {
+    let source_id = name.into();
     let parsed = parse_deck_text(list_text, reg);
     // An `About`/`Name` header (e.g. the archetype) wins; the passed `name`
     // (file stem) is the fallback when the list carries no name.
     let name = if parsed.name.is_empty() {
-        name.into()
+        source_id.clone()
     } else {
         parsed.name.clone()
     };
-    LoadedDeck { name, format: format.into(), parsed }
+    LoadedDeck {
+        source_id,
+        name,
+        format: format.into(),
+        parsed,
+    }
 }
 
 /// Convenience: load every `*.txt` decklist in `dir` under one format tag (the
@@ -342,6 +353,20 @@ mod tests {
         let small = load_deck("tiny", "modern", "Deck\n4 Lightning Bolt\n", &reg);
         assert!(small.fully_covered() && !small.is_playable(60, 60));
         assert_eq!(playable_decks(&[small], 60, 60).len(), 0);
+    }
+
+    #[test]
+    fn deck_names_keep_source_id_when_header_renames_deck() {
+        let reg = arcana_cards::build_catalog();
+        let loaded = load_deck(
+            "24148_368536",
+            "pioneer",
+            "About\nName Red Deck Wins\nDeck\n10 Lightning Bolt\n50 Mountain\n",
+            &reg,
+        );
+        assert_eq!(loaded.source_id, "24148_368536");
+        assert_eq!(loaded.name, "Red Deck Wins");
+        assert_eq!(loaded.to_deck().name, "Red Deck Wins [24148_368536]");
     }
 
     /// Scan a converted corpus (base dir with per-format subdirs of `*.txt`)

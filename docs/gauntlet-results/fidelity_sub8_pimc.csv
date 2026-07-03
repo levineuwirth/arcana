@@ -1,3 +1,6 @@
+# gauntlet referee=pimc base_seed=0 paired_duels_per_pair=2 max_steps=4000 bootstrap_samples=2000 ci=block-bootstrap
+# pimc_budget samples=16 cap=160 max_candidates=8
+# historical CSV: emitted before source ids were preserved in deck names; see subset-provenance-PI.txt
 deck,games,wins,draws,losses,score,point_rate,ci_lo,ci_hi
 Sultai Control,28,7,0,21,7.000,0.2500,0.0714,0.4643
 Sultai Control,28,11,0,17,11.000,0.3929,0.1786,0.6071

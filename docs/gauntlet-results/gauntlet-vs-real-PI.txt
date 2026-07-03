@@ -1,46 +1,50 @@
-# GROUND-TRUTH CHECK (rl-status 6.5 #4): does the gauntlet's VmcMaterial ranking
-# track real MTGTop8 finishes? SHORT ANSWER: no — near-zero to mildly NEGATIVE.
-# - Spearman rho vs real mean-finish = 0.000; vs real top-8 share = -0.393.
-# - Extremes INVERT, and restricting to WEIGHTIER events sharpens it: our #1
-#   Gruul/RG Aggro has a 0.000 top-8 share in 40 >=2-star events (never converts);
-#   our WORST cluster (Golgari/Hardened Scales) has the BEST mean finish (0.600).
-# - SPREAD: gauntlet spans 0.30-0.82; reality compresses to ~0.51-0.60 (~6x).
-# CAVEATS: N=7 fuzzy-matched buckets; real strengths sit in a narrow band, so
-#   mean-finish rank is low-signal (hence the sharper top-8 metric + the min-stars
-#   sensitivity). Real strength is metagame-confounded, not training truth. The
-#   ROBUST claims are the inverted extremes + the negative top-8 rho + the spread.
+# EXTERNAL VALIDATION CHECK (historical filename: "vs-real"): does the
+# gauntlet's VmcMaterial ranking track the MTGTop8 recorded-conversion proxy?
+# SHORT ANSWER: no — repaired conservative aliases still give negative/near-zero rho.
+#
+# IMPORTANT TARGET CAVEAT: the Kaggle/MTGTop8 rows used here are top-finish-censored.
+# In Pioneer, all 528 usable events have only 2-8 recorded rows. So "recorded"
+# is mean conversion among recorded finishers, and "event_win" is event wins /
+# recorded rows. This is NOT full-field archetype strength or P(make top 8).
+#
+# - Repaired Spearman rho vs recorded_strength = -0.200; vs event_win_share = -0.300.
+# - At min_stars >= 2, rho stays negative/near-zero: -0.100 / -0.100.
+# - Alias repair removes Rakdos Aggro -> Mono Black Aggro and the Devotion-to-Golgari
+#   Mono-Green misjoin, and widens Scales' MTGTop8 variants. N is now 5 buckets.
+# - The usable conclusion is only: VMC does not track this external conversion proxy.
+#   Do not cite these as real-world strength estimates.
 # Regenerate: arcana-ai/scripts/placement_vs_gauntlet.py [--min-stars N] (see header).
 
 ===== all Pioneer events =====
-# Gauntlet point-rate vs real MTGTop8 strength — format PI (min_stars=0)
-# bucket                  g_n gauntlet_pr  real_n  real_str  real_top8
+# Gauntlet point-rate vs MTGTop8 recorded-finish conversion — format PI (min_stars=0)
+# NOTE: MTGTop8/Kaggle rows are top-finish-censored; event_win_share is
+# event wins / recorded rows, not top-8 probability or full-field strength.
+# bucket                  g_n gauntlet_pr   mtg_n  recorded  event_win
   Gruul/RG Aggro            4       0.822      86     0.511      0.093
   Mono-Red (RDW)            7       0.725     234     0.582      0.167
-  Rakdos Aggro              1       0.705     234     0.587      0.145
   UW Spirit Aggro           8       0.592     151     0.594      0.192
   Sultai Control            2       0.525      70     0.512      0.186
-  Golgari/HardScales       28       0.349      36     0.542      0.111
-  Mono-Green Aggro          1       0.303     135     0.535      0.178
+  Golgari/HardScales       27       0.351      96     0.526      0.104
 
-# Spearman rho (gauntlet_pr vs ...), N=7 buckets:
-#   vs real_str (mean finish, compressed): 0.000
-#   vs real_top8 (top-1/8 share, sharper): -0.393
-# A NEGATIVE/near-zero rho on BOTH = the cheap referee does not track
-# real-world strength on these archetypes (robust to the metric choice).
+# Spearman rho (gauntlet_pr vs ...), N=5 buckets:
+#   vs recorded_strength (mean recorded finish): -0.200
+#   vs event_win_share (recorded event wins): -0.300
+# A NEGATIVE/near-zero rho on BOTH = this referee does not track the
+# MTGTop8 recorded-conversion proxy on these archetypes.
 
 ===== weightier events only (min_stars >= 2) =====
-# Gauntlet point-rate vs real MTGTop8 strength — format PI (min_stars=2)
-# bucket                  g_n gauntlet_pr  real_n  real_str  real_top8
+# Gauntlet point-rate vs MTGTop8 recorded-finish conversion — format PI (min_stars=2)
+# NOTE: MTGTop8/Kaggle rows are top-finish-censored; event_win_share is
+# event wins / recorded rows, not top-8 probability or full-field strength.
+# bucket                  g_n gauntlet_pr   mtg_n  recorded  event_win
   Gruul/RG Aggro            4       0.822      40     0.481      0.000
   Mono-Red (RDW)            7       0.725     129     0.603      0.186
-  Rakdos Aggro              1       0.705     152     0.594      0.151
   UW Spirit Aggro           8       0.592      79     0.590      0.139
   Sultai Control            2       0.525      39     0.534      0.179
-  Golgari/HardScales       28       0.349      23     0.600      0.130
-  Mono-Green Aggro          1       0.303      80     0.520      0.188
+  Golgari/HardScales       27       0.351      48     0.587      0.125
 
-# Spearman rho (gauntlet_pr vs ...), N=7 buckets:
-#   vs real_str (mean finish, compressed): 0.036
-#   vs real_top8 (top-1/8 share, sharper): -0.393
-# A NEGATIVE/near-zero rho on BOTH = the cheap referee does not track
-# real-world strength on these archetypes (robust to the metric choice).
+# Spearman rho (gauntlet_pr vs ...), N=5 buckets:
+#   vs recorded_strength (mean recorded finish): -0.100
+#   vs event_win_share (recorded event wins): -0.100
+# A NEGATIVE/near-zero rho on BOTH = this referee does not track the
+# MTGTop8 recorded-conversion proxy on these archetypes.

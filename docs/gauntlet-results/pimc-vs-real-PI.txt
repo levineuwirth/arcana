@@ -1,58 +1,58 @@
-# DIRECT PIMC-vs-real check (rl-status §6.5 (6a)) — first cut, on the SAME 12-deck
-# Pioneer subset scored under both referees (pi_subset12_{vmc,pimc}.csv). This is the
-# check the earlier drafts said was 'outstanding' — now run. SHORT ANSWER: PIMC also
-# fails; it is LESS aggro-biased than vmc but still not aligned with real strength.
+# DIRECT PIMC-vs-validation check (rl-status §6.5 (6a)) — first cut, on the
+# SAME 12-deck Pioneer subset scored under both referees (pi_subset12_{vmc,pimc}.csv).
+# SHORT ANSWER: small-PIMC also fails the MTGTop8 recorded-conversion proxy.
 #
-# Spearman rho vs real MTGTop8 strength (6 matched archetype buckets):
-#                    vs real mean-finish   vs real top-8 share
-#   VmcMaterial            +0.257               -0.029
-#   small-PIMC             -0.086               -0.486
+# Spearman rho vs MTGTop8 recorded-conversion proxy (5 conservative matched buckets):
+#                    vs recorded_strength   vs event_win_share
+#   VmcMaterial            +0.100                 -0.100
+#   small-PIMC             -0.100                 -0.500
 #
 # READ:
-# - Neither referee tracks real-world Pioneer archetype strength on the matched
-#   buckets. small-PIMC is if anything WORSE here (rho vs top-8 = -0.49): its #1 deck
-#   Gruul/RG Aggro (0.750) is real-world WEAKEST (top-8 share 0.093), while its low
-#   decks (UW Spirit 0.500, Sultai Control 0.364) are real-world strong.
-# - PIMC IS less aggro-biased than vmc (moves synergy up: Golgari/HardScales
-#   0.303 vmc -> 0.364 PIMC), consistent with the capsule A/B. But 'less biased'
-#   is NOT 'aligned with real' — PIMC still over-rates aggro in absolute rank.
-# - So 'PIMC tracks reality' is FALSE even directly. The residual bias likely reflects
-#   CARD FIDELITY (our approximated non-aggro payoffs weaken synergy/control decks
-#   regardless of referee) + FIELD confound (point-rate-in-subset != metagame strength),
-#   not only referee strength. Referee quality is necessary but NOT sufficient.
-# CAVEATS: small-PIMC budget (8/80) is under-powered vs the capsule's 16/160; N=6 fuzzy
-#   buckets; 22 games/deck; narrow real band; metagame confound. A HIGHER-BUDGET-PIMC
-#   direct check + a fidelity-controlled deck set are the honest next steps.
+# - Neither referee tracks the external conversion proxy on these matched buckets.
+#   small-PIMC is if anything worse on event-win conversion: its top bucket is
+#   Gruul/RG Aggro (event_win 0.093), while UW Spirit and Sultai have higher
+#   recorded conversion.
+# - PIMC is still less material/aggro-biased than VMC in some pairwise movements
+#   (for example Golgari/HardScales 0.303 -> 0.364), consistent with the capsule
+#   A/B. But "less biased" is not "aligned with the validation target."
+# - The target is top-finish-censored. These numbers do not establish alignment
+#   or misalignment with full-field Magic strength.
+# CAVEATS: small-PIMC budget (8/80) is under-powered vs the capsule's 16/160; N=5
+#   fuzzy buckets; 22 games/deck; narrow, censored target band; metagame/reporting
+#   confound. A better full-field or match-level external target would be required
+#   before training to any full-field external strength target.
 # Regenerate: placement_vs_gauntlet.py --gauntlet pi_subset12_{pimc,vmc}.csv
 
-===== small-PIMC subset vs real =====
-# Gauntlet point-rate vs real MTGTop8 strength — format PI (min_stars=0)
-# bucket                  g_n gauntlet_pr  real_n  real_str  real_top8
+===== small-PIMC subset vs MTGTop8 recorded conversion =====
+# Gauntlet point-rate vs MTGTop8 recorded-finish conversion — format PI (min_stars=0)
+# NOTE: MTGTop8/Kaggle rows are top-finish-censored; event_win_share is
+# event wins / recorded rows, not top-8 probability or full-field strength.
+# bucket                  g_n gauntlet_pr   mtg_n  recorded  event_win
   Gruul/RG Aggro            2       0.750      86     0.511      0.093
   Mono-Red (RDW)            1       0.682     234     0.582      0.167
-  Rakdos Aggro              1       0.636     234     0.587      0.145
   UW Spirit Aggro           1       0.500     151     0.594      0.192
-  Golgari/HardScales        3       0.364      36     0.542      0.111
+  Golgari/HardScales        3       0.364      96     0.526      0.104
   Sultai Control            1       0.364      70     0.512      0.186
 
-# Spearman rho (gauntlet_pr vs ...), N=6 buckets:
-#   vs real_str (mean finish, compressed): -0.086
-#   vs real_top8 (top-1/8 share, sharper): -0.486
-# A NEGATIVE/near-zero rho on BOTH = the cheap referee does not track
-# real-world strength on these archetypes (robust to the metric choice).
+# Spearman rho (gauntlet_pr vs ...), N=5 buckets:
+#   vs recorded_strength (mean recorded finish): -0.100
+#   vs event_win_share (recorded event wins): -0.500
+# A NEGATIVE/near-zero rho on BOTH = this referee does not track the
+# MTGTop8 recorded-conversion proxy on these archetypes.
 
-===== VmcMaterial subset vs real (same 12 decks) =====
-# Gauntlet point-rate vs real MTGTop8 strength — format PI (min_stars=0)
-# bucket                  g_n gauntlet_pr  real_n  real_str  real_top8
+===== VmcMaterial subset vs MTGTop8 recorded conversion (same 12 decks) =====
+# Gauntlet point-rate vs MTGTop8 recorded-finish conversion — format PI (min_stars=0)
+# NOTE: MTGTop8/Kaggle rows are top-finish-censored; event_win_share is
+# event wins / recorded rows, not top-8 probability or full-field strength.
+# bucket                  g_n gauntlet_pr   mtg_n  recorded  event_win
   Mono-Red (RDW)            1       0.864     234     0.582      0.167
-  Rakdos Aggro              1       0.682     234     0.587      0.145
   Gruul/RG Aggro            2       0.670      86     0.511      0.093
   UW Spirit Aggro           1       0.614     151     0.594      0.192
   Sultai Control            1       0.432      70     0.512      0.186
-  Golgari/HardScales        3       0.303      36     0.542      0.111
+  Golgari/HardScales        3       0.303      96     0.526      0.104
 
-# Spearman rho (gauntlet_pr vs ...), N=6 buckets:
-#   vs real_str (mean finish, compressed): 0.257
-#   vs real_top8 (top-1/8 share, sharper): -0.029
-# A NEGATIVE/near-zero rho on BOTH = the cheap referee does not track
-# real-world strength on these archetypes (robust to the metric choice).
+# Spearman rho (gauntlet_pr vs ...), N=5 buckets:
+#   vs recorded_strength (mean recorded finish): 0.100
+#   vs event_win_share (recorded event wins): -0.100
+# A NEGATIVE/near-zero rho on BOTH = this referee does not track the
+# MTGTop8 recorded-conversion proxy on these archetypes.

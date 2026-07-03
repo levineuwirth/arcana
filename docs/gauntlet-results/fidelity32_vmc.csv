@@ -1,3 +1,5 @@
+# gauntlet referee=vmc-material base_seed=0 paired_duels_per_pair=1 max_steps=4000 bootstrap_samples=2000 ci=block-bootstrap
+# historical CSV: emitted before source ids were preserved in deck names; see subset-provenance-PI.txt
 deck,games,wins,draws,losses,score,point_rate,ci_lo,ci_hi
 UW Aggro,62,25,0,37,25.000,0.4032,0.2903,0.5323
 UW Aggro,62,27,0,35,27.000,0.4355,0.3222,0.5484

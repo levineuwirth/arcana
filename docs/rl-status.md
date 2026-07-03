@@ -217,11 +217,12 @@ diverse only because its coverage happened to span several archetypes' staples.)
   stronger referee (PIMC, or a value that can pilot synergy) might reorder decks
   substantially. **Answered in §6.5:** the ranking IS strongly referee-dependent
   at the extremes (aggro/synergy), and optimizing against VmcMaterial reward-hacks.
-- **No ground truth.** The §§3–4 rankings are not validated against real tournament
-  results — "Gruul Aggro #1 in our Pioneer gauntlet" is a statement about our
-  referee + our catalog, not the real metagame. **Answered in §6.5 (4):** now
-  checked — VmcMaterial has ρ≈0 vs real MTGTop8 finishes (it *fails* this check);
-  a direct PIMC-vs-real check is still outstanding.
+- **External validation target.** The §§3–4 rankings are not validated against
+  full-field tournament results — "Gruul Aggro #1 in our Pioneer gauntlet" is a
+  statement about our referee + our catalog, not the real metagame. **Answered
+  in §6.5 (4):** checked against the MTGTop8 recorded-finish conversion proxy,
+  where VmcMaterial fails; the proxy itself is top-finish-censored and cannot
+  support "real Magic strength" claims alone.
 - **Coverage selection bias** (see §3.5) — the field is not the real metagame; it
   is a non-random subset determined by what we've implemented.
 - **Coverage ≠ fidelity.** A deck counted "playable" has every maindeck card
@@ -244,15 +245,15 @@ diverse only because its coverage happened to span several archetypes' staples.)
 ## 6. Open questions — where we want your opinion
 
 > **These were the refresh-1 framing.** Questions 1, 2, and 4 are largely
-> **answered in §6.5** (referee sensitivity + ground-truth check ran; deckbuilding
+> **answered in §6.5** (referee sensitivity + external validation check ran; deckbuilding
 > optimization *was* premature against the biased objective) — kept here for
 > provenance. Questions 3, 5, 6 are still live.
 
 1. **What makes a deck-strength eval trustworthy?** Given the referee bias, is the
    right move (a) invest in a stronger/faster referee (PIMC at scale; or finally a
-   learned value that *can* pilot synergy), (b) validate against real win-rates
-   (treat MTGTop8 placements / external meta win% as labels and check rank
-   correlation), or (c) accept "strength under referee X" as the definition and
+   learned value that *can* pilot synergy), (b) find full-field/match-level validation
+   data (MTGTop8 recorded placements are censored), or (c) accept
+   "strength under referee X" as the definition and
    move on to optimization?
 2. **Referee sensitivity.** Cheapest informative experiment: re-run the same field
    under Random / VmcMaterial / PIMC and measure how much the ranking moves. If
@@ -295,7 +296,7 @@ diverse only because its coverage happened to span several archetypes' staples.)
    PIMC). The effect looked modest here (~0.10 mean point-rate Δ, noisy at 22
    games/deck), so the tentative read ("directionally safe, mildly aggro-
    exploiting") was **too generous** — the higher-budget-PIMC arm (3) and the
-   ground-truth check (4) found the misalignment is severe, not mild.
+   external-validation check (4) found the misalignment is severe, not mild.
 2. **Coverage capsules, not broad coverage** — deliberately implement the
    blockers for 4–6 *chosen* archetypes per format, to get diverse experimental
    domains instead of the current Jund/aggro skew. (Built one honest Pioneer
@@ -326,39 +327,30 @@ diverse only because its coverage happened to span several archetypes' staples.)
      stays gameable. **Take:** adopt v2 as the gauntlet judge; for optimization use
      PIMC-in-the-loop / PIMC-distilled, or a referee *ensemble* + PIMC hold-out —
      not any single cheap proxy.
-4. **MTGTop8 placement as *validation* — done; VmcMaterial fails it.** Per-archetype
-   real strength from the dump's tournament finishes (`player_result` over 528
-   Pioneer events) vs our gauntlet point-rate, collapsed into 7 confidently-matched
-   archetype buckets: **Spearman ρ = 0.00** (mean finish) / **−0.39** (top-8 share,
-   sharper). The extremes invert — our #1 Gruul/RG Aggro is real-world *weakest*
-   (0.000 top-8 share in ≥2-star events), our worst Scales-synergy cluster is
-   real-world mid-to-strong — and our referee manufactures a 0.30–0.82 spread where
-   reality compresses to ~0.51–0.60. Caveats (N=7 fuzzy buckets, narrow real band,
-   metagame confound) in `docs/gauntlet-results/gauntlet-vs-real-PI.txt`.
-   Together (3) and (4) establish that **VmcMaterial fails the real-world check**
-   (ρ≈0) and that **PIMC disagrees with VmcMaterial in the more plausible
-   direction** on the key Scales/aggro cases (synergy up, the aggro pile down).
-   They do **not** show PIMC *itself* correlating with real tournament buckets —
-   and the direct check (6a) confirms **PIMC also fails it** (ρ ≈ −0.09 / −0.49 on
-   the matched subset): less aggro-biased than vmc, but not aligned with real. So
-   the binding constraints are *referee quality **and** card fidelity **and** field
-   representativeness* together — not optimizer sophistication, and not the referee
-   alone.
+4. **MTGTop8 placement as *validation* — repaired; VmcMaterial fails the proxy.**
+   The Kaggle/MTGTop8 rows are top-finish-censored: in Pioneer, all 528 usable
+   events have only 2–8 recorded finishers. So the external target is **recorded
+   conversion**, not full-field real strength or P(make top 8). After repairing
+   aliases (drop Rakdos→Mono-Black proxy, remove Devotion-to-Golgari misjoin,
+   widen Scales variants), VmcMaterial vs the MTGTop8 conversion proxy is
+   **Spearman ρ = −0.20** (recorded finish) / **−0.30** (event-win share) over 5
+   conservative buckets. The conclusion is limited but clear: **VmcMaterial does
+   not track this external proxy.** It does not establish alignment or
+   misalignment with full-field Magic strength. See
+   `docs/gauntlet-results/gauntlet-vs-real-PI.txt` and
+   `docs/gauntlet-results/validation-target-audit-PI.txt`.
 5. **Defer the generic learned value-leaf** — deckbuilding needs a stable
    objective more than another value head; better ML later is
    action-ranking/distillation from search or a deck-level surrogate.
 6. **Objective validation.**
-   (a) **Direct PIMC-vs-real check — done (first cut); PIMC ALSO fails.** On the
-   *same* 12-deck Pioneer subset scored under both referees, Spearman vs real
-   MTGTop8 strength: vmc **+0.26 / −0.03** (mean-finish / top-8); small-PIMC
-   **−0.09 / −0.49** — no better than vmc, arguably worse. small-PIMC is *less
-   aggro-biased* than vmc (it nudges synergy up: Golgari/Scales 0.30→0.36) but its
-   absolute ranking still over-rates aggro (its #1 Gruul/RG Aggro is real-world
-   *weakest*). So **"PIMC tracks reality" is false even directly** — the residual
-   bias implicates **card fidelity** (approximated non-aggro payoffs weaken
-   synergy/control *regardless* of referee) + **field confound**, not only referee
-   strength; referee quality is *necessary but not sufficient*. Caveat: small-PIMC
-   (8/80) is under-powered vs the capsule's 16/160.
+   (a) **Direct PIMC-vs-validation check — done (first cut); PIMC also fails the
+   proxy.** On the *same* 12-deck Pioneer subset scored under both referees,
+   Spearman vs MTGTop8 recorded conversion: vmc **+0.10 / −0.10** (recorded /
+   event-win); small-PIMC **−0.10 / −0.50**. small-PIMC is less material-biased in
+   some movements (Golgari/Scales 0.30→0.36), but that is not external alignment.
+   The result implicates **referee quality**, **card fidelity**, **field
+   representativeness**, and now **validation-target censoring** together. Caveat:
+   small-PIMC (8/80) is under-powered vs the capsule's 16/160.
    `docs/gauntlet-results/pimc-vs-real-PI.txt`.
    - **Fidelity-controlled control set — attempted; the field COLLAPSES.** To
      separate referee-bias from card-fidelity-bias, restrict to Pioneer decks with
@@ -372,34 +364,30 @@ diverse only because its coverage happened to span several archetypes' staples.)
      decks), Supreme Phantom / Empyrean Eagle anthems (9/8), Soul-Scar Mage, Torbran
      — i.e. exactly the non-aggro payoffs whose elision weakens synergy decks under
      *any* referee. This is the plausible **mechanism** behind the direct-check
-     failure: even PIMC over-rates aggro vs real partly *because the synergy payoffs
-     are GAP'd*. `docs/gauntlet-results/fidelity-subset-PI.txt`.
-   - **Fidelity grind + payoff check — fidelity helps where it *mechanically can*,
-     but VMC still fails.** A targeted grind recovered the synergy payoffs (Hangarback
+     failure: even PIMC over-rates aggro against the external proxy partly *because
+     the synergy payoffs are GAP'd*. `docs/gauntlet-results/fidelity-subset-PI.txt`.
+   - **Fidelity grind + payoff check — VMC still fails the proxy.** A targeted grind
+     recovered the synergy payoffs (Hangarback
      death-Thopters + counter-pump, Supreme Phantom / Empyrean Eagle anthems, Winding
      Constrictor, Smuggler's Copter loot, Fatal Push Revolt + a new
      `permanent_left_battlefield_this_turn` accessor) — un-collapsing the relaxed field
-     **4 → 32 decks / 3 → 15 archetypes**. Re-running VMC-vs-real on that fidelity-fixed
-     field: **ρ = −0.40 / −0.20** (mean/top-8, N=4) — no global improvement over the
-     0.00–0.26 baselines. But the *decomposition* is the result: the fix brought the
-     synergy whose payoff is **immediate board material** into alignment (UW Spirit
-     anthems: vmc 0.65 ≈ real 0.59), while **grindy** synergy stayed under-rated
-     (Golgari Scales 0.37 vs real 0.54 — executes now, but 4-rollout material can't
-     pilot it) and **aggro over-rating** was untouched (Gruul 0.78 vs 0.51). So the two
-     confounds separate by mechanism: **fidelity** governs material-visible synergy;
-     **referee strength** governs grindy synergy + aggro calibration. Caveat: N=4,
-     synergy-heavy field. `docs/gauntlet-results/fidelity-vmc-vs-real-PI.txt`.
-   - **Referee arm (higher-budget PIMC on the fixed field) — directional, partial.**
+     **4 → 32 decks / 3 → 15 title strings**. Re-running VMC on that field:
+     **ρ = −0.40 / −0.20** (recorded/event-win, N=4) — no global improvement.
+     Post-fix Spirits sit near the target, but pre-fix Spirits were already near it
+     in a different field, so the causal "anthem fix aligned Spirits" read is only a
+     plausible engineering interpretation. Grindy Scales remains under-rated and
+     Gruul over-rated. Caveat: N=4, synergy-heavy field, censored target.
+     `docs/gauntlet-results/fidelity-vmc-vs-real-PI.txt`.
+   - **Referee arm (higher-budget PIMC on the fixed field) — mixed, partial.**
      VMC vs PIMC **16/160** on the *same* 8-deck fidelity-fixed spanning subset (2 each
      × the 4 mapped buckets; PIMC-on-32 is ~15h, infeasible). Against **pre-registered**
-     predictions (`pimc-arm-prereg-PI.txt`, committed before the result): the two headline
-     moves both happened and were the largest — Gruul's over-rating fell (0.750→0.661) and
-     Scales' under-rating rose (0.268→0.411), both *toward* real; the spread compressed
-     (0.48→0.34). So the residuals the fidelity fix left ARE referee-bound and shrink with
-     referee strength (vs the small-PIMC 8/80 arm that barely moved). **But partial:** Gruul
-     is still #1/over-rated, and the global ρ stays negative/mixed (N=4 noise). Net across
-     the arc: **no single lever suffices** — the objective needs referee strength *and*
-     fidelity *and* field breadth. `docs/gauntlet-results/pimc-arm-result-PI.txt`.
+     predictions (`pimc-arm-prereg-PI.txt`, committed before the result): Gruul fell
+     (0.750→0.661) and Scales rose (0.268→0.411), the two most interesting movements.
+     But strict scoring is mixed: Gruul missed the <0.60 threshold, Sultai moved down
+     at n=2, Gruul remained the single top deck, and event-win rho worsened. Regression
+     to the mean is an uncalibrated null because no same-referee VMC re-run on the same
+     8 decks was run. Net: referee choice matters, but PIMC 16/160 is not validated as
+     aligned with the external target. `docs/gauntlet-results/pimc-arm-result-PI.txt`.
    (b) **Pragmatic deckbuilding loop = cheap candidate generation + PIMC
    selection/hold-out**, not optimization against any single cheap scalar (the v2
    A/B showed even an improved cheap referee stays gameable). **First result
@@ -430,28 +418,24 @@ Temur Midrange 9%), and coverage selection bias can collapse a "format" to one
 archetype (Modern became a 42/43 Jund mirror).
 
 We then built one honest Pioneer **capsule** and closed the deckbuilding loop —
-and the loop *diagnosed its own objective*. Three results converge: the
-optimized deck (good under VmcMaterial) is the **worst** deck in its field under
-a higher-budget **PIMC** (point-rate 0.13 vs every seed ≥0.21); the VmcMaterial
-gauntlet has **zero-to-negative rank correlation with real MTGTop8 finishes**
-(ρ = 0.00 mean-finish, −0.39 top-8); and while **PIMC is less aggro-biased than
-VmcMaterial** (it nudges the buried synergy decks up), a *direct* PIMC-vs-real
-check shows **PIMC also fails the real-world correlation** (ρ ≈ −0.09 / −0.49) —
-so referee quality alone is not the fix.
+and the loop *diagnosed its own objective*. The optimized deck (good under
+VmcMaterial) is the **worst** deck in its field under higher-budget **PIMC**
+(point-rate 0.13 vs every seed ≥0.21), and even MaterialValueV2 remains gameable
+as a target. That internal Goodhart finding is the strongest result here.
 
-The takeaway sharpened: it is **not** that VmcMaterial is "directionally right
-but noisy" — optimizing against it is reward-hacking, and the rankings are
-*"strength under a referee that does not track reality."* But the direct
-PIMC-vs-real check reframes the fix: **referee quality is a binding constraint,
-not the only one** — **card fidelity** (approximated non-aggro payoffs) and
-**field representativeness** bind too, since even PIMC over-rates aggro vs real.
-The concrete next step is **objective validation, not more optimization**: a
-*higher-budget* PIMC-vs-real check + a fidelity-controlled deck set (small and
-expensive is fine) — because the central claim above depends on it. After that,
-the pragmatic deckbuilding loop is **cheap candidate generation + PIMC
-selection/hold-out**, not optimization against any single cheap scalar — the v2
-A/B (§6.5 (3)) showed that even an *improved* cheap referee stays gameable as a
-target. The `deckbuild_capsule_pimc_select` experiment (§6.5 (6b)) tested exactly that:
-**selection helps, with a ceiling** — a PIMC finalist pass recovers a coherent
-mid-field deck the single-shot optimizer missed, but not one that beats the top
-seed decks. Widening the candidate pool is the lever.
+The external validation branch was repaired after review. MTGTop8/Kaggle gives
+recorded top finishers only, not full tournament fields. Against that censored
+conversion proxy, VmcMaterial is still zero-to-negative (ρ = −0.20 recorded,
+−0.30 event-win after alias repair), and small-PIMC also fails the proxy
+(−0.10 / −0.50). The higher-budget PIMC arm moves Gruul down and Scales up, but
+strict pre-registration scoring is mixed, Sultai is an n=2 miss, and regression
+to the mean is uncalibrated.
+
+The takeaway sharpened again: optimizing against VmcMaterial is reward-hacking,
+but "PIMC fixes real alignment" is not established either. The objective is
+limited by referee strength, card fidelity, field breadth, and the validation
+target itself. The next concrete work is validation-first: find better full-field
+or match-level external data and run a same-referee control on source-auditable
+subsets before treating future referee movement as signal. In parallel, the
+pragmatic deckbuilding loop remains **cheap candidate generation + PIMC
+selection/hold-out**, not optimization against any single cheap scalar.

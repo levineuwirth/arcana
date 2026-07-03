@@ -10,8 +10,9 @@
 #   strict  (zero GAP):             0 decks
 #   relaxed (+shocklands allowed):  4 decks  (2 Gruul Aggro, 1 Azorius Aggro, 1 Hardened Scales)
 # => 0 strict; 3 archetypes at relaxed. This is a FIELD-COLLAPSE finding, NOT a correlation
-#    finding (< ~5 matched buckets): the vmc/PIMC-vs-real check cannot be re-run on a clean
-#    field because there isn't one. (No gauntlet was run on 4 decks / 3 aggro-ish archetypes.)
+#    finding (< ~5 matched buckets): the vmc/PIMC-vs-MTGTop8-conversion check cannot
+#    be re-run on a clean field because there isn't one. (No gauntlet was run on 4
+#    decks / 3 aggro-ish archetypes.)
 #
 # GAP cards by # of covered decks blocked (of 65) — the fidelity worklist BY LEVERAGE:
 #   33 Overgrown Tomb    19 Hangarback Walker   15 Once Upon a Time   14 Hallowed Fountain
@@ -32,13 +33,14 @@
 #   (counter engine + death-Thopters), Supreme Phantom / Empyrean Eagle (Spirit/flier
 #   anthems), Soul-Scar Mage, Torbran — exactly the non-aggro payoffs whose elision weakens
 #   synergy decks REGARDLESS of referee. This is the plausible MECHANISM behind the
-#   direct-check finding (pimc-vs-real-PI.txt): even PIMC over-rates aggro vs real partly
-#   BECAUSE the synergy payoffs are GAP'd, so synergy decks can't execute their plan under
-#   any referee.
+#   direct-check finding (pimc-vs-real-PI.txt): even PIMC over-rates aggro against the
+#   external conversion proxy partly BECAUSE the synergy payoffs are GAP'd, so synergy
+#   decks can't execute their plan under any referee.
 # - So referee quality is necessary but NOT sufficient; FIDELITY is a co-equal, pervasive,
 #   payoff-concentrated confound that field-restriction cannot dodge on this corpus.
 # NEXT: to un-collapse the field, a targeted FIDELITY grind of the top NON-LAND blockers
 #   (Hangarback Walker, Once Upon a Time, Fatal Push, Smuggler's Copter, Supreme Phantom,
 #   Empyrean Eagle, Wild Slash, Heart of Kiran, Soul-Scar Mage) — then re-run this survival
-#   and the vmc/PIMC-vs-real correlation on the recovered field. Fix the synergy payoffs
-#   first (they carry the fidelity-vs-referee disentanglement); shocklands last.
+#   and the vmc/PIMC-vs-MTGTop8-conversion correlation on the recovered field. Fix the
+#   synergy payoffs first (they carry the fidelity-vs-referee disentanglement);
+#   shocklands last.

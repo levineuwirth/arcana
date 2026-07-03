@@ -1,6 +1,11 @@
 # PRE-REGISTERED predictions — higher-budget PIMC referee arm (16/160) on the 8-deck
 # fidelity-fixed spanning subset (2 each: Golgari Scales, UW Spirit Aggro, Gruul Aggro,
 # Sultai Control). COMMITTED BEFORE the PIMC result to keep the readout honest.
+# POST-REVIEW LABEL NOTE: this is a historical preregistration artifact. The labels
+# "real_str" and "real_top8" below should now be read as MTGTop8 recorded_strength
+# and event_win_share; the dump is top-finish-censored, not full-field ground truth.
+# The numeric target values below are the pre-repair alias-map values as preregistered;
+# pimc-arm-result-PI.txt gives the repaired-target scoring.
 # Controlled comparison: the SAME 8 decks under VMC (done) and PIMC (running).
 # (PIMC on all 32 decks = ~992 games ~15h -> compute-infeasible; hence a balanced subset
 #  with VMC re-run on the same decks.)

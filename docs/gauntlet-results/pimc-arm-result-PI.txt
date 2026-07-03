@@ -2,39 +2,47 @@
 # Scored against pimc-arm-prereg-PI.txt (predictions committed 3da04f46 BEFORE this run).
 # CORPUS_DUELS=2 (28 games/deck). Controlled: identical decks under both referees.
 #
-#   bucket             VMC    PIMC    delta   real_str  real_top8  toward real?
-#   Gruul/RG Aggro    0.750   0.661  -0.089    0.511     0.093     YES (down)   [pred #1]
-#   Golgari Scales    0.268   0.411  +0.143    0.542     0.111     YES (up)     [pred #2]
-#   UW Spirit Aggro   0.625   0.607  -0.018    0.594     0.192     YES (~stable)[pred #4]
-#   Sultai Control    0.357   0.321* -0.036    0.512     0.186     NO (n=1*)    [pred #3 missed]
-#   * only 1 of 2 Sultai decks produced a point-rate row this run (noisy; deprioritize).
+# Target-label repair: "recorded" and "event_win" are MTGTop8 recorded-conversion
+# proxies. The Kaggle rows are top-finish-censored, so these are not full-field
+# archetype strength or P(make top 8).
 #
-#   Spearman vs real:   VMC  -0.400 mean / -0.200 top-8
-#                       PIMC -0.200 mean / -0.400 top-8   (N=4; both within noise)
-#   Spread (max-min):   VMC 0.482  ->  PIMC 0.340   (compressed, less aggro-skewed) [pred #5 YES]
+#   bucket             VMC    PIMC    delta   recorded  event_win  prereg verdict
+#   Gruul/RG Aggro    0.750   0.661  -0.089    0.511     0.093     direction yes; <0.60 threshold missed [#1]
+#   Golgari Scales    0.268   0.411  +0.143    0.526     0.104     pass, barely (>0.40)                 [#2]
+#   UW Spirit Aggro   0.625   0.607  -0.018    0.594     0.192     pass (stable 0.50-0.65)             [#4]
+#   Sultai Control    0.357   0.321  -0.036    0.512     0.186     fail; moved down, n=2 decks          [#3]
 #
-# VERDICT: DIRECTIONAL CONFIRMATION, PARTIAL, NOISY.
-# - The two PRE-REGISTERED headline moves both happened and were the LARGEST: Gruul's
-#   over-rating fell (-0.089) and Scales' under-rating rose (+0.143), both toward real.
-#   3 of 4 buckets moved toward real_str; the spread compressed. So a stronger referee IS
-#   part of the residual the fidelity fix left behind — referee strength is a real lever.
-# - But the correction is PARTIAL: Gruul is still #1 and still over-rated (0.661 vs real
-#   0.511), and the global rho stays negative / mixed (mean-finish improved -0.40->-0.20;
-#   top-8 worsened -0.20->-0.40 — both non-robust at N=4). 16/160 nudges toward real but
-#   does NOT achieve alignment.
-# - Contrast the small-PIMC 8/80 arm (pimc-vs-real-PI.txt: rho -0.09/-0.49, moved little):
-#   MORE budget -> MORE movement toward real. Consistent with "referee strength matters and
-#   more is better," but at 16/160 it is still not sufficient alone.
+#   Spearman vs target: VMC  -0.400 recorded / -0.200 event_win
+#                       PIMC -0.200 recorded / -0.400 event_win   (N=4; both within noise)
+#   Spread (max-min):   VMC 0.482  ->  PIMC 0.340   (compressed)
+#   Ranking:            Gruul remains single top, so prereg #5 half-fails.
+#
+# STRICT PREREG SCORE:
+# - Clean passes: #2 Scales up, #4 Spirit stable.
+# - Direction-only / threshold miss: #1 Gruul down but not below 0.60.
+# - Mixed/failures: #3 Sultai moved down; #5 spread compressed but Gruul stayed top;
+#   #6 recorded rho improved but event_win rho worsened.
+#
+# VERDICT: MIXED AND PARTIAL, NOT CONFIRMATORY.
+# - The two most interesting bucket movements still point in the predicted direction:
+#   Gruul fell and Scales rose, and they were the largest movements. That is evidence
+#   that referee choice matters on the same fidelity-fixed decks.
+# - But the strict registered thresholds mostly did not clear, Sultai is a full n=2
+#   miss, and global rho remains negative/mixed. 16/160 does not achieve external
+#   alignment even against the censored MTGTop8 conversion proxy.
+# - Regression-to-the-mean is a live null: Gruul and Scales were selected as VMC
+#   extremes, and no fresh same-referee VMC re-run on the same 8 decks calibrated
+#   ordinary remeasurement drift.
+# - Do NOT infer "more budget -> more movement." The earlier 8/80 arm used different
+#   decks/field/fidelity state, and its Gruul movement went the other way.
 #
 # SO WHAT (synthesis of the whole arc):
-#   VMC fails real (reward-hackable, rho~0). PIMC disagrees with VMC in the right direction
-#   and, at higher budget on faithful decks, MOVES the two problem buckets toward real -- but
-#   partially. The fidelity grind fixed material-visible synergy (Spirits) but not grindy
-#   synergy or aggro calibration; the referee arm shows those residuals ARE referee-bound and
-#   shrink with referee strength, yet 16/160 doesn't close them. => NO single lever suffices;
-#   the objective needs referee strength AND fidelity AND field breadth together. Concretely,
-#   the promising path is a STRONGER-still / distilled referee, validated on a BROADER field
-#   (engine-feature cards -> more archetype buckets -> escape N=4) than this 4-bucket subset.
-# CAVEATS: N=4 buckets, 2 decks each, 28 games/deck -> noisy; Sultai n=1; shocklands still
-#   approximated; point-rate-in-8-deck-field != metagame strength. The ROBUST claim is the
-#   bucket MOVEMENT (Gruul down, Scales up, spread compressed), not the exact rho.
+#   VMC is internally exploitable and externally unaligned. PIMC changes rankings in
+#   structured ways, but this arm supports only a limited claim: referee strength is
+#   one lever, not a demonstrated solution. Fidelity and field breadth still bind, and
+#   the validation target itself is top-finish-censored. The next defensible investment
+#   is broader validation data or a broader field plus a same-referee control before a
+#   PIMC-distilled referee is treated as "closer to real Magic."
+# CAVEATS: N=4 buckets, 2 decks each, 28 games/deck; shocklands still approximated;
+#   point-rate-in-8-deck-field != metagame strength; MTGTop8 target is censored. The
+#   robust claim is limited to bucket movement under different referees, not exact rho.

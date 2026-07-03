@@ -1,0 +1,12 @@
+# MTGTop8 recorded-conversion event bootstrap — format PI (min_stars=0, samples=2000, seed=1)
+# events used: 528
+# recorded field-size histogram: 2:70, 3:20, 4:79, 5:10, 6:10, 7:6, 8:333
+# CI unit: event bootstrap. Metrics are top-finish-censored conversion proxies,
+# not full-field archetype strength or top-8 probability.
+# bucket                 entries  recorded    rec_lo    rec_hi  event_win    win_lo    win_hi
+  UW Spirit Aggro            151     0.594     0.550     0.637      0.192     0.130     0.257
+  Mono-Red (RDW)             234     0.582     0.545     0.616      0.167     0.123     0.213
+  Mono-Green Aggro           135     0.535     0.482     0.591      0.178     0.117     0.239
+  Golgari/HardScales          96     0.526     0.460     0.586      0.104     0.049     0.169
+  Sultai Control              70     0.512     0.434     0.590      0.186     0.101     0.279
+  Gruul/RG Aggro              86     0.511     0.449     0.567      0.093     0.035     0.155

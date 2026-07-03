@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Rank-correlate our gauntlet point-rate against real MTGTop8 placement strength
-(rl-status §6.5 #4, the ground-truth sanity check).
+"""Rank-correlate gauntlet point-rate against MTGTop8 recorded-finish conversion
+(rl-status §6.5 #4, the external validation sanity check).
 
 Both name spaces are fragmented (the dump itself splits "RDW" vs "Red Deck
 Wins"; our gauntlet has a dozen spellings of "Hardened Scales"), so we collapse
@@ -8,9 +8,15 @@ each side into a small set of CANONICAL archetype buckets via an explicit,
 conservative alias map, then inner-join and compute Spearman rho. Only buckets
 present on BOTH sides are correlated; N is reported.
 
-  real strength  = entry-weighted (1 - mean normalized finish) over the bucket's
-                   real-name variants (from placement_strength.py logic)
-  gauntlet pr    = mean point-rate over the bucket's gauntlet decklist instances
+  recorded_strength  = entry-weighted (1 - mean normalized recorded finish) over
+                       the bucket's MTGTop8-name variants
+  event_win_share    = event wins / recorded MTGTop8 rows in the bucket
+  gauntlet pr        = mean point-rate over the bucket's gauntlet deck instances
+
+Important limitation: the Kaggle/MTGTop8 player rows are top-finish-censored.
+For Pioneer in this dump, every usable event has only 2-8 recorded rows. These
+metrics are conversion among recorded finishes, not full-field archetype strength
+and not probability of making top 8.
 
 Usage:
   python3 arcana-ai/scripts/placement_vs_gauntlet.py \
@@ -23,18 +29,45 @@ import re
 import zipfile
 from collections import defaultdict
 
-# Canonical bucket -> (gauntlet-name substrings, real-name exact variants).
+# Canonical bucket -> (gauntlet-name substrings, MTGTop8-name exact variants).
 # Matching is case-insensitive; gauntlet side is substring, real side is exact
-# (the real labels are cleaner). Keep buckets conservative — only confident ones.
+# (the MTGTop8 labels are cleaner). Keep buckets conservative.
 PI_BUCKETS = {
     "Gruul/RG Aggro":   (["gruul aggro", "rg aggro"], ["Gruul Aggro"]),
     "Mono-Red (RDW)":   (["red deck wins", "rakdos deck wins"], ["RDW", "Red Deck Wins"]),
     "UW Spirit Aggro":  (["uw spirit aggro", "spirit", "spirits"], ["UW Spirit Aggro", "Spirit Aggro"]),
-    "Golgari/HardScales":(["golgari", "hardened", "harden ", "scales", "snakes"], ["Golgari Aggro"]),
+    "Golgari/HardScales":(
+        ["golgari aggro", "gb hardened", "golgari scales", "hardened", "harden ", "scales", "snakes"],
+        [
+            "Golgari Aggro",
+            "Golgari Scales",
+            "Hardened Scales",
+            "Golgari Hardened Scales",
+            "Hardened Golgari",
+            "Gb Hardened Scales",
+            "Green Scales",
+            "Golgari Counters",
+            "Golgari scales",
+            "Bg Scales",
+            "Golgari Scales Aggro",
+            "Hardened Snakes",
+            "Harden Scales",
+            "Golgari Aggro Hardened Scales",
+            "Abzan Hardened Scales",
+            "Selesnya Hardened Scales",
+            "Selesnya Scales",
+            "Lurrus_scales",
+            "Hardened Scales Simic",
+        ],
+    ),
     "Sultai Control":   (["sultai control"], ["Sultai Control"]),
-    "Mono-Green Aggro": (["mono green", "devotion to g"], ["Mono Green Aggro", "Devotion to Green"]),
-    "Rakdos Aggro":     (["rakdos aggro"], ["Mono Black Aggro"]),  # nearest BR/Bx aggro proxy
+    "Mono-Green Aggro": (["mono green"], ["Mono Green Aggro", "Devotion to Green"]),
 }
+#
+# Deliberately excluded proxies:
+# - "Rakdos Aggro" gauntlet rows are not mapped to MTGTop8 "Mono Black Aggro".
+# - "Devotion to Golgari" is not mapped to Mono-Green; generic "golgari" is not
+#   used for Scales, because it sweeps up unrelated Golgari decks.
 
 
 def parse_result(s):
@@ -51,10 +84,9 @@ def parse_result(s):
     return None
 
 
-def real_strength_by_name(zip_path, fmt, min_stars=0):
-    """name -> (entries, strength, top_share) over all events of `fmt` with at
-    least `min_stars` stars. strength = 1 - mean normalized finish (compressed,
-    noisy); top_share = frac in top 1/8 of field (sharper "actually won")."""
+def recorded_conversion_by_name(zip_path, fmt, min_stars=0):
+    """name -> (entries, recorded_strength, event_win_share) over events of
+    `fmt` with at least `min_stars` stars."""
     z = zipfile.ZipFile(zip_path)
     events = {}
     ev = csv.DictReader(io.StringIO(z.read("df_events_v2.csv").decode("utf-8", "replace")))
@@ -65,7 +97,7 @@ def real_strength_by_name(zip_path, fmt, min_stars=0):
             stars = 0
         events[row["event__id"]] = (row.get("event_format", ""), stars)
     names = set(z.namelist())
-    agg = defaultdict(lambda: {"entries": 0, "sum_norm": 0.0, "top": 0})
+    agg = defaultdict(lambda: {"entries": 0, "sum_norm": 0.0, "wins": 0})
     for eid, (f, st) in events.items():
         if f != fmt or st < min_stars:
             continue
@@ -84,9 +116,9 @@ def real_strength_by_name(zip_path, fmt, min_stars=0):
         for t, (lo, _up) in parsed:
             agg[t]["entries"] += 1
             agg[t]["sum_norm"] += (lo - 1) / (field - 1)
-            if (lo - 1) / field < 0.125:
-                agg[t]["top"] += 1
-    return {t: (a["entries"], 1.0 - a["sum_norm"] / a["entries"], a["top"] / a["entries"])
+            if lo == 1:
+                agg[t]["wins"] += 1
+    return {t: (a["entries"], 1.0 - a["sum_norm"] / a["entries"], a["wins"] / a["entries"])
             for t, a in agg.items() if a["entries"] > 0}
 
 
@@ -134,11 +166,11 @@ def main():
     ap.add_argument("--format", required=True)
     ap.add_argument("--gauntlet", required=True)
     ap.add_argument("--min-stars", type=int, default=0,
-                    help="only count real events with at least this many stars")
+                    help="only count MTGTop8 events with at least this many stars")
     args = ap.parse_args()
     buckets = PI_BUCKETS  # only PI curated for now
 
-    real = real_strength_by_name(args.zip, args.format, args.min_stars)
+    real = recorded_conversion_by_name(args.zip, args.format, args.min_stars)
     gaunt = gauntlet_pr(args.gauntlet)
 
     rows = []
@@ -154,9 +186,11 @@ def main():
         r_top = sum(e * t for e, _, t in r_recs) / r_ent
         rows.append((canon, len(g_vals), g_mean, r_ent, r_str, r_top))
 
-    print(f"# Gauntlet point-rate vs real MTGTop8 strength — format {args.format}"
+    print(f"# Gauntlet point-rate vs MTGTop8 recorded-finish conversion — format {args.format}"
           f" (min_stars={args.min_stars})")
-    print(f"# {'bucket':<22} {'g_n':>4} {'gauntlet_pr':>11} {'real_n':>7} {'real_str':>9} {'real_top8':>10}")
+    print("# NOTE: MTGTop8/Kaggle rows are top-finish-censored; event_win_share is")
+    print("# event wins / recorded rows, not top-8 probability or full-field strength.")
+    print(f"# {'bucket':<22} {'g_n':>4} {'gauntlet_pr':>11} {'mtg_n':>7} {'recorded':>9} {'event_win':>10}")
     rows.sort(key=lambda t: t[2], reverse=True)
     for canon, gn, gm, rn, rs, rt in rows:
         print(f"  {canon:<22} {gn:>4} {gm:>11.3f} {rn:>7} {rs:>9.3f} {rt:>10.3f}")
@@ -164,10 +198,10 @@ def main():
         rho_s = spearman([r[2] for r in rows], [r[4] for r in rows])
         rho_t = spearman([r[2] for r in rows], [r[5] for r in rows])
         print(f"\n# Spearman rho (gauntlet_pr vs ...), N={len(rows)} buckets:")
-        print(f"#   vs real_str (mean finish, compressed): {rho_s:.3f}")
-        print(f"#   vs real_top8 (top-1/8 share, sharper): {rho_t:.3f}")
-        print("# A NEGATIVE/near-zero rho on BOTH = the cheap referee does not track")
-        print("# real-world strength on these archetypes (robust to the metric choice).")
+        print(f"#   vs recorded_strength (mean recorded finish): {rho_s:.3f}")
+        print(f"#   vs event_win_share (recorded event wins): {rho_t:.3f}")
+        print("# A NEGATIVE/near-zero rho on BOTH = this referee does not track the")
+        print("# MTGTop8 recorded-conversion proxy on these archetypes.")
 
 
 if __name__ == "__main__":

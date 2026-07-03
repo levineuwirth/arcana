@@ -1,0 +1,69 @@
+# Pioneer subset provenance repair
+#
+# Purpose
+# -------
+# The review correctly found that the 12-deck and 8-deck subset artifacts did not
+# identify the source decklist files. Historical exact deck IDs are not recoverable
+# from the committed CSVs: the pre-repair corpus loader used the MTGTop8 archetype
+# header as Deck.name, so duplicate archetypes collapsed to display-name-only rows
+# before the gauntlet CSV was written.
+#
+# Forward fix
+# -----------
+# arcana-ai/src/deck_corpus.rs now preserves the source file stem as LoadedDeck.source_id
+# and appends it to future gauntlet Deck.name values when an About/Name header
+# renames the deck:
+#
+#   Red Deck Wins [24148_368536]
+#
+# This keeps archetype substring matching usable while making future CSV rows
+# uniquely traceable to converted Kaggle deck files.
+#
+# Historical CSV config repair
+# ----------------------------
+# The checked-in gauntlet CSVs now have # comment headers with the inferred runner
+# config. The values are recoverable from docs plus game counts:
+#
+#   games/deck = 2 * paired_duels_per_pair * (n_decks - 1)
+#
+# For PIMC arms, the explicit PIMC budget line is included where known.
+#
+# Historical row-level manifests
+# ------------------------------
+# These are the exact row identities still recoverable from committed artifacts.
+# They identify archetype rows and order, but not source deck file stems.
+#
+# pi_subset12_{vmc,pimc}.csv
+#   01 Gruul Aggro
+#   02 Azorius Aggro
+#   03 UW Spirit Aggro
+#   04 Rhino Rock
+#   05 Golgari Scales
+#   06 Sultai Control
+#   07 Hardened Scales
+#   08 Temur Midrange
+#   09 Rg Aggro
+#   10 Gb Hardened Scales
+#   11 Rakdos Aggro
+#   12 Red Deck Wins
+#
+# fidelity_sub8_{vmc,pimc}.csv
+#   01 Sultai Control
+#   02 Sultai Control
+#   03 UW Spirit Aggro
+#   04 Gruul Aggro
+#   05 UW Spirit Aggro
+#   06 Gruul Aggro
+#   07 Golgari Scales
+#   08 Golgari Scales
+#
+# fidelity32_vmc.csv
+#   Historical row-level identities are the CSV rows themselves. Duplicate
+#   archetype rows exist (notably Scales and Spirits), and exact source deck file
+#   stems are not recoverable from the checked-in file.
+#
+# Reviewer takeaway
+# -----------------
+# Use the historical subset CSVs for aggregate row-level reproduction only. Do not
+# treat duplicate same-archetype rows as source-auditable individual decklists.
+# Future reruns after the source_id repair produce source-auditable CSV names.

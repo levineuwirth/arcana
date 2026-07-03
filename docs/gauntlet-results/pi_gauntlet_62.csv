@@ -1,4 +1,5 @@
 # Pioneer 62-deck gauntlet — vmc-material referee, 1 paired duel/pair (122 games/deck), block-bootstrap 95% CIs
+# gauntlet referee=vmc-material base_seed=0 paired_duels_per_pair=1 max_steps=4000 bootstrap_samples=2000 ci=block-bootstrap
 # MTGTop8 (Kaggle) playable Pioneer subset; rows sorted by point_rate desc; names = MTGTop8 archetype
 deck,games,wins,draws,losses,score,point_rate,ci_lo,ci_hi
 Gruul Aggro,122,109,0,13,109.000,0.8934,0.8361,0.9428
