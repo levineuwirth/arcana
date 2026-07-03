@@ -15,3 +15,4 @@ pub mod deckeval_runner;
 pub mod deck_corpus;
 pub mod deckbuild;
 pub mod calibrate;
+pub mod benchmark;
