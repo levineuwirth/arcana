@@ -119,6 +119,16 @@ real lever" holds for grindy synergy specifically, **not** for aggro calibration
 and the earlier "more budget → more movement" gloss is unsupported (the 8/80 arm
 also differed in deck set / field / fidelity).
 
+A **clean PIMC 16/160 redo on the *same* source-auditable 8** (the apples-to-apples
+the historical arm couldn't do — `control_sub8_pimc_s0.csv`) confirms this: Scales
+**+0.134** survives (3.4× the null), while Gruul is only **−0.045** (well within the
+0.120 null — the retraction is firmer than the historical −0.089). Two honest
+wrinkles: the Scales lift is carried by **one of the two decks** (Gb Hardened Scales
+0.25→0.54; Hardened Snakes flat), so it is real but modest and deck-specific; and UW
+Spirit clears the null (−0.112) but moves *away* from the censored target, not toward
+it. Net: the only surviving referee-strength claim is "a stronger referee gives a
+narrow, deck-specific lift to grindy synergy" — a real-but-modest lever, not a fix.
+
 ## Caveats
 
 - **The validation target is censored.** MTGTop8/Kaggle provides recorded top

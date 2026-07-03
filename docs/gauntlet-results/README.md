@@ -69,6 +69,7 @@ The catalog name list used by the worklist analysis is dumped from
 | `pimc-arm-result-PI.txt` | **referee arm** — mixed/partial strict prereg score; Gruul↓ and Scales↑, but thresholds mostly miss, Sultai is n=2 down, and regression-to-mean is an uncalibrated null |
 | `control-arm-PI.txt` | **same-referee control (RUN)** — regression-to-mean null: VMC re-run at 4 seeds on a fresh source-auditable spanning-8. Retracts the arm's Gruul-down + spread-compression (within null); only Scales +0.143 survives. Manifest + commands + verdict |
 | `control_sub8_vmc_s{0,1,2,3}.csv` | the four VMC control gauntlets (source-auditable rows) the null band is computed from |
+| `control_sub8_pimc_s0.csv` | clean PIMC 16/160 redo on the SAME auditable 8 — confirms Scales survives (+0.134), Gruul within null (−0.045) |
 
 The placement artifacts are built from the dump's recorded finish rows
 (`df_events_v2.csv` for each event's format; `events/<id>/players_info.csv` for

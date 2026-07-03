@@ -5,7 +5,9 @@
 # CSVs: control_sub8_vmc_s{0,1,2,3}.csv. RESULT SECTION at the bottom.
 #
 # HEADLINE: the referee arm's Gruul-down move and spread-compression do NOT
-# survive the null; only Golgari Scales' +0.143 does. See RESULT.
+# survive the null; only Golgari Scales' +0.143 does — and a clean PIMC redo on the
+# SAME auditable 8 confirms it (Scales +0.134, Gruul only -0.045). See RESULT +
+# CLEAN SAME-SUBSET REDO.
 #
 # WHY (review finding U5, docs/deckbuild-eval-review.md)
 # ------------------------------------------------------
@@ -140,7 +142,35 @@
 # mean — exactly the U5 risk. A stronger referee helps grindy synergy specifically,
 # not aggro calibration.
 #
-# CLEAN FOLLOW-UP (optional step 4): PIMC 16/160 on THIS same source-auditable 8
-# would let the VMC->PIMC delta be measured on the identical decks the null was
-# built from (currently the arm's PIMC came from the unrecoverable historical 8).
-# Expect it to confirm Scales-up as the sole survivor.
+# ===================== CLEAN SAME-SUBSET REDO (PIMC done) ====================
+# PIMC 16/160 (base_seed 0, CORPUS_DUELS=2, 28 games/deck, 4804s) run on the SAME
+# source-auditable 8 the VMC null was built from -> control_sub8_pimc_s0.csv. This
+# is the apples-to-apples the historical arm couldn't do (its PIMC used the
+# unrecoverable historical 8). VMC = 4-seed mean; null = 2*SD across the 4 seeds.
+#
+#   bucket            VMC(4-seed)  null(2SD)   PIMC      Δ    clean verdict
+#   Gruul Aggro          0.777       0.120    0.732   -0.045  within null
+#   UW Spirit Aggro      0.576       0.102    0.464   -0.112  clears null (but AWAY from target)
+#   Golgari Scales       0.295       0.040    0.429   +0.134  SURVIVES
+#   Sultai Control       0.353       0.059    0.375   +0.022  within null
+#
+# CONFIRMS + SHARPENS the 4-seed-VMC verdict:
+# - Gruul-down is regression to the mean, now EVEN FIRMER: on the clean auditable
+#   decks the move is only -0.045 (vs the historical arm's -0.089), well within the
+#   0.120 null. Retraction stands.
+# - Golgari Scales +0.134 SURVIVES (3.4x the null), matching the historical +0.143.
+#   THE ONE ROBUST REFEREE-STRENGTH RESULT: a stronger referee moves grindy synergy
+#   up. CAVEAT (n=2 heterogeneity): the lift is carried by ONE of the two decks --
+#   Gb Hardened Scales 0.25-0.39(VMC) -> 0.54(PIMC); Hardened Snakes is FLAT
+#   (~0.32 -> 0.32). So "referee strength lifts grindy synergy" is real but modest
+#   and deck-specific, not a whole-bucket phenomenon.
+# - NEW wrinkle: UW Spirit -0.112 marginally clears the null, but it moves AWAY from
+#   the (censored, low-signal) recorded target (real 0.594; VMC 0.576 was closer than
+#   PIMC 0.464). A real referee effect, not a "toward real" one. Don't over-read it.
+# - Sultai within null (uninformative).
+#
+# NET (arc-final): the referee arm's only claim that survives a clean, source-
+# auditable, regression-controlled redo is "a stronger referee lifts grindy synergy
+# (Golgari Scales) up," and even that is driven by one of two decks. Gruul-down and
+# spread-compression were regression to the mean. Referee strength is a narrow,
+# real-but-modest lever, not a fix -- consistent with the four-lever thesis.
