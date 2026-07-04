@@ -201,7 +201,7 @@ mod tests {
     use super::*;
     use crate::deck_corpus::decks_from_dir;
     use crate::deckeval::Deck;
-    use crate::learn::{learn_value, learn_value_with_encoder};
+    use crate::learn::{learn_value, learn_value_from_pimc_scores, learn_value_with_encoder};
     use crate::observation::{Encoder, IdentityEncoder};
     use crate::search::{
         MaterialValue, PimcPolicy, RandomStatePolicy, StatePolicy, ValueMcPolicy,
@@ -506,6 +506,134 @@ mod tests {
             y.scores.iter().find(|p| p.name == "vmc-learned-id"),
         ) {
             println!("  Δ(id − basic) point-rate = {:+.3}", i.point_rate - b.point_rate);
+        }
+    }
+
+    /// EXPERIMENT 3 — dense PIMC-VALUE distillation (target lever).
+    /// Experiments 1 (distribution) and 2 (representation) were both nulls,
+    /// isolating the bottleneck to the TARGET: a linear fit to sparse terminal
+    /// 0/½/1 MC outcomes. This A/Bs two BasicE2Encoder leaves over the SAME random
+    /// self-play distribution — the only difference is the label:
+    ///   - vmc-learned-basic: terminal MC outcome target ([`learn_value`]).
+    ///   - vmc-learned-dense: PIMC best-action score target
+    ///     ([`learn_value_from_pimc_scores`]) — one dense value per state.
+    /// Panel adds random, vmc-material, pimc as references.
+    ///
+    /// PRE-REGISTERED READOUT: primary = mean point-rate + held-out vs
+    /// vmc-material / pimc. SUCCESS = dense beats basic by a meaningful margin AND
+    /// moves the held-out reads upward. FAILURE = dense stays ~0.48, meaning the
+    /// issue is not distribution, representation, OR sparse labels alone — next
+    /// blockers become linear capacity / search-leaf mismatch / PIMC target quality.
+    /// CAVEAT: basic trains on all states of CAP_TRAIN full games (more rows);
+    /// dense on <= CAP_DENSE_STATES PIMC-labeled states — row counts printed.
+    ///
+    /// Env: CAPSULE_DIR, CAP_GAMES (12), CAP_TRAIN (30, basic games),
+    /// CAP_DENSE_STATES (600), CAP_DENSE_STRIDE (3), CAP_DENSE_GAMES (=CAP_TRAIN),
+    /// CAP_PIMC_SAMPLES/CAP (12/120, both the dense teacher AND the panel pimc),
+    /// CAP_DECK. Release:
+    ///   CAPSULE_DIR=$(pwd)/docs/capsule-pioneer/seeds \
+    ///   cargo test -p arcana-ai --release benchmark::tests::capsule_pimc_value_distill -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn capsule_pimc_value_distill() {
+        let reg = arcana_cards::build_catalog();
+        let dir = std::env::var("CAPSULE_DIR")
+            .expect("set CAPSULE_DIR to docs/capsule-pioneer/seeds");
+        let games: u32 = envu("CAP_GAMES", 12);
+        let train: u32 = envu("CAP_TRAIN", 30);
+        let dense_states: usize = envu("CAP_DENSE_STATES", 600) as usize;
+        let dense_stride: u64 = envu("CAP_DENSE_STRIDE", 3) as u64;
+        let dense_games: u32 = envu("CAP_DENSE_GAMES", train);
+        let ps: u32 = envu("CAP_PIMC_SAMPLES", 12);
+        let pc: u32 = envu("CAP_PIMC_CAP", 120);
+        let max_steps = 4000u32;
+
+        let mut decks = load_capsule(&dir, &reg);
+        if let Ok(idx) = std::env::var("CAP_DECK") {
+            let i: usize = idx.parse().expect("CAP_DECK int");
+            assert!(i < decks.len(), "CAP_DECK {i} out of range");
+            decks = vec![decks[i].clone()];
+        }
+        println!(
+            "capsule: {} decks — {}",
+            decks.len(),
+            decks.iter().map(|d| d.name.clone()).collect::<Vec<_>>().join(", ")
+        );
+
+        let reg_ref: &CardRegistry = &reg;
+        let make = move |deck: &[CardId]| -> Vec<(String, Box<dyn Fn(u64) -> Box<dyn StatePolicy>>)> {
+            let d = deck.to_vec();
+            // basic: random self-play, terminal MC outcome target (seed 1).
+            let lv_basic = learn_value(
+                &d, reg_ref, train, max_steps,
+                &|s| Box::new(RandomStatePolicy::new(s)),
+                300, 0.3, 1e-4, 1,
+            );
+            // dense: random self-play states, PIMC best-action value target (seed 1).
+            let lv_dense = learn_value_from_pimc_scores(
+                &d, reg_ref, dense_games, dense_states, dense_stride, max_steps,
+                300, 0.3, 1e-4, ps, pc, 10, 1,
+            );
+
+            let dp = d.clone();
+            let b = lv_basic.clone();
+            let de = lv_dense.clone();
+            vec![
+                (
+                    "random".into(),
+                    Box::new(|s: u64| Box::new(RandomStatePolicy::new(s)) as Box<dyn StatePolicy>)
+                        as Box<dyn Fn(u64) -> Box<dyn StatePolicy>>,
+                ),
+                (
+                    "vmc-material".into(),
+                    Box::new(|s: u64| {
+                        Box::new(ValueMcPolicy::with_budget(Box::new(MaterialValue), s, 6, 25, 10))
+                            as Box<dyn StatePolicy>
+                    }) as Box<dyn Fn(u64) -> Box<dyn StatePolicy>>,
+                ),
+                (
+                    "vmc-learned-basic".into(),
+                    Box::new(move |s: u64| {
+                        Box::new(ValueMcPolicy::with_budget(Box::new(b.clone()), s, 6, 25, 10))
+                            as Box<dyn StatePolicy>
+                    }) as Box<dyn Fn(u64) -> Box<dyn StatePolicy>>,
+                ),
+                (
+                    "vmc-learned-dense".into(),
+                    Box::new(move |s: u64| {
+                        Box::new(ValueMcPolicy::with_budget(Box::new(de.clone()), s, 6, 25, 10))
+                            as Box<dyn StatePolicy>
+                    }) as Box<dyn Fn(u64) -> Box<dyn StatePolicy>>,
+                ),
+                (
+                    "pimc".into(),
+                    Box::new(move |s: u64| {
+                        Box::new(PimcPolicy::with_budget(
+                            s, vec![dp.clone(), dp.clone()], ps, pc, 10,
+                        )) as Box<dyn StatePolicy>
+                    }) as Box<dyn Fn(u64) -> Box<dyn StatePolicy>>,
+                ),
+            ]
+        };
+
+        let y = run_capsule_yardstick(&decks, &reg, &make, games, max_steps);
+        println!("\n{}", y.format_table());
+        println!("\n# DENSE DISTILL (both leaves = random self-play, seed 1, BasicE2Encoder; target differs):");
+        for name in ["vmc-learned-basic", "vmc-learned-dense"] {
+            if let Some(p) = y.scores.iter().find(|p| p.name == name) {
+                println!(
+                    "  {name:<18} pr={:.3}  held-out vs material={:.2}  vs pimc={:.2}",
+                    p.point_rate,
+                    p.held_out_vs("vmc-material").unwrap_or(f32::NAN),
+                    p.held_out_vs("pimc").unwrap_or(f32::NAN),
+                );
+            }
+        }
+        if let (Some(b), Some(de)) = (
+            y.scores.iter().find(|p| p.name == "vmc-learned-basic"),
+            y.scores.iter().find(|p| p.name == "vmc-learned-dense"),
+        ) {
+            println!("  Δ(dense − basic) point-rate = {:+.3}", de.point_rate - b.point_rate);
         }
     }
 

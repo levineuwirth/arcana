@@ -113,6 +113,35 @@ identity (vs material 0.30→0.25, vs pimc 0.38→0.32) — the +285 features ad
 surface on the data-limited fit. So **card identity alone does not lift the learned
 leaf**, and `vmc-material` (0.77) tops the capsule a third time.
 
+## Experiment 3 — dense PIMC-value distillation (target lever) — PRE-REGISTERED
+
+*Committed before the run (this section written first).* Experiments 1
+(distribution) and 2 (representation) were both nulls, isolating the bottleneck
+to the **target**: the leaf is a linear fit to sparse terminal 0/½/1 MC outcomes.
+This A/Bs two `BasicE2Encoder` leaves over the **same random self-play
+distribution** — the only difference is the label:
+
+- **vmc-learned-basic** — terminal MC outcome target (`learn_value`).
+- **vmc-learned-dense** — PIMC best-action score target
+  (`learn_value_from_pimc_scores`): at each sampled state the teacher PIMC scores
+  the mover's actions (`PimcPolicy::score_actions`), and the best score `v∈[-1,1]`
+  becomes a **soft** win-prob label `(v+1)/2` for the mover / `(1-v)/2` for the
+  opponent — one dense value per state instead of one noisy terminal bit per game.
+
+Panel adds random, vmc-material, pimc. 5 decks × 12 games/pair.
+
+**Pre-registered readout.** Primary = mean point-rate + held-out vs vmc-material /
+pimc. **Success** = dense beats basic by a meaningful margin *and* moves the
+held-out reads upward. **Failure** = dense stays ~0.48 — meaning the issue is not
+distribution, representation, *or* sparse labels alone, and the next plausible
+blockers become **linear capacity**, **search-leaf mismatch**, or **PIMC target
+quality**. Caveat registered in advance: basic trains on all states of `CAP_TRAIN`
+full games (more rows); dense on ≤ `CAP_DENSE_STATES` PIMC-labeled states — a
+row-count asymmetry that *disadvantages* dense, so a dense win is unambiguous while
+a dense loss is partly confounded with data quantity.
+
+*(Result to be appended after the run.)*
+
 ## Where the benchmark stands + next lever
 
 **Two controlled negatives now bound the problem:** neither a better training

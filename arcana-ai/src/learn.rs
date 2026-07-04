@@ -24,7 +24,7 @@ use arcana_core::state::{GameResult, GameState};
 use arcana_core::types::{CardId, PlayerId};
 
 use crate::observation::{BasicE2Encoder, Encoder};
-use crate::search::{StatePolicy, ValueFn};
+use crate::search::{PimcPolicy, RandomStatePolicy, StatePolicy, ValueFn};
 
 fn sigmoid(z: f32) -> f32 {
     1.0 / (1.0 + (-z).exp())
@@ -222,6 +222,141 @@ pub fn learn_value_with_encoder<E: Encoder + Clone>(
 ) -> LinearValue<E> {
     let (mut x, y) =
         collect_value_data(deck, registry, n_games, max_steps, make_policy, &encoder, seed);
+    let (means, stds) = standardize(&mut x);
+    let (weights, bias) = train_logistic(&x, &y, epochs, lr, l2);
+    LinearValue { encoder, means, stds, weights, bias }
+}
+
+// =============================================================================
+// Dense PIMC-value distillation (RL benchmark experiment 3)
+// =============================================================================
+
+/// Collect DENSE per-state value targets over a RANDOM self-play state
+/// distribution (matching the terminal-outcome baseline's states), labeled by
+/// PIMC instead of the eventual game outcome.
+///
+/// At a visited decision state the teacher `PimcPolicy` scores the actions for
+/// the player to move; the best score `v ∈ [-1, 1]` is that mover's position
+/// value (`crate::search::PimcPolicy::score_actions`). We emit one row per
+/// perspective: the **mover** labeled `(v+1)/2`, the **opponent** the
+/// complementary `(1-v)/2` — soft win-probability targets [`train_logistic`]
+/// consumes directly. This is the dense signal the two prior nulls (distribution,
+/// representation) pointed at: one high-information label per state instead of one
+/// noisy terminal bit per game.
+///
+/// Sampling: every `stride`-th multi-action decision, up to `max_states/(2·games)`
+/// states per game (so labels spread across games, not just game 0), capped at
+/// `max_states` rows total. States come from RANDOM self-play seeded off `seed`,
+/// so the distribution matches [`collect_value_data`] under a random maker.
+#[allow(clippy::too_many_arguments)]
+pub fn collect_pimc_value_data(
+    deck: &[CardId],
+    registry: &CardRegistry,
+    n_games: u32,
+    max_states: usize,
+    stride: u64,
+    max_steps: u32,
+    encoder: &dyn Encoder,
+    pimc_samples: u32,
+    pimc_cap: u32,
+    pimc_candidates: usize,
+    seed: u64,
+) -> (Vec<Vec<f32>>, Vec<f32>) {
+    let mut x: Vec<Vec<f32>> = Vec::new();
+    let mut y: Vec<f32> = Vec::new();
+    let decks = vec![deck.to_vec(), deck.to_vec()];
+    let stride = stride.max(1);
+    let per_game = (max_states / (2 * n_games.max(1) as usize)).max(1);
+
+    // One teacher PIMC, rng advancing across all labeled states.
+    let mut teacher = PimcPolicy::with_budget(
+        seed ^ 0x50D1_CE5E_ED00_0000,
+        decks.clone(),
+        pimc_samples,
+        pimc_cap,
+        pimc_candidates,
+    );
+
+    'games: for g in 0..n_games {
+        if x.len() >= max_states {
+            break;
+        }
+        let mut pa = RandomStatePolicy::new(seed.wrapping_add(g as u64 * 2 + 1));
+        let mut pb = RandomStatePolicy::new(seed.wrapping_add(g as u64 * 2 + 2));
+        let (mut state, mut yld) = new_game(decks.clone(), registry, seed.wrapping_add(g as u64));
+        let mut steps = 0u32;
+        let mut decisions = 0u64;
+        let mut labeled = 0usize;
+        loop {
+            match yld {
+                EngineYield::GameOver(_) => break,
+                EngineYield::PendingDecision { player, legal_actions, .. } => {
+                    if steps >= max_steps || legal_actions.is_empty() {
+                        break;
+                    }
+                    if legal_actions.len() > 1 {
+                        if labeled < per_game && decisions % stride == 0 {
+                            let scored =
+                                teacher.score_actions(&state, registry, player, &legal_actions);
+                            let v = scored
+                                .iter()
+                                .map(|s| s.score)
+                                .fold(f32::NEG_INFINITY, f32::max);
+                            let v = if v.is_finite() { v.clamp(-1.0, 1.0) } else { 0.0 };
+                            for p in 0..state.num_players() {
+                                let label = if p == player { (v + 1.0) / 2.0 } else { (1.0 - v) / 2.0 };
+                                x.push(encoder.encode(&state, Some(p)));
+                                y.push(label.clamp(0.0, 1.0));
+                                if x.len() >= max_states {
+                                    break 'games;
+                                }
+                            }
+                            labeled += 1;
+                        }
+                        decisions += 1;
+                    }
+                    let action = if player == 0 {
+                        pa.choose(&state, registry, player, &legal_actions)
+                    } else {
+                        pb.choose(&state, registry, player, &legal_actions)
+                    };
+                    let (s, yy) = step(state, action, registry);
+                    state = s;
+                    yld = yy;
+                    steps += 1;
+                }
+            }
+        }
+    }
+    (x, y)
+}
+
+/// End-to-end DENSE distillation: collect PIMC per-state value targets over a
+/// random self-play distribution, standardize, fit logistic regression (soft
+/// labels), and return a [`BasicE2Encoder`] [`LinearValue`]. The A/B partner of
+/// [`learn_value`] (same encoder + same random-self-play distribution; the only
+/// difference is the TARGET — PIMC value vs terminal outcome).
+#[allow(clippy::too_many_arguments)]
+pub fn learn_value_from_pimc_scores(
+    deck: &[CardId],
+    registry: &CardRegistry,
+    n_games: u32,
+    max_states: usize,
+    stride: u64,
+    max_steps: u32,
+    epochs: usize,
+    lr: f32,
+    l2: f32,
+    pimc_samples: u32,
+    pimc_cap: u32,
+    pimc_candidates: usize,
+    seed: u64,
+) -> LinearValue {
+    let encoder = BasicE2Encoder::for_two_players();
+    let (mut x, y) = collect_pimc_value_data(
+        deck, registry, n_games, max_states, stride, max_steps, &encoder,
+        pimc_samples, pimc_cap, pimc_candidates, seed,
+    );
     let (means, stds) = standardize(&mut x);
     let (weights, bias) = train_logistic(&x, &y, epochs, lr, l2);
     LinearValue { encoder, means, stds, weights, bias }
@@ -432,6 +567,29 @@ mod tests {
             println!("learned (n={n_games:>3} games) log-loss = {:.4}",
                 oos_logloss(&states, &outcomes, &lv));
         }
+    }
+
+    /// FAST smoke for the DENSE PIMC-value distillation path: collection yields
+    /// soft labels in [0,1] over some states, and the end-to-end learner produces
+    /// a finite, bounded value. Tiny params; does NOT assert win-rate (that's the
+    /// #[ignore] capsule experiment).
+    #[test]
+    fn pimc_value_distill_smoke() {
+        use crate::search::ValueFn;
+        let reg = arcana_cards::build_catalog();
+        let deck = arcana_cards::sample_deck(&reg, 5);
+
+        let enc = BasicE2Encoder::for_two_players();
+        // n_games=1, max_states=8, stride=2, max_steps=400, PIMC 2/30/6, seed 1.
+        let (x, y) = collect_pimc_value_data(&deck, &reg, 1, 8, 2, 400, &enc, 2, 30, 6, 1);
+        assert!(!x.is_empty(), "should collect at least one labeled state");
+        assert_eq!(x.len(), y.len());
+        assert!(y.iter().all(|&l| (0.0..=1.0).contains(&l)), "soft labels must be in [0,1]");
+
+        let lv = learn_value_from_pimc_scores(&deck, &reg, 1, 8, 2, 400, 20, 0.3, 1e-4, 2, 30, 6, 1);
+        let (s, _y) = new_game(vec![deck.clone(), deck.clone()], &reg, 5);
+        let v = lv.value(&s, 0);
+        assert!(v.is_finite() && (-1.0..=1.0).contains(&v), "dense value out of range: {v}");
     }
 
     /// Logistic regression learns a linearly-separable toy problem: feature 0

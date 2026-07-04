@@ -799,10 +799,36 @@ impl PimcPolicy {
     }
 }
 
-impl StatePolicy for PimcPolicy {
-    fn choose(&mut self, state: &GameState, registry: &CardRegistry,
-              decider: PlayerId, legal: &[Action]) -> Action {
-        if legal.len() <= 1 { return legal[0].clone(); }
+/// One candidate action scored by PIMC — its mean rollout value for the player
+/// to move, in roughly `[-1, 1]` (higher = better). The reusable output of
+/// [`PimcPolicy::score_actions`]; also the dense teacher signal for value
+/// distillation (`crate::learn::learn_value_from_pimc_scores`).
+#[derive(Clone, Debug)]
+pub struct PimcScoredAction {
+    pub action: Action,
+    pub score: f32,
+}
+
+impl PimcPolicy {
+    /// Score every evaluated candidate action by its **mean** rollout value for
+    /// `decider` (averaged over the sampled determinizations) — the reusable core
+    /// that [`StatePolicy::choose`] argmaxes over. `PassPriority` is always kept
+    /// among candidates. For `legal.len() <= 1`, returns that lone action at
+    /// score 0. Consumes exactly the same RNG draws as `choose`, so a same-seed
+    /// `choose` returns `score_actions`'s top action (see the parity test).
+    pub fn score_actions(
+        &mut self,
+        state: &GameState,
+        registry: &CardRegistry,
+        decider: PlayerId,
+        legal: &[Action],
+    ) -> Vec<PimcScoredAction> {
+        if legal.len() <= 1 {
+            return legal
+                .iter()
+                .map(|a| PimcScoredAction { action: a.clone(), score: 0.0 })
+                .collect();
+        }
         let view = project(state, decider);
         let cands = self.candidates(legal);
         let mut sums = vec![0.0f32; cands.len()];
@@ -815,11 +841,27 @@ impl StatePolicy for PimcPolicy {
                 sums[i] += value(&final_state, decider);
             }
         }
+        let n = self.samples.max(1) as f32;
+        cands
+            .into_iter()
+            .enumerate()
+            .map(|(i, a)| PimcScoredAction { action: a, score: sums[i] / n })
+            .collect()
+    }
+}
+
+impl StatePolicy for PimcPolicy {
+    fn choose(&mut self, state: &GameState, registry: &CardRegistry,
+              decider: PlayerId, legal: &[Action]) -> Action {
+        if legal.len() <= 1 { return legal[0].clone(); }
+        // argmax over the scored candidates — first-strict-max (ties → lowest
+        // index), identical to the pre-refactor tie-break.
+        let scored = self.score_actions(state, registry, decider, legal);
         let mut best = 0usize;
-        for i in 1..cands.len() {
-            if sums[i] > sums[best] { best = i; }
+        for i in 1..scored.len() {
+            if scored[i].score > scored[best].score { best = i; }
         }
-        cands[best].clone()
+        scored[best].action.clone()
     }
 }
 
@@ -1033,6 +1075,47 @@ mod tests {
             let mut p = FlatMonteCarloPolicy::with_budget(1, 2, 30, 4);
             let a = p.choose(&state, &reg, player, &legal_actions);
             assert!(legal_actions.contains(&a));
+        }
+    }
+
+    /// `PimcPolicy::choose` is exactly argmax over `score_actions`: two same-seed
+    /// policies agree (choose picks the top-scored action). Advances a few random
+    /// steps to reach a decision with >1 legal action so the argmax is non-trivial.
+    #[test]
+    fn pimc_choose_is_argmax_of_score_actions() {
+        let reg = arcana_cards::build_catalog();
+        let deck = arcana_cards::sample_deck(&reg, 5);
+        let decks = vec![deck.clone(), deck.clone()];
+        let mut rp = RandomStatePolicy::new(3);
+        let (mut s, mut y) = new_game(decks.clone(), &reg, 7);
+        let mut steps = 0u32;
+        loop {
+            match y {
+                EngineYield::GameOver(_) => return, // no rich decision reached; skip
+                EngineYield::PendingDecision { player, legal_actions, .. } => {
+                    if legal_actions.len() > 1 {
+                        let mut p_choose = PimcPolicy::with_budget(99, decks.clone(), 6, 60, 8);
+                        let mut p_score = PimcPolicy::with_budget(99, decks.clone(), 6, 60, 8);
+                        let scored = p_score.score_actions(&s, &reg, player, &legal_actions);
+                        assert!(!scored.is_empty());
+                        let mut best = 0;
+                        for i in 1..scored.len() {
+                            if scored[i].score > scored[best].score { best = i; }
+                        }
+                        let chosen = p_choose.choose(&s, &reg, player, &legal_actions);
+                        assert_eq!(
+                            chosen, scored[best].action,
+                            "choose must equal the top action of score_actions"
+                        );
+                        assert!(legal_actions.contains(&chosen));
+                        return;
+                    }
+                    if steps > 60 { return; }
+                    let a = rp.choose(&s, &reg, player, &legal_actions);
+                    let (ns, ny) = step(s, a, &reg);
+                    s = ns; y = ny; steps += 1;
+                }
+            }
         }
     }
 
