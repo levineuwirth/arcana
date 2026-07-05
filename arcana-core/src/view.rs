@@ -328,6 +328,19 @@ fn build_decision_prompt(
         }
         ChoiceKind::PickPlayer { .. } => Some("Choose a player".to_string()),
         ChoiceKind::ChooseColor => Some("Choose a color".to_string()),
+        // Scry / surveil / fateseal — name the effect so the ordering buttons
+        // ("Top: … | Bottom: …") read in context.
+        ChoiceKind::OrderCards { cards, allowed } => {
+            use crate::actions::CardDestination;
+            let verb = if allowed.contains(&CardDestination::Graveyard) {
+                "Surveil"
+            } else if allowed.contains(&CardDestination::BottomOfLibrary) {
+                "Scry"
+            } else {
+                "Order"
+            };
+            Some(format!("{verb} {} — choose where each card goes", cards.len()))
+        }
         // PickCards is shown by the visual picker (its own prompt); others have
         // self-explanatory buttons (Yes/No, order, optional cost).
         _ => None,

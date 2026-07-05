@@ -120,11 +120,52 @@ pub fn legal_actions(state: &GameState, registry: &CardRegistry) -> Vec<Action> 
     legal_priority_actions(state, player, registry)
 }
 
-/// Enumerate legal responses to `state.pending_choice`. Returns a
-/// single canonical answer per choice kind (combinatorial fan-outs
-/// like every ordering of OrderCards are pruned to the obvious
-/// default — agent layer is expected to submit its preferred answer
-/// directly rather than iterate). Always includes `Concede`.
+/// Fan out the real placements for a 2-destination `OrderCards` (scry / surveil /
+/// fateseal): every card to the first (order-sensitive "top") destination or the
+/// second, with all orderings of the top pile. Returns `None` — so the caller
+/// falls back to the single canonical answer — for non-2-destination shapes or
+/// when the option count would exceed `max_options` (n ≥ 4 for the usual case).
+fn enumerate_scry_orderings(
+    cards: &[ObjectId],
+    allowed: &[crate::actions::CardDestination],
+    max_options: usize,
+) -> Option<Vec<Vec<(ObjectId, crate::actions::CardDestination)>>> {
+    if allowed.len() != 2 {
+        return None;
+    }
+    let n = cards.len();
+    if n == 0 || n > 20 {
+        return None;
+    }
+    // count = Σ_k P(n,k) = Σ_k n!/(n-k)! — guard before building.
+    let count: usize = (0..=n)
+        .map(|k| ((n - k + 1)..=n).product::<usize>().max(1))
+        .sum();
+    if count > max_options {
+        return None;
+    }
+    let (top, other) = (allowed[0], allowed[1]);
+    let mut out = Vec::new();
+    for mask in 0u32..(1u32 << n) {
+        let top_cards: Vec<ObjectId> =
+            (0..n).filter(|i| mask & (1 << i) != 0).map(|i| cards[i]).collect();
+        let bottom_cards: Vec<ObjectId> =
+            (0..n).filter(|i| mask & (1 << i) == 0).map(|i| cards[i]).collect();
+        for perm in permutations(&top_cards) {
+            let mut placement: Vec<(ObjectId, crate::actions::CardDestination)> =
+                perm.iter().map(|&c| (c, top)).collect();
+            placement.extend(bottom_cards.iter().map(|&c| (c, other)));
+            out.push(placement);
+        }
+    }
+    Some(out)
+}
+
+/// Enumerate legal responses to `state.pending_choice`. Most kinds are fully
+/// enumerated so a HUMAN sees the real options (and [`crate::session`] no longer
+/// auto-resolves them); genuinely combinatorial fan-outs (large `OrderCards`,
+/// multi-target divides) are pruned to the obvious canonical default beyond a
+/// small cap. Always includes `Concede`.
 fn legal_resolution_choice_actions(state: &GameState) -> Vec<Action> {
     use crate::actions::{ChoiceResponse, ChoiceKind, CardDestination};
     let pending = state.pending_choice.as_ref().unwrap();
@@ -133,16 +174,30 @@ fn legal_resolution_choice_actions(state: &GameState) -> Vec<Action> {
     let mut out: Vec<Action> = Vec::new();
     match &pending.kind {
         ChoiceKind::OrderCards { cards, allowed } => {
-            // Canonical answer: every card → first allowed destination
-            // (usually TopOfLibrary, so effectively identity).
-            let dest = allowed.first().copied()
-                .unwrap_or(CardDestination::TopOfLibrary);
-            let placements: Vec<(ObjectId, CardDestination)> = cards.iter()
-                .map(|id| (*id, dest)).collect();
-            out.push(Action::SubmitResolutionChoice {
-                id,
-                response: ChoiceResponse::OrderCards { placements },
-            });
+            // Fan out the real orderings (scry/surveil/fateseal, small n) so a
+            // human actually decides keep-vs-bottom instead of the engine
+            // silently keeping everything on top. Falls back to the canonical
+            // "every card → first allowed destination" for large/odd shapes.
+            match enumerate_scry_orderings(cards, allowed, 32) {
+                Some(opts) if opts.len() > 1 => {
+                    for placements in opts {
+                        out.push(Action::SubmitResolutionChoice {
+                            id,
+                            response: ChoiceResponse::OrderCards { placements },
+                        });
+                    }
+                }
+                _ => {
+                    let dest = allowed.first().copied()
+                        .unwrap_or(CardDestination::TopOfLibrary);
+                    let placements: Vec<(ObjectId, CardDestination)> = cards.iter()
+                        .map(|id| (*id, dest)).collect();
+                    out.push(Action::SubmitResolutionChoice {
+                        id,
+                        response: ChoiceResponse::OrderCards { placements },
+                    });
+                }
+            }
         }
         ChoiceKind::PickCards { candidates, min, max } => {
             let mut sorted = candidates.clone();

@@ -5094,6 +5094,47 @@ fn preordain_parks_on_scry_then_resumes_draw() {
         "Preordain resolved into its owner's graveyard");
 }
 
+/// The scry-2 choice now FANS OUT in `legal_actions`: every keep/bottom
+/// ordering is a distinct option, so a HUMAN (not the engine's canonical
+/// "keep everything on top" default, which used to auto-resolve) decides.
+#[test]
+fn scry_two_fans_out_all_orderings() {
+    use arcana_core::actions::{Action, CardDestination, ChoiceResponse};
+    let (mut s, registry, ids) = fresh_game();
+    let preordain = put_in_hand(&mut s, &registry, 0, ids.preordain);
+    let _l2 = put_in_library_top(&mut s, &registry, 0, ids.mountain);
+    let l1 = put_in_library_top(&mut s, &registry, 0, ids.forest);
+    let l0 = put_in_library_top(&mut s, &registry, 0, ids.plains);
+    let s = cast_preordain(s, &registry, 0, preordain);
+    assert!(s.pending_choice.is_some(), "scry pushed a choice");
+
+    let actions = arcana_core::legal_actions::legal_actions(&s, &registry);
+    let orderings: Vec<Vec<(ObjectId, CardDestination)>> = actions.iter()
+        .filter_map(|a| match a {
+            Action::SubmitResolutionChoice {
+                response: ChoiceResponse::OrderCards { placements }, ..
+            } => Some(placements.clone()),
+            _ => None,
+        })
+        .collect();
+
+    // scry 2 (2 distinct cards) → Σ_k P(2,k) = 1 + 2 + 2 = 5 orderings.
+    assert_eq!(orderings.len(), 5,
+        "scry-2 should fan out all 5 keep/bottom orderings, got {}", orderings.len());
+    // Both-to-bottom (dig deepest) must be offered.
+    assert!(orderings.iter().any(|p| {
+        p.len() == 2
+            && p.iter().all(|(_, d)| *d == CardDestination::BottomOfLibrary)
+            && p.iter().any(|(id, _)| *id == l0)
+            && p.iter().any(|(id, _)| *id == l1)
+    }), "a both-to-bottom ordering must be offered");
+    // Keep-one / bottom-one must be offered (l1 top, l0 bottom).
+    assert!(orderings.iter().any(|p| p.as_slice()
+        == [(l1, CardDestination::TopOfLibrary), (l0, CardDestination::BottomOfLibrary)]),
+        "a keep-one/bottom-one ordering must be offered");
+    assert!(actions.iter().any(|a| matches!(a, Action::Concede)), "Concede still offered");
+}
+
 /// Scry-both-to-bottom: the draw pulls whatever the scry left on top
 /// (the third card), proving the effect sequence observes the
 /// intermediate library mutation.

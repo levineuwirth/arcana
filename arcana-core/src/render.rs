@@ -260,8 +260,32 @@ fn render_choice_response(r: &ChoiceResponse, state: &GameState, registry: &Card
         }
         ChoiceResponse::PickPlayer { picked } => format!("Choose P{picked}"),
         ChoiceResponse::ChooseColor { color } => format!("Choose {color:?}"),
-        ChoiceResponse::OrderCards { placements } =>
-            format!("Order {} card(s)", placements.len()),
+        ChoiceResponse::OrderCards { placements } if placements.is_empty() =>
+            "Order (no cards)".to_string(),
+        ChoiceResponse::OrderCards { placements } => {
+            use crate::actions::CardDestination;
+            let dest_label = |d: &CardDestination| match d {
+                CardDestination::TopOfLibrary => "Top",
+                CardDestination::BottomOfLibrary => "Bottom",
+                CardDestination::Graveyard => "Graveyard",
+                CardDestination::Hand => "Hand",
+                CardDestination::Exile => "Exile",
+                CardDestination::Battlefield => "Battlefield",
+            };
+            // Group by destination, preserving submitted (top-first) order.
+            let mut groups: Vec<(CardDestination, Vec<String>)> = Vec::new();
+            for (id, dest) in placements {
+                let nm = card_name(state, registry, *id);
+                match groups.iter_mut().find(|(d, _)| d == dest) {
+                    Some(g) => g.1.push(nm),
+                    None => groups.push((*dest, vec![nm])),
+                }
+            }
+            groups.iter()
+                .map(|(d, names)| format!("{}: {}", dest_label(d), names.join(", ")))
+                .collect::<Vec<_>>()
+                .join("  |  ")
+        }
     }
 }
 
