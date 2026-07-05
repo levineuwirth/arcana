@@ -928,15 +928,18 @@ impl GameCore {
         if human_deck.is_empty() || opp_deck.is_empty() {
             return Err("both decks must be non-empty".to_string());
         }
-        let seed = match cfg.first_player {
-            FirstPlayer::Random => cfg.seed ^ 0xF1257, // perturb the shuffle
-            FirstPlayer::Seat { .. } => cfg.seed,
+        // Play/draw: `Seat{index}` puts that seat on the play; `Random` keeps
+        // seat 0 first but perturbs the shuffle. `first` is clamped to a real seat.
+        let (seed, first) = match cfg.first_player {
+            FirstPlayer::Random => (cfg.seed ^ 0xF1257, 0u8),
+            FirstPlayer::Seat { index } => (cfg.seed, (index as u8).min(1)),
         };
         // The rival plays a style suited to its deck (race / stabilize / grind),
         // derived server-side so no config/frontend change is needed.
         let style = derive_playstyle(reg, &opp_deck);
         let seats = vec![Seat::Human, Self::make_bot_styled(seed, difficulty, style)];
-        let session = Session::new(vec![human_deck, opp_deck], reg, seats, seed);
+        let session =
+            Session::new_first_player(vec![human_deck, opp_deck], reg, seats, seed, first);
         Ok(Self { reg, events_seen: Self::fresh_event_cursor(&session), session, legal: Vec::new(), awaiting: None })
     }
 

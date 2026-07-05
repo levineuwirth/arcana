@@ -4459,6 +4459,29 @@ pub fn new_game_with_format(
     registry: &CardRegistry,
     seed: u64,
 ) -> (GameState, EngineYield) {
+    // Default: seat 0 takes turn 1 (on the play).
+    new_game_first_player_with_format(decks, format, registry, seed, 0)
+}
+
+/// Like [`new_game`] but `first` takes turn 1 — the play/draw choice (CR 103.7).
+/// `first == 0` is exactly [`new_game`]. Out-of-range `first` falls back to seat 0.
+pub fn new_game_first_player(
+    decks: Vec<Vec<crate::types::CardId>>,
+    registry: &CardRegistry,
+    seed: u64,
+    first: PlayerId,
+) -> (GameState, EngineYield) {
+    new_game_first_player_with_format(
+        decks, crate::format::FormatConfig::standard_2026(), registry, seed, first)
+}
+
+fn new_game_first_player_with_format(
+    decks: Vec<Vec<crate::types::CardId>>,
+    format: crate::format::FormatConfig,
+    registry: &CardRegistry,
+    seed: u64,
+    first: PlayerId,
+) -> (GameState, EngineYield) {
     let num_players = decks.len() as u8;
     assert!(num_players >= 1, "new_game needs at least one deck");
     let hand_size = format.starting_hand_size;
@@ -4484,7 +4507,11 @@ pub fn new_game_with_format(
         }
     }
 
-    // Begin the mulligan decision for the active player.
+    // The chosen starting player takes turn 1 (mirrors the ChooseFirstPlayer
+    // special-action path); then begin their mulligan decision.
+    if first < num_players {
+        state.turn.active_player = first;
+    }
     let ap = state.active_player();
     state.priority.begin_special_action(SpecialAction::MulliganDecision, ap);
 

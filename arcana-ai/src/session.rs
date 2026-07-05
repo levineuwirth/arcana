@@ -20,7 +20,7 @@
 //! recorded into a [`GameRecord`] for replay.
 
 use arcana_core::actions::{Action, DecisionContext};
-use arcana_core::engine::{new_game, step, EngineYield};
+use arcana_core::engine::{new_game_first_player, step, EngineYield};
 use arcana_core::record::GameRecord;
 use arcana_core::registry::CardRegistry;
 use arcana_core::render::render_action;
@@ -134,9 +134,21 @@ impl<'a> Session<'a> {
         seats: Vec<Seat>,
         seed: u64,
     ) -> Self {
+        Self::new_first_player(decks, registry, seats, seed, 0)
+    }
+
+    /// Like [`Session::new`] but `first` (a seat index) takes turn 1 — the
+    /// play/draw choice. `first == 0` is exactly [`Session::new`].
+    pub fn new_first_player(
+        decks: Vec<Vec<CardId>>,
+        registry: &'a CardRegistry,
+        seats: Vec<Seat>,
+        seed: u64,
+        first: PlayerId,
+    ) -> Self {
         assert_eq!(decks.len(), seats.len(), "one seat per deck");
         let record = GameRecord::new(decks.clone(), seed);
-        let (state, yld) = new_game(decks, registry, seed);
+        let (state, yld) = new_game_first_player(decks, registry, seed, first);
         Self { state, yld, registry, seats, record, log: Vec::new(),
                auto_pass: AutoPass::default() }
     }
@@ -271,6 +283,29 @@ impl<'a> Session<'a> {
 mod tests {
     use super::*;
     use crate::search::RandomStatePolicy;
+
+    /// `new_first_player(first)` puts that seat on the play: it takes the opening
+    /// mulligan decision (turn 1), and `first == 0` is the default.
+    #[test]
+    fn first_player_choice_starts_the_chosen_seat() {
+        let reg = arcana_cards::build_catalog();
+        let deck = arcana_cards::sample_deck(&reg, 7);
+        for first in [0u8, 1] {
+            let seats = vec![Seat::Human, Seat::Human];
+            let mut s = Session::new_first_player(
+                vec![deck.clone(), deck.clone()], &reg, seats, 3, first);
+            // The chosen seat owns turn 1 (the definitive "on the play" signal —
+            // holds even when a bot's mulligan auto-resolves in the solo path).
+            assert_eq!(s.state().turn.active_player, first,
+                "seat {first} chosen → owns turn 1");
+            // …and its mulligan is the first decision surfaced.
+            match s.advance() {
+                Turn::AwaitingHuman { player, .. } =>
+                    assert_eq!(player, first, "seat {first} on the play acts first"),
+                Turn::GameOver(_) => panic!("game shouldn't be over at the opening mulligan"),
+            }
+        }
+    }
 
     /// A scripted "human" (progress-biased: keep mulligans, never concede, first
     /// real action) drives a Session against a bot to completion — validates the
