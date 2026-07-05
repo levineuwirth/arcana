@@ -844,6 +844,21 @@ async fn match_bottom(State(app): State<AppState>, Query(at): Query<MatchRef>, b
     match_play_response(&app, &at.code, sender.bottom(at.seat, req.ids).await)
 }
 
+async fn match_autopass(State(app): State<AppState>, Query(at): Query<MatchRef>, body: String) -> Response {
+    let req: AutoPassRequest = match serde_json::from_str(&body) {
+        Ok(r) => r,
+        Err(e) => return (StatusCode::BAD_REQUEST, err(format!("invalid /m/autopass body: {e}"))).into_response(),
+    };
+    let level = match req.level.as_str() {
+        "none" => AutoPass::None,
+        "stops" => AutoPass::Stops,
+        "full" => AutoPass::Full,
+        other => return (StatusCode::BAD_REQUEST, err(format!("unknown auto-pass level: {other}"))).into_response(),
+    };
+    let sender = match route_match(&app, &at) { Ok(s) => s, Err(r) => return r };
+    match_play_response(&app, &at.code, sender.set_auto_pass(at.seat, level).await)
+}
+
 async fn match_suggest(State(app): State<AppState>, Query(q): Query<MatchSuggestQuery>) -> Response {
     let sender = match route_match(&app, &q.at) { Ok(s) => s, Err(_) => return Json(Vec::<Suggestion>::new()).into_response() };
     Json(sender.suggest(q.at.seat, q.deep).await).into_response()
@@ -1319,6 +1334,7 @@ async fn main() {
         .route("/m/autotap", post(match_autotap))
         .route("/m/activate", post(match_activate))
         .route("/m/bottom", post(match_bottom))
+        .route("/m/autopass", post(match_autopass))
         .route("/m/suggest", get(match_suggest))
         .route("/m/leave", post(match_leave))
         .route("/m/ws", get(match_ws))

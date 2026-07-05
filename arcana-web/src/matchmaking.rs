@@ -77,6 +77,7 @@ enum MatchCmd {
     AutoTap { seat: PlayerId, target: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
     Activate { seat: PlayerId, source: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
     Bottom { seat: PlayerId, ids: Vec<ObjectId>, reply: oneshot::Sender<Result<StateResponse, String>> },
+    SetAutoPass { seat: PlayerId, level: arcana_ai::session::AutoPass, reply: oneshot::Sender<Result<StateResponse, String>> },
     Suggest { seat: PlayerId, deep: bool, reply: oneshot::Sender<Vec<Suggestion>> },
 }
 
@@ -103,6 +104,10 @@ fn run_match(mut core: GameCore, mut rx: mpsc::UnboundedReceiver<MatchCmd>) {
             }
             MatchCmd::Bottom { seat, ids, reply } => {
                 let _ = reply.send(core.bottom_cards_for(seat, ids).map_err(|e| e.to_string()));
+            }
+            MatchCmd::SetAutoPass { seat, level, reply } => {
+                core.set_auto_pass(level);
+                let _ = reply.send(Ok(core.snapshot_for(seat)));
             }
             MatchCmd::Suggest { seat, deep, reply } => {
                 let _ = reply.send(core.suggest_for(seat, deep));
@@ -147,6 +152,11 @@ impl MatchSender {
     }
     pub async fn bottom(&self, seat: PlayerId, ids: Vec<ObjectId>) -> Result<StateResponse, String> {
         self.ask(|reply| MatchCmd::Bottom { seat, ids, reply }).await
+    }
+    pub async fn set_auto_pass(
+        &self, seat: PlayerId, level: arcana_ai::session::AutoPass,
+    ) -> Result<StateResponse, String> {
+        self.ask(|reply| MatchCmd::SetAutoPass { seat, level, reply }).await
     }
     pub async fn suggest(&self, seat: PlayerId, deep: bool) -> Vec<Suggestion> {
         let (reply, rx) = oneshot::channel();
