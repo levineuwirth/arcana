@@ -893,8 +893,15 @@ async fn match_ws_loop(mut socket: WebSocket, app: AppState, at: MatchRef) {
     if !push_match_state(&mut socket, &app, &at).await {
         return;
     }
+    // Keepalive: while this socket is open, mark the seat alive so the reaper
+    // (which times out silent seats) doesn't drop a connected-but-quiet client
+    // between game actions. Stops when the socket closes → the seat goes stale.
+    let mut keepalive = tokio::time::interval(std::time::Duration::from_secs(20));
     loop {
         tokio::select! {
+            _ = keepalive.tick() => {
+                app.matches.lock().unwrap().touch(&at.code, at.seat);
+            }
             changed = sub.recv() => match changed {
                 Ok(code) if code == at.code => {
                     if !push_match_state(&mut socket, &app, &at).await { return; }
@@ -1292,6 +1299,27 @@ async fn main() {
     {
         let art = state.art.clone();
         tokio::spawn(async move { art.ensure_bulk().await; });
+    }
+    // Reaper: drop networked matches whose player vanished (no contact past the
+    // timeout) so the surviving client isn't frozen forever. MATCH_TIMEOUT_SECS
+    // (default 60) — a live client bumps last-seen via every REST call + a 20s WS
+    // keepalive, so only a truly gone peer trips it. Notifies the survivor's WS.
+    {
+        let matches = state.matches.clone();
+        let changes = state.changes.clone();
+        let timeout = std::time::Duration::from_secs(
+            std::env::var("MATCH_TIMEOUT_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(60),
+        );
+        tokio::spawn(async move {
+            let mut tick = tokio::time::interval(std::time::Duration::from_secs(15));
+            loop {
+                tick.tick().await;
+                let stale = matches.lock().unwrap().reap_stale(timeout);
+                for code in stale {
+                    let _ = changes.send(code); // survivor's WS re-fetches → `ended`
+                }
+            }
+        });
     }
 
     // SOLO routes drive the host's single local game. On a LAN bind they're

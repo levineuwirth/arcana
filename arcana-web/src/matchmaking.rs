@@ -18,6 +18,7 @@
 //! its thread and never crosses a thread boundary.
 
 use std::collections::HashMap;
+use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, oneshot};
@@ -179,6 +180,12 @@ struct NetMatch {
     /// Command channel to this match's game thread. `None` until a guest joins
     /// (the thread + `GameCore` are created then). Dropping it stops the thread.
     tx: Option<mpsc::UnboundedSender<MatchCmd>>,
+    /// Last contact time per seat (monotonic). Bumped on any authenticated
+    /// command ([`Matches::route`]) and by the open WebSocket's keepalive
+    /// ([`Matches::touch`]). A filled seat that goes silent past the reap timeout
+    /// is treated as vanished, and [`Matches::reap_stale`] drops the match so the
+    /// present player isn't frozen forever.
+    last_seen: [Instant; 2],
 }
 
 /// The credentials a client keeps after creating/joining: which match, which
@@ -316,6 +323,7 @@ impl Matches {
             seq,
             seats: [host, SeatSlot::empty()],
             tx: None,
+            last_seen: [Instant::now(); 2],
         });
         Ok(SeatCredentials { code, seat: 0, token })
     }
@@ -357,6 +365,7 @@ impl Matches {
             .expect("spawn match thread");
         m.tx = Some(tx);
         m.status = MatchStatus::Active;
+        m.last_seen = [Instant::now(); 2]; // both present at kickoff
         Ok(SeatCredentials { code: code.to_string(), seat: 1, token })
     }
 
@@ -378,19 +387,51 @@ impl Matches {
     /// Authenticate `(code, seat, token)` and return a [`MatchSender`] to the
     /// match's game thread. The caller (an async handler) sends/awaits AFTER
     /// releasing the registry lock — no lock is held across the await.
-    pub fn route(&self, code: &str, seat: PlayerId, token: &str)
+    pub fn route(&mut self, code: &str, seat: PlayerId, token: &str)
         -> Result<MatchSender, String>
     {
-        let m = self.by_code.get(code)
+        let m = self.by_code.get_mut(code)
             .ok_or_else(|| "no match with that code".to_string())?;
         let ok = m.seats.get(seat as usize)
             .is_some_and(|s| s.filled && s.token == token);
         if !ok {
             return Err("not authorized for this seat".to_string());
         }
+        if let Some(t) = m.last_seen.get_mut(seat as usize) {
+            *t = Instant::now(); // this seat is alive
+        }
         m.tx.clone()
             .map(MatchSender)
             .ok_or_else(|| "that match has not started yet".to_string())
+    }
+
+    /// Keepalive: mark `seat` alive (the open WebSocket calls this on a timer so a
+    /// connected-but-quiet client isn't reaped between game actions). Unauthenticated
+    /// — the socket was already token-checked on connect.
+    pub fn touch(&mut self, code: &str, seat: PlayerId) {
+        if let Some(m) = self.by_code.get_mut(code) {
+            if let Some(t) = m.last_seen.get_mut(seat as usize) {
+                *t = Instant::now();
+            }
+        }
+    }
+
+    /// Drop every Active match with a filled seat that hasn't been seen within
+    /// `timeout` (a vanished player), returning the removed codes so the caller can
+    /// notify the surviving client (its next fetch 404s → an `ended` notice).
+    /// Dropping the entry drops the match's command sender, ending its game thread.
+    pub fn reap_stale(&mut self, timeout: Duration) -> Vec<String> {
+        let now = Instant::now();
+        let stale: Vec<String> = self.by_code.iter()
+            .filter(|(_, m)| m.status == MatchStatus::Active)
+            .filter(|(_, m)| m.seats.iter().enumerate().any(|(i, s)|
+                s.filled && now.duration_since(m.last_seen[i]) > timeout))
+            .map(|(c, _)| c.clone())
+            .collect();
+        for code in &stale {
+            self.by_code.remove(code);
+        }
+        stale
     }
 
     /// Mark a match finished (handlers call this when a pushed view shows
@@ -405,13 +446,13 @@ impl Matches {
 /// Synchronous round-trips to a match thread, for unit tests (no async runtime).
 #[cfg(test)]
 impl Matches {
-    fn snapshot(&self, code: &str, seat: PlayerId, token: &str) -> Result<StateResponse, String> {
+    fn snapshot(&mut self, code: &str, seat: PlayerId, token: &str) -> Result<StateResponse, String> {
         let s = self.route(code, seat, token)?;
         let (reply, rx) = oneshot::channel();
         s.0.send(MatchCmd::State { seat, reply }).map_err(|_| "match ended".to_string())?;
         rx.blocking_recv().map_err(|_| "match ended".to_string())?
     }
-    fn action(&self, code: &str, seat: PlayerId, token: &str, index: usize) -> Result<StateResponse, String> {
+    fn action(&mut self, code: &str, seat: PlayerId, token: &str, index: usize) -> Result<StateResponse, String> {
         let s = self.route(code, seat, token)?;
         let (reply, rx) = oneshot::channel();
         s.0.send(MatchCmd::Action { seat, index, reply }).map_err(|_| "match ended".to_string())?;
@@ -467,6 +508,43 @@ mod tests {
         // Exactly one of them is to act; the other is waiting (no actions).
         assert_ne!(s0.view.legal.is_empty(), s1.view.legal.is_empty(),
             "exactly one seat is on the clock");
+    }
+
+    /// The reaper drops Active matches whose player vanished (stale past the
+    /// timeout), never touches lobbies, keeps fresh/just-touched matches, and
+    /// returns the removed codes so the survivor can be notified.
+    #[test]
+    fn reap_stale_drops_vanished_matches() {
+        use std::time::Duration;
+        let reg = leaked_catalog();
+        let mut m = Matches::new(reg, 77);
+
+        // A lobby is never reaped, even at zero timeout.
+        let lob = m.create(profile("Solo"), DeckIdentity::default(), deck(reg)).unwrap();
+        std::thread::sleep(Duration::from_millis(2));
+        assert!(m.reap_stale(Duration::ZERO).is_empty(), "lobbies are never reaped");
+        assert!(m.info(&lob.code).is_some());
+
+        // A fresh Active match under a generous timeout is kept.
+        let host = m.create(profile("Alice"), DeckIdentity::default(), deck(reg)).unwrap();
+        m.join(&host.code, profile("Bob"), DeckIdentity::default(), deck(reg)).unwrap();
+        assert!(m.reap_stale(Duration::from_secs(3600)).is_empty(), "fresh match kept");
+        assert!(m.info(&host.code).is_some());
+
+        // After a beat, a zero timeout sees both seats as vanished → reaped, and
+        // the removed code is returned.
+        std::thread::sleep(Duration::from_millis(2));
+        let reaped = m.reap_stale(Duration::ZERO);
+        assert_eq!(reaped, vec![host.code.clone()]);
+        assert!(m.info(&host.code).is_none(), "reaped match is gone");
+
+        // touch() resets liveness: a just-touched match survives a 1s-timeout reap.
+        let h2 = m.create(profile("Cara"), DeckIdentity::default(), deck(reg)).unwrap();
+        m.join(&h2.code, profile("Dan"), DeckIdentity::default(), deck(reg)).unwrap();
+        std::thread::sleep(Duration::from_millis(2));
+        m.touch(&h2.code, 0);
+        m.touch(&h2.code, 1);
+        assert!(m.reap_stale(Duration::from_secs(1)).is_empty(), "just-touched match kept");
     }
 
     /// Bad join codes, a full match, and a second start are all rejected.
