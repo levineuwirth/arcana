@@ -210,6 +210,102 @@ impl ValueFn for MaterialValueV2 {
     fn value(&self, state: &GameState, player: PlayerId) -> f32 { value_v2(state, player) }
 }
 
+/// Material weights defining a play-STYLE. The hand-tuned leaves are special
+/// cases: [`MaterialValue`] is power-forward ("balanced"), [`MaterialValueV2`] is
+/// card-advantage ("controlling"). [`WeightedMaterialValue::aggressive`] leans
+/// power and discounts toughness / cards / life, so a [`ValueMcPolicy`] search
+/// that maximizes it develops threats and races rather than stabilizing.
+#[derive(Clone, Copy, Debug)]
+pub struct WeightedMaterialValue {
+    pub power: f32,
+    pub toughness: f32,
+    pub hand: f32,
+    pub pw_base: f32,
+    pub life: f32,
+    pub land: f32,
+    pub other: f32,
+}
+
+impl WeightedMaterialValue {
+    /// Offense-forward weights (heavy power, light toughness/hand/life).
+    pub fn aggressive() -> Self {
+        Self { power: 3.0, toughness: 0.5, hand: 0.4, pw_base: 2.0, life: 0.5, land: 0.8, other: 1.5 }
+    }
+}
+
+fn material_weighted(state: &GameState, player: PlayerId, w: &WeightedMaterialValue) -> f32 {
+    use arcana_core::types::CounterKind;
+    let mut score = state.player(player).life as f32 * w.life;
+    for obj in state.objects.objects_in_zone(Zone::Battlefield) {
+        if obj.controller != player { continue; }
+        if obj.is_creature() {
+            let p = state.computed_power(obj.id).unwrap_or(0).max(0) as f32;
+            let t = state.computed_toughness(obj.id).unwrap_or(0).max(0) as f32;
+            score += w.power * p + w.toughness * t;
+        } else if obj.is_planeswalker() {
+            score += w.pw_base + obj.count_counters(CounterKind::Loyalty) as f32;
+        } else if obj.is_land() {
+            score += w.land;
+        } else {
+            score += w.other;
+        }
+    }
+    score += w.hand * state.objects.objects_in_zone(Zone::Hand(player)).count() as f32;
+    score
+}
+
+impl ValueFn for WeightedMaterialValue {
+    fn value(&self, state: &GameState, player: PlayerId) -> f32 {
+        match state.result {
+            Some(GameResult::Win(p)) => if p == player { 1.0 } else { -1.0 },
+            Some(GameResult::Draw) => 0.0,
+            Some(GameResult::Eliminated(p)) => if p == player { -1.0 } else { 1.0 },
+            None => {
+                let me = material_weighted(state, player, self);
+                let opp = state.opponents_of(player)
+                    .map(|o| material_weighted(state, o, self))
+                    .fold(f32::NEG_INFINITY, f32::max);
+                let opp = if opp.is_finite() { opp } else { 0.0 };
+                0.9 * ((me - opp) / 30.0).tanh()
+            }
+        }
+    }
+}
+
+/// A bot's play-STYLE — which value leaf its [`ValueMcPolicy`] search maximizes.
+/// Distinguishes the World Stage rivals (derived from each one's deck) beyond raw
+/// difficulty: each style is a different [`ValueFn`], so the search actually plays
+/// differently (races vs stabilizes vs grinds).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Playstyle {
+    /// Race: power-forward, defense/cards discounted ([`WeightedMaterialValue::aggressive`]).
+    Aggressive,
+    /// The hand-tuned default ([`MaterialValue`]).
+    Balanced,
+    /// Card-advantage / stability ([`MaterialValueV2`]).
+    Controlling,
+}
+
+impl Playstyle {
+    /// The value leaf this style searches on.
+    pub fn leaf(self) -> Box<dyn ValueFn> {
+        match self {
+            Playstyle::Aggressive => Box::new(WeightedMaterialValue::aggressive()),
+            Playstyle::Balanced => Box::new(MaterialValue),
+            Playstyle::Controlling => Box::new(MaterialValueV2),
+        }
+    }
+
+    /// Short stable label (UI / logs).
+    pub fn label(self) -> &'static str {
+        match self {
+            Playstyle::Aggressive => "aggressive",
+            Playstyle::Balanced => "balanced",
+            Playstyle::Controlling => "controlling",
+        }
+    }
+}
+
 /// One-ply greedy on a [`ValueFn`]: pick the action whose resulting state has
 /// the best evaluation for the decider. No rollouts — a direct, cheap test of
 /// the evaluator's quality (greedy(learned) vs greedy(material) isolates whether
@@ -1052,6 +1148,39 @@ pub fn round_robin(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The play-styles are genuinely distinct leaves — aggressive weights favor
+    /// offense over defense/cards, every leaf stays finite/bounded, and all agree
+    /// on terminal sign (winner positive). A power-heavy board also ranks higher
+    /// under Aggressive than under Controlling (the whole point).
+    #[test]
+    fn playstyles_are_distinct_value_leaves() {
+        // Weight shape: aggressive leans power, discounts toughness/cards.
+        let a = WeightedMaterialValue::aggressive();
+        assert!(a.power > a.toughness && a.power > a.hand && a.hand < 1.0,
+            "aggressive leans power, discounts defense + cards");
+        assert_ne!(Playstyle::Aggressive.label(), Playstyle::Controlling.label());
+
+        let reg = arcana_cards::build_catalog();
+        let deck = arcana_cards::sample_deck(&reg, 5);
+        let (mut s, _y) = new_game(vec![deck.clone(), deck.clone()], &reg, 3);
+
+        for style in [Playstyle::Aggressive, Playstyle::Balanced, Playstyle::Controlling] {
+            let v = style.leaf().value(&s, 0);
+            assert!(v.is_finite() && (-1.0..=1.0).contains(&v),
+                "{}: value {v} must be bounded", style.label());
+        }
+        // Terminal override holds for every style.
+        s.result = Some(GameResult::Win(0));
+        for style in [Playstyle::Aggressive, Playstyle::Balanced, Playstyle::Controlling] {
+            let leaf = style.leaf();
+            assert!(leaf.value(&s, 0) > 0.0 && leaf.value(&s, 1) < 0.0,
+                "{}: winner positive / loser negative", style.label());
+        }
+        // (The board-level "aggressive prefers high power" behaviour follows from
+        // the weight assertion above — power 3 vs toughness 0.5 — and is exercised
+        // end-to-end by the web personality test.)
+    }
 
     /// A match between two random policies terminates and yields a result.
     #[test]

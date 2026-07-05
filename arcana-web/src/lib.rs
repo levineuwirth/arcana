@@ -20,7 +20,7 @@ use std::fmt;
 pub mod matchmaking;
 
 use arcana_ai::information_set::project;
-use arcana_ai::search::{MaterialValue, ValueMcPolicy};
+use arcana_ai::search::{MaterialValue, Playstyle, ValueMcPolicy};
 use arcana_ai::session::{Seat, Session, Turn};
 use arcana_core::actions::Action;
 use arcana_core::catalog::{card_info, CardInfo};
@@ -714,6 +714,35 @@ pub fn personalities(reg: &CardRegistry) -> Vec<Personality> {
     }).collect()
 }
 
+/// Infer a bot's [`Playstyle`] from its deck so each rival (and any custom deck)
+/// plays a style suited to what it's holding, with no config/frontend change:
+/// red-leaning + a low curve → **Aggressive** (race), white/blue-leaning →
+/// **Controlling** (stabilize / grind), else **Balanced**. A coarse-but-honest
+/// heuristic — colour + curve are the cheapest reliable style signal.
+pub fn derive_playstyle(reg: &CardRegistry, deck: &[CardId]) -> Playstyle {
+    use arcana_core::types::Color;
+    let (mut red, mut white, mut blue, mut cmc_sum, mut nonland) = (0u32, 0u32, 0u32, 0.0f32, 0u32);
+    for &cid in deck {
+        let Some(d) = reg.get(cid) else { continue };
+        let c = d.initial_characteristics();
+        if c.colors.contains(Color::Red) { red += 1; }
+        if c.colors.contains(Color::White) { white += 1; }
+        if c.colors.contains(Color::Blue) { blue += 1; }
+        if !c.types.is_land() {
+            cmc_sum += c.mana_value() as f32;
+            nonland += 1;
+        }
+    }
+    let avg_cmc = if nonland > 0 { cmc_sum / nonland as f32 } else { 3.0 };
+    if red > 0 && red >= white && red >= blue && avg_cmc <= 3.5 {
+        Playstyle::Aggressive
+    } else if white + blue > red {
+        Playstyle::Controlling
+    } else {
+        Playstyle::Balanced
+    }
+}
+
 /// Bot strength dial → Monte-Carlo search budget.
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Difficulty {
@@ -843,17 +872,25 @@ impl GameCore {
         Self::make_bot_with_difficulty(seed, Difficulty::Normal)
     }
 
-    /// Bot policy at a chosen [`Difficulty`] — the dial scales the Monte-Carlo
-    /// search budget (rollouts / depth cap / candidate breadth). Even "Hard"
-    /// stays light enough to answer an HTTP request promptly.
+    /// Bot policy at a chosen [`Difficulty`] (balanced play-style) — the dial
+    /// scales the Monte-Carlo search budget. See [`make_bot_styled`](Self::make_bot_styled).
     fn make_bot_with_difficulty(seed: u64, difficulty: Difficulty) -> Seat {
+        Self::make_bot_styled(seed, difficulty, Playstyle::Balanced)
+    }
+
+    /// Bot policy at a chosen difficulty AND play-style. Difficulty scales the
+    /// Monte-Carlo search budget (rollouts / depth cap / breadth); the
+    /// [`Playstyle`] picks the value leaf the search maximizes, so rivals whose
+    /// decks want to race / stabilize / grind actually play that way. Even "Hard"
+    /// stays light enough to answer an HTTP request promptly.
+    fn make_bot_styled(seed: u64, difficulty: Difficulty, style: Playstyle) -> Seat {
         let (rollouts, cap, candidates) = match difficulty {
             Difficulty::Easy => (2, 15, 6),
             Difficulty::Normal => (6, 25, 10),
             Difficulty::Hard => (20, 40, 16),
         };
         let policy = ValueMcPolicy::with_budget(
-            Box::new(MaterialValue), seed ^ 0xA5EED, rollouts, cap, candidates);
+            style.leaf(), seed ^ 0xA5EED, rollouts, cap, candidates);
         Seat::Bot(Box::new(policy))
     }
 
@@ -891,7 +928,10 @@ impl GameCore {
             FirstPlayer::Random => cfg.seed ^ 0xF1257, // perturb the shuffle
             FirstPlayer::Seat { .. } => cfg.seed,
         };
-        let seats = vec![Seat::Human, Self::make_bot_with_difficulty(seed, difficulty)];
+        // The rival plays a style suited to its deck (race / stabilize / grind),
+        // derived server-side so no config/frontend change is needed.
+        let style = derive_playstyle(reg, &opp_deck);
+        let seats = vec![Seat::Human, Self::make_bot_styled(seed, difficulty, style)];
         let session = Session::new(vec![human_deck, opp_deck], reg, seats, seed);
         Ok(Self { reg, events_seen: Self::fresh_event_cursor(&session), session, legal: Vec::new(), awaiting: None })
     }
@@ -1764,6 +1804,41 @@ mod tests {
             "the off-turn seat can't act");
         // The actor can act, and after it does the turn passes to the other seat.
         assert!(core.apply_index_for(actor, 0).is_ok(), "the on-turn seat can act");
+    }
+
+    /// The 5 rival personalities derive DISTINCT play-styles from their decks
+    /// (not the old monostyle) — the red rival isn't a control deck, white/blue
+    /// rivals control, green grinds balanced, and the roster spans ≥2 styles.
+    #[test]
+    fn personalities_derive_distinct_playstyles() {
+        let reg = leaked_catalog();
+        let ps = personalities(reg);
+        let style_of = |id: &str| {
+            let p = ps.iter().find(|p| p.id == id).expect("roster has this rival");
+            derive_playstyle(reg, &p.deck)
+        };
+        assert_eq!(style_of("cleric"), Playstyle::Controlling, "white rival stabilizes");
+        assert_eq!(style_of("tempest"), Playstyle::Controlling, "blue rival controls");
+        assert_eq!(style_of("wildspeaker"), Playstyle::Balanced, "green rival grinds");
+        assert_ne!(style_of("pyromancer"), Playstyle::Controlling, "the red rival isn't control");
+
+        let styles: std::collections::HashSet<_> =
+            ps.iter().map(|p| derive_playstyle(reg, &p.deck)).collect();
+        assert!(styles.len() >= 2, "personalities span multiple styles, got {styles:?}");
+
+        // A personality game builds a bot with the derived style and is playable.
+        let cfg = MatchConfig {
+            seats: vec![
+                SeatSpec::Local { profile: PlayerProfile { name: "me".into() },
+                    deck: arcana_cards::sample_deck(reg, DECK_SEED), identity: DeckIdentity::default() },
+                SeatSpec::Bot { profile: ps[0].profile.clone(), agenda: ps[0].agenda.clone(),
+                    deck: ps[0].deck.clone(), identity: ps[0].identity.clone(), difficulty: Difficulty::Easy },
+            ],
+            first_player: FirstPlayer::Random,
+            seed: 1,
+        };
+        let mut core = GameCore::from_match_config(reg, &cfg).expect("styled bot game builds");
+        assert!(core.snapshot().view.game_over.is_none(), "a fresh styled game is live");
     }
 
     /// Persistence round-trip: playing a two-human game, then rebuilding it from
