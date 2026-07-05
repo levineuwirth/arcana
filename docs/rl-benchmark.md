@@ -1,6 +1,6 @@
 # Controlled RL benchmark — Magic play-strength on a fixed capsule
 
-**Status: live (experiments 1–3 done).** The internally-valid successor to the
+**Status: FROZEN (negative result; 3 experiments). Next thread: PIMC action distillation.** The internally-valid successor to the
 deckbuilding-as-evaluation arc. That arc tried to make deck rankings track the
 *real MTGTop8 metagame*; a review + a same-referee control
 ([`gauntlet-results/control-arm-PI.txt`](gauntlet-results/control-arm-PI.txt))
@@ -174,28 +174,39 @@ card-identity features distilled from a *stronger* teacher** (higher-budget PIMC
 or accepting material-in-search as the capsule's cheap-referee ceiling and moving
 the RL question to a domain where synergy pays off more than aggro tempo.
 
-## Where the benchmark stands + next lever
+## Verdict — arc frozen (a clean negative result)
 
-**Two controlled negatives now bound the problem:** neither a better training
-**distribution** (exp 1, PIMC self-play) nor a better **representation** (exp 2,
-card identity) rescues the learned leaf; both sit at ~0.48, below hand-tuned
-material (0.77). The bottleneck is what's left: the **target**. The value regresses
-sparse, high-variance **terminal 0/½/1 MC outcomes** at a 30-game budget — no
-feature space or state distribution fixes a fit to a noisy label.
+**Frozen after three controlled negatives.** On this fixed, source-auditable
+capsule, a **cheap linear value leaf is not competitive with hand-tuned material**
+(~0.49 vs ~0.80), and it stays there no matter how it's trained — better data
+**distribution** (exp 1, PIMC self-play), a richer **representation** (exp 2, card
+identity), and a denser **target** (exp 3, PIMC-value labels) each failed the same
+way, under the same harness with pre-registered readouts. `vmc-material` topped the
+capsule all three times. This is the useful, well-scoped conclusion; a fourth
+same-shape ablation would be parameter-chasing, so the value-leaf-distillation line
+is closed.
 
-**Next experiment (pre-committed):** **distill PIMC's *value*, not its
-distribution.** Expose `PimcPolicy`'s per-candidate rollout scores (`sums`) as a
-reusable scoring API, and regress the cheap leaf on those **dense** position values
-instead of terminal outcomes. This is the one lever the two negatives point at, and
-it directly tests "compress the expensive search's *evaluation* into a cheap
-forward pass."
+Two things the trilogy pins down: (1) the capsule is aggro/tempo-leaning and
+reliably rewards material-in-search (consistent with the deckbuild arc's
+"material-in-search flatters aggro"); (2) the failure is **not** any single one of
+{distribution, representation, target} — the remaining suspects are **linear
+capacity**, **search-leaf mismatch** ("good predictor ≠ good search leaf" — the
+original Track-A result, reproduced), and **PIMC target quality** (the 12/120
+teacher is itself only mid-field, so distilling it caps the student).
 
-**Standing caveats:** 30-game data-limited leaves (identity's extra features make
-this worse, not better); bounded PIMC 12/120; screen-tier per cell (12 games/pair,
-240 aggregated); per-deck (archetype-specialized) training. The robust, repeated
-finding across both experiments is `vmc-material` topping the aggro-leaning capsule
-— consistent with the deckbuild arc's "material-in-search flatters aggro."
+**Next research thread (a genuinely different problem form): PIMC *action*
+distillation, not value-leaf distillation.** Instead of asking a linear value to
+make random rollouts useful, train an **action ranker / imitation policy** from a
+stronger PIMC's *choices* and evaluate it directly (or inside a shallow chooser).
+That attacks the **search-leaf mismatch** head-on rather than iterating the leaf.
+Baseline to beat: **`vmc-material` (~0.80)** as the capsule's cheap-referee ceiling;
+`PimcPolicy::score_actions` (added in exp 3) already exposes the ranked teacher
+choices this would distill. Nonlinear value + a stronger teacher is plausible but
+*less diagnostic* — it changes capacity, data, and teacher at once — so pursue it
+only if the goal is "make it stronger," not "learn why the leaf fails."
 
-Deprioritized: scaling self-play games (expensive under PIMC; distribution is not
-the lever); a bigger net on the same features/target (the parked MLP already
-refuted the linear-ceiling hypothesis — same sparse target).
+**Standing caveats (apply to all three experiments):** data-limited leaves (30
+self-play games / ≤600 dense states); bounded PIMC 12/120; screen-tier per cell (12
+games/pair, 240 aggregated); per-deck archetype-specialized training. These bound
+*how strong* the leaves could get, but not the qualitative verdict — three
+independent training levers all land at the same ~0.49.

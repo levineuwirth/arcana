@@ -14,6 +14,19 @@ we learned running it on real tournament decklists.*
 > Conclusion: the objective is *jointly* limited by referee strength, card fidelity, and
 > field breadth — no single lever is the fix. §6.5 below has the per-experiment detail.
 
+> **Successor arc also FROZEN — the internally-valid RL benchmark:
+> [`docs/rl-benchmark.md`](rl-benchmark.md).** After the deckbuild-eval arc showed the
+> "match the real metagame" axis is blocked (censored target, N=4, narrow field), the RL
+> thread pivoted to a fully-controlled question: *how strong is a policy on a fixed,
+> source-auditable capsule, and can PIMC be distilled into a cheap leaf?* **Negative
+> result across three pre-registered experiments:** a cheap linear value leaf is not
+> competitive with hand-tuned material (~0.49 vs ~0.80) even with PIMC training
+> distribution (exp 1), card-identity features (exp 2), or dense PIMC-value labels
+> (exp 3) — `vmc-material` topped the aggro-leaning capsule all three times. The
+> value-leaf-distillation line is closed; the **next thread is PIMC *action* distillation**
+> (imitate a stronger PIMC's *choices*, attacking the search-leaf mismatch), with
+> `vmc-material` as the cheap-referee ceiling to beat.
+
 ---
 
 ## 0. What changed since refresh 1 (TL;DR of the delta)
