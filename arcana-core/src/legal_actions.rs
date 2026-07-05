@@ -161,6 +161,99 @@ fn enumerate_scry_orderings(
     Some(out)
 }
 
+/// `C(n, k)` as u128 (small n; saturating on overflow to force a canonical fallback).
+fn binom(n: usize, k: usize) -> u128 {
+    if k > n {
+        return 0;
+    }
+    let k = k.min(n - k);
+    let mut c: u128 = 1;
+    for i in 0..k as u128 {
+        c = c.saturating_mul(n as u128 - i) / (i + 1);
+    }
+    c
+}
+
+/// Fan out every way to give `total` (counters/damage) across `among` — weak
+/// compositions (a target may receive 0, matching the canonical answer). Returns
+/// `None` (→ canonical fallback) when `among` is empty or the option count would
+/// exceed `max_options`.
+fn enumerate_distributions(
+    among: &[ObjectId],
+    total: u32,
+    max_options: usize,
+) -> Option<Vec<Vec<(ObjectId, u32)>>> {
+    let k = among.len();
+    if k == 0 {
+        return None;
+    }
+    if k == 1 {
+        return Some(vec![vec![(among[0], total)]]);
+    }
+    // count = C(total + k - 1, k - 1); guard before building.
+    if binom(total as usize + k - 1, k - 1) > max_options as u128 {
+        return None;
+    }
+    fn rec(
+        among: &[ObjectId],
+        idx: usize,
+        remaining: u32,
+        acc: &mut Vec<(ObjectId, u32)>,
+        out: &mut Vec<Vec<(ObjectId, u32)>>,
+    ) {
+        if idx == among.len() - 1 {
+            acc.push((among[idx], remaining));
+            out.push(acc.clone());
+            acc.pop();
+            return;
+        }
+        for give in 0..=remaining {
+            acc.push((among[idx], give));
+            rec(among, idx + 1, remaining - give, acc, out);
+            acc.pop();
+        }
+    }
+    let mut out = Vec::new();
+    rec(among, 0, total, &mut Vec::new(), &mut out);
+    Some(out)
+}
+
+/// Fan out every choosable subset of `candidates` of size in `[min, max]` (the
+/// multi-pick case). Returns `None` (→ canonical fallback) when the subset count
+/// would exceed `max_options`.
+fn enumerate_pick_subsets(
+    candidates: &[ObjectId],
+    min: usize,
+    max: usize,
+    max_options: usize,
+) -> Option<Vec<Vec<ObjectId>>> {
+    let n = candidates.len();
+    let hi = max.min(n);
+    if min > hi {
+        return None;
+    }
+    let count: u128 = (min..=hi).map(|k| binom(n, k)).sum();
+    if count == 0 || count > max_options as u128 {
+        return None;
+    }
+    fn combos(cands: &[ObjectId], k: usize, start: usize, acc: &mut Vec<ObjectId>, out: &mut Vec<Vec<ObjectId>>) {
+        if acc.len() == k {
+            out.push(acc.clone());
+            return;
+        }
+        for i in start..cands.len() {
+            acc.push(cands[i]);
+            combos(cands, k, i + 1, acc, out);
+            acc.pop();
+        }
+    }
+    let mut out = Vec::new();
+    for k in min..=hi {
+        combos(candidates, k, 0, &mut Vec::new(), &mut out);
+    }
+    Some(out)
+}
+
 /// Enumerate legal responses to `state.pending_choice`. Most kinds are fully
 /// enumerated so a HUMAN sees the real options (and [`crate::session`] no longer
 /// auto-resolves them); genuinely combinatorial fan-outs (large `OrderCards`,
@@ -223,37 +316,70 @@ fn legal_resolution_choice_actions(state: &GameState) -> Vec<Action> {
                     });
                 }
             } else {
-                // Multi-pick (max > 1): the combinatorial fan-out is pruned to
-                // the canonical lowest-id `min` answer; an agent submits its
-                // preferred set directly.
-                let picked: Vec<ObjectId> = sorted.into_iter()
-                    .take(*min as usize).collect();
-                out.push(Action::SubmitResolutionChoice {
-                    id,
-                    response: ChoiceResponse::PickCards { picked },
-                });
+                // Multi-pick (max > 1): fan out every choosable subset so a human
+                // decides WHICH cards (e.g. discard two), bounded; fall back to the
+                // canonical lowest-id `min` set for large candidate pools.
+                match enumerate_pick_subsets(&sorted, *min as usize, *max as usize, 32) {
+                    Some(subsets) if subsets.len() > 1 => {
+                        for picked in subsets {
+                            out.push(Action::SubmitResolutionChoice {
+                                id,
+                                response: ChoiceResponse::PickCards { picked },
+                            });
+                        }
+                    }
+                    _ => {
+                        let picked: Vec<ObjectId> = sorted.into_iter()
+                            .take(*min as usize).collect();
+                        out.push(Action::SubmitResolutionChoice {
+                            id,
+                            response: ChoiceResponse::PickCards { picked },
+                        });
+                    }
+                }
             }
         }
         ChoiceKind::DistributeCounters { among, total, .. } => {
-            // Canonical: all to first target.
-            let mut distribution: Vec<(ObjectId, u32)> = Vec::new();
-            if let Some(first) = among.first() {
-                distribution.push((*first, *total));
+            // Fan out every division of the counters (bounded); fall back to
+            // all-on-first for large totals/target sets.
+            match enumerate_distributions(among, *total, 24) {
+                Some(divs) if divs.len() > 1 => {
+                    for distribution in divs {
+                        out.push(Action::SubmitResolutionChoice {
+                            id,
+                            response: ChoiceResponse::DistributeCounters { distribution },
+                        });
+                    }
+                }
+                _ => {
+                    let distribution: Vec<(ObjectId, u32)> =
+                        among.first().map(|f| vec![(*f, *total)]).unwrap_or_default();
+                    out.push(Action::SubmitResolutionChoice {
+                        id,
+                        response: ChoiceResponse::DistributeCounters { distribution },
+                    });
+                }
             }
-            out.push(Action::SubmitResolutionChoice {
-                id,
-                response: ChoiceResponse::DistributeCounters { distribution },
-            });
         }
         ChoiceKind::DistributeDamage { among, total, .. } => {
-            let mut distribution: Vec<(ObjectId, u32)> = Vec::new();
-            if let Some(first) = among.first() {
-                distribution.push((*first, *total));
+            match enumerate_distributions(among, *total, 24) {
+                Some(divs) if divs.len() > 1 => {
+                    for distribution in divs {
+                        out.push(Action::SubmitResolutionChoice {
+                            id,
+                            response: ChoiceResponse::DistributeDamage { distribution },
+                        });
+                    }
+                }
+                _ => {
+                    let distribution: Vec<(ObjectId, u32)> =
+                        among.first().map(|f| vec![(*f, *total)]).unwrap_or_default();
+                    out.push(Action::SubmitResolutionChoice {
+                        id,
+                        response: ChoiceResponse::DistributeDamage { distribution },
+                    });
+                }
             }
-            out.push(Action::SubmitResolutionChoice {
-                id,
-                response: ChoiceResponse::DistributeDamage { distribution },
-            });
         }
         ChoiceKind::PayOrDecline { cost, .. } => {
             // Decline is always available. Offer pay only if the chooser
@@ -3294,6 +3420,40 @@ mod tests {
     use crate::objects::{Characteristics, GameObject};
     use crate::state::GameResult;
     use crate::types::*;
+
+    // --- resolution-choice fan-out enumerators (task B) --------------------
+
+    #[test]
+    fn enumerate_distributions_weak_compositions() {
+        // 3 damage among 2 targets → (3,0),(2,1),(1,2),(0,3) = 4 divisions.
+        let divs = enumerate_distributions(&[10, 11], 3, 24).expect("under cap");
+        assert_eq!(divs.len(), 4);
+        // each division sums to the total and covers both targets in order.
+        for d in &divs {
+            assert_eq!(d.iter().map(|(_, n)| *n).sum::<u32>(), 3);
+            assert_eq!(d.iter().map(|(id, _)| *id).collect::<Vec<_>>(), vec![10, 11]);
+        }
+        assert!(divs.contains(&vec![(10, 0), (11, 3)]), "all-on-second offered");
+        assert!(divs.contains(&vec![(10, 2), (11, 1)]), "a split offered");
+        // one target → the single canonical division.
+        assert_eq!(enumerate_distributions(&[10], 5, 24), Some(vec![vec![(10, 5)]]));
+        // over the cap → None (canonical fallback): 10 among 4 = C(13,3)=286.
+        assert_eq!(enumerate_distributions(&[1, 2, 3, 4], 10, 24), None);
+    }
+
+    #[test]
+    fn enumerate_pick_subsets_choose_k() {
+        // discard exactly 2 of 4 → C(4,2) = 6 subsets, each of size 2, distinct.
+        let subs = enumerate_pick_subsets(&[1, 2, 3, 4], 2, 2, 32).expect("under cap");
+        assert_eq!(subs.len(), 6);
+        assert!(subs.iter().all(|s| s.len() == 2));
+        assert!(subs.contains(&vec![1, 4]) && subs.contains(&vec![2, 3]));
+        // choose 1..=2 of 3 → C(3,1)+C(3,2) = 6.
+        assert_eq!(enumerate_pick_subsets(&[1, 2, 3], 1, 2, 32).unwrap().len(), 6);
+        // over the cap → None: choose 3 of 20 = C(20,3)=1140.
+        let big: Vec<ObjectId> = (0..20).collect();
+        assert_eq!(enumerate_pick_subsets(&big, 3, 3, 32), None);
+    }
 
     // --- helpers ------------------------------------------------------------
 
