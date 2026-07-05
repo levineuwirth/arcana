@@ -1,6 +1,6 @@
 # Controlled RL benchmark — Magic play-strength on a fixed capsule
 
-**Status: live (experiments 1–2 done).** The internally-valid successor to the
+**Status: live (experiments 1–3 done).** The internally-valid successor to the
 deckbuilding-as-evaluation arc. That arc tried to make deck rankings track the
 *real MTGTop8 metagame*; a review + a same-referee control
 ([`gauntlet-results/control-arm-PI.txt`](gauntlet-results/control-arm-PI.txt))
@@ -140,7 +140,39 @@ full games (more rows); dense on ≤ `CAP_DENSE_STATES` PIMC-labeled states — 
 row-count asymmetry that *disadvantages* dense, so a dense win is unambiguous while
 a dense loss is partly confounded with data quantity.
 
-*(Result to be appended after the run.)*
+**Result — fires the FAILURE branch (third controlled negative).**
+→ [`rl-benchmark/capsule-dense.txt`](rl-benchmark/capsule-dense.txt)
+
+| policy | mean pr |
+|---|---:|
+| vmc-material | **0.796** |
+| pimc (12/120) | 0.617 |
+| vmc-learned-dense | 0.508 |
+| vmc-learned-basic | 0.483 |
+| random | 0.096 |
+
+Dense (0.508) ≈ basic (0.483): Δ = **+0.025**, head-to-head 0.534 — no meaningful
+margin (per-deck Δ swings −0.13…+0.21, centered near zero). Held-out is **mixed,
+not uniformly up**: dense improved vs its teacher PIMC (0.38→0.47) but got *worse*
+vs material (0.30→0.15). So the pre-registered success condition (a real margin
+*and* held-out up) is not met. **Three controlled negatives now stand:** neither a
+better training distribution (exp 1), a richer representation (exp 2), nor a denser
+target (exp 3) rescues the cheap linear leaf, which sits at ~0.49 while hand-tuned
+material holds ~0.80. The faint dense-vs-PIMC gain reads as "learned the teacher's
+distribution," not general strength.
+
+**What the trilogy establishes + the next lever.** The bottleneck is none of
+{distribution, representation, target} *alone*. Per the pre-registration, the
+remaining blockers are **linear capacity**, **search-leaf mismatch** (a value tuned
+as a *predictor* need not be a good *search leaf* — the original Track-A finding,
+reproduced here), and **PIMC target quality** (the 12/120 teacher is itself only
+mid-field on the capsule, so distilling it caps the student). The honest read: a
+*single cheap linear leaf over hand-crafted features* is near its ceiling on this
+benchmark regardless of how it's trained — the capsule reliably rewards
+material-in-search. The next genuinely different lever is a **non-linear leaf with
+card-identity features distilled from a *stronger* teacher** (higher-budget PIMC),
+or accepting material-in-search as the capsule's cheap-referee ceiling and moving
+the RL question to a domain where synergy pays off more than aggro tempo.
 
 ## Where the benchmark stands + next lever
 

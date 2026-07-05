@@ -1,0 +1,31 @@
+# CAPSULE RL BENCHMARK — experiment 3 (dense PIMC-value distillation: target lever)
+# 5 decks x 12 games/pair (240/policy). Both leaves = same random self-play (seed 1),
+# BasicE2Encoder; ONLY the target differs (terminal MC outcome vs PIMC best-action value).
+# dense: <=600 PIMC-labeled states, teacher/panel PIMC 12/120. 5 parallel jobs, no panics.
+
+## Aggregated policy strength (mean point-rate across 5 decks):
+  vmc-material       0.796   [0.73, 0.81, 0.81, 0.88, 0.75]
+  pimc (12/120)      0.617   [0.75, 0.58, 0.54, 0.56, 0.65]
+  vmc-learned-dense  0.508   [0.38, 0.54, 0.54, 0.58, 0.50]
+  vmc-learned-basic  0.483   [0.50, 0.44, 0.50, 0.38, 0.60]
+  random             0.096   [0.15, 0.12, 0.10, 0.10, 0.00]
+
+## CRUX — Δ(dense − basic), pre-registered success = a meaningful margin + held-out up:
+  UW Spirit Aggro  [syn] basic 0.500  dense 0.375  Δ -0.125
+  Golgari Scales   [syn] basic 0.438  dense 0.542  Δ +0.104
+  Hardened Scales  [syn] basic 0.500  dense 0.542  Δ +0.042
+  Rakdos Aggro     [agg] basic 0.375  dense 0.583  Δ +0.208
+  Red Deck Wins    [agg] basic 0.604  dense 0.500  Δ -0.104
+  MEAN:                  basic 0.483  dense 0.508  Δ +0.025   (head-to-head 0.534)
+
+## HELD-OUT (mixed — NOT a clean upward move):
+  vmc-learned-basic  vs material 0.300  vs pimc 0.384
+  vmc-learned-dense  vs material 0.148  vs pimc 0.468   (better vs its teacher PIMC, worse vs material)
+
+## READ: fires the pre-registered FAILURE branch. Dense (0.508) ~ basic (0.483):
+## no meaningful margin (per-deck Δ swings -0.13..+0.21, centered near 0), and held-out
+## is mixed (up vs PIMC, down vs material) rather than uniformly up. So the issue is NOT
+## distribution (exp1), representation (exp2), OR sparse labels alone (exp3). THREE
+## controlled negatives. The faint dense-vs-PIMC gain reads as 'learned the teacher's
+## distribution,' not general strength. Next blockers: linear CAPACITY / search-leaf
+## MISMATCH / PIMC TARGET QUALITY (the 12/120 teacher is itself sub-champion here).
