@@ -677,6 +677,9 @@ pub struct Personality {
     pub profile: PlayerProfile,
     pub agenda: String,
     pub difficulty: Difficulty,
+    /// The play-style the bot uses (derived from the deck) — shown as Stage flavor
+    /// so a rival's temperament is visible, not just felt. See [`derive_playstyle`].
+    pub playstyle: String,
     pub deck: Vec<CardId>,
     pub identity: DeckIdentity,
     pub portrait_name: Option<String>,
@@ -706,6 +709,7 @@ pub fn personalities(reg: &CardRegistry) -> Vec<Personality> {
             profile: PlayerProfile { name: name.to_string() },
             agenda: agenda.to_string(),
             difficulty,
+            playstyle: derive_playstyle(reg, &deck).label().to_string(),
             portrait_name: portrait_name(reg, identity.portrait),
             colors: color_letters(identity.colors),
             deck,

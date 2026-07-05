@@ -92,6 +92,9 @@
   .meta-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; color: var(--text-muted); font-size: 13px; }
   .tag { text-transform: uppercase; letter-spacing: .12em; font-size: 11px; color: var(--text-muted);
          border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 3px 9px; }
+  .foe .ftr .tags { display: flex; gap: 6px; }
+  /* Play-style tag: tinted so a rival's temperament reads at a glance. */
+  .tag.style { color: var(--link); border-color: color-mix(in srgb, var(--link) 45%, var(--border)); }
 
   /* ---- Foe gallery -------------------------------------------------------- */
   .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(186px, 1fr)); gap: 14px; }
@@ -387,8 +390,15 @@
     const ag = document.createElement("div"); ag.className = "ag"; ag.textContent = "“" + p.agenda + "”";
     const ftr = document.createElement("div"); ftr.className = "ftr";
     const pips = document.createElement("span"); pips.className = "pips"; renderPips(pips, p.colors);
+    const tags = document.createElement("span"); tags.className = "tags";
     const diff = document.createElement("span"); diff.className = "tag"; diff.textContent = p.difficulty;
-    ftr.append(pips, diff);
+    tags.append(diff);
+    if (p.playstyle) {
+      const style = document.createElement("span");
+      style.className = "tag style"; style.textContent = p.playstyle;
+      tags.append(style);
+    }
+    ftr.append(pips, tags);
     body.append(nm, ag, ftr); el.appendChild(body);
     el.onclick = () => selectFoe(el, {
       profile: p.profile, agenda: p.agenda, deck: p.deck, identity: p.identity, difficulty: p.difficulty,
