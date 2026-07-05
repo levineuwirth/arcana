@@ -929,6 +929,26 @@ impl GameCore {
         Self { reg, events_seen: Self::fresh_event_cursor(&session), session, legal: Vec::new(), awaiting: None }
     }
 
+    /// Resume a two-human game from a persisted action transcript: build a fresh
+    /// game with the same seed/decks, then replay the recorded actions to the
+    /// current state (see [`arcana_ai::session::Session::replay`]). Used to
+    /// reconstruct in-progress networked matches after a server restart.
+    pub fn resume_two_human(
+        reg: &'static CardRegistry, seed: u64, deck0: Vec<CardId>, deck1: Vec<CardId>,
+        actions: &[Action],
+    ) -> Self {
+        let mut core = Self::new_two_human(reg, seed, deck0, deck1);
+        core.session.replay(actions);
+        core.events_seen = Self::fresh_event_cursor(&core.session); // don't replay logs
+        core
+    }
+
+    /// The replayable transcript of the game so far (decks + seed + action log) —
+    /// what the networked-match persistence writes to disk after each action.
+    pub fn record(&self) -> &arcana_core::record::GameRecord {
+        self.session.record()
+    }
+
     /// Read-only access to the registry (for callers that build a replacement
     /// `GameCore` on `/new`).
     pub fn registry(&self) -> &'static CardRegistry {
@@ -1744,5 +1764,63 @@ mod tests {
             "the off-turn seat can't act");
         // The actor can act, and after it does the turn passes to the other seat.
         assert!(core.apply_index_for(actor, 0).is_ok(), "the on-turn seat can act");
+    }
+
+    /// Persistence round-trip: playing a two-human game, then rebuilding it from
+    /// its recorded transcript (`resume_two_human`), lands on the SAME state —
+    /// same to-move seat, turn, legal count, and both players' life. This is the
+    /// core of networked-match restart recovery.
+    #[test]
+    fn resume_two_human_reproduces_state() {
+        let reg = leaked_catalog();
+        let deck0 = arcana_cards::sample_deck(reg, 7);
+        let deck1 = arcana_cards::sample_deck(reg, 9);
+
+        // Drive one ply on `core`: whichever seat is to act plays a developing
+        // action (falling back to index 0). Returns false at game over / no move.
+        fn play_one(core: &mut GameCore) -> bool {
+            for seat in [0u8, 1] {
+                let s = core.snapshot_for(seat);
+                if s.view.game_over.is_some() {
+                    return false;
+                }
+                if !s.view.legal.is_empty() {
+                    let idx = s.view.legal.iter().position(|a| {
+                        let l = a.label.as_str();
+                        !l.starts_with("Pass") && l != "Concede" && !l.starts_with("Mulligan")
+                    }).unwrap_or(0);
+                    let _ = core.apply_index_for(seat, idx);
+                    return true;
+                }
+            }
+            false
+        }
+
+        let mut a = GameCore::new_two_human(reg, 123, deck0.clone(), deck1.clone());
+        for _ in 0..12 {
+            if !play_one(&mut a) {
+                break;
+            }
+        }
+        let transcript = a.record().actions.clone();
+        assert!(!transcript.is_empty(), "the game recorded some actions");
+
+        // Rebuild from the transcript and compare the resulting decision state.
+        let mut b = GameCore::resume_two_human(reg, 123, deck0, deck1, &transcript);
+        assert_eq!(b.record().actions.len(), transcript.len(),
+            "the resumed record replays the whole transcript");
+        for seat in [0u8, 1] {
+            let sa = a.snapshot_for(seat);
+            let sb = b.snapshot_for(seat);
+            assert_eq!(sa.view.turn, sb.view.turn, "same turn after resume");
+            assert_eq!(sa.view.legal.len(), sb.view.legal.len(),
+                "same legal-action count for seat {seat}");
+            for p in 0..2 {
+                assert_eq!(sa.view.players[p].life, sb.view.players[p].life,
+                    "same life for player {p}");
+                assert_eq!(sa.view.players[p].hand_count, sb.view.players[p].hand_count,
+                    "same hand size for player {p}");
+            }
+        }
     }
 }

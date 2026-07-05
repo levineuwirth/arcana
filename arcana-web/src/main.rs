@@ -1291,7 +1291,8 @@ async fn main() {
         .spawn(move || run_worker(rx, reg))
         .expect("spawn game worker");
 
-    let matches = Arc::new(std::sync::Mutex::new(Matches::new(reg, time_seed())));
+    let match_state_dir = std::env::var("MATCH_STATE_DIR").ok().map(std::path::PathBuf::from);
+    let matches = Arc::new(std::sync::Mutex::new(Matches::new(reg, time_seed(), match_state_dir)));
     let state = AppState { tx, art: Arc::new(ArtCache::new()), changes, matches };
     // Warm the bulk name→CDN-URL map in the background so on-demand art resolves
     // from the (unthrottled) CDN instead of the rate-limited API. Instant once

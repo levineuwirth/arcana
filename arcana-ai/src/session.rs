@@ -249,6 +249,22 @@ impl<'a> Session<'a> {
         self.state = s;
         self.yld = y;
     }
+
+    /// Rebuild game state by replaying a recorded action transcript — the FULL
+    /// linear `step` sequence [`advance`](Self::advance) records (auto-passes and
+    /// auto-resolutions included), so replay is a plain linear re-run, NOT
+    /// advance-then-apply. Construct a fresh session with the SAME decks + seed,
+    /// then `replay(record.actions)` to resume a persisted game. Stops early if
+    /// the transcript ends or the game ends (a well-formed transcript keeps one
+    /// decision pending between actions).
+    pub fn replay(&mut self, actions: &[Action]) {
+        for a in actions {
+            if !matches!(self.yld, EngineYield::PendingDecision { .. }) {
+                break;
+            }
+            self.apply_internal(a.clone());
+        }
+    }
 }
 
 #[cfg(test)]

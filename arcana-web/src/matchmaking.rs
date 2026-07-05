@@ -18,10 +18,13 @@
 //! its thread and never crosses a thread boundary.
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, oneshot};
+
+use arcana_core::actions::Action;
 
 use arcana_core::objects::ObjectId;
 use arcana_core::registry::CardRegistry;
@@ -68,6 +71,30 @@ impl SeatSlot {
     }
 }
 
+/// Serializable snapshot of an in-progress match — everything needed to
+/// reconstruct it after a server restart: seat metadata (tokens/decks) plus the
+/// replayable action transcript. Written by the match thread after each action
+/// when persistence is enabled (`MATCH_STATE_DIR`).
+#[derive(Clone, Serialize, Deserialize)]
+struct PersistedSeat {
+    token: String,
+    name: String,
+    identity: DeckIdentity,
+    deck: Vec<CardId>,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+struct PersistedMatch {
+    code: String,
+    seed: u64,
+    seats: Vec<PersistedSeat>,
+    actions: Vec<Action>,
+}
+
+/// Where + what a match thread writes after each action (the `actions` are
+/// refreshed from the live game before each write). `None` when persistence is off.
+type PersistWriter = (PathBuf, PersistedMatch);
+
 /// A command to a per-match game thread. The acting `seat` is already
 /// authenticated by the coordinator; each carries a oneshot reply. Private — the
 /// async layer talks to a match only through [`MatchSender`].
@@ -85,8 +112,12 @@ enum MatchCmd {
 /// Drives ONE match's [`GameCore`] on its own thread. Exits when the sender is
 /// dropped (the match left / pruned), releasing the `GameCore`. Heavy work here
 /// (suggest rollouts) is isolated to this thread.
-fn run_match(mut core: GameCore, mut rx: mpsc::UnboundedReceiver<MatchCmd>) {
+fn run_match(mut core: GameCore, mut rx: mpsc::UnboundedReceiver<MatchCmd>, persist: Option<PersistWriter>) {
     while let Some(cmd) = rx.blocking_recv() {
+        // A command that can change the game state → re-persist the transcript.
+        let mutating = matches!(cmd,
+            MatchCmd::Action { .. } | MatchCmd::Combat { .. } | MatchCmd::AutoTap { .. }
+            | MatchCmd::Activate { .. } | MatchCmd::Bottom { .. });
         match cmd {
             MatchCmd::State { seat, reply } => {
                 let _ = reply.send(Ok(core.snapshot_for(seat)));
@@ -112,6 +143,15 @@ fn run_match(mut core: GameCore, mut rx: mpsc::UnboundedReceiver<MatchCmd>) {
             }
             MatchCmd::Suggest { seat, deep, reply } => {
                 let _ = reply.send(core.suggest_for(seat, deep));
+            }
+        }
+        if mutating {
+            if let Some((path, meta)) = persist.as_ref() {
+                let mut pm = meta.clone();
+                pm.actions = core.record().actions.clone();
+                if let Ok(json) = serde_json::to_string(&pm) {
+                    let _ = std::fs::write(path, json);
+                }
             }
         }
     }
@@ -226,12 +266,111 @@ pub struct Matches {
     rng: u64,
     /// Monotonic match-creation counter (recency for [`prune`](Self::prune)).
     next_seq: u64,
+    /// When set, Active matches are persisted here (one `<code>.json` transcript
+    /// each) and reloaded on startup, so a restart doesn't drop live games.
+    state_dir: Option<PathBuf>,
 }
 
 impl Matches {
     /// `seed` initializes the code/token RNG (the server passes a time seed).
-    pub fn new(reg: &'static CardRegistry, seed: u64) -> Self {
-        Self { reg, by_code: HashMap::new(), rng: seed | 1, next_seq: 0 }
+    /// `state_dir`, when set, enables on-disk match persistence + startup resume.
+    pub fn new(reg: &'static CardRegistry, seed: u64, state_dir: Option<PathBuf>) -> Self {
+        let mut m = Self { reg, by_code: HashMap::new(), rng: seed | 1, next_seq: 0, state_dir };
+        m.load_persisted();
+        m
+    }
+
+    /// Path of a match's persistence file (`<state_dir>/<code>.json`), if enabled.
+    fn persist_path(&self, code: &str) -> Option<PathBuf> {
+        self.state_dir.as_ref().map(|d| d.join(format!("{code}.json")))
+    }
+
+    /// Build the per-match transcript writer handed to its game thread (or `None`
+    /// when persistence is off).
+    fn persist_writer(&self, code: &str, seed: u64, seats: &[SeatSlot; 2]) -> Option<PersistWriter> {
+        let path = self.persist_path(code)?;
+        let pseats = seats.iter().map(|s| PersistedSeat {
+            token: s.token.clone(),
+            name: s.profile.name.clone(),
+            identity: s.identity.clone(),
+            deck: s.deck.clone(),
+        }).collect();
+        Some((path, PersistedMatch { code: code.to_string(), seed, seats: pseats, actions: Vec::new() }))
+    }
+
+    /// Delete a match's persistence file (on leave / reap / prune).
+    fn del_persist(&self, code: &str) {
+        if let Some(p) = self.persist_path(code) {
+            let _ = std::fs::remove_file(p);
+        }
+    }
+
+    /// Spawn a match's game thread. `actions` empty → a fresh game; non-empty →
+    /// resume by replaying the transcript. The `GameCore` (`!Send` via bots, though
+    /// two-human has none) is BUILT INSIDE the thread from `Send` inputs.
+    fn spawn_match(
+        reg: &'static CardRegistry, seed: u64, deck0: Vec<CardId>, deck1: Vec<CardId>,
+        actions: Vec<Action>, code: &str, persist: Option<PersistWriter>,
+    ) -> mpsc::UnboundedSender<MatchCmd> {
+        let (tx, rx) = mpsc::unbounded_channel::<MatchCmd>();
+        std::thread::Builder::new()
+            .name(format!("match-{code}"))
+            .spawn(move || {
+                let core = if actions.is_empty() {
+                    GameCore::new_two_human(reg, seed, deck0, deck1)
+                } else {
+                    GameCore::resume_two_human(reg, seed, deck0, deck1, &actions)
+                };
+                run_match(core, rx, persist);
+            })
+            .expect("spawn match thread");
+        tx
+    }
+
+    /// Reload persisted in-progress matches from `state_dir` at startup.
+    fn load_persisted(&mut self) {
+        let Some(dir) = self.state_dir.clone() else { return; };
+        let _ = std::fs::create_dir_all(&dir);
+        let Ok(entries) = std::fs::read_dir(&dir) else { return; };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|x| x.to_str()) != Some("json") {
+                continue;
+            }
+            let Ok(text) = std::fs::read_to_string(&path) else { continue };
+            let Ok(pm) = serde_json::from_str::<PersistedMatch>(&text) else { continue };
+            self.restore(pm);
+        }
+    }
+
+    /// Reconstruct one match from its persisted transcript (spawns a resuming
+    /// game thread and re-registers the Active match).
+    fn restore(&mut self, pm: PersistedMatch) {
+        if pm.seats.len() != 2 {
+            return;
+        }
+        let seat_of = |ps: &PersistedSeat| SeatSlot {
+            filled: true,
+            token: ps.token.clone(),
+            profile: PlayerProfile { name: ps.name.clone() },
+            identity: ps.identity.clone(),
+            deck: ps.deck.clone(),
+        };
+        let seats = [seat_of(&pm.seats[0]), seat_of(&pm.seats[1])];
+        let (deck0, deck1) = (seats[0].deck.clone(), seats[1].deck.clone());
+        let persist = self.persist_writer(&pm.code, pm.seed, &seats);
+        let tx = Self::spawn_match(self.reg, pm.seed, deck0, deck1, pm.actions, &pm.code, persist);
+        let seq = self.next_seq;
+        self.next_seq += 1;
+        self.by_code.insert(pm.code.clone(), NetMatch {
+            code: pm.code,
+            status: MatchStatus::Active,
+            seed: pm.seed,
+            seq,
+            seats,
+            tx: Some(tx),
+            last_seen: [Instant::now(); 2],
+        });
     }
 
     /// Reclaim space: drop finished (`Over`) matches outright, and if still over
@@ -239,7 +378,14 @@ impl Matches {
     /// never evicted. Called before opening a new match. Deterministic (recency
     /// by creation `seq`, no wall clock).
     fn prune(&mut self) {
+        let over: Vec<String> = self.by_code.iter()
+            .filter(|(_, m)| m.status == MatchStatus::Over)
+            .map(|(c, _)| c.clone())
+            .collect();
         self.by_code.retain(|_, m| m.status != MatchStatus::Over);
+        for code in &over {
+            self.del_persist(code);
+        }
         if self.by_code.len() <= MAX_MATCHES {
             return;
         }
@@ -269,6 +415,7 @@ impl Matches {
             return Err("not authorized for this seat".to_string());
         }
         self.by_code.remove(code);
+        self.del_persist(code);
         Ok(())
     }
 
@@ -348,21 +495,13 @@ impl Matches {
         m.seats[1] = SeatSlot {
             filled: true, token: token.clone(), profile, identity, deck,
         };
-        // Spawn the match's game thread. The GameCore (which is !Send because of
-        // Seat::Bot) is BUILT INSIDE the thread from Send inputs (reg/seed/decks),
-        // so it never crosses a thread boundary — that's what makes this legal.
-        let reg = self.reg;
-        let seed = m.seed;
-        let deck0 = m.seats[0].deck.clone();
-        let deck1 = m.seats[1].deck.clone();
-        let (tx, rx) = mpsc::unbounded_channel::<MatchCmd>();
-        std::thread::Builder::new()
-            .name(format!("match-{code}"))
-            .spawn(move || {
-                let core = GameCore::new_two_human(reg, seed, deck0, deck1);
-                run_match(core, rx);
-            })
-            .expect("spawn match thread");
+        // Gather (immutable) then spawn the game thread — a fresh two-human game.
+        let (reg, seed) = (self.reg, self.by_code[code].seed);
+        let m_ref = &self.by_code[code];
+        let (deck0, deck1) = (m_ref.seats[0].deck.clone(), m_ref.seats[1].deck.clone());
+        let persist = self.persist_writer(code, seed, &m_ref.seats);
+        let tx = Self::spawn_match(reg, seed, deck0, deck1, Vec::new(), code, persist);
+        let m = self.by_code.get_mut(code).unwrap();
         m.tx = Some(tx);
         m.status = MatchStatus::Active;
         m.last_seen = [Instant::now(); 2]; // both present at kickoff
@@ -430,6 +569,7 @@ impl Matches {
             .collect();
         for code in &stale {
             self.by_code.remove(code);
+            self.del_persist(code);
         }
         stale
     }
@@ -481,7 +621,7 @@ mod tests {
     #[test]
     fn create_then_join_starts_a_two_human_game() {
         let reg = leaked_catalog();
-        let mut m = Matches::new(reg, 12345);
+        let mut m = Matches::new(reg, 12345, None);
 
         let host = m.create(profile("Alice"), DeckIdentity::default(), deck(reg)).unwrap();
         assert_eq!(host.seat, 0);
@@ -517,7 +657,7 @@ mod tests {
     fn reap_stale_drops_vanished_matches() {
         use std::time::Duration;
         let reg = leaked_catalog();
-        let mut m = Matches::new(reg, 77);
+        let mut m = Matches::new(reg, 77, None);
 
         // A lobby is never reaped, even at zero timeout.
         let lob = m.create(profile("Solo"), DeckIdentity::default(), deck(reg)).unwrap();
@@ -547,11 +687,52 @@ mod tests {
         assert!(m.reap_stale(Duration::from_secs(1)).is_empty(), "just-touched match kept");
     }
 
+    /// A persisted match transcript on disk is reloaded into an Active, playable
+    /// match when a new registry starts (restart recovery). Deletion on leave is
+    /// also exercised.
+    #[test]
+    fn persisted_match_is_restored_on_startup() {
+        let reg = leaked_catalog();
+        let dir = std::env::temp_dir().join(format!("arcana-mm-{}-restore", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        // Hand-write a fresh (empty-transcript) persisted match.
+        let pm = PersistedMatch {
+            code: "RSTR".into(),
+            seed: 42,
+            seats: vec![
+                PersistedSeat { token: "tok0".into(), name: "Ada".into(),
+                    identity: DeckIdentity::default(), deck: deck(reg) },
+                PersistedSeat { token: "tok1".into(), name: "Ben".into(),
+                    identity: DeckIdentity::default(), deck: deck(reg) },
+            ],
+            actions: Vec::new(),
+        };
+        std::fs::write(dir.join("RSTR.json"), serde_json::to_string(&pm).unwrap()).unwrap();
+
+        // A new registry over that dir loads the match.
+        let mut m = Matches::new(reg, 1, Some(dir.clone()));
+        let info = m.info("RSTR").expect("restored match is present");
+        assert_eq!(info.status, MatchStatus::Active);
+        assert_eq!(info.seats[0].name, "Ada");
+        assert_eq!(info.seats[1].name, "Ben");
+        // Playable with the persisted tokens; wrong token is refused.
+        let s = m.snapshot("RSTR", 0, "tok0").expect("restored game answers seat 0");
+        assert_eq!(s.view.perspective, 0);
+        assert!(m.snapshot("RSTR", 0, "wrong").is_err(), "token still enforced");
+
+        // Leaving deletes the persisted file.
+        m.leave("RSTR", 0, "tok0").unwrap();
+        assert!(!dir.join("RSTR.json").exists(), "leave removes the persisted file");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     /// Bad join codes, a full match, and a second start are all rejected.
     #[test]
     fn join_failures_are_reported() {
         let reg = leaked_catalog();
-        let mut m = Matches::new(reg, 999);
+        let mut m = Matches::new(reg, 999, None);
         assert!(m.join("ZZZZ", profile("x"), DeckIdentity::default(), deck(reg)).is_err());
 
         let host = m.create(profile("Alice"), DeckIdentity::default(), deck(reg)).unwrap();
@@ -569,7 +750,7 @@ mod tests {
     #[test]
     fn token_and_turn_are_enforced() {
         let reg = leaked_catalog();
-        let mut m = Matches::new(reg, 7);
+        let mut m = Matches::new(reg, 7, None);
         let host = m.create(profile("Alice"), DeckIdentity::default(), deck(reg)).unwrap();
         let guest = m.join(&host.code, profile("Bob"), DeckIdentity::default(), deck(reg)).unwrap();
 
@@ -595,7 +776,7 @@ mod tests {
     #[test]
     fn leave_removes_the_match_and_checks_token() {
         let reg = leaked_catalog();
-        let mut m = Matches::new(reg, 1);
+        let mut m = Matches::new(reg, 1, None);
         let host = m.create(profile("Alice"), DeckIdentity::default(), deck(reg)).unwrap();
         assert!(m.leave(&host.code, 0, "wrongtoken").is_err(), "wrong token can't cancel");
         assert!(m.info(&host.code).is_some(), "still there after a bad cancel");
@@ -607,7 +788,7 @@ mod tests {
     #[test]
     fn idle_lobbies_are_pruned_to_a_bound() {
         let reg = leaked_catalog();
-        let mut m = Matches::new(reg, 2);
+        let mut m = Matches::new(reg, 2, None);
         let d = deck(reg);
         for _ in 0..200 {
             m.create(profile("A"), DeckIdentity::default(), d.clone()).unwrap();
