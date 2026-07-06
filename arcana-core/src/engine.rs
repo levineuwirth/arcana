@@ -3153,6 +3153,22 @@ pub fn advance_phase(state: &mut GameState, _registry: &CardRegistry) {
             emit_step_begins(state);
         }
         (Phase::Ending, Step::Cleanup) => {
+            // CR 514.1 — discard to hand size as a real CHOICE (the player picks
+            // which cards), not a forced lowest-id discard. Yield the
+            // DiscardToHandSize special action while the hand is over size;
+            // `apply_make_choice` discards one pick at a time and ends the action
+            // when the hand fits, at which point settle re-enters this arm and
+            // proceeds to the rest of cleanup + next turn.
+            let ap = state.active_player();
+            if state.objects.count_in_zone(Zone::Hand(ap))
+                > state.effective_max_hand_size(ap)
+            {
+                if !state.priority.in_special_action() {
+                    state.priority
+                        .begin_special_action(SpecialAction::DiscardToHandSize, ap);
+                }
+                return; // decision_pending() now yields the discard choice
+            }
             cleanup_step(state);
             next_turn(state);
         }
@@ -3285,20 +3301,9 @@ fn untap_step(state: &mut GameState) {
 }
 
 fn cleanup_step(state: &mut GameState) {
-    let ap = state.active_player();
-
-    // CR 514.1 — discard to hand size. Stubbed for Phase 1; if the
-    // hand is over size, we forcibly discard the lowest-id cards
-    // until it fits. A proper engine would yield a
-    // SpecialAction::DiscardToHandSize here; that path exists in
-    // legal_actions and apply_make_choice for future use.
-    let hand_ids = state.objects.ids_in_zone_sorted(Zone::Hand(ap));
-    let over_by = hand_ids.len().saturating_sub(state.effective_max_hand_size(ap));
-    for id in hand_ids.into_iter().take(over_by) {
-        state.move_object_to_zone(
-            id, Zone::Graveyard(ap), MoveCause::Cost);
-        state.emit(GameEvent::Discarded { player: ap, object_id: id });
-    }
+    // CR 514.1 discard-to-hand-size is handled as a real choice in
+    // `advance_phase`'s Cleanup arm (SpecialAction::DiscardToHandSize) BEFORE this
+    // runs, so the hand is already within size here.
 
     // CR 514.2 — clear damage from all permanents.
     let bf_ids: Vec<ObjectId> = state.objects
@@ -9192,6 +9197,69 @@ mod tests {
         assert!(seen.iter().any(|&(_, s)| s == Step::Cleanup));
     }
 
+    /// CR 514.1 — cleanup discard-to-hand-size is a real player CHOICE: an
+    /// over-size hand yields a DiscardToHandSize decision over the specific hand
+    /// cards, and discarding the card the player picks removes THAT card (not the
+    /// forced lowest-id the old stub took), then the turn proceeds.
+    #[test]
+    fn cleanup_discard_is_a_player_choice_not_forced() {
+        use crate::priority::SpecialAction;
+        let r = reg();
+        let (s, _) = start(42);
+        let (s, _) = step(s, Action::MulliganKeep, &r);
+        let (mut state, _) = step(s, Action::MulliganKeep, &r);
+        let ap = state.active_player();
+
+        // Over-size the active player's hand by exactly one.
+        let max = state.effective_max_hand_size(ap) as usize;
+        while state.objects.count_in_zone(Zone::Hand(ap)) <= max {
+            state.draw_one_card(ap);
+        }
+        let hand_before = state.objects.ids_in_zone_sorted(Zone::Hand(ap));
+        assert_eq!(hand_before.len(), max + 1, "hand is over size by one");
+
+        // Drive to the cleanup step; the discard choice should be raised.
+        let mut guard = 0;
+        while !state.priority.in_special_action() {
+            guard += 1;
+            assert!(guard < 40, "never reached the cleanup discard");
+            assert!(state.turn.turn_number <= 1, "advanced past cleanup with no discard");
+            advance_phase(&mut state, &r);
+        }
+        assert!(matches!(state.priority.special_action, Some(SpecialAction::DiscardToHandSize)));
+
+        // It's surfaced to the active player as a choice over the hand cards.
+        match compute_next_decision(&state, &r) {
+            EngineYield::PendingDecision { player, legal_actions, .. } => {
+                assert_eq!(player, ap, "the active player discards");
+                assert!(!legal_actions.is_empty()
+                    && legal_actions.iter().all(|a|
+                        matches!(a, Action::MakeChoice(ChoiceAction::ChooseObject(_)))),
+                    "each option is a specific hand card");
+            }
+            _ => panic!("expected the discard decision"),
+        }
+
+        // Discard the HIGHEST-id card — the old stub always took the lowest, so
+        // this proves the player's pick is honoured. (A discarded card re-ids on
+        // the zone change per CR 400.7, so verify via the HAND, not the old id in
+        // the graveyard.)
+        let chosen = *hand_before.last().unwrap();
+        let lowest = *hand_before.first().unwrap();
+        let gy_before = state.objects.count_in_zone(Zone::Graveyard(ap));
+        let (state, _) = step(state, Action::MakeChoice(ChoiceAction::ChooseObject(chosen)), &r);
+
+        assert!(!state.objects.objects_in_zone(Zone::Hand(ap)).any(|o| o.id == chosen),
+            "the chosen card left the hand (was discarded)");
+        assert!(state.objects.objects_in_zone(Zone::Hand(ap)).any(|o| o.id == lowest),
+            "the lowest-id card was NOT force-discarded — it stayed in hand");
+        assert_eq!(state.objects.count_in_zone(Zone::Graveyard(ap)), gy_before + 1,
+            "exactly one card was discarded to the graveyard");
+        assert_eq!(state.objects.count_in_zone(Zone::Hand(ap)), max,
+            "hand is now at size");
+        assert!(state.turn.turn_number > 1, "the turn proceeded past cleanup");
+    }
+
     // --- extra turn queue ---------------------------------------------------
 
     #[test]
@@ -9311,11 +9379,21 @@ mod tests {
         );
     }
 
+    /// Drive the (now choice-driven) cleanup discard to completion, picking the
+    /// lowest-id hand card each time, and return once the hand is at size.
+    fn resolve_cleanup_discards(state: &mut GameState, ap: PlayerId) {
+        advance_phase(state, &reg()); // enters the Cleanup arm → raises the choice
+        while state.priority.in_special_action() {
+            let hand = state.objects.ids_in_zone_sorted(Zone::Hand(ap));
+            apply_make_choice(state, ChoiceAction::ChooseObject(hand[0]));
+        }
+    }
+
     #[test]
     fn cleanup_discards_per_format_max_hand_size() {
         // Build a minimal state and drop 10 cards into a player's hand,
         // then run cleanup. With the default format (max_hand_size = 7)
-        // we should discard 3.
+        // we should discard 3 — now as a resolved player choice.
         let mut state = GameState::new(2, 0);
         state.turn.phase = Phase::Ending;
         state.turn.step = Step::Cleanup;
@@ -9329,7 +9407,7 @@ mod tests {
         }
         assert_eq!(state.objects.count_in_zone(Zone::Hand(ap)), 10);
 
-        cleanup_step(&mut state);
+        resolve_cleanup_discards(&mut state, ap);
 
         assert_eq!(
             state.objects.count_in_zone(Zone::Hand(ap)), 7,
@@ -9353,7 +9431,7 @@ mod tests {
             ));
         }
 
-        cleanup_step(&mut state);
+        resolve_cleanup_discards(&mut state, ap);
 
         assert_eq!(
             state.objects.count_in_zone(Zone::Hand(ap)), 4,

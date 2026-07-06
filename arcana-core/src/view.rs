@@ -306,6 +306,19 @@ fn build_decision_prompt(
     state: &GameState, registry: &CardRegistry, perspective: PlayerId,
 ) -> Option<String> {
     use crate::actions::ChoiceKind;
+    // Special actions carry no `pending_choice`, so they'd otherwise show bare
+    // "Choose <card>" buttons with no context. Name the cleanup discard.
+    if state.priority.special_action == Some(crate::priority::SpecialAction::DiscardToHandSize)
+        && state.priority.player == perspective
+    {
+        let max = state.effective_max_hand_size(perspective);
+        let over = state.objects.count_in_zone(Zone::Hand(perspective))
+            .saturating_sub(max);
+        return Some(format!(
+            "Discard {over} card{} — you're over the {max}-card limit",
+            if over == 1 { "" } else { "s" },
+        ));
+    }
     let pc = state.pending_choice.as_ref()?;
     if pc.choosing_player != perspective {
         return None;
@@ -636,6 +649,28 @@ mod tests {
         assert_eq!(view_state(&s, &reg, 0, &legal).prompt.as_deref(), Some("Choose a player"));
 
         // The other seat sees no prompt (not their decision).
+        assert_eq!(view_state(&s, &reg, 1, &legal).prompt, None);
+    }
+
+    #[test]
+    fn cleanup_discard_surfaces_a_discard_prompt() {
+        // The cleanup discard is a special action (no pending_choice); it still
+        // needs a prompt so the "Choose <card>" buttons read as a discard.
+        use crate::objects::{GameObject, Characteristics};
+        use crate::priority::SpecialAction;
+        let reg = CardRegistry::new();
+        let mut s = GameState::new(2, 0);
+        let max = s.effective_max_hand_size(0) as usize;
+        for _ in 0..max + 2 {
+            let id = s.allocate_object_id();
+            s.objects.insert(GameObject::new(
+                id, 0, Zone::Hand(0), 0, Characteristics::default()));
+        }
+        s.priority.begin_special_action(SpecialAction::DiscardToHandSize, 0);
+        let legal = crate::legal_actions::legal_actions(&s, &reg);
+        assert_eq!(view_state(&s, &reg, 0, &legal).prompt.as_deref(),
+            Some("Discard 2 cards — you're over the 7-card limit"));
+        // The non-discarding seat sees no prompt.
         assert_eq!(view_state(&s, &reg, 1, &legal).prompt, None);
     }
 
