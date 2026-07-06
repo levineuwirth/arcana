@@ -829,6 +829,21 @@ impl PendingTrigger {
         }
     }
 
+    /// The zone the object entered the battlefield FROM, if this trigger fired
+    /// on [`GameEvent::EntersBattlefield`] (or a battlefield-bound
+    /// [`GameEvent::ZoneChange`]). Lets "enters from your graveyard" cards
+    /// (Archfiend's Vessel) gate their effect: a normally-cast permanent enters
+    /// from the STACK, a reanimated one from a graveyard. (Note: a spell CAST
+    /// from a graveyard still enters from the stack — distinguishing that needs
+    /// the cast-from-zone, not this.)
+    pub fn entered_from_zone(&self) -> Option<Zone> {
+        match &self.trigger_event {
+            GameEvent::EntersBattlefield { from_zone, .. } => Some(*from_zone),
+            GameEvent::ZoneChange { from, to: Zone::Battlefield, .. } => Some(*from),
+            _ => None,
+        }
+    }
+
     /// The attacking creature, if this trigger fired on
     /// [`GameEvent::CreatureAttacks`] — "whenever a creature attacks,
     /// [do something to/with that creature]" (Hissing Iguanar's kin,

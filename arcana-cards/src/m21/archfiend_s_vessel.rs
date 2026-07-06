@@ -3,9 +3,11 @@
 //! from your graveyard, exile it. If you do, create a 5/5 black Demon creature
 //! token with flying."
 //!
-//! Lifelink is a base keyword. The ETB trigger's intervening-if (entered/cast
-//! from graveyard) has no `conditions::` predicate, so the gate is GAP'd and
-//! the effect fires unconditionally; the exile + token body is expressed.
+//! Lifelink is a base keyword. The ETB trigger fires on any enter, but the
+//! effect self-gates on `PendingTrigger::entered_from_zone()` being a graveyard
+//! (reanimation) — a normally-cast Vessel enters from the stack and makes no
+//! Demon. GAP: "or you cast it from your graveyard" (a rare enabler-only case)
+//! isn't distinguished, since a cast permanent enters from the stack either way.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
@@ -44,8 +46,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
             id: 1,
             trigger_condition: TriggerCondition::SelfEntersBattlefield,
-            // GAP: intervening-if "entered/cast from your graveyard" has no
-            // conditions:: predicate; the gate is dropped and the body fires.
+            // "if it entered from your graveyard" is gated inside the effect via
+            // PendingTrigger::entered_from_zone() (intervening-if predicates only
+            // see game state, not the triggering event's origin zone).
             intervening_if: None,
             effect: etb_exile_make_demon,
             trigger_zones: vec![Zone::Battlefield],
@@ -60,6 +63,11 @@ fn etb_exile_make_demon(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // "if it entered from your graveyard": only reanimation enters from a
+    // graveyard — a normally-cast Vessel enters from the stack, so no Demon.
+    if !matches!(trig.entered_from_zone(), Some(Zone::Graveyard(_))) {
+        return Vec::new();
+    }
     let demon = reg.interner().lookup("Demon").unwrap_or_default();
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(demon);
@@ -79,4 +87,42 @@ fn etb_exile_make_demon(
             },
         },
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use arcana_core::events::GameEvent;
+
+    fn etb_trigger(from: Zone) -> PendingTrigger {
+        PendingTrigger {
+            source: 1,
+            trigger_id: 1,
+            controller: 0,
+            trigger_event: GameEvent::EntersBattlefield {
+                object_id: 1,
+                from_zone: from,
+                was_cast: !matches!(from, Zone::Graveyard(_)),
+            },
+            targets: Default::default(),
+            effect_override: None,
+        }
+    }
+
+    #[test]
+    fn demon_token_only_when_entering_from_graveyard() {
+        let mut reg = CardRegistry::new();
+        register(&mut reg);
+        let s = GameState::new(2, 0);
+
+        // Reanimated (enters from the graveyard): exile it + create the Demon.
+        let reanimated = etb_exile_make_demon(&s, &etb_trigger(Zone::Graveyard(0)), &reg);
+        assert_eq!(reanimated.len(), 2,
+            "from graveyard → ExilePermanent + CreateToken");
+
+        // Normally cast (enters from the stack): no exile, no Demon.
+        let cast = etb_exile_make_demon(&s, &etb_trigger(Zone::Stack), &reg);
+        assert!(cast.is_empty(),
+            "cast from hand enters from the stack → no Demon");
+    }
 }
