@@ -50,12 +50,12 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: Vec::new(),
             })
             // Whenever a player casts a spell from a graveyard, draw a card.
-            // GAP: cast-from-graveyard zone restriction not expressible; firing on any spell cast.
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
-                trigger_condition: TriggerCondition::SpellCast {
+                trigger_condition: TriggerCondition::SpellCastFromZone {
                     filter: None,
                     caster: ControllerConstraint::Any,
+                    from_zone: Zone::Graveyard(0),
                 },
                 intervening_if: None,
                 effect: draw_a_card,

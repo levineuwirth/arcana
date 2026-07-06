@@ -39,10 +39,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
             id: 1,
-            // GAP: "enters from a graveyard" gating is not an available trigger
-            // condition; modeled as a plain ETB (it will also fire on a normal
-            // cast). Unearth {7} is also not an expressible keyword/cost and is
-            // omitted.
+            // "enters from a graveyard" is gated inside the effect via
+            // PendingTrigger::entered_from_zone() (a plain SelfEntersBattlefield;
+            // the exile no-ops on a normal cast). Minor wart: the target is still
+            // prompted on a hand cast. Unearth {7} is not an expressible cost and
+            // is omitted (the ability still fires via other reanimation).
             trigger_condition: TriggerCondition::SelfEntersBattlefield,
             intervening_if: None,
             effect: exile_nonland,
@@ -60,6 +61,11 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn exile_nonland(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    // "When this enters FROM A GRAVEYARD" (via Unearth/reanimation) — a normally
+    // cast Sentinel enters from the stack and exiles nothing.
+    if !matches!(trig.entered_from_zone(), Some(Zone::Graveyard(_))) {
+        return Vec::new();
+    }
     let Some(target) = trig.targets.targets.first() else {
         return Vec::new();
     };
@@ -67,4 +73,44 @@ fn exile_nonland(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry)
         return Vec::new();
     };
     vec![Effect::ExilePermanent { target: *id }]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use arcana_core::events::{GameEvent, MoveCause};
+    use arcana_core::triggers::PendingTrigger;
+
+    fn trig_from(from: Zone) -> PendingTrigger {
+        let mut targets = arcana_core::targets::TargetSelection::default();
+        targets.targets.push(TargetChoice::Object(9));
+        PendingTrigger {
+            source: 5,
+            trigger_id: 1,
+            controller: 0,
+            trigger_event: GameEvent::ZoneChange {
+                object_id: 4,
+                from,
+                to: Zone::Battlefield,
+                new_id: 5,
+                cause: MoveCause::StateBasedAction,
+            },
+            targets,
+            effect_override: None,
+        }
+    }
+
+    #[test]
+    fn exiles_only_when_entering_from_a_graveyard() {
+        let reg = CardRegistry::new();
+        let s = GameState::new(2, 0);
+        // Reanimated/Unearthed (from graveyard): exile the chosen target.
+        match exile_nonland(&s, &trig_from(Zone::Graveyard(0)), &reg).as_slice() {
+            [Effect::ExilePermanent { target: 9 }] => {}
+            other => panic!("from graveyard should exile the target, got {other:?}"),
+        }
+        // Normally cast (from the stack): the exile no-ops.
+        assert!(exile_nonland(&s, &trig_from(Zone::Stack), &reg).is_empty(),
+            "a hand cast enters from the stack → no exile");
+    }
 }
