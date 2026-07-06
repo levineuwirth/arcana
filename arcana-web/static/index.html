@@ -68,7 +68,7 @@
     color: #1a1205; background: var(--tgt, #caa45a); border-color: var(--tgt, #caa45a);
     font-weight: 600;
   }
-  #fullctl .kbd { opacity: .6; font-size: 10px; margin-left: 4px; }
+  .kbd { opacity: .6; font-size: 10px; margin-left: 5px; letter-spacing: .04em; }
   .phasebar .turn { font-variant-numeric: tabular-nums; color: var(--text-muted); font-size: 13px; }
   .phasebar .step { font-family: var(--font-serif); font-weight: 600; font-size: 17px; color: var(--text); }
   .phasebar .who { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
@@ -1828,7 +1828,9 @@ function renderActions(view) {
   ctrl.className = "control-row";
   if (pass) {
     const b = document.createElement("button");
-    b.className = "primary"; b.textContent = "Pass / next step";
+    b.className = "primary";
+    b.innerHTML = 'Pass / next step<span class="kbd">Space</span>';
+    b.title = "Pass priority (Space / Enter). Hold Space to advance through windows to the next decision.";
     b.onclick = () => sendAction(pass.index, "Pass");
     ctrl.appendChild(b);
   }
@@ -2452,14 +2454,26 @@ async function setFullControl(on, persist) {
   catch (e) { logLine("sys", "auto-pass: " + e); }
 }
 fullctlBtn.onclick = () => setFullControl(!fullControl, true);
-// Keyboard: F toggles full control (ignored while typing / with a modifier held).
+// Play hotkeys (ignored while typing / with a modifier held).
 document.addEventListener("keydown", (e) => {
-  if (e.key !== "f" && e.key !== "F") return;
-  if (e.ctrlKey || e.metaKey || e.altKey) return;
   const t = e.target;
   if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
-  e.preventDefault();
-  setFullControl(!fullControl, true);
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+  // F: toggle full control.
+  if (e.key === "f" || e.key === "F") { e.preventDefault(); setFullControl(!fullControl, true); return; }
+
+  // Space / Enter: pass priority — blitz through priority windows to reach the
+  // next decision (essential under full control, which stops at many more of
+  // them, including the mana-only windows before combat). A no-op during a
+  // combat declaration (PassPriority isn't legal there, so you never skip past
+  // declaring attackers/blockers) and while a request is in flight.
+  if (e.key === " " || e.key === "Enter") {
+    if (G.busy) return;
+    const legal = (G.resp && G.resp.view && G.resp.view.legal) || [];
+    const pass = legal.find((a) => a.label === "Pass" || a.label === "Pass priority");
+    if (pass) { e.preventDefault(); sendAction(pass.index, "Pass"); }
+  }
 });
 renderFullCtl();
 

@@ -472,6 +472,49 @@ mod tests {
         assert!(total_attacks > 0, "expected the human to declare attackers in some game");
     }
 
+    /// Repro for "can't declare attackers/blockers under Full control": Full
+    /// control surfaces EXTRA (dead) priority windows, but combat declarations
+    /// are not priority windows, so they must still surface. If the human can
+    /// attack under the default they must be able to under full control too.
+    #[test]
+    fn full_control_still_surfaces_combat_declarations() {
+        // Full control surfaces EXTRA (dead) priority windows, but combat
+        // declarations are not priority windows, so they must still surface.
+        // Uses the SAME "take any real action" script as the default combat test.
+        use arcana_core::combat::{attacker_options, match_attack, match_block, AttackerDeclaration};
+        let reg = arcana_cards::build_catalog();
+        let deck = arcana_cards::sample_deck(&reg, 7);
+        let mut total_attacks = 0;
+        for seed in 0u64..6 {
+            let seats = vec![Seat::Human, Seat::Bot(Box::new(RandomStatePolicy::new(seed*7+1)))];
+            let mut session = Session::new(vec![deck.clone(), deck.clone()], &reg, seats, seed);
+            session.set_auto_pass(AutoPass::FullControl);
+            let mut guard = 0;
+            loop {
+                guard += 1; assert!(guard < 400_000, "session must terminate");
+                let legal = match session.advance() {
+                    Turn::GameOver(_) => break,
+                    Turn::AwaitingHuman { legal, .. } => legal,
+                };
+                let action = if legal.iter().any(|a| matches!(a, Action::DeclareAttackers{..})) {
+                    let decls: Vec<AttackerDeclaration> = attacker_options(&legal).iter()
+                        .map(|(id,defs)| AttackerDeclaration{attacker:*id,defending:defs[0]}).collect();
+                    if !decls.is_empty() { total_attacks += 1; }
+                    match_attack(&legal,&decls).expect("attack build must match a legal action")
+                } else if legal.iter().any(|a| matches!(a, Action::DeclareBlockers{..})) {
+                    match_block(&legal,&[]).expect("block-with-nothing must be legal")
+                } else {
+                    legal.iter()
+                        .find(|a| !matches!(a, Action::PassPriority | Action::Concede | Action::MulliganAgain))
+                        .or_else(|| legal.iter().find(|a| matches!(a, Action::PassPriority)))
+                        .cloned().unwrap_or_else(|| legal[0].clone())
+                };
+                session.apply(action);
+            }
+        }
+        assert!(total_attacks > 0, "the human must be able to attack under full control");
+    }
+
     /// All-bot seats: advance() runs the whole game with no human stop.
     #[test]
     fn all_bots_runs_to_completion() {
