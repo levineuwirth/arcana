@@ -93,7 +93,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Player,
                     count: TargetCount::Exactly(1),
-                    controller: None,
+                    controller: Some(ControllerConstraint::Opponent),
                 }],
             })
             // Back face trigger (id 2): at beginning of combat on your turn, flip coin for ability.

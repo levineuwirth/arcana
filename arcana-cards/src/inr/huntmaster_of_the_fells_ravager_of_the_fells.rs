@@ -119,7 +119,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     TargetRequirement {
                         filter: TargetFilter::Player,
                         count: TargetCount::Exactly(1),
-                        controller: None,
+                        controller: Some(ControllerConstraint::Opponent),
                     },
                     TargetRequirement {
                         filter: TargetFilter::Creature,

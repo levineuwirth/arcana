@@ -11,7 +11,7 @@ use arcana_core::registry::{
     CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{ControllerConstraint, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -43,7 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Player,
                     count: TargetCount::Exactly(1),
-                    controller: None,
+                    controller: Some(ControllerConstraint::Opponent),
                 }],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
