@@ -27,7 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_spell_ability(SpellAbilityDef {
                 text: "For each artifact or creature card in target opponent's graveyard, add {C} and you gain 1 life.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
                 modal: None,
                 effect: resolve,
             }),

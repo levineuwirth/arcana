@@ -67,7 +67,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: chapter_i,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
             })
             // Chapter II: Each opponent loses 3 life. Create a Treasure token.
             .with_triggered_ability(TriggeredAbilityDef {

@@ -39,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{X}, {T}: Choose a card name. Target opponent reveals X cards at random from their hand. Then that player discards all cards with that name revealed this way.".into(),
                 cost: ActivationCost::tap_only(),
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,

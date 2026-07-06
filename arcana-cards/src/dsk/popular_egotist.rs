@@ -70,7 +70,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 // "target opponent" — engine player target; opponent restriction
                 // is not separately encodable, using a player target.
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
             }),
     )
 }

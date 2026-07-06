@@ -66,7 +66,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     add_self_counter: Some((CounterKind::Loyalty, 1)),
                     ..ActivationCost::default()
                 },
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
                 is_mana_ability: false,
                 is_loyalty_ability: true,
                 activation_zone: ActivationZone::Battlefield,

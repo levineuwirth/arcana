@@ -24,7 +24,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Simoon deals 1 damage to each creature target opponent controls.".into(),
-            target_requirements: vec![TargetRequirement::target_player()],
+            target_requirements: vec![TargetRequirement::target_opponent()],
             modal: None,
             effect: resolve,
         }),

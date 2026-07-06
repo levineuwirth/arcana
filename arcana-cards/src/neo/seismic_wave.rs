@@ -29,7 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Seismic Wave deals 2 damage to any target and 1 damage to each nonartifact creature target opponent controls.".into(),
                 target_requirements: vec![
                     TargetRequirement::any_target(),
-                    TargetRequirement::target_player(),
+                    TargetRequirement::target_opponent(),
                 ],
                 modal: None,
                 effect: resolve,

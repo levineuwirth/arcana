@@ -29,7 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 // "you choose a nonland card from a revealed hand" is
                 // rendered as a controller-chooses targeted discard.
                 text: "Target opponent reveals their hand. You choose a nonland card from it. That player discards that card. If you control a Warrior, that player loses 2 life.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
                 modal: None,
                 effect: resolve,
             }),

@@ -39,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
                 // "target opponent" — closest expressible is target player.
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
             })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Add {C}.".into(),

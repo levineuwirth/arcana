@@ -50,7 +50,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             effect: etb_draw_or_mill_burn,
             trigger_zones: vec![Zone::Battlefield],
             frequency: TriggerFrequency::EachTime,
-            target_requirements: vec![TargetRequirement::target_player()],
+            target_requirements: vec![TargetRequirement::target_opponent()],
         }),
     )
 }

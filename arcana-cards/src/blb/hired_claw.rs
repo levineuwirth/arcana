@@ -68,7 +68,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: damage_opponent,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
             })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{1}{R}: Put a +1/+1 counter on this creature. Activate only if an opponent lost life this turn and only once each turn.".into(),

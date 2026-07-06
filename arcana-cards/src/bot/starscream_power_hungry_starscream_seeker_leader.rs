@@ -89,7 +89,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: draw_lose_life_trigger,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
             })
             // Front: Whenever one or more creatures deal combat damage to you, convert Starscream.
             // Wired as DamageDealt with creature source filter and combat_only.

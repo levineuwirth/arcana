@@ -29,7 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars).with_spell_ability(SpellAbilityDef {
             text: "Create a 5/5 black and red Elemental creature token. Target opponent sacrifices a creature of their choice for each black creature you control, then sacrifices a land of their choice for each red creature you control.".into(),
-            target_requirements: vec![TargetRequirement::target_player()],
+            target_requirements: vec![TargetRequirement::target_opponent()],
             modal: None,
             effect: resolve,
         }),

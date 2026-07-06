@@ -28,7 +28,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 // hand-exile primitive and the MV filter can't be
                 // applied. Rendered as a controller-chooses discard.
                 text: "Target opponent reveals their hand. You choose a card from it with mana value 4 or greater and exile that card.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
                 modal: None,
                 effect: resolve,
             }),

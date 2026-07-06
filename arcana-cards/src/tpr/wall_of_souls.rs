@@ -51,7 +51,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             frequency: TriggerFrequency::EachTime,
             // GAP: "target opponent or planeswalker" — no opponent-or-
             // planeswalker filter; approximated by target player.
-            target_requirements: vec![TargetRequirement::target_player()],
+            target_requirements: vec![TargetRequirement::target_opponent()],
         }),
     )
 }

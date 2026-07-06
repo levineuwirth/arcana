@@ -33,7 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                        controls. The Fall of Kroog deals 3 damage to that \
                        player and 1 damage to each creature they control.".into(),
                 target_requirements: vec![
-                    TargetRequirement::target_player(),
+                    TargetRequirement::target_opponent(),
                     TargetRequirement {
                         filter: TargetFilter::Permanent(
                             ObjectFilter::new()

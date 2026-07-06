@@ -40,7 +40,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: etb_exile_nonland,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
             })
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
@@ -49,7 +49,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: ltb_opponent_draws,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
             }),
     )
 }

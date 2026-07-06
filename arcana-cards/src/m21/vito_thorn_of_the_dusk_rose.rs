@@ -59,7 +59,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: opponent_loses_that_much,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
             })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{3}{B}{B}: Creatures you control gain lifelink until end of turn."

@@ -32,7 +32,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 text: "Superior Numbers deals damage to target creature equal to the number of creatures you control in excess of the number of creatures target opponent controls.".into(),
                 target_requirements: vec![
                     TargetRequirement::target_creature(),
-                    TargetRequirement::target_player(),
+                    TargetRequirement::target_opponent(),
                 ],
                 modal: None,
                 effect: resolve,

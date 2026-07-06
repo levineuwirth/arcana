@@ -35,7 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                         count: TargetCount::Any,
                         controller: None,
                     },
-                    TargetRequirement::target_player(),
+                    TargetRequirement::target_opponent(),
                 ],
                 modal: None,
                 effect: resolve,

@@ -39,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}: Target opponent chooses creatures; they must attack next turn, others can't; destroy those that didn't attack at end of that turn.".into(),
                 cost: ActivationCost::tap_only(),
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,

@@ -76,7 +76,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: chapter_ii,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
             })
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 4,

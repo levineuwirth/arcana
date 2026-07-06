@@ -41,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     ..ActivationCost::default()
                 },
                 // GAP: {X} variable cost and "tap X untapped artifacts" not in ActivationCost
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,

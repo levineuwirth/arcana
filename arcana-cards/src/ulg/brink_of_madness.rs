@@ -49,7 +49,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: sacrifice_and_strip_hand,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
             },
         ),
     )

@@ -79,7 +79,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: etb_discard,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
             })
             // Back-face trigger (id 2): enters -> may mill two.
             .with_triggered_ability(TriggeredAbilityDef {

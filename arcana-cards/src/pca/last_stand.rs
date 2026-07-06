@@ -48,7 +48,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                    each Island you control, then discard that many cards."
                 .into(),
             target_requirements: vec![
-                TargetRequirement::target_player(),
+                TargetRequirement::target_opponent(),
                 TargetRequirement {
                     filter: TargetFilter::Creature,
                     count: TargetCount::Exactly(1),

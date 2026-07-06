@@ -51,7 +51,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             frequency: TriggerFrequency::EachTime,
             // NOTE: "target opponent" approximated as target player; no
             // opponent-only player target helper in the demonstrated surface.
-            target_requirements: vec![TargetRequirement::target_player()],
+            target_requirements: vec![TargetRequirement::target_opponent()],
         }),
     )
 }

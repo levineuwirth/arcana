@@ -38,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                    That player shuffles, then draws a card for each card exiled \
                    from their hand this way."
                 .into(),
-            target_requirements: vec![TargetRequirement::target_player()],
+            target_requirements: vec![TargetRequirement::target_opponent()],
             modal: None,
             effect: resolve,
         }),

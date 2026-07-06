@@ -53,7 +53,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             frequency: TriggerFrequency::EachTime,
             // Targets a player ("target opponent"); the opponent-only
             // restriction isn't expressible on a player TargetRequirement.
-            target_requirements: vec![TargetRequirement::target_player()],
+            target_requirements: vec![TargetRequirement::target_opponent()],
         }),
     )
 }

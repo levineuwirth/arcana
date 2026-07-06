@@ -45,7 +45,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             },
             target_requirements: vec![
                 TargetRequirement::target_creature(),
-                TargetRequirement::target_player(),
+                TargetRequirement::target_opponent(),
             ],
             is_mana_ability: false,
             is_loyalty_ability: false,

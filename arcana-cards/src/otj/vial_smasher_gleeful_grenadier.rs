@@ -58,7 +58,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: outlaw_enters_damage,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
             }),
     )
 }

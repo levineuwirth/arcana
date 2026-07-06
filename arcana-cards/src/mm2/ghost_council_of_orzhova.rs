@@ -44,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: etb_drain,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
             })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{1}, Sacrifice a creature: Exile Ghost Council of Orzhova. Return it to the battlefield under its owner's control at the beginning of the next end step.".into(),

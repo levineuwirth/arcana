@@ -46,7 +46,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 frequency: TriggerFrequency::EachTime,
                 // GAP: "target OPPONENT" — TargetFilter::Player cannot
                 // be constrained to opponents.
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
             },
         ),
     )

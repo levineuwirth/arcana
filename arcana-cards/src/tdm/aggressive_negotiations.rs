@@ -29,7 +29,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_spell_ability(SpellAbilityDef {
                 text: "Target opponent reveals their hand. You choose a nonland card from it and exile that card. Put a +1/+1 counter on up to one target creature you control.".into(),
                 target_requirements: vec![
-                    TargetRequirement::target_player(),
+                    TargetRequirement::target_opponent(),
                     TargetRequirement {
                         filter: TargetFilter::Permanent(
                             ObjectFilter::creature()

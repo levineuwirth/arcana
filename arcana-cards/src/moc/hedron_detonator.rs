@@ -63,7 +63,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: ping_target_opponent,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
             })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{T}, Sacrifice two artifacts: Exile the top card of your library. You may play that card this turn.".into(),

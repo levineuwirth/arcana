@@ -35,7 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     .into(),
                 // GAP: 'target OPPONENT' — TargetFilter::Player has no
                 // opponent constraint; any player is targetable.
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}").expect("valid cost"),
                     sacrifice: true,

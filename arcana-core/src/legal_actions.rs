@@ -3806,6 +3806,30 @@ mod tests {
     }
 
     #[test]
+    fn target_opponent_enumeration_excludes_self() {
+        // "target opponent" (Hostile Investigator) must not offer the controller
+        // as a candidate — the enumerator drops self via matches_choice, so the
+        // GUI never shows a "Target P0" button to P0.
+        let s = GameState::new(2, 0);
+        let src = crate::objects::NULL_OBJECT_ID;
+        let players = |reqs: &[TargetRequirement]| -> Vec<PlayerId> {
+            let mut v: Vec<PlayerId> = enumerate_target_selections(reqs, &s, src, 0)
+                .iter()
+                .filter_map(|sel| match sel.targets.first() {
+                    Some(crate::targets::TargetChoice::Player(p)) => Some(*p),
+                    _ => None,
+                })
+                .collect();
+            v.sort();
+            v
+        };
+        assert_eq!(players(&[TargetRequirement::target_opponent()]), vec![1],
+            "only the opponent (P1) is offered, not self (P0)");
+        assert_eq!(players(&[TargetRequirement::target_player()]), vec![0, 1],
+            "unconstrained target player still offers both seats");
+    }
+
+    #[test]
     fn equivalence_subsets_respect_cap() {
         // 30 distinct keys => 2^30 subsets uncapped (would OOM). The cap
         // keeps it bounded; the empty subset (canonical) is generated first.

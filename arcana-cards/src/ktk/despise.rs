@@ -27,7 +27,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 // revealed hand" rendered as a controller-chooses
                 // discard; the type restriction isn't expressible.
                 text: "Target opponent reveals their hand. You choose a creature or planeswalker card from it. That player discards that card.".into(),
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
                 modal: None,
                 effect: resolve,
             }),

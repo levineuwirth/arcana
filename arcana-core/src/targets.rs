@@ -112,6 +112,18 @@ impl TargetRequirement {
         }
     }
 
+    /// Convenience: "target opponent" — a player target you can't point at
+    /// yourself (CR 109.5 / the `ControllerConstraint::Opponent` gate). Use this
+    /// for "target opponent discards/loses/sacrifices…" rather than
+    /// [`Self::target_player`], which permits self-targeting.
+    pub fn target_opponent() -> Self {
+        Self {
+            filter: TargetFilter::Player,
+            count: TargetCount::Exactly(1),
+            controller: Some(ControllerConstraint::Opponent),
+        }
+    }
+
     /// Convenience: "any target" (creature, player, or planeswalker).
     pub fn any_target() -> Self {
         Self {
@@ -1407,6 +1419,24 @@ mod tests {
             "opponent-only must reject targeting yourself");
         assert!(req.matches_choice(&TargetChoice::Player(1), &s, src, 0),
             "opponent-only must accept an opponent");
+    }
+
+    /// The `target_opponent()` convenience carries the opponent constraint, so
+    /// "target opponent" cards (Hostile Investigator) can't point at their own
+    /// controller — unlike `target_player()`.
+    #[test]
+    fn target_opponent_convenience_excludes_self() {
+        let s = GameState::new(2, 0);
+        let src = crate::objects::NULL_OBJECT_ID;
+        let opp = TargetRequirement::target_opponent();
+        assert!(!opp.matches_choice(&TargetChoice::Player(0), &s, src, 0),
+            "target_opponent() rejects yourself");
+        assert!(opp.matches_choice(&TargetChoice::Player(1), &s, src, 0),
+            "target_opponent() accepts an opponent");
+        // The plain player target still permits self-targeting.
+        let any = TargetRequirement::target_player();
+        assert!(any.matches_choice(&TargetChoice::Player(0), &s, src, 0),
+            "target_player() still allows yourself");
     }
 
     fn put_sorcery(state: &mut GameState, owner: PlayerId, zone: Zone) -> ObjectId {

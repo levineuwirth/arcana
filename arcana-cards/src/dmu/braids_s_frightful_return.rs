@@ -72,7 +72,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 id: 4, trigger_condition: TriggerCondition::CounterAdded { on: TriggerSelf::Source, kind: Some(CounterKind::Lore), chapter: Some(3) },
                 intervening_if: None, effect: chapter_iii,
                 trigger_zones: vec![Zone::Battlefield], frequency: TriggerFrequency::EachTime,
-                target_requirements: vec![TargetRequirement::target_player()],
+                target_requirements: vec![TargetRequirement::target_opponent()],
             }),
     )
 }
