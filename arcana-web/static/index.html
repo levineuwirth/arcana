@@ -1032,8 +1032,28 @@ function handDecor(c) {
       onClick: () => { if (sel) G.bottomSel.delete(c.id); else G.bottomSel.add(c.id); renderAll(); },
     };
   }
+  // A pending "choose a card from your hand" decision (discard-to-hand-size,
+  // sacrifice, …): click the card to submit that pick — like mulligan bottoming,
+  // instead of a list of "Choose <card>" buttons.
+  const pick = handChoiceActionFor(c.id);
+  if (pick) {
+    const discarding = (G.resp.view.prompt || "").toLowerCase().startsWith("discard");
+    return {
+      classes: ["selectable"],
+      badge: discarding ? "↓ discard" : "choose",
+      onClick: () => sendAction(pick.index, pick.label),
+    };
+  }
   if (c.playable) return { classes: ["selectable"], onClick: (ev) => playHandCard(c, ev) };
   return { classes: ["dim"] };
+}
+
+// The pending pick action (MakeChoice → ChooseObject, no source) that targets
+// this specific object, if any — the discard/sacrifice-from-hand choice.
+function handChoiceActionFor(id) {
+  const legal = (G.resp && G.resp.view && G.resp.view.legal) || [];
+  return legal.find((a) => a.source == null && (a.targets || []).length === 1
+    && a.targets[0].object === id);
 }
 
 // available colored mana + floating + untapped-land tally, as a small gauge.
@@ -1744,6 +1764,9 @@ function renderActions(view) {
   // a permanent to activate), so they aren't rendered as buttons. Only genuine
   // non-card choices get buttons.
   const order = ["Choices", "Other"];
+  // The human's hand ids — a "choose a card from your hand" pick is now
+  // click-the-card (handDecor), so those actions aren't also listed as buttons.
+  const myHand = new Set(((view.players.find((p) => p.id === view.perspective) || {}).hand || []).map((c) => c.id));
   const groups = {}; let pass = null, concede = null, cardDriven = 0;
   for (const a of view.legal) {
     const g = groupOf(a.label);
@@ -1757,6 +1780,11 @@ function renderActions(view) {
     // their button, and sourceless forced choices (Target P0/P1) are untouched
     // since MakeChoice actions carry no `source`.
     if (a.source != null && G.cardById.has(a.source) && (a.targets || []).length) {
+      cardDriven++; continue;
+    }
+    // A hand-card pick (discard-to-hand-size / sacrifice) is click-the-card in
+    // hand, so don't also render its "Choose <card>" button.
+    if (a.source == null && (a.targets || []).length === 1 && myHand.has(a.targets[0].object)) {
       cardDriven++; continue;
     }
     (groups[g] = groups[g] || []).push(a);

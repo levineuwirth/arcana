@@ -170,6 +170,13 @@ fn action_source(a: &Action) -> Option<ObjectId> {
 
 /// The action's chosen targets, for board-click targeting (see [`ActionView::targets`]).
 fn action_targets(a: &Action) -> Vec<TargetRef> {
+    // A ChooseObject pick (discard-to-hand-size / sacrifice-from-hand) — expose
+    // the picked object so the UI can map a hand card to its choice action and
+    // make it click-to-select (like mulligan bottoming) rather than a wall of
+    // "Choose <card>" buttons.
+    if let Action::MakeChoice(crate::actions::ChoiceAction::ChooseObject(id)) = a {
+        return vec![TargetRef { object: Some(*id), player: None }];
+    }
     let sel = match a {
         Action::CastSpell { targets, .. } => Some(targets),
         Action::ActivateAbility { targets, .. } => Some(targets),
@@ -668,8 +675,21 @@ mod tests {
         }
         s.priority.begin_special_action(SpecialAction::DiscardToHandSize, 0);
         let legal = crate::legal_actions::legal_actions(&s, &reg);
-        assert_eq!(view_state(&s, &reg, 0, &legal).prompt.as_deref(),
+        let view = view_state(&s, &reg, 0, &legal);
+        assert_eq!(view.prompt.as_deref(),
             Some("Discard 2 cards — you're over the 7-card limit"));
+        // Every discard action exposes the picked hand card as a target, so the
+        // UI can map a hand card to its choice (click-to-discard) rather than a
+        // "Choose <card>" button. Each has exactly one object target, no source.
+        let hand: std::collections::HashSet<_> =
+            s.objects.ids_in_zone_sorted(Zone::Hand(0)).into_iter().collect();
+        assert!(!view.legal.is_empty());
+        for a in &view.legal {
+            assert!(a.source.is_none(), "a discard pick has no source");
+            assert_eq!(a.targets.len(), 1, "one picked object per discard action");
+            assert!(hand.contains(&a.targets[0].object.unwrap()),
+                "the picked object is a hand card");
+        }
         // The non-discarding seat sees no prompt.
         assert_eq!(view_state(&s, &reg, 1, &legal).prompt, None);
     }
