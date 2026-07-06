@@ -1518,7 +1518,12 @@ function bfDecor(c, isYou, cm) {
     const now = activateActionsFor(c.id);
     if (now.length || c.activatable) {
       const deco = { classes: ["selectable"], onClick: (ev) => playPermanent(c, ev) };
-      if (now.length > 1) deco.badge = now.length + " abilities";
+      // Count DISTINCT abilities, not legal target-variants: one targeted ability
+      // (Goblin Artillery: "2 damage to any target") enumerates one action per
+      // target, which must not read as "9 abilities". The " → target" suffix is
+      // the only difference between same-ability actions.
+      const distinct = new Set(now.map((a) => a.label.split(" → ")[0])).size;
+      if (distinct > 1) deco.badge = distinct + " abilities";
       return Object.assign(combat, deco);
     }
   }
@@ -1745,6 +1750,15 @@ function renderActions(view) {
     if (g === "pass") { pass = a; continue; }
     if (g === "concede") { concede = a; continue; }
     if (g === "Lands" || g === "Spells" || g === "Abilities") { cardDriven++; continue; }
+    // A TARGETED activated ability on a board permanent (e.g. Goblin Artillery's
+    // "2 damage to any target") is reached by clicking that permanent → arrow
+    // targeting; enumerating one full-width button PER legal target floods the
+    // panel. Skip it here (it stays click-driven). Untargeted abilities keep
+    // their button, and sourceless forced choices (Target P0/P1) are untouched
+    // since MakeChoice actions carry no `source`.
+    if (a.source != null && G.cardById.has(a.source) && (a.targets || []).length) {
+      cardDriven++; continue;
+    }
     (groups[g] = groups[g] || []).push(a);
   }
   if (cardDriven) {
