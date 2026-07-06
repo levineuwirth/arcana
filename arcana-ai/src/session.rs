@@ -51,22 +51,26 @@ pub enum Turn {
     GameOver(GameResult),
 }
 
-/// How aggressively to auto-pass a HUMAN's dead priority windows (a window where
-/// they have no meaningful play — only passing or tapping mana with nothing to
-/// spend it on). Bots are unaffected (they choose via their policy).
+/// How a HUMAN's priority windows are surfaced. Bots are unaffected (they choose
+/// via their policy). A "dead" window is one where the human has no meaningful
+/// play — only passing or tapping mana with nothing to spend it on.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum AutoPass {
-    /// Never auto-pass: surface every priority window where the human has a legal
-    /// non-pass option (full manual control).
-    None,
-    /// MTGA-style middle ground (default): auto-pass a dead window only when it's
-    /// quiet — the stack is empty AND the opponent did nothing notable since the
-    /// human last acted. So the human still STOPS to see spells on the stack and
-    /// the opponent's plays, but skips truly-empty windows.
+    /// Smart default: auto-pass a dead window; stop ONLY when the human actually
+    /// holds a decision — a castable spell or non-mana ability, including
+    /// instant-speed responses on the opponent's turn ([`has_meaningful_play`]).
+    /// What the opponent did flows into the passive action feed
+    /// ([`Session::recent_actions`]) without halting the human to acknowledge
+    /// something they cannot act on. This is the fix for the "why did it stop me
+    /// here?" false stop.
+    ///
+    /// [`has_meaningful_play`]: arcana_core::legal_actions::has_meaningful_play
     #[default]
-    Stops,
-    /// Auto-pass every dead window (fastest; the prior behavior).
-    Full,
+    Default,
+    /// Full manual control: stop at EVERY priority window that offers any legal
+    /// non-pass option (including mana-only windows) — for bluffing, holding up
+    /// mana, or acting at an unusual window. Toggled by the full-control key.
+    FullControl,
 }
 
 /// An interactive session over one game. Borrows the registry for its lifetime.
@@ -83,9 +87,8 @@ pub struct Session<'a> {
     /// the full state — correct since a played/cast/attacking card is public.
     /// Cleared each `advance`; passes and empty declarations are not recorded.
     log: Vec<(PlayerId, String)>,
-    /// How aggressively to auto-pass a HUMAN's dead priority windows
-    /// ([`AutoPass`]). Defaults to [`AutoPass::Stops`] (MTGA-style middle ground).
-    /// Bots are unaffected.
+    /// How a HUMAN's priority windows are surfaced ([`AutoPass`]). Defaults to
+    /// [`AutoPass::Default`] (the smart middle ground). Bots are unaffected.
     auto_pass: AutoPass,
 }
 
@@ -153,7 +156,8 @@ impl<'a> Session<'a> {
                auto_pass: AutoPass::default() }
     }
 
-    /// Set the human auto-pass level (default [`AutoPass::Stops`]). See [`AutoPass`].
+    /// Set how the human's priority windows surface (default
+    /// [`AutoPass::Default`]). See [`AutoPass`].
     pub fn set_auto_pass(&mut self, level: AutoPass) { self.auto_pass = level; }
 
     /// The current (full, un-projected) game state — for spectator rendering.
@@ -202,19 +206,17 @@ impl<'a> Session<'a> {
                 && !arcana_core::legal_actions::has_meaningful_play(
                     &self.state, player, self.registry)
             {
+                // We only get here with NO meaningful play (checked above), so a
+                // legal instant/ability response — which would make this a real
+                // decision — has already surfaced the window via
+                // `has_meaningful_play`. The default therefore auto-passes every
+                // remaining (dead) window; what the opponent did is still recorded
+                // in `log` for the passive feed, it just no longer HALTS the human
+                // to acknowledge something they can't act on. Full control surfaces
+                // every window regardless.
                 let skip = match self.auto_pass {
-                    AutoPass::None => false,
-                    // Nothing NEW to acknowledge this advance (`log` empty) and —
-                    // checked above — no meaningful play. A non-empty stack does
-                    // NOT force a stop: the player's own spell resolving (no
-                    // response available) shouldn't demand a manual pass, and any
-                    // notable opponent action (a spell they might answer) lands in
-                    // `log`, which keeps the window surfaced. This is what lets a
-                    // cast/activation with no opponent interaction resolve without
-                    // an extra "pass" click (MTGA-style auto-yield through your own
-                    // stack).
-                    AutoPass::Stops => self.log.is_empty(),
-                    AutoPass::Full => true,
+                    AutoPass::Default => true,
+                    AutoPass::FullControl => false,
                 };
                 if skip {
                     self.apply_internal(Action::PassPriority);
@@ -410,8 +412,10 @@ mod tests {
             saw_dead
         }
 
-        assert!(run(AutoPass::None), "None must surface at least one no-play window");
-        assert!(!run(AutoPass::Full), "Full must never surface a no-play priority window");
+        assert!(run(AutoPass::FullControl),
+            "full control must surface at least one no-play window");
+        assert!(!run(AutoPass::Default),
+            "the default must never surface a no-play priority window");
     }
 
     /// A scripted human that DEVELOPS (plays lands/spells) and ATTACKS, building

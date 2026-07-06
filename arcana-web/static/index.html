@@ -57,6 +57,18 @@
     color: var(--text); background: var(--bg-offset); border: 1px solid var(--border);
     border-radius: var(--radius-control); padding: 2px 6px;
   }
+  /* Full-control toggle (F): quiet when off, a lit amber chip when armed. */
+  #fullctl {
+    font-family: var(--font-sans); font-size: 12px; text-transform: none; letter-spacing: 0;
+    color: var(--text-muted); background: var(--bg-offset); border: 1px solid var(--border);
+    border-radius: var(--radius-control); padding: 2px 8px; cursor: pointer;
+  }
+  #fullctl:hover { border-color: var(--text-muted); color: var(--text); }
+  #fullctl.active {
+    color: #1a1205; background: var(--tgt, #caa45a); border-color: var(--tgt, #caa45a);
+    font-weight: 600;
+  }
+  #fullctl .kbd { opacity: .6; font-size: 10px; margin-left: 4px; }
   .phasebar .turn { font-variant-numeric: tabular-nums; color: var(--text-muted); font-size: 13px; }
   .phasebar .step { font-family: var(--font-serif); font-weight: 600; font-size: 17px; color: var(--text); }
   .phasebar .who { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
@@ -472,14 +484,7 @@
     <span class="wordmark">Arc<b>ana</b></span><span class="sub">cockpit</span>
     <div class="phasebar" id="phase"></div>
     <div class="spacer"></div>
-    <label class="autopass-ctl" title="How much to auto-pass your dead priority windows">
-      <span>Auto-pass</span>
-      <select id="autopass">
-        <option value="none">None</option>
-        <option value="stops" selected>Default</option>
-        <option value="full">Full</option>
-      </select>
-    </label>
+    <button id="fullctl" title="Full control (F): stop at EVERY priority window — hold up mana, bluff, or act at an unusual window. Off = smart auto-pass through windows where you have no play.">Full control<span class="kbd">F</span></button>
     <a href="/deck">Deckbuilder →</a>
     <div class="menu-wrap" id="panels-menu">
       <button id="panelsbtn" class="ghost">Panels ▾</button>
@@ -2429,17 +2434,34 @@ window.addEventListener("scroll", scheduleArrows, true); // capture: catches pan
 
 // Auto-pass level — persisted, and synced to the server on load (the worker
 // keeps it across new games, so we only need to push it when it changes / loads).
-const AUTOPASS_KEY = "arcana.autopass";
-const autopassSel = document.getElementById("autopass");
-let autopassLevel = "stops";
-try { autopassLevel = localStorage.getItem(AUTOPASS_KEY) || "stops"; } catch (e) { /* default */ }
-autopassSel.value = autopassLevel;
-autopassSel.onchange = async () => {
-  autopassLevel = autopassSel.value;
-  try { localStorage.setItem(AUTOPASS_KEY, autopassLevel); } catch (e) { /* ignore */ }
-  try { adopt(await Arcana.Api.autoPass(autopassLevel), true); }
+const FULLCTL_KEY = "arcana.fullcontrol";
+const fullctlBtn = document.getElementById("fullctl");
+let fullControl = false;
+try { fullControl = localStorage.getItem(FULLCTL_KEY) === "1"; } catch (e) { /* default off */ }
+
+function renderFullCtl() {
+  fullctlBtn.classList.toggle("active", fullControl);
+  fullctlBtn.innerHTML = (fullControl ? "Full control: ON" : "Full control")
+    + '<span class="kbd">F</span>';
+}
+async function setFullControl(on, persist) {
+  fullControl = on;
+  if (persist) { try { localStorage.setItem(FULLCTL_KEY, on ? "1" : "0"); } catch (e) { /* ignore */ } }
+  renderFullCtl();
+  try { adopt(await Arcana.Api.autoPass(on ? "full_control" : "default"), true); }
   catch (e) { logLine("sys", "auto-pass: " + e); }
-};
+}
+fullctlBtn.onclick = () => setFullControl(!fullControl, true);
+// Keyboard: F toggles full control (ignored while typing / with a modifier held).
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "f" && e.key !== "F") return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const t = e.target;
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+  e.preventDefault();
+  setFullControl(!fullControl, true);
+});
+renderFullCtl();
 
 // Panels menu open/close
 const panelsBtn = document.getElementById("panelsbtn");
@@ -2511,9 +2533,10 @@ async function loadOpponentName() {
   }
   await loadOpponentName();
   Arcana.loadGlossary();
-  // Sync the saved auto-pass level to the server (solo only), then load the game.
-  if (!Arcana.Match.active() && autopassLevel !== "stops") {
-    try { await Arcana.Api.autoPass(autopassLevel); } catch (e) { /* ignore */ }
+  // Sync saved full-control to the server (solo only); the server already defaults
+  // to smart auto-pass, so we only push when full control was left on.
+  if (!Arcana.Match.active() && fullControl) {
+    try { await Arcana.Api.autoPass("full_control"); } catch (e) { /* ignore */ }
   }
   await getState();
   startMatchSocket(); // server push for networked duels (no-op when solo)

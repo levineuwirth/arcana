@@ -850,9 +850,12 @@ async fn match_autopass(State(app): State<AppState>, Query(at): Query<MatchRef>,
         Err(e) => return (StatusCode::BAD_REQUEST, err(format!("invalid /m/autopass body: {e}"))).into_response(),
     };
     let level = match req.level.as_str() {
-        "none" => AutoPass::None,
-        "stops" => AutoPass::Stops,
-        "full" => AutoPass::Full,
+        "full_control" => AutoPass::FullControl,
+        "default" => AutoPass::Default,
+        // Legacy values from stale clients: "none" was full manual; "stops"/"full"
+        // both fold into the smart default.
+        "none" => AutoPass::FullControl,
+        "stops" | "full" => AutoPass::Default,
         other => return (StatusCode::BAD_REQUEST, err(format!("unknown auto-pass level: {other}"))).into_response(),
     };
     let sender = match route_match(&app, &at) { Ok(s) => s, Err(r) => return r };
@@ -1140,9 +1143,11 @@ async fn post_autopass(State(app): State<AppState>, body: String) -> Response {
         }
     };
     let level = match req.level.as_str() {
-        "none" => AutoPass::None,
-        "stops" => AutoPass::Stops,
-        "full" => AutoPass::Full,
+        "full_control" => AutoPass::FullControl,
+        "default" => AutoPass::Default,
+        // Legacy values from stale clients.
+        "none" => AutoPass::FullControl,
+        "stops" | "full" => AutoPass::Default,
         other => {
             return (StatusCode::BAD_REQUEST, err(format!("unknown auto-pass level: {other}"))).into_response()
         }
