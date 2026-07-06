@@ -823,8 +823,11 @@ impl PendingTrigger {
     pub fn entering_object(&self) -> Option<ObjectId> {
         match &self.trigger_event {
             GameEvent::EntersBattlefield { object_id, .. } => Some(*object_id),
-            GameEvent::ZoneChange { object_id, to: Zone::Battlefield, .. } =>
-                Some(*object_id),
+            // CR 400.7 — the object is re-ided when it changes zones; the entered
+            // permanent lives at `new_id`, so effects that act on it (pump,
+            // counters, tap…) must use that, NOT the stale pre-move `object_id`.
+            GameEvent::ZoneChange { new_id, to: Zone::Battlefield, .. } =>
+                Some(*new_id),
             _ => None,
         }
     }
@@ -2206,5 +2209,45 @@ mod tests {
             new_id: 9, cause: crate::events::MoveCause::StateBasedAction,
         });
         assert_eq!(t.entering_object(), None);
+    }
+
+    #[test]
+    fn zone_change_enter_uses_post_move_id() {
+        // Ardoz, Cobbler of War: a creature you control enters -> pump IT +2/+0.
+        // A real move re-ids the object (CR 400.7); entering_object() must return
+        // the ON-BATTLEFIELD id (new_id), or a Pump lands on the stale pre-move id
+        // and silently no-ops.
+        let mut s = GameState::new(2, 0);
+        let old = put_creature(&mut s, 0, Zone::Hand(0));
+        let new_id = s
+            .move_object_to_zone(old, Zone::Battlefield, MoveCause::StateBasedAction)
+            .expect("moved to battlefield");
+        assert_ne!(old, new_id, "entering re-ids the object");
+        assert!(s.objects.get(new_id).map_or(false, |o| o.zone.is_battlefield()),
+            "the entered creature lives at new_id");
+
+        let ev = GameEvent::ZoneChange {
+            object_id: old, from: Zone::Hand(0), to: Zone::Battlefield,
+            new_id, cause: MoveCause::StateBasedAction,
+        };
+        let cond = TriggerCondition::ZoneChange {
+            filter: crate::targets::ObjectFilter::creature()
+                .controlled_by(crate::targets::ControllerConstraint::You),
+            from: None,
+            to: Zone::Battlefield,
+        };
+        assert!(cond.matches(&ev, 999, 0, &s),
+            "'a creature you control enters' must fire");
+
+        let t = PendingTrigger {
+            source: 999,
+            trigger_id: 1,
+            controller: 0,
+            trigger_event: ev,
+            targets: Default::default(),
+            effect_override: None,
+        };
+        assert_eq!(t.entering_object(), Some(new_id),
+            "entering_object must be the on-battlefield id, not the stale pre-move id");
     }
 }

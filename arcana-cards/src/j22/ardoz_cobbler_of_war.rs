@@ -91,6 +91,39 @@ fn pump_entering(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry)
     }]
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use arcana_core::events::{GameEvent, MoveCause};
+
+    #[test]
+    fn pump_targets_the_entered_permanent_not_the_stale_id() {
+        // A creature you control enters (re-ided old=1 -> new=2 on the battlefield);
+        // the +2/+0 must land on the ON-BATTLEFIELD id (2), not the pre-move id (1).
+        let reg = CardRegistry::new();
+        let s = GameState::new(2, 0);
+        let trig = PendingTrigger {
+            source: 99,
+            trigger_id: 1,
+            controller: 0,
+            trigger_event: GameEvent::ZoneChange {
+                object_id: 1,
+                from: Zone::Hand(0),
+                to: Zone::Battlefield,
+                new_id: 2,
+                cause: MoveCause::StateBasedAction,
+            },
+            targets: Default::default(),
+            effect_override: None,
+        };
+        match pump_entering(&s, &trig, &reg).as_slice() {
+            [Effect::Pump { target, power: 2, toughness: 0, .. }] =>
+                assert_eq!(*target, 2, "+2/+0 lands on the on-battlefield id"),
+            other => panic!("expected a single +2/+0 Pump, got {other:?}"),
+        }
+    }
+}
+
 fn make_goblin(_state: &GameState, ctx: &ActivationContext, reg: &CardRegistry) -> Vec<Effect> {
     let goblin = reg.interner().lookup("Goblin").unwrap_or_default();
     let mut subtypes = SubtypeSet::default();
