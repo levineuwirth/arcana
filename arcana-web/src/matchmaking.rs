@@ -38,6 +38,20 @@ use crate::{
 const CODE_ALPHABET: &[u8] = b"ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const CODE_LEN: usize = 4;
 
+/// Constant-time string equality for token checks (W-4): no early exit, so a
+/// guess can't be refined by response timing. Length difference folds into the
+/// accumulator instead of short-circuiting.
+fn ct_eq(a: &str, b: &str) -> bool {
+    let (a, b) = (a.as_bytes(), b.as_bytes());
+    let mut diff = a.len() ^ b.len();
+    for i in 0..a.len().max(b.len()) {
+        let x = a.get(i).copied().unwrap_or(0);
+        let y = b.get(i).copied().unwrap_or(0);
+        diff |= (x ^ y) as usize;
+    }
+    diff == 0
+}
+
 /// Lifecycle of a networked match.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -165,7 +179,15 @@ fn run_match(
                 let mut pm = meta.clone();
                 pm.actions = core.record().actions.clone();
                 if let Ok(json) = serde_json::to_string(&pm) {
-                    let _ = std::fs::write(path, json);
+                    // Atomic write (W-5): temp + rename, so a crash mid-write
+                    // can't leave a torn transcript that silently fails to
+                    // restore on the next startup.
+                    let tmp = path.with_extension("json.tmp");
+                    if let Err(e) = std::fs::write(&tmp, &json)
+                        .and_then(|()| std::fs::rename(&tmp, path))
+                    {
+                        eprintln!("[arcana-web] {what}: transcript persist failed: {e}");
+                    }
                 }
             }
         }
@@ -361,8 +383,24 @@ impl Matches {
             if path.extension().and_then(|x| x.to_str()) != Some("json") {
                 continue;
             }
-            let Ok(text) = std::fs::read_to_string(&path) else { continue };
-            let Ok(pm) = serde_json::from_str::<PersistedMatch>(&text) else { continue };
+            // A skipped file is a lost match — say so instead of vanishing it
+            // silently (W-5).
+            let text = match std::fs::read_to_string(&path) {
+                Ok(t) => t,
+                Err(e) => {
+                    eprintln!("[arcana-web] skipping unreadable match file {}: {e}",
+                        path.display());
+                    continue;
+                }
+            };
+            let pm = match serde_json::from_str::<PersistedMatch>(&text) {
+                Ok(pm) => pm,
+                Err(e) => {
+                    eprintln!("[arcana-web] skipping corrupt match file {}: {e}",
+                        path.display());
+                    continue;
+                }
+            };
             self.restore(pm);
         }
     }
@@ -441,7 +479,7 @@ impl Matches {
         let m = self.by_code.get(code)
             .ok_or_else(|| "no match with that code".to_string())?;
         let ok = m.seats.get(seat as usize)
-            .is_some_and(|s| s.filled && s.token == token);
+            .is_some_and(|s| s.filled && ct_eq(&s.token, token));
         if !ok {
             return Err("not authorized for this seat".to_string());
         }
@@ -459,8 +497,13 @@ impl Matches {
         z ^ (z >> 31)
     }
 
+    /// Seat-secret token: 128 bits of OS entropy (W-4). Codes and game seeds
+    /// stay on the fast splitmix stream (they're public); the auth token must
+    /// not be derivable from a timestamp-seeded generator.
     fn token(&mut self) -> String {
-        format!("{:016x}", self.next_rand())
+        let mut b = [0u8; 16];
+        getrandom::getrandom(&mut b).expect("OS entropy unavailable");
+        b.iter().map(|x| format!("{x:02x}")).collect()
     }
 
     fn fresh_code(&mut self) -> String {
@@ -567,7 +610,7 @@ impl Matches {
         let m = self.by_code.get_mut(code)
             .ok_or_else(|| "no match with that code".to_string())?;
         let ok = m.seats.get(seat as usize)
-            .is_some_and(|s| s.filled && s.token == token);
+            .is_some_and(|s| s.filled && ct_eq(&s.token, token));
         if !ok {
             return Err("not authorized for this seat".to_string());
         }

@@ -818,6 +818,15 @@ pub struct MatchConfig {
 /// it keeps a hostile client from posting an arbitrarily large list.
 pub const MAX_DECK_SIZE: usize = 600;
 
+/// One splitmix64 step — a cheap, well-mixed hash for deriving independent
+/// bits from a seed (the first-player coin flip; NOT for secrets).
+fn splitmix64(x: u64) -> u64 {
+    let mut z = x.wrapping_add(0x9E37_79B9_7F4A_7C15);
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    z ^ (z >> 31)
+}
+
 /// Validate a deck at the trust boundary (W-1/W-2): enough cards for an
 /// opening hand, a sane upper bound, and every id registered. An unregistered
 /// id must never reach the engine — `instantiate_card_object` panics on it by
@@ -952,9 +961,9 @@ impl GameCore {
     /// opponent (a rival personality or a custom deck). Returns an error string
     /// the HTTP layer can surface (a `400`) rather than panicking on bad input.
     ///
-    /// `first_player`: the engine starts seat 0 today; `Random` perturbs the
-    /// seed so the shuffle differs. Seat-controlled first-player is a follow-up
-    /// (it needs an engine starting-player parameter).
+    /// `first_player`: `Seat{index}` puts that seat on the play; `Random` is a
+    /// real coin flip derived from the seed (W-7 — it used to only perturb the
+    /// shuffle, silently always giving seat 0 the play).
     pub fn from_match_config(
         reg: &'static CardRegistry, cfg: &MatchConfig,
     ) -> Result<Self, String> {
@@ -975,10 +984,14 @@ impl GameCore {
         };
         validate_deck(reg, &human_deck).map_err(|e| format!("seat 0: {e}"))?;
         validate_deck(reg, &opp_deck).map_err(|e| format!("seat 1: {e}"))?;
-        // Play/draw: `Seat{index}` puts that seat on the play; `Random` keeps
-        // seat 0 first but perturbs the shuffle. `first` is clamped to a real seat.
+        // Play/draw: `Seat{index}` puts that seat on the play; `Random` flips a
+        // coin off the seed stream (deterministic given the seed, so a replay
+        // reproduces; unbiased across seeds). `first` is clamped to a real seat.
         let (seed, first) = match cfg.first_player {
-            FirstPlayer::Random => (cfg.seed ^ 0xF1257, 0u8),
+            FirstPlayer::Random => {
+                let seed = cfg.seed ^ 0xF1257;
+                (seed, (splitmix64(seed) & 1) as u8)
+            }
             FirstPlayer::Seat { index } => (cfg.seed, (index as u8).min(1)),
         };
         // The rival plays a style suited to its deck (race / stabilize / grind),
@@ -1123,6 +1136,13 @@ impl GameCore {
 
     /// Notable resolved events since `seat` last saw the state, as log lines from
     /// its perspective; advances that seat's cursor. Empty on a no-op poll.
+    ///
+    /// Delivery contract (W-6): each line is drained into exactly ONE response
+    /// per seat. A seat's REST replies and WS pushes all terminate at the same
+    /// client, so lines arrive exactly once regardless of which channel carried
+    /// them; a response lost in transit loses its lines. That's accepted: these
+    /// are cosmetic log lines — `view` is always a complete snapshot, so game
+    /// STATE never depends on event delivery.
     fn drain_events(&mut self, seat: PlayerId) -> Vec<String> {
         let idx = seat as usize;
         let log_len = self.session.state().event_log.len();
@@ -1700,6 +1720,34 @@ mod tests {
         };
         let err = GameCore::from_match_config(reg, &huge).err().unwrap();
         assert!(err.contains("at most"), "got: {err}");
+    }
+
+    /// W-7 regression: `FirstPlayer::Random` is a real coin flip — across a
+    /// spread of seeds BOTH seats get the play (it used to be seat 0 always).
+    #[test]
+    fn random_first_player_gives_both_seats_the_play() {
+        let reg = leaked_catalog();
+        let human = arcana_cards::sample_deck(reg, 3);
+        let mut saw = [false; 2];
+        for seed in 1..=32u64 {
+            let cfg = MatchConfig {
+                seats: vec![
+                    SeatSpec::Local { profile: PlayerProfile::default(),
+                        deck: human.clone(), identity: DeckIdentity::default() },
+                    SeatSpec::Bot { profile: PlayerProfile::default(),
+                        agenda: String::new(), deck: human.clone(),
+                        identity: DeckIdentity::default(),
+                        difficulty: Difficulty::Easy },
+                ],
+                first_player: FirstPlayer::Random,
+                seed,
+            };
+            let core = GameCore::from_match_config(reg, &cfg).expect("valid duel");
+            saw[core.session.state().turn.active_player as usize] = true;
+            if saw[0] && saw[1] { break; }
+        }
+        assert!(saw[0] && saw[1],
+            "32 random seeds never gave one of the seats the play: {saw:?}");
     }
 
     /// W-3 regression: a panic inside a game-thread command becomes an error

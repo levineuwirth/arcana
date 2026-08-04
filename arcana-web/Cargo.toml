@@ -25,3 +25,6 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync",
 # Card-art proxy: fetch from Scryfall (throttled) and cache to disk so we don't
 # hammer their rate-limited API. rustls to avoid a system TLS dependency.
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+# Seat tokens need OS entropy (W-4) — the splitmix stream stays for public
+# codes/seeds only. Already in the tree via rand.
+getrandom = "0.2"

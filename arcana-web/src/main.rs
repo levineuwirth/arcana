@@ -772,11 +772,28 @@ fn route_match(app: &AppState, at: &MatchRef)
 }
 
 /// Turn a per-seat play result into a Response, publishing a change notice to
-/// open sockets and flagging the match Over on game end.
+/// open sockets and flagging the match Over on game end. For MUTATING ops only
+/// — a pure read must use [`match_read_response`], or every poll would fan out
+/// WS re-fetches to both clients (W-6 read-broadcast amplification).
 fn match_play_response(app: &AppState, code: &str, res: Result<StateResponse, String>) -> Response {
     match res {
         Ok(resp) => {
             let _ = app.changes.send(code.to_string());
+            if resp.view.game_over.is_some() {
+                lock_matches(&app.matches).mark_over(code);
+            }
+            Json(resp).into_response()
+        }
+        Err(msg) => (StatusCode::BAD_REQUEST, err(msg)).into_response(),
+    }
+}
+
+/// [`match_play_response`] minus the change broadcast: a read observes state,
+/// it doesn't change it. (Marking a finished game Over stays — idempotent and
+/// it lets the reaper retire the match no matter who noticed first.)
+fn match_read_response(app: &AppState, code: &str, res: Result<StateResponse, String>) -> Response {
+    match res {
+        Ok(resp) => {
             if resp.view.game_over.is_some() {
                 lock_matches(&app.matches).mark_over(code);
             }
@@ -823,7 +840,7 @@ async fn lobby_info(State(app): State<AppState>, Query(q): Query<LobbyQuery>) ->
 
 async fn match_state(State(app): State<AppState>, Query(at): Query<MatchRef>) -> Response {
     let sender = match route_match(&app, &at) { Ok(s) => s, Err(r) => return r };
-    match_play_response(&app, &at.code, sender.state(at.seat).await)
+    match_read_response(&app, &at.code, sender.state(at.seat).await)
 }
 
 async fn match_action(State(app): State<AppState>, Query(at): Query<MatchRef>, body: String) -> Response {
@@ -1401,8 +1418,12 @@ async fn main() {
         .route("/m/ws", get(match_ws))
         .route("/art", get(get_art))
         .route("/art/warm", post(post_art_warm))
-        .route("/art/warm-all", post(post_art_warm_all))
         .route("/art/warm-status", get(get_art_warm_status))
+        // A full-catalog warm is a ~8k-fetch, minutes-long, disk-writing job —
+        // host-only, like the solo controls (W-8). Per-card /art stays open so
+        // a LAN opponent's board renders.
+        .route("/art/warm-all",
+            post(post_art_warm_all).route_layer(middleware::from_fn(guard_local_only)))
         .merge(solo)
         .with_state(state);
 
