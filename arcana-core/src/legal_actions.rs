@@ -1120,9 +1120,14 @@ pub fn can_attack(state: &GameState, obj: &crate::objects::GameObject) -> bool {
 }
 
 fn can_block(_state: &GameState, obj: &crate::objects::GameObject) -> bool {
-    // TODO(keywords): honor Flying/Reach, Menace, Shadow, Protection
-    // From, Fear, Landwalk, etc. (Flying/Reach/Menace handled in the
-    // per-pairing filter below.)
+    // Per-PAIRING evasion (Flying/Reach, Protection, Fear, Intimidate,
+    // Shadow, Horsemanship, Skulk) is enforced in `can_block_attacker` /
+    // `blocker_eligible`, and count constraints (Menace, unblockable) by the
+    // enumerator's subset-size filter — this fn is only the attacker-
+    // independent "can this creature block at all" check (C-8: the old TODO
+    // here claimed evasion was unimplemented; it isn't).
+    // TODO(keywords): Landwalk (CR 702.14) is genuinely not enforced yet —
+    // it needs a defending-player land-type check in `blocker_eligible`.
     // CR 702.176 — suspected creatures can't block.
     obj.is_creature()
         && obj.zone.is_battlefield()

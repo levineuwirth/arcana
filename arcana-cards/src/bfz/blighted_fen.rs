@@ -3,9 +3,8 @@
 //! opponent sacrifices a creature of their choice." The edict half
 //! reads the player target and posts an `Effect::Sacrifice` on them.
 //!
-//! GAP: the player target is declared via `target_player()` — the
-//! "target OPPONENT" restriction (may not target yourself) is not
-//! expressible on a player `TargetRequirement`.
+//! The "target opponent" restriction is enforced via
+//! `TargetRequirement::target_opponent()`.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::{ManaCost, ManaUnit};
@@ -50,8 +49,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                     sacrifice: true,
                     ..ActivationCost::default()
                 },
-                // GAP: "target opponent" — opponent-only player targeting is
-                // not expressible; declared as target player.
                 target_requirements: vec![TargetRequirement::target_opponent()],
                 is_mana_ability: false,
                 is_loyalty_ability: false,

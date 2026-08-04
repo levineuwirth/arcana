@@ -6,8 +6,8 @@
 //!   3 life.
 //!
 //! Follows the established target-opponent drain idiom (Skymarch
-//! Bloodletter): `target_player()` for "target opponent", losing 3 life
-//! and gaining 3 life on resolution.
+//! Bloodletter): `target_opponent()` constrains the target at
+//! declaration, losing 3 life and gaining 3 life on resolution.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;

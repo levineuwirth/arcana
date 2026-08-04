@@ -41,8 +41,6 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 effect: drain_by_difference,
                 trigger_zones: vec![Zone::Battlefield],
                 frequency: TriggerFrequency::EachTime,
-                // GAP: "target opponent" — player targets carry no
-                // opponent constraint; target_player() is the closest.
                 target_requirements: vec![TargetRequirement::target_opponent()],
             },
         ),
