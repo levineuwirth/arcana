@@ -1072,24 +1072,164 @@ impl Effect {
     /// / filter-based Sacrifice / …) are returned unchanged — for those,
     /// ForEach's run-once-per-id IS the intended semantics ("draw a card
     /// for each …" → N draws; "create a token for each …" → N tokens).
+    /// EXHAUSTIVE by design (C-1): there is deliberately no `_` arm. When you
+    /// add an `Effect` variant this match stops compiling — decide then whether
+    /// its object target is stamped (add it to the stamp arm) or it passes
+    /// through (add it to the passthrough arm). The old whitelist-plus-wildcard
+    /// shape silently skipped every unlisted variant, which is exactly how the
+    /// ForEach ~294-card silent no-op class happened.
     pub(crate) fn retargeted(&self, id: ObjectId) -> Effect {
+        use crate::objects::NULL_OBJECT_ID;
         let mut e = self.clone();
         match &mut e {
+            // Object-targeted variants: stamp the NULL placeholder with the
+            // iteration id. ONLY the placeholder — a real id in the body is a
+            // fixed target the author chose ("put a counter on ~ for each …"),
+            // which the old unconditional stamp clobbered.
             Effect::DestroyPermanent { target }
             | Effect::ExilePermanent { target }
             | Effect::ReturnToHand { target }
             | Effect::ReturnFromGraveyardToHand { target }
             | Effect::ReturnFromGraveyardToBattlefield { target }
-            | Effect::Tap { target }
-            | Effect::Untap { target }
-            | Effect::BecomeRenowned { target }
+            | Effect::ReturnFromExileToBattlefield { target, .. }
+            | Effect::ReturnFromGraveyardWithCounters { target, .. }
+            | Effect::ExileFromGraveyard { target, .. }
+            | Effect::PutOnTopOfLibrary { target, .. }
+            | Effect::PutOnBottomOfLibrary { target, .. }
+            | Effect::PutOntoBattlefieldTappedAttacking { target, .. }
+            | Effect::Regenerate { target, .. }
+            | Effect::CopySpell { target, .. }
+            | Effect::CopyPermanent { target, .. }
             | Effect::AddCounters { target, .. }
+            | Effect::RemoveCounters { target, .. }
+            | Effect::BecomeRenowned { target }
             | Effect::Pump { target, .. }
             | Effect::GrantKeyword { target, .. }
             | Effect::CantBeBlocked { target, .. }
-            | Effect::Goad { target, .. } => *target = id,
-            Effect::DealDamage { target, .. } => *target = DamageTarget::Object(id),
-            _ => {}
+            | Effect::SetBasePT { target, .. }
+            | Effect::Counter { target, .. }
+            | Effect::CastFromHandFree { target, .. }
+            | Effect::CastFromGraveyard { target, .. }
+            | Effect::CastFromExileFree { target, .. }
+            | Effect::GrantFlashback { target, .. }
+            | Effect::ChangeControl { target, .. }
+            | Effect::ChangeControlEot { target, .. }
+            | Effect::Transform { target, .. }
+            | Effect::Tap { target }
+            | Effect::Untap { target }
+            | Effect::Attach { target, .. }
+            | Effect::CounterUnlessPays { target, .. }
+            | Effect::Explore { target, .. }
+            | Effect::ExileUntilSourceLeaves { target, .. }
+            | Effect::Specialize { target, .. }
+            | Effect::GrantTriggeredAbility { target, .. }
+            | Effect::Suspect { target, .. }
+            | Effect::Goad { target, .. }
+            | Effect::ForbidAttacking { target, .. }
+            | Effect::ForbidBlocking { target, .. }
+            | Effect::LoseAllAbilities { target, .. }
+            | Effect::AddType { target, .. }
+            | Effect::SetColor { target, .. } => {
+                if *target == NULL_OBJECT_ID {
+                    *target = id;
+                }
+            }
+            // DamageTarget carriers: same placeholder rule.
+            Effect::DealDamage { target, .. }
+            | Effect::PreventDamage { target, .. } => {
+                if matches!(target, DamageTarget::Object(t) if *t == NULL_OBJECT_ID) {
+                    *target = DamageTarget::Object(id);
+                }
+            }
+            // Composites: recurse so "for each X, tap it AND pump it" works
+            // (previously Sequence/Conditional bodies were never substituted —
+            // a silent per-iteration no-op).
+            Effect::Sequence(effects) => {
+                for inner in effects.iter_mut() {
+                    *inner = inner.retargeted(id);
+                }
+            }
+            Effect::Conditional { then, otherwise, .. } => {
+                *then = Box::new(then.retargeted(id));
+                if let Some(o) = otherwise {
+                    *o = Box::new(o.retargeted(id));
+                }
+            }
+            // Explicit passthrough: no per-object target — ForEach's
+            // run-once-per-id IS the semantics ("draw a card for each …").
+            // NameCardAndExile's `target` is a PLAYER; nested ForEach owns its
+            // own target list.
+            Effect::DealDamageDivided { .. }
+            | Effect::GainLife { .. }
+            | Effect::GainEnergy { .. }
+            | Effect::GivePlayerCounters { .. }
+            | Effect::LoseLife { .. }
+            | Effect::SetLifeTotal { .. }
+            | Effect::RedirectDamage { .. }
+            | Effect::PreventDamageFrom { .. }
+            | Effect::Manifest { .. }
+            | Effect::DrawCards { .. }
+            | Effect::Discard { .. }
+            | Effect::Mill { .. }
+            | Effect::Shuffle { .. }
+            | Effect::Scry { .. }
+            | Effect::Surveil { .. }
+            | Effect::DigTopN { .. }
+            | Effect::RevealUntil { .. }
+            | Effect::CreateToken { .. }
+            | Effect::CreateTokenSacEot { .. }
+            | Effect::CreateTokenTappedAttacking { .. }
+            | Effect::CreateCommodityToken { .. }
+            | Effect::Cascade { .. }
+            | Effect::Proliferate
+            | Effect::MoveCounter { .. }
+            | Effect::Anthem { .. }
+            | Effect::InstallContinuousEffect { .. }
+            | Effect::GrantFlashbackToInstantOrSorceryInGraveyard { .. }
+            | Effect::WardPrompt { .. }
+            | Effect::OptionalPayment { .. }
+            | Effect::ChooseColor { .. }
+            | Effect::Discover { .. }
+            | Effect::Incubate { .. }
+            | Effect::Amass { .. }
+            | Effect::ChooseAnyNumberFromZone { .. }
+            | Effect::ChooseNFromZone { .. }
+            | Effect::ImpulseExile { .. }
+            | Effect::Venture { .. }
+            | Effect::NameCardAndExile { .. }
+            | Effect::AddMana { .. }
+            | Effect::ExtraTurn { .. }
+            | Effect::AdditionalCombatPhase
+            | Effect::SkipNextPhase { .. }
+            | Effect::PlayExtraLand { .. }
+            | Effect::EmptyManaPool { .. }
+            | Effect::CreateEmblem { .. }
+            | Effect::Search { .. }
+            | Effect::Reanimate { .. }
+            | Effect::PutFromHandOntoBattlefield { .. }
+            | Effect::PutFromHandOntoBattlefieldTappedAttacking { .. }
+            | Effect::ScheduleDelayedEffect { .. }
+            | Effect::InstallReplacementEffect { .. }
+            | Effect::ScheduleFloatingTrigger { .. }
+            | Effect::ChoosePlayerThen { .. }
+            | Effect::Sacrifice { .. }
+            | Effect::EnlistTap { .. }
+            | Effect::SoulshiftReturn { .. }
+            | Effect::DevourSacrifice { .. }
+            | Effect::AmplifyReveal { .. }
+            | Effect::UnleashCounter { .. }
+            | Effect::ProvokeChoice { .. }
+            | Effect::TutorToHand { .. }
+            | Effect::TutorToBattlefield { .. }
+            | Effect::TutorToGraveyard { .. }
+            | Effect::Fight { .. }
+            | Effect::ForEach { .. }
+            | Effect::FlipCoin { .. }
+            | Effect::RollDie { .. }
+            | Effect::SetDayNight { .. }
+            | Effect::DelayedAction { .. }
+            | Effect::NextCastThisTurn { .. }
+            | Effect::EachCastThisTurn { .. } => {}
         }
         e
     }
@@ -1099,9 +1239,17 @@ impl Effect {
     /// [`Effect::ChoosePlayerThen`] ("choose a player; that player
     /// …"). Recurses through `Sequence` so multi-effect riders work.
     /// Variants without a player field pass through unchanged.
+    /// EXHAUSTIVE by design (C-1), like [`Self::retargeted`]: no `_` arm, so a
+    /// new variant is a compile error until it's classified. Every variant
+    /// carrying a `player: PlayerId` field is swapped — that's the
+    /// ChoosePlayerThen contract ("that player …") — and the old whitelist
+    /// silently skipped Manifest / DigTopN / Search / Venture / ImpulseExile /
+    /// ExtraTurn / … so those riders acted on the pre-set player instead of
+    /// the chosen one.
     pub(crate) fn for_player(&self, p: PlayerId) -> Effect {
         let mut e = self.clone();
         match &mut e {
+            // Player-acting variants: swap in the chosen player.
             Effect::DrawCards { player, .. }
             | Effect::Discard { player, .. }
             | Effect::Mill { player, .. }
@@ -1116,18 +1264,126 @@ impl Effect {
             | Effect::Sacrifice { player, .. }
             | Effect::Reanimate { player, .. }
             | Effect::PutFromHandOntoBattlefield { player, .. }
+            | Effect::PutFromHandOntoBattlefieldTappedAttacking { player, .. }
             | Effect::TutorToHand { player, .. }
             | Effect::TutorToBattlefield { player, .. }
-            | Effect::TutorToGraveyard { player, .. } => *player = p,
-            Effect::DealDamage { target, .. } => {
+            | Effect::TutorToGraveyard { player, .. }
+            | Effect::Manifest { player, .. }
+            | Effect::Shuffle { player, .. }
+            | Effect::DigTopN { player, .. }
+            | Effect::RevealUntil { player, .. }
+            | Effect::CastFromHandFree { player, .. }
+            | Effect::CastFromGraveyard { player, .. }
+            | Effect::CastFromExileFree { player, .. }
+            | Effect::Explore { player, .. }
+            | Effect::Discover { player, .. }
+            | Effect::ImpulseExile { player, .. }
+            | Effect::Venture { player, .. }
+            | Effect::ExtraTurn { player, .. }
+            | Effect::SkipNextPhase { player, .. }
+            | Effect::PlayExtraLand { player, .. }
+            | Effect::EmptyManaPool { player, .. }
+            | Effect::Search { player, .. }
+            | Effect::SoulshiftReturn { player, .. }
+            | Effect::FlipCoin { player, .. }
+            | Effect::RollDie { player, .. } => *player = p,
+            // NameCardAndExile's `target` IS a player (whose hand is exiled from).
+            Effect::NameCardAndExile { target, .. } => *target = p,
+            // Damage riders redirect to the chosen player.
+            Effect::DealDamage { target, .. }
+            | Effect::PreventDamage { target, .. } => {
                 *target = DamageTarget::Player(p);
             }
+            // Composites: recurse so multi-effect and conditional riders work.
             Effect::Sequence(effects) => {
                 for inner in effects.iter_mut() {
                     *inner = inner.for_player(p);
                 }
             }
-            _ => {}
+            Effect::Conditional { then, otherwise, .. } => {
+                *then = Box::new(then.for_player(p));
+                if let Some(o) = otherwise {
+                    *o = Box::new(o.for_player(p));
+                }
+            }
+            // Explicit passthrough: no acting-player field.
+            Effect::DealDamageDivided { .. }
+            | Effect::RedirectDamage { .. }
+            | Effect::PreventDamageFrom { .. }
+            | Effect::Regenerate { .. }
+            | Effect::DestroyPermanent { .. }
+            | Effect::ExilePermanent { .. }
+            | Effect::ReturnToHand { .. }
+            | Effect::PutOnTopOfLibrary { .. }
+            | Effect::PutOnBottomOfLibrary { .. }
+            | Effect::ReturnFromGraveyardToBattlefield { .. }
+            | Effect::ReturnFromExileToBattlefield { .. }
+            | Effect::ReturnFromGraveyardWithCounters { .. }
+            | Effect::ReturnFromGraveyardToHand { .. }
+            | Effect::ExileFromGraveyard { .. }
+            | Effect::PutOntoBattlefieldTappedAttacking { .. }
+            | Effect::CreateToken { .. }
+            | Effect::CreateTokenSacEot { .. }
+            | Effect::CreateTokenTappedAttacking { .. }
+            | Effect::CreateCommodityToken { .. }
+            | Effect::Cascade { .. }
+            | Effect::CopySpell { .. }
+            | Effect::CopyPermanent { .. }
+            | Effect::AddCounters { .. }
+            | Effect::RemoveCounters { .. }
+            | Effect::BecomeRenowned { .. }
+            | Effect::Proliferate
+            | Effect::MoveCounter { .. }
+            | Effect::Pump { .. }
+            | Effect::Anthem { .. }
+            | Effect::GrantKeyword { .. }
+            | Effect::CantBeBlocked { .. }
+            | Effect::InstallContinuousEffect { .. }
+            | Effect::GrantFlashbackToInstantOrSorceryInGraveyard { .. }
+            | Effect::SetBasePT { .. }
+            | Effect::Counter { .. }
+            | Effect::GrantFlashback { .. }
+            | Effect::ChangeControl { .. }
+            | Effect::ChangeControlEot { .. }
+            | Effect::Transform { .. }
+            | Effect::Tap { .. }
+            | Effect::Untap { .. }
+            | Effect::Attach { .. }
+            | Effect::WardPrompt { .. }
+            | Effect::CounterUnlessPays { .. }
+            | Effect::OptionalPayment { .. }
+            | Effect::ChooseColor { .. }
+            | Effect::Incubate { .. }
+            | Effect::Amass { .. }
+            | Effect::ChooseAnyNumberFromZone { .. }
+            | Effect::ChooseNFromZone { .. }
+            | Effect::ExileUntilSourceLeaves { .. }
+            | Effect::Specialize { .. }
+            | Effect::GrantTriggeredAbility { .. }
+            | Effect::Suspect { .. }
+            | Effect::AdditionalCombatPhase
+            | Effect::CreateEmblem { .. }
+            | Effect::ScheduleDelayedEffect { .. }
+            | Effect::InstallReplacementEffect { .. }
+            | Effect::ScheduleFloatingTrigger { .. }
+            | Effect::ChoosePlayerThen { .. }
+            | Effect::EnlistTap { .. }
+            | Effect::DevourSacrifice { .. }
+            | Effect::AmplifyReveal { .. }
+            | Effect::UnleashCounter { .. }
+            | Effect::ProvokeChoice { .. }
+            | Effect::Fight { .. }
+            | Effect::Goad { .. }
+            | Effect::ForbidAttacking { .. }
+            | Effect::ForbidBlocking { .. }
+            | Effect::LoseAllAbilities { .. }
+            | Effect::AddType { .. }
+            | Effect::SetColor { .. }
+            | Effect::ForEach { .. }
+            | Effect::SetDayNight { .. }
+            | Effect::DelayedAction { .. }
+            | Effect::NextCastThisTurn { .. }
+            | Effect::EachCastThisTurn { .. } => {}
         }
         e
     }
@@ -5698,6 +5954,66 @@ mod tests {
             Effect::LoseLife { player: 1, amount: 2 }));
     }
 
+    /// C-1 regression: retargeted stamps the NULL placeholder across the FULL
+    /// object-target surface (not the old 14-variant whitelist), leaves real
+    /// fixed ids alone, and recurses through Sequence/Conditional bodies.
+    #[test]
+    fn retargeted_stamps_placeholder_and_respects_fixed_targets() {
+        use crate::objects::NULL_OBJECT_ID;
+        let id: ObjectId = 42;
+
+        // Newly-covered variant: Transform was silently skipped before.
+        assert!(matches!(
+            Effect::Transform { target: NULL_OBJECT_ID }.retargeted(id),
+            Effect::Transform { target: 42 }));
+
+        // A real fixed id is the author's choice — never clobbered.
+        assert!(matches!(
+            Effect::AddCounters { target: 7, kind: CounterKind::PlusOnePlusOne, count: 1 }
+                .retargeted(id),
+            Effect::AddCounters { target: 7, .. }));
+
+        // Sequence bodies substitute per-element ("tap it AND pump it").
+        let seq = Effect::Sequence(vec![
+            Effect::Tap { target: NULL_OBJECT_ID },
+            Effect::Pump { target: NULL_OBJECT_ID, power: 1, toughness: 1,
+                duration: crate::layers::Duration::EndOfTurn, keywords: Vec::new() },
+        ]).retargeted(id);
+        let Effect::Sequence(inner) = seq else { panic!("expected Sequence") };
+        assert!(matches!(inner[0], Effect::Tap { target: 42 }));
+        assert!(matches!(inner[1], Effect::Pump { target: 42, .. }));
+
+        // DamageTarget placeholder stamps; a Player target is preserved.
+        assert!(matches!(
+            Effect::DealDamage { source: 1,
+                target: DamageTarget::Object(NULL_OBJECT_ID), amount: 2 }.retargeted(id),
+            Effect::DealDamage { target: DamageTarget::Object(42), .. }));
+        assert!(matches!(
+            Effect::DealDamage { source: 1,
+                target: DamageTarget::Player(1), amount: 2 }.retargeted(id),
+            Effect::DealDamage { target: DamageTarget::Player(1), .. }));
+    }
+
+    /// C-1 regression: for_player swaps EVERY player-acting variant (Manifest /
+    /// Search / … were silently skipped before) and recurses Conditional riders.
+    #[test]
+    fn for_player_covers_full_player_surface() {
+        assert!(matches!(
+            Effect::Manifest { player: 99 }.for_player(1),
+            Effect::Manifest { player: 1 }));
+        assert!(matches!(
+            Effect::ExtraTurn { player: 99 }.for_player(1),
+            Effect::ExtraTurn { player: 1 }));
+        let cond = Effect::Conditional {
+            condition: Condition::Custom(|_| true),
+            then: Box::new(Effect::DrawCards { player: 99, count: 2 }),
+            otherwise: Some(Box::new(Effect::LoseLife { player: 99, amount: 1 })),
+        }.for_player(1);
+        let Effect::Conditional { then, otherwise, .. } = cond else { panic!() };
+        assert!(matches!(*then, Effect::DrawCards { player: 1, .. }));
+        assert!(matches!(otherwise.as_deref(), Some(Effect::LoseLife { player: 1, .. })));
+    }
+
     #[test]
     fn put_from_hand_attacking_uses_the_attacking_follow_up() {
         use crate::actions::ChoiceFollowUp;
@@ -7916,7 +8232,7 @@ mod tests {
 
     #[test]
     fn tapped_attacking_riders_join_the_live_combat() {
-        use crate::combat::{AttackerInfo, CombatState, DefendingEntity};
+        use crate::combat::{AttackerInfo, CombatState};
         let mut s = GameState::new(2, 0);
         // An attack by P0 against P1 is underway.
         let attacker = put_creature(&mut s, 0, Zone::Battlefield, 2, 2);
