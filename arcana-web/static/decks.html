@@ -422,7 +422,10 @@
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeInspect(); });
 
   document.getElementById("new").onclick = doNew;
-  refresh();
+  // First paint waits for the server deck store to sync in (a newer copy from
+  // another browser/device may replace localStorage); later adoptions re-render.
+  A.Decks.ready.then(refresh);
+  window.addEventListener("arcana-decks-synced", refresh);
   </script>
 </body>
 </html>

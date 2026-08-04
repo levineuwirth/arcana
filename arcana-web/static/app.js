@@ -425,6 +425,15 @@
   function writeStore(store) {
     try { localStorage.setItem(DECKS_KEY, JSON.stringify(store)); } catch {}
   }
+  /** Persist a MUTATION: bump the sync revision, stamp the time, and schedule
+      a server push. (Adopting a server copy uses plain writeStore — adopting
+      must never claim a newer revision than what it adopted.) */
+  function commit(store) {
+    store.rev = (store.rev || 0) + 1;
+    store.updated = nowTs();
+    writeStore(store);
+    scheduleSync();
+  }
   function headVersion(deck) {
     return (deck && deck.versions.find((v) => v.vid === deck.head)) ||
            (deck && deck.versions[deck.versions.length - 1]) || null;
@@ -459,7 +468,7 @@
         relation: relation || "native", created: nowTs(), identity: null, head: vid,
         versions: [{ vid, ts: nowTs(), label: "created", main: main || [], side: side || [] }],
       };
-      writeStore(store);
+      commit(store);
       return id;
     },
     /** Append a new version (a commit) and make it head. */
@@ -470,16 +479,16 @@
       const vid = genId();
       d.versions.push({ vid, ts: nowTs(), label: label || "edit", main: main || [], side: side || [] });
       d.head = vid;
-      writeStore(store);
+      commit(store);
       return vid;
     },
     rename(id, name) {
       const store = readStore(); const d = store.decks[id];
-      if (d) { d.name = name; writeStore(store); }
+      if (d) { d.name = name; commit(store); }
     },
     setIdentity(id, identity) {
       const store = readStore(); const d = store.decks[id];
-      if (d) { d.identity = identity; writeStore(store); }
+      if (d) { d.identity = identity; commit(store); }
     },
     /** Fork (new line) / vary (clustered tweak): a child copying the head. */
     fork(id, name, relation) {
@@ -501,7 +510,7 @@
       if (!gone) return;
       for (const d of Object.values(store.decks)) if (d.parent === id) d.parent = gone.parent;
       delete store.decks[id];
-      writeStore(store);
+      commit(store);
     },
     history(id) { const d = this.get(id); return d ? d.versions.slice() : []; },
     /** Restore an old version by appending a copy of it as the new head. */
@@ -531,6 +540,75 @@
     },
   };
   Arcana.Decks = Decks;
+
+  /* ---- Deck sync (server mirror) ------------------------------------------
+     The whole store round-trips to `/decks/store?profile=<id>` so decks roam
+     across browsers/devices and survive a cleared profile. localStorage stays
+     the fast cache + offline fallback. The envelope's `rev` (bumped on every
+     local mutation) is the conflict guard: the server refuses a stale push
+     with a 409 carrying its newer copy, which we adopt (last-write-wins — no
+     merge). `arcana-decks-synced` fires after adopting a server copy so open
+     pages can re-render; `Decks.ready` resolves after the initial pull. */
+  const PROFILE_KEY = "arcana.profile";
+  function profileId() {
+    let p = null;
+    try { p = localStorage.getItem(PROFILE_KEY); } catch {}
+    if (!p) { p = genId(); try { localStorage.setItem(PROFILE_KEY, p); } catch {} }
+    return p;
+  }
+  let syncOff = false;    // server said 503 (sync disabled) — stop trying
+  let syncTimer = null;
+  const syncUrl = () => "/decks/store?profile=" + encodeURIComponent(profileId());
+
+  function adoptServer(text) {
+    try {
+      const server = JSON.parse(text);
+      const local = readStore();
+      if ((server.rev || 0) > (local.rev || 0)) {
+        writeStore(server);
+        window.dispatchEvent(new Event("arcana-decks-synced"));
+        return true;
+      }
+    } catch {}
+    return false;
+  }
+  async function pushStore() {
+    if (syncOff) return;
+    try {
+      const r = await fetch(syncUrl(), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(readStore()),
+      });
+      if (r.status === 503) syncOff = true;
+      else if (r.status === 409) adoptServer(await r.text());
+    } catch {}
+  }
+  function scheduleSync() {
+    if (syncOff) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(pushStore, 800);
+  }
+  async function pullStore() {
+    try {
+      const r = await fetch(syncUrl());
+      if (r.status === 503) { syncOff = true; return; }
+      if (r.status === 204) {
+        // Fresh server profile: seed it with whatever we have locally.
+        if (Object.keys(readStore().decks).length) pushStore();
+        return;
+      }
+      if (!r.ok) return;
+      if (!adoptServer(await r.text())) {
+        // Local is as new or newer (e.g. edits made while the server was
+        // down) — reconcile by pushing.
+        pushStore();
+      }
+    } catch {}
+  }
+  /** Resolves once the initial pull settles (never rejects). Pages that render
+      deck lists await this so a newer server copy lands before first paint. */
+  Decks.ready = pullStore();
 
   window.Arcana = Arcana;
 })();

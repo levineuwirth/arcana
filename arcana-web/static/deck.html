@@ -634,6 +634,7 @@ async function init() {
   await Arcana.loadGlossary();
   const kwsel = document.getElementById("q-kw");
   for (const k of Object.keys(Arcana.glossary).sort()) { const o = document.createElement("option"); o.textContent = k; kwsel.appendChild(o); }
+  await Arcana.Decks.ready; // let a newer server deck store land first
   try { formats = await Arcana.Api.formats(); } catch (e) { formats = []; }
   try { sampleDeck = await Arcana.Api.sampleDeck(); } catch (e) { sampleDeck = []; }
   const fsel = document.getElementById("format");

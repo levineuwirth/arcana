@@ -17,6 +17,7 @@
 
 use std::fmt;
 
+pub mod deckstore;
 pub mod matchmaking;
 
 use arcana_ai::information_set::project;

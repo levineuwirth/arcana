@@ -144,6 +144,9 @@ struct AppState {
     changes: broadcast::Sender<String>,
     /// Networked-match registry/coordinator (per-match game threads behind it).
     matches: Arc<std::sync::Mutex<Matches>>,
+    /// Per-profile deck-store persistence (Phase 2.2) — plain fs reads/writes,
+    /// no interior state, so it needs no lock.
+    decks: Arc<arcana_web::deckstore::DeckStore>,
 }
 
 /// Card-art proxy with a persistent on-disk cache. The browser requests
@@ -1240,6 +1243,47 @@ async fn post_autopass(State(app): State<AppState>, body: String) -> Response {
     }
 }
 
+/// `GET /decks/store?profile=<id>` — the profile's synced deck store (Phase
+/// 2.2). 204 for a fresh profile; 404-equivalent errors surface as 400s with a
+/// message. Open on the LAN by design: a profile id is the capability.
+async fn get_deck_store(State(app): State<AppState>, Query(q): Query<ProfileQuery>) -> Response {
+    if !app.decks.enabled() {
+        return (StatusCode::SERVICE_UNAVAILABLE, err("deck sync is disabled")).into_response();
+    }
+    match app.decks.load(&q.profile) {
+        Ok(Some(body)) => (
+            [(axum::http::header::CONTENT_TYPE, "application/json")], body,
+        ).into_response(),
+        Ok(None) => StatusCode::NO_CONTENT.into_response(),
+        Err(msg) => (StatusCode::BAD_REQUEST, err(msg)).into_response(),
+    }
+}
+
+/// `PUT /decks/store?profile=<id>` — store the full envelope. A stale `rev`
+/// gets 409 with the stored envelope so the client can adopt it.
+async fn put_deck_store(
+    State(app): State<AppState>, Query(q): Query<ProfileQuery>, body: String,
+) -> Response {
+    use arcana_web::deckstore::SaveOutcome;
+    if !app.decks.enabled() {
+        return (StatusCode::SERVICE_UNAVAILABLE, err("deck sync is disabled")).into_response();
+    }
+    match app.decks.save(&q.profile, &body) {
+        Ok(SaveOutcome::Saved(rev)) =>
+            Json(serde_json::json!({ "saved": true, "rev": rev.0 })).into_response(),
+        Ok(SaveOutcome::Stale { stored, .. }) => (
+            StatusCode::CONFLICT,
+            [(axum::http::header::CONTENT_TYPE, "application/json")], stored,
+        ).into_response(),
+        Err(msg) => (StatusCode::BAD_REQUEST, err(msg)).into_response(),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct ProfileQuery {
+    profile: String,
+}
+
 async fn post_pass_until(State(app): State<AppState>, body: String) -> Response {
     let req: PassUntilRequest = match serde_json::from_str(&body) {
         Ok(r) => r,
@@ -1396,7 +1440,22 @@ async fn main() {
 
     let match_state_dir = std::env::var("MATCH_STATE_DIR").ok().map(std::path::PathBuf::from);
     let matches = Arc::new(std::sync::Mutex::new(Matches::new(reg, time_seed(), match_state_dir)));
-    let state = AppState { tx, art: Arc::new(ArtCache::new()), changes, matches };
+    // Deck-store persistence: default ON under the user's data dir (decks are
+    // user data — losing them to an unset env var would be worse than the
+    // disk write). `ARCANA_DECK_STORE` overrides the location; set it to an
+    // empty string to disable (the client then stays localStorage-only).
+    let deck_dir = match std::env::var("ARCANA_DECK_STORE") {
+        Ok(v) if v.is_empty() => None,
+        Ok(v) => Some(PathBuf::from(v)),
+        Err(_) => match std::env::var("HOME") {
+            Ok(h) => Some(PathBuf::from(h).join(".local/share/arcana/decks")),
+            Err(_) => Some(std::env::temp_dir().join("arcana-decks")),
+        },
+    };
+    let deck_store = Arc::new(arcana_web::deckstore::DeckStore::new(deck_dir));
+    let state = AppState {
+        tx, art: Arc::new(ArtCache::new()), changes, matches, decks: deck_store,
+    };
     // Warm the bulk name→CDN-URL map in the background so on-demand art resolves
     // from the (unthrottled) CDN instead of the rate-limited API. Instant once
     // the map is cached to disk; ~30–60s the very first time.
@@ -1458,6 +1517,9 @@ async fn main() {
         .route("/glossary", get(get_glossary))
         .route("/search", post(post_search))
         // Networked-match lobby + per-seat play (open on a LAN — that's the point).
+        // Per-profile deck-store sync (Phase 2.2) — open on the LAN like the
+        // lobby: the unguessable profile id is the capability.
+        .route("/decks/store", get(get_deck_store).put(put_deck_store))
         .route("/lobby/create", post(lobby_create))
         .route("/lobby/join", post(lobby_join))
         .route("/lobby/info", get(lobby_info))

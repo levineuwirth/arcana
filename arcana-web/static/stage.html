@@ -590,6 +590,7 @@
 
   (async function init() {
     try {
+      await A.Decks.ready; // let a newer server deck store land first
       await deckOptions();
       // Preselect a deck if linked from My Decks (/?deck=<id>).
       const wanted = new URLSearchParams(location.search).get("deck");
