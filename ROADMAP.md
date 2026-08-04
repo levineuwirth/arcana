@@ -14,6 +14,10 @@ plan for each track.
 
 ### Catalog (8,416 / 30,881 = 26.2%)
 
+> **Superseded.** This census is ~12,000 cards stale — the catalog has
+> since grown to 20,590 cards. See [`docs/audit-2026-08.md`](docs/audit-2026-08.md)'s
+> baseline facts table for current numbers.
+
 | In catalog | Count | | Missing (vintage-legal) | Count |
 |---|---|---|---|---|
 | Plain creatures | 5,393 | | Creatures | 11,740 |

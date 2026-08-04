@@ -1,5 +1,13 @@
 # Arcana Engine — Keyword & Keyword-Action Index
 
+> **Historical — superseded.** This reflects the "after Phase 2 priority
+> batch" snapshot below (pre-2026-06). See [`README.md`](README.md) and
+> [`docs/audit-2026-08.md`](docs/audit-2026-08.md) for current status;
+> specifics below may be outdated — notably the test counts, the
+> Equip/Enchant/Crew statuses (aura-attach and equip wiring have since
+> landed), and the "deliberate simplifications" table, several of whose
+> items have since been converted to real player choices.
+
 A living punch list of every Magic: The Gathering keyword ability (CR 702)
 and keyword action (CR 701), with implementation status. The goal is full
 parity with paper MTG; this file tracks the distance to that goal.
