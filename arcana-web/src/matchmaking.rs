@@ -451,9 +451,7 @@ impl Matches {
     pub fn create(
         &mut self, profile: PlayerProfile, identity: DeckIdentity, deck: Vec<CardId>,
     ) -> Result<SeatCredentials, String> {
-        if deck.is_empty() {
-            return Err("your deck is empty".to_string());
-        }
+        crate::validate_deck(self.reg, &deck)?;
         self.prune();
         let code = self.fresh_code();
         let token = self.token();
@@ -480,9 +478,7 @@ impl Matches {
     pub fn join(
         &mut self, code: &str, profile: PlayerProfile, identity: DeckIdentity, deck: Vec<CardId>,
     ) -> Result<SeatCredentials, String> {
-        if deck.is_empty() {
-            return Err("your deck is empty".to_string());
-        }
+        crate::validate_deck(self.reg, &deck)?;
         let token = self.token();
         let m = self.by_code.get_mut(code)
             .ok_or_else(|| "no match with that code".to_string())?;
@@ -743,6 +739,25 @@ mod tests {
 
         // An empty deck is refused on both create and join.
         assert!(m.create(profile("x"), DeckIdentity::default(), Vec::new()).is_err());
+
+        // W-2 regression: an unregistered card id is refused at create AND join
+        // (previously it panicked the spawned match thread — silent match death).
+        let mut poisoned = deck(reg);
+        poisoned[0] = u32::MAX;
+        let err = m.create(profile("x"), DeckIdentity::default(), poisoned.clone()).unwrap_err();
+        assert!(err.contains("unknown card id"), "got: {err}");
+        let host2 = m.create(profile("Alice"), DeckIdentity::default(), deck(reg)).unwrap();
+        let err = m.join(&host2.code, profile("Mallory"), DeckIdentity::default(), poisoned)
+            .unwrap_err();
+        assert!(err.contains("unknown card id"), "got: {err}");
+        // A lobby the poisoned join bounced off is still joinable.
+        assert!(m.join(&host2.code, profile("Bob"), DeckIdentity::default(), deck(reg)).is_ok());
+
+        // Oversized decks are capped.
+        let card = deck(reg)[0];
+        let err = m.create(profile("x"), DeckIdentity::default(),
+            vec![card; crate::MAX_DECK_SIZE + 1]).unwrap_err();
+        assert!(err.contains("at most"), "got: {err}");
     }
 
     /// A client must present the right token for its seat, and can't act as the

@@ -814,6 +814,29 @@ pub struct MatchConfig {
     pub seed: u64,
 }
 
+/// Upper bound on a submitted deck — generous (Battle-of-Wits territory), but
+/// it keeps a hostile client from posting an arbitrarily large list.
+pub const MAX_DECK_SIZE: usize = 600;
+
+/// Validate a deck at the trust boundary (W-1/W-2): enough cards for an
+/// opening hand, a sane upper bound, and every id registered. An unregistered
+/// id must never reach the engine — `instantiate_card_object` panics on it by
+/// contract, which would take the game thread (and with it the solo worker or
+/// a networked match) down.
+pub fn validate_deck(reg: &CardRegistry, deck: &[CardId]) -> Result<(), String> {
+    if deck.len() < 7 {
+        return Err(format!("a deck needs at least 7 cards; got {}", deck.len()));
+    }
+    if deck.len() > MAX_DECK_SIZE {
+        return Err(format!(
+            "a deck may have at most {MAX_DECK_SIZE} cards; got {}", deck.len()));
+    }
+    match deck.iter().find(|&&id| reg.get(id).is_none()) {
+        Some(bad) => Err(format!("deck contains an unknown card id {bad}")),
+        None => Ok(()),
+    }
+}
+
 /// Explain why an attacker declaration was rejected, when we can. The common,
 /// confusing case (CR 508.1a): a creature that MUST attack if able (Reckless
 /// Brute / Goad / …) was left out — so "Declare no attackers" / a partial set is
@@ -925,9 +948,8 @@ impl GameCore {
             SeatSpec::Local { .. } =>
                 return Err("seat 1 must be an opponent, not a second local seat".to_string()),
         };
-        if human_deck.is_empty() || opp_deck.is_empty() {
-            return Err("both decks must be non-empty".to_string());
-        }
+        validate_deck(reg, &human_deck).map_err(|e| format!("seat 0: {e}"))?;
+        validate_deck(reg, &opp_deck).map_err(|e| format!("seat 1: {e}"))?;
         // Play/draw: `Seat{index}` puts that seat on the play; `Random` keeps
         // seat 0 first but perturbs the shuffle. `first` is clamped to a real seat.
         let (seed, first) = match cfg.first_player {
@@ -1628,6 +1650,31 @@ mod tests {
             ..Default::default()
         };
         assert!(GameCore::from_match_config(reg, &net).is_err());
+
+        // W-1 regression: an unregistered card id must be a 400-able Err, not a
+        // worker-killing panic downstream in the engine.
+        let mut poisoned = human.clone();
+        poisoned[3] = u32::MAX;
+        let bad = MatchConfig {
+            seats: vec![local(poisoned),
+                SeatSpec::Bot { profile: PlayerProfile::default(), agenda: String::new(),
+                    deck: opp.clone(), identity: DeckIdentity::default(),
+                    difficulty: Difficulty::Normal }],
+            ..Default::default()
+        };
+        let err = GameCore::from_match_config(reg, &bad).err().unwrap();
+        assert!(err.contains("unknown card id"), "got: {err}");
+
+        // And the bot seat is validated too, including the size cap.
+        let huge = MatchConfig {
+            seats: vec![local(human.clone()),
+                SeatSpec::Bot { profile: PlayerProfile::default(), agenda: String::new(),
+                    deck: vec![opp[0]; MAX_DECK_SIZE + 1], identity: DeckIdentity::default(),
+                    difficulty: Difficulty::Normal }],
+            ..Default::default()
+        };
+        let err = GameCore::from_match_config(reg, &huge).err().unwrap();
+        assert!(err.contains("at most"), "got: {err}");
     }
 
     /// The Stage's wire contract: a MatchConfig (with the `#[serde(tag="kind")]`

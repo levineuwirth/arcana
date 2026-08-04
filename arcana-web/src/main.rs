@@ -454,11 +454,11 @@ struct NewRequest {
     config: Option<MatchConfig>,
 }
 
-/// A deck is playable if it can at least draw an opening hand and every id is a
-/// registered card (a bad submission falls back to the sample deck rather than
-/// risking an engine panic).
+/// A deck is playable if it passes the shared trust-boundary validation
+/// (opening-hand minimum, size cap, every id registered — a bad submission
+/// falls back to the sample deck rather than risking an engine panic).
 fn deck_is_valid(reg: &CardRegistry, deck: &[CardId]) -> bool {
-    deck.len() >= 7 && deck.iter().all(|&id| reg.get(id).is_some())
+    arcana_web::validate_deck(reg, deck).is_ok()
 }
 
 /// `POST /lobby/create` body — host a networked match with your deck/identity.
