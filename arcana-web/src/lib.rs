@@ -837,6 +837,31 @@ pub fn validate_deck(reg: &CardRegistry, deck: &[CardId]) -> Result<(), String> 
     }
 }
 
+/// Run one game-thread command with panic containment (W-3/C-3): an engine or
+/// card-script invariant panic becomes an error reply instead of killing the
+/// thread (which previously 500'd the solo worker forever, or silently ended a
+/// networked match). Containment is sound because `Session::apply` hands
+/// `engine::step` a CLONE of the state — a panicked action unwinds before the
+/// new state is stored, so the session stays at its pre-action state and the
+/// game remains playable.
+pub fn contain<T>(what: &str, f: impl FnOnce() -> Result<T, String>) -> Result<T, String> {
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)) {
+        Ok(r) => r,
+        Err(p) => {
+            let msg = panic_text(p.as_ref());
+            eprintln!("[arcana-web] {what}: contained a game-thread panic: {msg}");
+            Err(format!("internal engine error (the action was not applied): {msg}"))
+        }
+    }
+}
+
+/// Best-effort text of a caught panic payload.
+fn panic_text(p: &(dyn std::any::Any + Send)) -> String {
+    p.downcast_ref::<&str>().map(|s| s.to_string())
+        .or_else(|| p.downcast_ref::<String>().cloned())
+        .unwrap_or_else(|| "unknown panic".to_string())
+}
+
 /// Explain why an attacker declaration was rejected, when we can. The common,
 /// confusing case (CR 508.1a): a creature that MUST attack if able (Reckless
 /// Brute / Goad / …) was left out — so "Declare no attackers" / a partial set is
@@ -1675,6 +1700,20 @@ mod tests {
         };
         let err = GameCore::from_match_config(reg, &huge).err().unwrap();
         assert!(err.contains("at most"), "got: {err}");
+    }
+
+    /// W-3 regression: a panic inside a game-thread command becomes an error
+    /// reply (with the panic text), not a dead thread.
+    #[test]
+    fn contain_turns_panics_into_errors() {
+        let ok: Result<u32, String> = contain("test", || Ok(7));
+        assert_eq!(ok, Ok(7));
+        let err: Result<u32, String> = contain("test", || panic!("invariant violated"));
+        let msg = err.err().unwrap();
+        assert!(msg.contains("invariant violated"), "got: {msg}");
+        let err: Result<u32, String> =
+            contain("test", || panic!("{} exploded", "formatted"));
+        assert!(err.err().unwrap().contains("formatted exploded"));
     }
 
     /// The Stage's wire contract: a MatchConfig (with the `#[serde(tag="kind")]`

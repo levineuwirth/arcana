@@ -524,31 +524,47 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>, reg: &'static CardRegist
     let mut auto_pass = AutoPass::default();
     core.set_auto_pass(auto_pass);
 
+    // Panic containment (W-3/C-3): every arm that touches the game goes through
+    // `contain`, so an engine invariant panic answers one request with an error
+    // instead of killing this thread (which previously left EVERY solo endpoint
+    // on `worker_gone` 500s until a server restart). Sound because
+    // `Session::apply` steps a CLONE — the pre-action state survives a panic.
+    const WHAT: &str = "solo worker";
     while let Some(cmd) = rx.blocking_recv() {
         match cmd {
             Command::State(reply) => {
-                let _ = reply.send(core.snapshot());
+                if let Ok(s) = arcana_web::contain(WHAT, || Ok(core.snapshot())) {
+                    let _ = reply.send(s);
+                }
             }
             Command::Action { index, reply } => {
-                let res = core.apply_index(index).map_err(|e| e.to_string());
+                let res = arcana_web::contain(WHAT,
+                    || core.apply_index(index).map_err(|e| e.to_string()));
                 let _ = reply.send(res);
             }
             Command::Combat { sub, reply } => {
-                let res = core.apply_combat(sub).map_err(|e| e.to_string());
+                let res = arcana_web::contain(WHAT,
+                    || core.apply_combat(sub).map_err(|e| e.to_string()));
                 let _ = reply.send(res);
             }
             Command::AutoTap { target, reply } => {
-                let res = core.auto_tap_and_cast(target).map_err(|e| e.to_string());
+                let res = arcana_web::contain(WHAT,
+                    || core.auto_tap_and_cast(target).map_err(|e| e.to_string()));
                 let _ = reply.send(res);
             }
             Command::Activate { source, reply } => {
-                let res = core.auto_tap_and_activate(source).map_err(|e| e.to_string());
+                let res = arcana_web::contain(WHAT,
+                    || core.auto_tap_and_activate(source).map_err(|e| e.to_string()));
                 let _ = reply.send(res);
             }
             Command::SetAutoPass { level, reply } => {
                 auto_pass = level;
-                core.set_auto_pass(level);
-                let _ = reply.send(core.snapshot());
+                if let Ok(s) = arcana_web::contain(WHAT, || {
+                    core.set_auto_pass(level);
+                    Ok(core.snapshot())
+                }) {
+                    let _ = reply.send(s);
+                }
             }
             Command::AllCardNames { reply } => {
                 let r = core.registry();
@@ -561,7 +577,8 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>, reg: &'static CardRegist
                 let _ = reply.send(names);
             }
             Command::Bottom { ids, reply } => {
-                let res = core.bottom_cards(ids).map_err(|e| e.to_string());
+                let res = arcana_web::contain(WHAT,
+                    || core.bottom_cards(ids).map_err(|e| e.to_string()));
                 let _ = reply.send(res);
             }
             Command::Search { query, reply } => {
@@ -583,31 +600,33 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>, reg: &'static CardRegist
                 let _ = reply.send(personalities(core.registry()));
             }
             Command::Suggest { deep, reply } => {
-                let _ = reply.send(core.suggest(deep));
+                let _ = reply.send(
+                    arcana_web::contain(WHAT, || Ok(core.suggest(deep))).unwrap_or_default());
             }
             Command::New { seed, deck, opponent, config, reply } => {
                 // A World Stage MatchConfig takes precedence and surfaces build
                 // errors (→ 400); the legacy deck/opponent path always succeeds.
-                let built: Result<GameCore, String> = match config {
-                    Some(mut cfg) => {
-                        if cfg.seed == 0 {
-                            cfg.seed = seed.unwrap_or_else(time_seed); // 0 = "pick one"
-                        }
-                        GameCore::from_match_config(reg, &cfg)
-                    }
-                    None => {
-                        let seed = seed.unwrap_or_else(time_seed);
-                        Ok(match deck.filter(|d| deck_is_valid(reg, d)) {
-                            Some(human) => {
-                                // Bot plays the chosen opponent deck, else mirrors.
-                                let bot = opponent.filter(|d| deck_is_valid(reg, d))
-                                    .unwrap_or_else(|| human.clone());
-                                GameCore::new_with_decks(reg, seed, human, bot)
+                let built: Result<GameCore, String> = arcana_web::contain(WHAT,
+                    || match config {
+                        Some(mut cfg) => {
+                            if cfg.seed == 0 {
+                                cfg.seed = seed.unwrap_or_else(time_seed); // 0 = "pick one"
                             }
-                            None => GameCore::new(reg, seed), // sample mirror
-                        })
-                    }
-                };
+                            GameCore::from_match_config(reg, &cfg)
+                        }
+                        None => {
+                            let seed = seed.unwrap_or_else(time_seed);
+                            Ok(match deck.filter(|d| deck_is_valid(reg, d)) {
+                                Some(human) => {
+                                    // Bot plays the chosen opponent deck, else mirrors.
+                                    let bot = opponent.filter(|d| deck_is_valid(reg, d))
+                                        .unwrap_or_else(|| human.clone());
+                                    GameCore::new_with_decks(reg, seed, human, bot)
+                                }
+                                None => GameCore::new(reg, seed), // sample mirror
+                            })
+                        }
+                    });
                 match built {
                     Ok(c) => {
                         core = c;
@@ -734,12 +753,20 @@ async fn get_state(State(app): State<AppState>) -> Response {
 // thread and await AFTER releasing the lock, so a slow op in one match never
 // stalls the registry or another match.
 
+/// Poison-tolerant registry lock (W-3). Game panics are contained on their own
+/// threads, and `Matches` holds no half-updated invariants between method
+/// calls — so if a panic ever does poison this lock, recover the data instead
+/// of cascading panics through every networked handler and the reaper.
+fn lock_matches(m: &std::sync::Mutex<Matches>) -> std::sync::MutexGuard<'_, Matches> {
+    m.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
 /// Resolve `(code, seat, token)` to a [`MatchSender`] (or a 400 Response).
 /// The lock is released before the caller awaits the match thread.
 fn route_match(app: &AppState, at: &MatchRef)
     -> Result<arcana_web::matchmaking::MatchSender, Response>
 {
-    app.matches.lock().unwrap()
+    lock_matches(&app.matches)
         .route(&at.code, at.seat, &at.token)
         .map_err(|msg| (StatusCode::BAD_REQUEST, err(msg)).into_response())
 }
@@ -751,7 +778,7 @@ fn match_play_response(app: &AppState, code: &str, res: Result<StateResponse, St
         Ok(resp) => {
             let _ = app.changes.send(code.to_string());
             if resp.view.game_over.is_some() {
-                app.matches.lock().unwrap().mark_over(code);
+                lock_matches(&app.matches).mark_over(code);
             }
             Json(resp).into_response()
         }
@@ -764,7 +791,7 @@ async fn lobby_create(State(app): State<AppState>, body: String) -> Response {
         Ok(r) => r,
         Err(e) => return (StatusCode::BAD_REQUEST, err(format!("invalid /lobby/create body: {e}"))).into_response(),
     };
-    let res = app.matches.lock().unwrap().create(req.profile, req.identity, req.deck);
+    let res = lock_matches(&app.matches).create(req.profile, req.identity, req.deck);
     match res {
         Ok(cred) => Json(cred).into_response(),
         Err(msg) => (StatusCode::BAD_REQUEST, err(msg)).into_response(),
@@ -776,7 +803,7 @@ async fn lobby_join(State(app): State<AppState>, body: String) -> Response {
         Ok(r) => r,
         Err(e) => return (StatusCode::BAD_REQUEST, err(format!("invalid /lobby/join body: {e}"))).into_response(),
     };
-    let res = app.matches.lock().unwrap().join(&req.code, req.profile, req.identity, req.deck);
+    let res = lock_matches(&app.matches).join(&req.code, req.profile, req.identity, req.deck);
     match res {
         Ok(cred) => {
             // Tell the host's waiting socket (if any) the game has started.
@@ -788,7 +815,7 @@ async fn lobby_join(State(app): State<AppState>, body: String) -> Response {
 }
 
 async fn lobby_info(State(app): State<AppState>, Query(q): Query<LobbyQuery>) -> Response {
-    match app.matches.lock().unwrap().info(&q.code) {
+    match lock_matches(&app.matches).info(&q.code) {
         Some(info) => Json(info).into_response(),
         None => (StatusCode::NOT_FOUND, err("no match with that code")).into_response(),
     }
@@ -868,7 +895,7 @@ async fn match_suggest(State(app): State<AppState>, Query(q): Query<MatchSuggest
 }
 
 async fn match_leave(State(app): State<AppState>, Query(at): Query<MatchRef>) -> Response {
-    let res = app.matches.lock().unwrap().leave(&at.code, at.seat, &at.token);
+    let res = lock_matches(&app.matches).leave(&at.code, at.seat, &at.token);
     match res {
         Ok(()) => {
             // Notify the opponent's socket so it learns the match is gone.
@@ -903,7 +930,7 @@ async fn match_ws_loop(mut socket: WebSocket, app: AppState, at: MatchRef) {
     loop {
         tokio::select! {
             _ = keepalive.tick() => {
-                app.matches.lock().unwrap().touch(&at.code, at.seat);
+                lock_matches(&app.matches).touch(&at.code, at.seat);
             }
             changed = sub.recv() => match changed {
                 Ok(code) if code == at.code => {
@@ -939,7 +966,7 @@ async fn push_match_state(socket: &mut WebSocket, app: &AppState, at: &MatchRef)
     match sender.state(at.seat).await {
         Ok(state) => {
             if state.view.game_over.is_some() {
-                app.matches.lock().unwrap().mark_over(&at.code);
+                lock_matches(&app.matches).mark_over(&at.code);
             }
             let json = serde_json::to_string(&state).unwrap_or_default();
             socket.send(Message::Text(json.into())).await.is_ok()
@@ -1320,7 +1347,7 @@ async fn main() {
             let mut tick = tokio::time::interval(std::time::Duration::from_secs(15));
             loop {
                 tick.tick().await;
-                let stale = matches.lock().unwrap().reap_stale(timeout);
+                let stale = lock_matches(&matches).reap_stale(timeout);
                 for code in stale {
                     let _ = changes.send(code); // survivor's WS re-fetches → `ended`
                 }

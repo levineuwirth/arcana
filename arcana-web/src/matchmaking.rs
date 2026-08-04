@@ -31,7 +31,7 @@ use arcana_core::registry::CardRegistry;
 use arcana_core::types::{CardId, PlayerId};
 
 use crate::{
-    CombatSubmission, DeckIdentity, GameCore, PlayerProfile, StateResponse, Suggestion,
+    contain, CombatSubmission, DeckIdentity, GameCore, PlayerProfile, StateResponse, Suggestion,
 };
 
 /// Code alphabet: uppercase, no visually-ambiguous glyphs (O/0, I/1/L).
@@ -112,7 +112,14 @@ enum MatchCmd {
 /// Drives ONE match's [`GameCore`] on its own thread. Exits when the sender is
 /// dropped (the match left / pruned), releasing the `GameCore`. Heavy work here
 /// (suggest rollouts) is isolated to this thread.
-fn run_match(mut core: GameCore, mut rx: mpsc::UnboundedReceiver<MatchCmd>, persist: Option<PersistWriter>) {
+fn run_match(
+    code: String, mut core: GameCore, mut rx: mpsc::UnboundedReceiver<MatchCmd>,
+    persist: Option<PersistWriter>,
+) {
+    // Panic containment (W-3): every arm goes through `contain`, so an engine
+    // invariant panic answers ONE request with an error instead of killing the
+    // thread (which read as "the match has ended" to both clients, with no log).
+    let what = format!("match {code}");
     while let Some(cmd) = rx.blocking_recv() {
         // A command that can change the game state → re-persist the transcript.
         let mutating = matches!(cmd,
@@ -120,29 +127,37 @@ fn run_match(mut core: GameCore, mut rx: mpsc::UnboundedReceiver<MatchCmd>, pers
             | MatchCmd::Activate { .. } | MatchCmd::Bottom { .. });
         match cmd {
             MatchCmd::State { seat, reply } => {
-                let _ = reply.send(Ok(core.snapshot_for(seat)));
+                let _ = reply.send(contain(&what, || Ok(core.snapshot_for(seat))));
             }
             MatchCmd::Action { seat, index, reply } => {
-                let _ = reply.send(core.apply_index_for(seat, index).map_err(|e| e.to_string()));
+                let _ = reply.send(contain(&what,
+                    || core.apply_index_for(seat, index).map_err(|e| e.to_string())));
             }
             MatchCmd::Combat { seat, sub, reply } => {
-                let _ = reply.send(core.apply_combat_for(seat, sub).map_err(|e| e.to_string()));
+                let _ = reply.send(contain(&what,
+                    || core.apply_combat_for(seat, sub).map_err(|e| e.to_string())));
             }
             MatchCmd::AutoTap { seat, target, reply } => {
-                let _ = reply.send(core.auto_tap_and_cast_for(seat, target).map_err(|e| e.to_string()));
+                let _ = reply.send(contain(&what,
+                    || core.auto_tap_and_cast_for(seat, target).map_err(|e| e.to_string())));
             }
             MatchCmd::Activate { seat, source, reply } => {
-                let _ = reply.send(core.auto_tap_and_activate_for(seat, source).map_err(|e| e.to_string()));
+                let _ = reply.send(contain(&what,
+                    || core.auto_tap_and_activate_for(seat, source).map_err(|e| e.to_string())));
             }
             MatchCmd::Bottom { seat, ids, reply } => {
-                let _ = reply.send(core.bottom_cards_for(seat, ids).map_err(|e| e.to_string()));
+                let _ = reply.send(contain(&what,
+                    || core.bottom_cards_for(seat, ids).map_err(|e| e.to_string())));
             }
             MatchCmd::SetAutoPass { seat, level, reply } => {
-                core.set_auto_pass(level);
-                let _ = reply.send(Ok(core.snapshot_for(seat)));
+                let _ = reply.send(contain(&what, || {
+                    core.set_auto_pass(level);
+                    Ok(core.snapshot_for(seat))
+                }));
             }
             MatchCmd::Suggest { seat, deep, reply } => {
-                let _ = reply.send(core.suggest_for(seat, deep));
+                let _ = reply.send(
+                    contain(&what, || Ok(core.suggest_for(seat, deep))).unwrap_or_default());
             }
         }
         if mutating {
@@ -311,20 +326,29 @@ impl Matches {
     fn spawn_match(
         reg: &'static CardRegistry, seed: u64, deck0: Vec<CardId>, deck1: Vec<CardId>,
         actions: Vec<Action>, code: &str, persist: Option<PersistWriter>,
-    ) -> mpsc::UnboundedSender<MatchCmd> {
+    ) -> Result<mpsc::UnboundedSender<MatchCmd>, String> {
         let (tx, rx) = mpsc::unbounded_channel::<MatchCmd>();
+        let code = code.to_string();
         std::thread::Builder::new()
             .name(format!("match-{code}"))
             .spawn(move || {
-                let core = if actions.is_empty() {
-                    GameCore::new_two_human(reg, seed, deck0, deck1)
-                } else {
-                    GameCore::resume_two_human(reg, seed, deck0, deck1, &actions)
-                };
-                run_match(core, rx, persist);
+                // The build can panic (e.g. a persisted transcript replayed
+                // against changed engine code). Contain it so the failure is
+                // logged and the thread exits cleanly rather than unwinding
+                // through a poisoned-lock cascade upstream (W-3).
+                let built = crate::contain(&format!("match {code} (build)"), || {
+                    Ok(if actions.is_empty() {
+                        GameCore::new_two_human(reg, seed, deck0, deck1)
+                    } else {
+                        GameCore::resume_two_human(reg, seed, deck0, deck1, &actions)
+                    })
+                });
+                if let Ok(core) = built {
+                    run_match(code, core, rx, persist);
+                }
             })
-            .expect("spawn match thread");
-        tx
+            .map_err(|e| format!("couldn't start the match thread: {e}"))?;
+        Ok(tx)
     }
 
     /// Reload persisted in-progress matches from `state_dir` at startup.
@@ -359,7 +383,14 @@ impl Matches {
         let seats = [seat_of(&pm.seats[0]), seat_of(&pm.seats[1])];
         let (deck0, deck1) = (seats[0].deck.clone(), seats[1].deck.clone());
         let persist = self.persist_writer(&pm.code, pm.seed, &seats);
-        let tx = Self::spawn_match(self.reg, pm.seed, deck0, deck1, pm.actions, &pm.code, persist);
+        let tx = match Self::spawn_match(
+            self.reg, pm.seed, deck0, deck1, pm.actions, &pm.code, persist) {
+            Ok(tx) => tx,
+            Err(e) => {
+                eprintln!("[arcana-web] couldn't restore match {}: {e}", pm.code);
+                return;
+            }
+        };
         let seq = self.next_seq;
         self.next_seq += 1;
         self.by_code.insert(pm.code.clone(), NetMatch {
@@ -496,7 +527,15 @@ impl Matches {
         let m_ref = &self.by_code[code];
         let (deck0, deck1) = (m_ref.seats[0].deck.clone(), m_ref.seats[1].deck.clone());
         let persist = self.persist_writer(code, seed, &m_ref.seats);
-        let tx = Self::spawn_match(reg, seed, deck0, deck1, Vec::new(), code, persist);
+        let tx = match Self::spawn_match(reg, seed, deck0, deck1, Vec::new(), code, persist) {
+            Ok(tx) => tx,
+            Err(e) => {
+                // Roll the lobby back so the guest can retry (spawn failure is
+                // an OS-resource condition, not a game error).
+                self.by_code.get_mut(code).unwrap().seats[1] = SeatSlot::empty();
+                return Err(e);
+            }
+        };
         let m = self.by_code.get_mut(code).unwrap();
         m.tx = Some(tx);
         m.status = MatchStatus::Active;
