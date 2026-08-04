@@ -66,7 +66,7 @@ use arcana_core::engine::instantiate_card_object;
 use arcana_core::objects::{Characteristics, GameObject, ObjectId};
 use arcana_core::registry::CardRegistry;
 use arcana_core::state::GameState;
-use arcana_core::types::{CardId, PermanentStatus, PlayerId};
+use arcana_core::types::{CardId, PermanentStatus, PlayerId, PtValue, TypeLine};
 use arcana_core::zones::Zone;
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
@@ -147,7 +147,11 @@ pub fn project(state: &GameState, perspective: PlayerId) -> ObservableState {
 
     for obj in projected.objects.iter_mut() {
         if !is_visible(perspective, obj, &known) {
-            anonymize_object_in_place(obj);
+            if obj.zone == Zone::Battlefield && obj.status.face_down {
+                anonymize_face_down_in_place(obj);
+            } else {
+                anonymize_object_in_place(obj);
+            }
             anonymous_ids.insert(obj.id);
         }
     }
@@ -168,9 +172,11 @@ fn is_visible(
     match obj.zone {
         Zone::Library(_) => false,
         Zone::Hand(p) => p == perspective,
-        // Battlefield, Stack, Graveyard, Exile, Command — all public
-        // in v0. Face-down on battlefield / face-down in exile is
-        // out of scope; defer to v1.
+        // A face-down battlefield permanent (Manifest) is a vanilla 2/2 to
+        // everyone but its controller (CR 708.2): its printed identity is
+        // hidden information (A-1). Face-down in EXILE remains out of scope.
+        Zone::Battlefield if obj.status.face_down => obj.controller == perspective,
+        // Stack, Graveyard, Exile, Command, face-up Battlefield — public.
         _ => true,
     }
 }
@@ -195,6 +201,33 @@ fn anonymize_object_in_place(obj: &mut GameObject) {
     // abilities is a Vec<AbilityId>; cleared so the projected object
     // doesn't expose which printed abilities the hidden card had.
     obj.abilities.clear();
+}
+
+/// The vanilla shell every face-down permanent presents (CR 708.2): a 2/2
+/// creature with no name, types beyond Creature, or abilities.
+fn face_down_shell() -> Characteristics {
+    Characteristics {
+        power: Some(PtValue::Fixed(2)),
+        toughness: Some(PtValue::Fixed(2)),
+        types: TypeLine::new().with(TypeLine::CREATURE),
+        ..Default::default()
+    }
+}
+
+/// Anonymize a face-down BATTLEFIELD permanent for a non-controller (A-1).
+/// Unlike [`anonymize_object_in_place`], the permanent's public board state —
+/// tapped/face-down status, counters, marked damage, attachments — is kept
+/// (it's visible to everyone); only the linkage back to the printed card is
+/// severed. The engine already presents the 2/2 shell in `characteristics`;
+/// re-assert it defensively so a future morph/megamorph variant that stores
+/// real characteristics differently can't leak through this path.
+fn anonymize_face_down_in_place(obj: &mut GameObject) {
+    obj.characteristics = face_down_shell();
+    obj.abilities.clear();
+    obj.visible_face = 0;
+    obj.default_face_characteristics = None;
+    obj.madness_pending = false;
+    obj.adventure_exile_pending = false;
 }
 
 // =============================================================================
@@ -283,14 +316,32 @@ pub fn determinize(
                 None if !deck.is_empty() => deck[i % deck.len()],
                 None => continue,
             };
-            let (owner, zone) = {
+            let (owner, zone, face_down) = {
                 let o = state.objects.get(id).expect("anon id exists");
-                (o.owner, o.zone)
+                let fd = (o.zone == Zone::Battlefield && o.status.face_down).then(|| (
+                    o.status,
+                    o.counters.clone(),
+                    o.damage_marked,
+                    o.attachments.clone(),
+                    o.attached_to,
+                ));
+                (o.owner, o.zone, fd)
             };
             state.objects.remove(id);
-            state
-                .objects
-                .insert(instantiate_card_object(registry, id, owner, zone, card_id));
+            let mut fresh = instantiate_card_object(registry, id, owner, zone, card_id);
+            // A face-down battlefield slot (Manifest) keeps its public board
+            // state and the 2/2 shell — the sampled identity is what would
+            // flip up, not a face-up copy of the sampled card (A-1).
+            if let Some((status, counters, damage, attachments, attached_to)) = face_down {
+                fresh.status = status;
+                fresh.counters = counters;
+                fresh.damage_marked = damage;
+                fresh.attachments = attachments;
+                fresh.attached_to = attached_to;
+                fresh.characteristics = face_down_shell();
+                fresh.abilities.clear();
+            }
+            state.objects.insert(fresh);
         }
     }
 
@@ -625,6 +676,57 @@ mod tests {
     }
 
     // -- determinize -------------------------------------------------
+
+    /// A-1 regression: a manifested (face-down) battlefield permanent is
+    /// hidden information for the opponent — projected as an anonymous 2/2
+    /// shell with its public board state intact — while its controller keeps
+    /// full sight; determinize keeps the slot face-down and samples its
+    /// identity from the unseen pool.
+    #[test]
+    fn manifested_permanent_is_hidden_from_opponent() {
+        use arcana_core::effects::Effect;
+        use arcana_core::engine::new_game;
+        let reg = arcana_cards::build_catalog();
+        let decks = vec![
+            arcana_cards::sample_deck(&reg, 4),
+            arcana_cards::sample_deck(&reg, 9),
+        ];
+        let (mut state, _y) = new_game(decks.clone(), &reg, 21);
+        for a in [arcana_core::actions::Action::MulliganKeep,
+                  arcana_core::actions::Action::MulliganKeep] {
+            let (s, _y) = arcana_core::engine::step(state, a, &reg);
+            state = s;
+        }
+        Effect::Manifest { player: 1 }.execute(&mut state);
+        let manifested = state.objects.iter()
+            .find(|o| o.zone == Zone::Battlefield && o.status.face_down)
+            .expect("a manifested permanent")
+            .id;
+
+        // Opponent's projection: anonymous, 2/2 shell, public status intact.
+        let view0 = project(&state, 0);
+        assert!(view0.anonymous_ids.contains(&manifested),
+            "a face-down permanent is hidden information for the opponent");
+        let o = view0.state.objects.get(manifested).unwrap();
+        assert!(o.status.face_down, "public board status survives anonymization");
+        assert!(o.abilities.is_empty());
+        assert_eq!(o.characteristics.power, Some(PtValue::Fixed(2)));
+
+        // Controller's projection: fully visible.
+        let view1 = project(&state, 1);
+        assert!(!view1.anonymous_ids.contains(&manifested));
+
+        // Determinized world: the slot stays a face-down 2/2 whose sampled
+        // identity comes from the owner's deck. The slot/pool balance
+        // debug_assert inside determinize is the leak guarantee (the real
+        // card returned to the unseen pool).
+        let world = determinize(&view0, &decks, &reg, 77);
+        let w = world.objects.get(manifested).unwrap();
+        assert!(w.status.face_down);
+        assert_eq!(w.characteristics.power, Some(PtValue::Fixed(2)));
+        assert!(w.abilities.is_empty());
+        assert!(decks[1].contains(&w.card_id));
+    }
 
     /// A real 2-player game projected to a perspective and then determinized
     /// should: (a) leave NO object with default/blank identity in the hidden
