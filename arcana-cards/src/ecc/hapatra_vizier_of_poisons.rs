@@ -6,7 +6,6 @@
 //! 1/1 green Snake creature token with deathtouch.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
-use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};

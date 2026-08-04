@@ -52,7 +52,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn each_player_birds(state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
+fn each_player_birds(state: &GameState, _trig: &PendingTrigger, reg: &CardRegistry) -> Vec<Effect> {
     // GAP: the created Bird tokens enter "tapped" and are "goaded for the rest of
     // the game"; CreateToken has no tapped flag and goad needs a known id, so the
     // tapped + goad riders aren't expressible. Mint the 2/2 black flying Birds.

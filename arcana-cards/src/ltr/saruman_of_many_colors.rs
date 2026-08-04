@@ -18,7 +18,6 @@
 //! cast the copy" rider is a linked secondary trigger with a graveyard-target
 //! exile and free-cast-of-copy; that chain is GAP'd.
 
-use arcana_core::conditions;
 use arcana_core::effects::Effect;
 use arcana_core::objects::{Characteristics, ObjectId};
 use arcana_core::mana::ManaCost;

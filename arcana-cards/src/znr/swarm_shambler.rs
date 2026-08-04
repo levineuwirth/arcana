@@ -13,7 +13,7 @@
 //! must be the source itself, with no counter precondition), so this
 //! trigger is GAP'd rather than approximated incorrectly.
 
-use arcana_core::effects::{Effect, TokenDefinition};
+use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{

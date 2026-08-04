@@ -31,7 +31,7 @@ use arcana_core::zones::Zone;
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Kaito, Dancing Shadow");
     let kaito = reg.interner_mut().intern("Kaito");
-    let drone = reg.interner_mut().intern("Drone");
+    let _drone = reg.interner_mut().intern("Drone");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(kaito);
     let chars = Characteristics {

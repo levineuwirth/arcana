@@ -17,7 +17,6 @@
 //! shuffle Etrata into its library — none of these are expressible.
 
 use arcana_core::effects::Effect;
-use arcana_core::events::DamageTarget;
 use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;

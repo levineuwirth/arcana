@@ -15,7 +15,6 @@
 //! control get +2/+0" is a conditional continuous static.
 
 use arcana_core::effects::{DiscardChoice, Effect, KeywordAbility};
-use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};

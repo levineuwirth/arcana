@@ -10,7 +10,6 @@
 //! ETB-installed `attached_pt_per_match` over the same filter.
 
 use arcana_core::effects::Effect;
-use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::{Characteristics, GameObject};
 use arcana_core::registry::{CardDefinition, CardRegistry};
