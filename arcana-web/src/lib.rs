@@ -1067,6 +1067,24 @@ impl GameCore {
         self.session.set_auto_pass(level);
     }
 
+    /// Arm the one-shot "pass until \<phase\>" skip for the solo human and
+    /// advance — see [`arcana_ai::session::PassUntil`] for the stop/interrupt
+    /// contract. Returns the state at the stop point (or interrupt).
+    pub fn pass_until(&mut self, target: arcana_ai::session::PassUntil) -> StateResponse {
+        self.pass_until_for(HUMAN, target)
+    }
+
+    /// As [`pass_until`](Self::pass_until) for a specific seat (networked). The
+    /// directive persists on the shared session, so `seat`'s windows keep being
+    /// consumed as the OPPONENT's actions drive the game forward between this
+    /// seat's requests.
+    pub fn pass_until_for(
+        &mut self, seat: PlayerId, target: arcana_ai::session::PassUntil,
+    ) -> StateResponse {
+        self.session.set_pass_until(seat, Some(target));
+        self.snapshot_for(seat)
+    }
+
     /// Backward-compatible snapshot from the local human's seat ([`HUMAN`]) —
     /// the solo vs-AI path. See [`snapshot_for`](Self::snapshot_for).
     pub fn snapshot(&mut self) -> StateResponse {
@@ -1720,6 +1738,27 @@ mod tests {
         };
         let err = GameCore::from_match_config(reg, &huge).err().unwrap();
         assert!(err.contains("at most"), "got: {err}");
+    }
+
+    /// Overhaul step 2 wiring: the /pass-until core path arms the one-shot
+    /// directive and advances to the stop in a single call. (Stop-point
+    /// semantics are pinned in arcana-ai's session tests; this covers the
+    /// GameCore/route plumbing.)
+    #[test]
+    fn pass_until_advances_to_a_later_window() {
+        use arcana_ai::session::PassUntil;
+        let reg = leaked_catalog();
+        let mut core = GameCore::new(reg, 42);
+        let s = core.snapshot();
+        let keep = s.view.legal.iter()
+            .position(|a| a.label != "Mulligan (draw a new hand)" && a.label != "Concede")
+            .expect("a keep option");
+        let s = core.apply_index(keep).expect("keep the opening hand");
+        let turn0 = s.view.turn;
+        let s = core.pass_until(PassUntil::MyNextTurn);
+        assert!(s.view.game_over.is_some() || s.view.turn > turn0,
+            "skip-to-my-next-turn must advance the turn counter ({} -> {})",
+            turn0, s.view.turn);
     }
 
     /// W-7 regression: `FirstPlayer::Random` is a real coin flip — across a

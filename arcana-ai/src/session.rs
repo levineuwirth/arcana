@@ -73,6 +73,62 @@ pub enum AutoPass {
     FullControl,
 }
 
+/// Overhaul step 2 — the "pass until \<phase\>" one-shot skip directive
+/// (MTGO/Forge model). While armed for a seat, that human's priority windows
+/// are auto-passed EVEN when they hold a meaningful play — that's the point:
+/// skip your own dead-but-castable main phase — until the checkpoint arrives
+/// or a safety interrupt takes over:
+///
+/// * **Checkpoint reached** → the window SURFACES (even a dead one — you asked
+///   to be stopped there, e.g. to act at end of turn), and the directive
+///   disarms.
+/// * **Non-empty stack** → the skip pauses and the normal [`AutoPass`] rules
+///   decide (a window with a real response surfaces; a dead one auto-passes
+///   and the skip resumes once the stack clears). Surfacing disarms.
+/// * **Your own declare-attackers while skipping past combat** → declares no
+///   attackers automatically when legal; a must-attack creature makes that
+///   illegal, which disarms and surfaces the declaration.
+/// * **Any other non-priority decision** (declare blockers, a resolution
+///   choice, …) → disarms and surfaces. Never skips a real decision.
+///
+/// Whatever the exit, ANY surfaced decision disarms — the directive is
+/// one-shot, never a standing mode.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PassUntil {
+    /// Stop at this turn's combat phase (the beginning-of-combat window).
+    Combat,
+    /// Stop at this turn's end step.
+    EndOfTurn,
+    /// Stop at this seat's own next turn, skipping the rest of this one and
+    /// the opponent's turn.
+    MyNextTurn,
+}
+
+/// A [`PassUntil`] armed for a seat, remembering the turn it was issued on so
+/// the checkpoint test can't wrap around ("this turn's combat" armed after
+/// combat degrades to "start of next turn", never a whole extra cycle).
+#[derive(Clone, Copy, Debug)]
+struct ArmedPassUntil {
+    target: PassUntil,
+    armed_turn: u32,
+}
+
+impl ArmedPassUntil {
+    /// Has the skip reached its stop point?
+    fn reached(&self, turn: &arcana_core::turn::TurnState, seat: PlayerId) -> bool {
+        match self.target {
+            // Past the armed turn counts as reached: the backstop that keeps
+            // a late-armed directive from skipping into the NEXT cycle.
+            PassUntil::Combat =>
+                turn.turn_number > self.armed_turn || turn.phase.is_combat(),
+            PassUntil::EndOfTurn =>
+                turn.turn_number > self.armed_turn || turn.phase.is_ending(),
+            PassUntil::MyNextTurn =>
+                turn.active_player == seat && turn.turn_number > self.armed_turn,
+        }
+    }
+}
+
 /// An interactive session over one game. Borrows the registry for its lifetime.
 pub struct Session<'a> {
     state: GameState,
@@ -90,6 +146,10 @@ pub struct Session<'a> {
     /// How a HUMAN's priority windows are surfaced ([`AutoPass`]). Defaults to
     /// [`AutoPass::Default`] (the smart middle ground). Bots are unaffected.
     auto_pass: AutoPass,
+    /// Per-seat armed "pass until \<phase\>" directive ([`PassUntil`]); `None`
+    /// when idle. One-shot: consumed by reaching its checkpoint or by ANY
+    /// decision surfacing to that seat.
+    pass_until: Vec<Option<ArmedPassUntil>>,
 }
 
 /// Worth showing in the opponent log: not a pass, not an empty attack/block.
@@ -152,13 +212,33 @@ impl<'a> Session<'a> {
         assert_eq!(decks.len(), seats.len(), "one seat per deck");
         let record = GameRecord::new(decks.clone(), seed);
         let (state, yld) = new_game_first_player(decks, registry, seed, first);
+        let pass_until = vec![None; seats.len()];
         Self { state, yld, registry, seats, record, log: Vec::new(),
-               auto_pass: AutoPass::default() }
+               auto_pass: AutoPass::default(), pass_until }
     }
 
     /// Set how the human's priority windows surface (default
     /// [`AutoPass::Default`]). See [`AutoPass`].
     pub fn set_auto_pass(&mut self, level: AutoPass) { self.auto_pass = level; }
+
+    /// Arm (or clear, with `None`) a one-shot [`PassUntil`] skip for `seat`.
+    /// Call [`advance`](Self::advance) afterward to let it run; in a
+    /// multi-human game the directive persists on the session and consumes
+    /// `seat`'s windows as opponents drive the game forward.
+    pub fn set_pass_until(&mut self, seat: PlayerId, target: Option<PassUntil>) {
+        if let Some(slot) = self.pass_until.get_mut(seat as usize) {
+            *slot = target.map(|t| ArmedPassUntil {
+                target: t,
+                armed_turn: self.state.turn.turn_number,
+            });
+        }
+    }
+
+    /// The armed [`PassUntil`] for `seat`, if any — lets a UI show "skipping
+    /// to …" and offer a cancel.
+    pub fn pass_until(&self, seat: PlayerId) -> Option<PassUntil> {
+        self.pass_until.get(seat as usize).copied().flatten().map(|a| a.target)
+    }
 
     /// The current (full, un-projected) game state — for spectator rendering.
     pub fn state(&self) -> &GameState { &self.state }
@@ -197,11 +277,55 @@ impl<'a> Session<'a> {
                 }
             }
 
+            // Overhaul step 2: an armed "pass until <phase>" skip for this
+            // seat. Runs BEFORE the dead-window logic because it passes even
+            // windows that hold a meaningful play — that's what "skip my main
+            // phase" means. See [`PassUntil`] for the interrupt contract.
+            let mut at_checkpoint = false;
+            if matches!(self.seats[player as usize], Seat::Human) {
+                if let Some(armed) = self.pass_until[player as usize] {
+                    if armed.reached(&self.state.turn, player) {
+                        // Surface this window even if it's dead — the player
+                        // asked to be stopped here. Disarm; fall through.
+                        self.pass_until[player as usize] = None;
+                        at_checkpoint = true;
+                    } else if !self.state.stack.is_empty() {
+                        // Something is on the stack: let the normal AutoPass
+                        // rules decide this window (a real response surfaces —
+                        // and surfacing disarms below). The skip resumes if
+                        // the window was dead and the stack clears.
+                    } else if matches!(context, DecisionContext::DeclareAttackers) {
+                        // Skipping past our own combat: declare no attackers
+                        // when that's legal; a must-attack creature makes it
+                        // illegal → disarm and surface the declaration.
+                        let none = legal.iter().find(|a| matches!(
+                            a, Action::DeclareAttackers { attackers } if attackers.is_empty()
+                        )).cloned();
+                        match none {
+                            Some(a) => {
+                                self.apply_internal(a);
+                                continue;
+                            }
+                            None => self.pass_until[player as usize] = None,
+                        }
+                    } else if legal.iter().any(|a| matches!(a, Action::PassPriority)) {
+                        self.apply_internal(Action::PassPriority);
+                        continue;
+                    } else {
+                        // A decision the skip can't answer (blockers, a
+                        // choice, a cast sub-step): disarm and surface.
+                        self.pass_until[player as usize] = None;
+                    }
+                }
+            }
+
             // Auto-pass a HUMAN's dead priority window (no meaningful play — only
             // passing or tapping mana with nothing to spend it on), per the
             // configured level. Bots are unaffected. Gated on a priority window so
             // it never short-circuits mulligans, combat declarations, or choices.
-            if matches!(self.seats[player as usize], Seat::Human)
+            // A just-reached PassUntil checkpoint window always surfaces.
+            if !at_checkpoint
+                && matches!(self.seats[player as usize], Seat::Human)
                 && legal.iter().any(|a| matches!(a, Action::PassPriority))
                 && !arcana_core::legal_actions::has_meaningful_play(
                     &self.state, player, self.registry)
@@ -228,6 +352,9 @@ impl<'a> Session<'a> {
             // evaluates to the bot's action; the human arm returns early.
             let action = match &mut self.seats[player as usize] {
                 Seat::Human => {
+                    // Any surfaced decision consumes the seat's PassUntil —
+                    // it's a one-shot directive, never a standing mode.
+                    self.pass_until[player as usize] = None;
                     return Turn::AwaitingHuman {
                         player,
                         view: project(&self.state, player),
@@ -416,6 +543,88 @@ mod tests {
             "full control must surface at least one no-play window");
         assert!(!run(AutoPass::Default),
             "the default must never surface a no-play priority window");
+    }
+
+    /// Overhaul step 2: "pass until <phase>" skips windows the player COULD
+    /// act in (that's the point — the human below holds castable Bolts the
+    /// whole way), stops at the first window at-or-after the checkpoint, and
+    /// disarms once consumed. With an instant in hand the engine yields the
+    /// combat/end-step windows, so the stops land EXACTLY on the checkpoint;
+    /// with nothing to do there the engine never yields such a window and the
+    /// stop degrades to the next real one (consistent with the no-false-stop
+    /// model — never present a decision-less halt).
+    #[test]
+    fn pass_until_skips_to_the_checkpoint_and_disarms() {
+        use arcana_core::turn::{Phase, Step};
+        let reg = arcana_cards::build_catalog();
+        let find = |n: &str| reg.iter()
+            .find(|(_, d)| reg.interner().resolve(d.name) == Some(n))
+            .map(|(id, _)| id)
+            .unwrap_or_else(|| panic!("{n} in catalog"));
+        let mountain = find("Mountain");
+        let bolt = find("Lightning Bolt");
+        // Human: Bolts to hold up (meaningful play at every window, so the
+        // engine yields the checkpoint windows). Bot: all lands (can't win,
+        // so the skip-my-next-turn run can't be cut short by a loss).
+        let human_deck: Vec<CardId> = std::iter::repeat(mountain).take(24)
+            .chain(std::iter::repeat(bolt).take(36)).collect();
+        let bot_deck: Vec<CardId> = vec![mountain; 60];
+
+        // Drive to the human's turn-1 main-phase window AFTER a land drop
+        // (so a Bolt is genuinely castable from then on), then arm + advance.
+        let run = |target: PassUntil| {
+            let seats = vec![Seat::Human, Seat::Bot(Box::new(
+                crate::search::RandomStatePolicy::new(11)))];
+            let mut session = Session::new(
+                vec![human_deck.clone(), bot_deck.clone()], &reg, seats, 7);
+            let mut guard = 0;
+            loop {
+                guard += 1;
+                assert!(guard < 10_000, "must reach the post-land main window");
+                match session.advance() {
+                    Turn::GameOver(r) => panic!("game ended during setup: {r:?}"),
+                    Turn::AwaitingHuman { legal, .. } => {
+                        if let Some(i) = legal.iter()
+                            .position(|a| matches!(a, Action::MulliganKeep)) {
+                            session.apply(legal[i].clone());
+                            continue;
+                        }
+                        if let Some(i) = legal.iter()
+                            .position(|a| matches!(a, Action::PlayLand { .. })) {
+                            session.apply(legal[i].clone());
+                            continue;
+                        }
+                        let t = &session.state().turn;
+                        assert!(t.active_player == 0 && t.phase.is_pre_combat_main(),
+                            "setup should still be in our first main");
+                        break;
+                    }
+                }
+            }
+            let armed_turn = session.state().turn.turn_number;
+            session.set_pass_until(0, Some(target));
+            match session.advance() {
+                Turn::GameOver(r) => panic!("mono-land bot can't end the game: {r:?}"),
+                Turn::AwaitingHuman { player, .. } => {
+                    assert_eq!(player, 0, "the bot never surfaces");
+                    assert_eq!(session.pass_until(0), None,
+                        "surfacing a decision must disarm the directive");
+                    (session.state().turn.clone(), armed_turn)
+                }
+            }
+        };
+
+        // Castable Bolt in hand → the engine yields the exact checkpoint
+        // windows, so each stop lands precisely.
+        let (t, armed) = run(PassUntil::Combat);
+        assert_eq!((t.turn_number, t.phase), (armed, Phase::Combat),
+            "stopped at this turn's combat");
+        let (t, armed) = run(PassUntil::EndOfTurn);
+        assert_eq!((t.turn_number, t.phase, t.step), (armed, Phase::Ending, Step::End),
+            "stopped at this turn's end step");
+        let (t, armed) = run(PassUntil::MyNextTurn);
+        assert!(t.active_player == 0 && t.turn_number > armed,
+            "stopped on our own later turn (got t{} ap={})", t.turn_number, t.active_player);
     }
 
     /// A scripted human that DEVELOPS (plays lands/spells) and ATTACKS, building

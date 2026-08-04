@@ -358,6 +358,9 @@
     autotap: (objectId) => M.active() ? call("POST", "/m/autotap" + M.qs(), { object_id: objectId }) : call("POST", "/autotap", { object_id: objectId }),
     activate: (objectId) => M.active() ? call("POST", "/m/activate" + M.qs(), { object_id: objectId }) : call("POST", "/activate", { object_id: objectId }),
     autoPass: (level) => call("POST", "/autopass", { level }),
+    passUntil: (until) => M.active()
+      ? call("POST", "/m/pass-until" + M.qs(), { until })
+      : call("POST", "/pass-until", { until }),
     warmArt: (names) => call("POST", "/art/warm", { names }),
     warmAll: () => call("POST", "/art/warm-all"),
     warmStatus: () => call("GET", "/art/warm-status"),

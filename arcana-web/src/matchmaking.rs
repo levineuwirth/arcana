@@ -120,6 +120,7 @@ enum MatchCmd {
     Activate { seat: PlayerId, source: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
     Bottom { seat: PlayerId, ids: Vec<ObjectId>, reply: oneshot::Sender<Result<StateResponse, String>> },
     SetAutoPass { seat: PlayerId, level: arcana_ai::session::AutoPass, reply: oneshot::Sender<Result<StateResponse, String>> },
+    PassUntil { seat: PlayerId, target: arcana_ai::session::PassUntil, reply: oneshot::Sender<Result<StateResponse, String>> },
     Suggest { seat: PlayerId, deep: bool, reply: oneshot::Sender<Vec<Suggestion>> },
 }
 
@@ -138,7 +139,8 @@ fn run_match(
         // A command that can change the game state → re-persist the transcript.
         let mutating = matches!(cmd,
             MatchCmd::Action { .. } | MatchCmd::Combat { .. } | MatchCmd::AutoTap { .. }
-            | MatchCmd::Activate { .. } | MatchCmd::Bottom { .. });
+            | MatchCmd::Activate { .. } | MatchCmd::Bottom { .. }
+            | MatchCmd::PassUntil { .. });
         match cmd {
             MatchCmd::State { seat, reply } => {
                 let _ = reply.send(contain(&what, || Ok(core.snapshot_for(seat))));
@@ -168,6 +170,10 @@ fn run_match(
                     core.set_auto_pass(level);
                     Ok(core.snapshot_for(seat))
                 }));
+            }
+            MatchCmd::PassUntil { seat, target, reply } => {
+                let _ = reply.send(contain(&what,
+                    || Ok(core.pass_until_for(seat, target))));
             }
             MatchCmd::Suggest { seat, deep, reply } => {
                 let _ = reply.send(
@@ -235,6 +241,11 @@ impl MatchSender {
         &self, seat: PlayerId, level: arcana_ai::session::AutoPass,
     ) -> Result<StateResponse, String> {
         self.ask(|reply| MatchCmd::SetAutoPass { seat, level, reply }).await
+    }
+    pub async fn pass_until(
+        &self, seat: PlayerId, target: arcana_ai::session::PassUntil,
+    ) -> Result<StateResponse, String> {
+        self.ask(|reply| MatchCmd::PassUntil { seat, target, reply }).await
     }
     pub async fn suggest(&self, seat: PlayerId, deep: bool) -> Vec<Suggestion> {
         let (reply, rx) = oneshot::channel();

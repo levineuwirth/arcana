@@ -52,7 +52,7 @@ use arcana_core::deck::{check_legality, builtin_formats, FormatSpec, LegalityRep
 use arcana_core::objects::ObjectId;
 use arcana_core::registry::CardRegistry;
 use arcana_core::types::{CardId, PlayerId};
-use arcana_ai::session::AutoPass;
+use arcana_ai::session::{AutoPass, PassUntil};
 use arcana_web::matchmaking::Matches;
 use arcana_web::{
     deck_identity_view, personalities, resolve_import, CombatSubmission, DeckIdentity,
@@ -88,6 +88,7 @@ enum Command {
     AutoTap { target: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
     Activate { source: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
     SetAutoPass { level: AutoPass, reply: oneshot::Sender<StateResponse> },
+    PassUntil { target: PassUntil, reply: oneshot::Sender<StateResponse> },
     AllCardNames { reply: oneshot::Sender<Vec<String>> },
     Bottom { ids: Vec<ObjectId>, reply: oneshot::Sender<Result<StateResponse, String>> },
     Search { query: CardQuery, reply: oneshot::Sender<Vec<CardInfo>> },
@@ -566,6 +567,11 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>, reg: &'static CardRegist
                     let _ = reply.send(s);
                 }
             }
+            Command::PassUntil { target, reply } => {
+                if let Ok(s) = arcana_web::contain(WHAT, || Ok(core.pass_until(target))) {
+                    let _ = reply.send(s);
+                }
+            }
             Command::AllCardNames { reply } => {
                 let r = core.registry();
                 let mut names: Vec<String> = r.iter()
@@ -906,6 +912,18 @@ async fn match_autopass(State(app): State<AppState>, Query(at): Query<MatchRef>,
     match_play_response(&app, &at.code, sender.set_auto_pass(at.seat, level).await)
 }
 
+async fn match_pass_until(State(app): State<AppState>, Query(at): Query<MatchRef>, body: String) -> Response {
+    let req: PassUntilRequest = match serde_json::from_str(&body) {
+        Ok(r) => r,
+        Err(e) => return (StatusCode::BAD_REQUEST, err(format!("invalid /m/pass-until body: {e}"))).into_response(),
+    };
+    let Some(target) = parse_pass_until(&req.until) else {
+        return (StatusCode::BAD_REQUEST, err(format!("unknown pass-until target: {}", req.until))).into_response();
+    };
+    let sender = match route_match(&app, &at) { Ok(s) => s, Err(r) => return r };
+    match_play_response(&app, &at.code, sender.pass_until(at.seat, target).await)
+}
+
 async fn match_suggest(State(app): State<AppState>, Query(q): Query<MatchSuggestQuery>) -> Response {
     let sender = match route_match(&app, &q.at) { Ok(s) => s, Err(_) => return Json(Vec::<Suggestion>::new()).into_response() };
     Json(sender.suggest(q.at.seat, q.deep).await).into_response()
@@ -1070,6 +1088,22 @@ struct AutoPassRequest {
     level: String,
 }
 
+/// `POST /pass-until` and `/m/pass-until` body — the one-shot skip directive.
+#[derive(Debug, Deserialize)]
+struct PassUntilRequest {
+    until: String,
+}
+
+/// Wire values for [`PassUntil`] (mirrors the AutoPass string mapping).
+fn parse_pass_until(s: &str) -> Option<PassUntil> {
+    match s {
+        "combat" => Some(PassUntil::Combat),
+        "end_of_turn" => Some(PassUntil::EndOfTurn),
+        "my_next_turn" => Some(PassUntil::MyNextTurn),
+        _ => None,
+    }
+}
+
 #[derive(Debug, Deserialize)]
 struct ArtRequest {
     name: String,
@@ -1198,6 +1232,26 @@ async fn post_autopass(State(app): State<AppState>, body: String) -> Response {
     };
     let (reply, rx) = oneshot::channel();
     if app.tx.send(Command::SetAutoPass { level, reply }).is_err() {
+        return worker_gone();
+    }
+    match rx.await {
+        Ok(resp) => Json(resp).into_response(),
+        Err(_) => worker_gone(),
+    }
+}
+
+async fn post_pass_until(State(app): State<AppState>, body: String) -> Response {
+    let req: PassUntilRequest = match serde_json::from_str(&body) {
+        Ok(r) => r,
+        Err(e) => {
+            return (StatusCode::BAD_REQUEST, err(format!("invalid /pass-until body: {e}"))).into_response()
+        }
+    };
+    let Some(target) = parse_pass_until(&req.until) else {
+        return (StatusCode::BAD_REQUEST, err(format!("unknown pass-until target: {}", req.until))).into_response();
+    };
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::PassUntil { target, reply }).is_err() {
         return worker_gone();
     }
     match rx.await {
@@ -1383,6 +1437,7 @@ async fn main() {
         .route("/autotap", post(post_autotap))
         .route("/activate", post(post_activate))
         .route("/autopass", post(post_autopass))
+        .route("/pass-until", post(post_pass_until))
         .route("/bottom", post(post_bottom))
         .route("/new", post(post_new))
         .layer(middleware::from_fn(guard_local_only));
@@ -1413,6 +1468,7 @@ async fn main() {
         .route("/m/activate", post(match_activate))
         .route("/m/bottom", post(match_bottom))
         .route("/m/autopass", post(match_autopass))
+        .route("/m/pass-until", post(match_pass_until))
         .route("/m/suggest", get(match_suggest))
         .route("/m/leave", post(match_leave))
         .route("/m/ws", get(match_ws))
