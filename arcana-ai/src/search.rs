@@ -398,7 +398,8 @@ impl StatePolicy for ValueMcPolicy {
 /// in `max_candidates` take all of it, else a random subset that ALWAYS retains
 /// `PassPriority` (the do-nothing baseline every suggestion is measured against).
 /// Shared by [`ValueMcPolicy`] and [`rank_actions`] so the bot and the analysis
-/// panel select from the same pool.
+/// panel select from the same pool. (PIMC/IS-MCTS use the seedless
+/// [`stable_candidate_subset`] instead — they need per-decision stability.)
 fn select_candidates(legal: &[Action], max_candidates: usize, rng: &mut ChaCha8Rng) -> Vec<usize> {
     if legal.len() <= max_candidates {
         return (0..legal.len()).collect();
@@ -712,22 +713,14 @@ impl IsmctsPolicy {
                iterations, rollout_step_cap: cap, max_children, exploration: 1.0 }
     }
 
-    /// Actions to consider at a node: all of `legal` if small, else a stable
-    /// prefix of `max_children` (always including a `PassPriority`). The subset
-    /// must be DETERMINISTIC across iterations — re-sampling it per iteration
-    /// would scatter visits across an ever-changing action set and prevent any
-    /// action from accumulating a usable mean.
+    /// Actions to consider at a node: all of `legal` if small, else a STABLE
+    /// pseudorandom subset of `max_children` (always including `PassPriority`).
+    /// The subset must be deterministic across iterations — re-sampling it per
+    /// iteration would scatter visits across an ever-changing action set and
+    /// prevent any action from accumulating a usable mean — but it must not be
+    /// the enumeration-order prefix (see [`stable_candidate_subset`], A-2).
     fn candidates(&self, legal: &[Action]) -> Vec<Action> {
-        if legal.len() <= self.max_children {
-            return legal.to_vec();
-        }
-        let mut out: Vec<Action> = legal.iter().take(self.max_children).cloned().collect();
-        if !out.iter().any(|a| matches!(a, Action::PassPriority)) {
-            if let Some(p) = legal.iter().find(|a| matches!(a, Action::PassPriority)) {
-                out[0] = p.clone();
-            }
-        }
-        out
+        stable_candidate_subset(legal, self.max_children)
     }
 
     /// UCB1 over already-expanded candidates (negamax mean + availability-based
@@ -880,19 +873,41 @@ impl PimcPolicy {
                samples, rollout_step_cap: cap, max_candidates }
     }
 
-    /// Stable candidate subset (always keeping a `PassPriority`).
+    /// Stable candidate subset (always keeping a `PassPriority`); see
+    /// [`stable_candidate_subset`] for the A-2 bias story.
     fn candidates(&self, legal: &[Action]) -> Vec<Action> {
-        if legal.len() <= self.max_candidates {
-            return legal.to_vec();
-        }
-        let mut out: Vec<Action> = legal.iter().take(self.max_candidates).cloned().collect();
-        if !out.iter().any(|a| matches!(a, Action::PassPriority)) {
-            if let Some(p) = legal.iter().find(|a| matches!(a, Action::PassPriority)) {
-                out[0] = p.clone();
-            }
-        }
-        out
+        stable_candidate_subset(legal, self.max_candidates)
     }
+}
+
+/// Deterministic-but-unbiased candidate subset for the search policies (A-2).
+/// When `legal` exceeds `cap`, take a pseudorandom subset seeded from a hash
+/// of the action set itself: stable for a given decision (IS-MCTS iterations
+/// must revisit one fixed child set; replays must reproduce), but free of the
+/// old `.take(cap)` prefix bias — which systematically dropped whatever the
+/// engine enumerates last. Multi-attacker/-blocker declarations are exactly
+/// the sets that blow past the cap, so "attack with everything" / the strong
+/// block assignments could go entirely unscored. `PassPriority` is always
+/// retained as the do-nothing baseline.
+fn stable_candidate_subset(legal: &[Action], cap: usize) -> Vec<Action> {
+    if legal.len() <= cap {
+        return legal.to_vec();
+    }
+    use std::hash::{Hash, Hasher};
+    // DefaultHasher::new() is keyed with fixed constants (unlike RandomState),
+    // so the subset is reproducible across processes.
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    format!("{legal:?}").hash(&mut h);
+    let mut rng = ChaCha8Rng::seed_from_u64(h.finish());
+    let mut out: Vec<Action> = legal.to_vec();
+    out.shuffle(&mut rng);
+    out.truncate(cap);
+    if !out.iter().any(|a| matches!(a, Action::PassPriority)) {
+        if let Some(p) = legal.iter().find(|a| matches!(a, Action::PassPriority)) {
+            out[0] = p.clone();
+        }
+    }
+    out
 }
 
 /// One candidate action scored by PIMC — its mean rollout value for the player
