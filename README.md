@@ -1,64 +1,134 @@
 # Arcana
 
-A high-performance *Magic: The Gathering* rules engine in Rust, designed as a substrate for reinforcement-learning research.
+A *Magic: The Gathering* rules engine in Rust — a rules-accurate core, a
+generated card catalog of over 20,000 cards, a playable web client, and a
+frozen line of RL research that motivated the whole project.
 
-> Phase 1 (core engine) nearly complete. As of 2026-04-21: **919 tests passing** across the workspace (783 core lib, 108 seed integration, 28 peripheral). Phase 2 (effects, keywords, seed cards) actively developed. Phase 3 (agentic card generation) scaffolded.
+For current project status and the active work plan, see
+[`docs/audit-2026-08.md`](docs/audit-2026-08.md) — it supersedes the
+status/roadmap docs below it in this README.
 
-## Why this exists
+## What's here
 
-*Magic: The Gathering* is one of the most computationally interesting environments still missing a serious open RL benchmark. The state space is enormous, the action space is high-branching and contextual, large portions of state are hidden, and the rules are sufficiently intricate that off-the-shelf simulators routinely sacrifice fidelity for speed. Existing engines are built for human play, not as RL substrates: they lack deterministic replay, they don't expose information-set-projected observations, and their step functions are not pure.
-
-Arcana is built from the ground up to fix those things. The rules engine is a pure Cargo workspace — `arcana-core` exposes a deterministic step function, `arcana-ai` provides legal-action enumeration and observation encoding, and `arcana-py` exposes a Gymnasium-compatible MTG environment via PyO3. The aim is an engine fast enough for large-scale self-play and faithful enough to support meaningful claims about MTG-specific RL strategies.
-
-## Status
-
-- **919 tests** passing across the workspace.
-- **42 keyword abilities** wired (14/15 evergreen; flashback, kicker, madness, convoke, delve, equip, enchant, prowess, storm and cascade as full triggers, …).
-- **63 effect primitives** of an 80-target set, spanning damage/life, card flow, zone moves, library manipulation, tokens, copies, cascade, counters, P/T modifications, stack manipulation, prompts, mana, phase steps, decision-requiring effects, and composites.
-- **37 seed cards across 21 sets** — vanilla, activated, triggered (incl. targeted), modal, split, adventure, MDFC, continuous-effect, planeswalker, alt/additional-cost (kicker/madness/convoke/delve), hybrid mana. Zero `todo!()` / `unimplemented!()` in the seed roster.
-- **Deterministic replay** via ChaCha8-seeded RNG + full event log. All three mulligan variants (London, Paris, Vancouver) and scry implemented.
-- **CR coverage:** §100, §103, §117, §400.7, §500–510 (incl. 510.1c combat-step edge), §601–608 (incl. 608.2b recheck), §613.1–7, §702 (42 keywords), §704.5, §711.4 (split combine), §712.2b/4 (MDFC), §715 (adventure).
-
-## Workspace
-
-Cargo workspace, seven crates:
+- **`arcana-core`** — a pure-Rust MTG rules engine. Deterministic step
+  function, full turn structure, priority, stack, combat, continuous-effect
+  layers, zones. ~60,000 lines, zero `unsafe`. No card-specific logic.
+- **`arcana-cards`** — a generated card registry: **20,590 cards**
+  implemented against the engine (of ~20,700+ card files on disk), produced
+  by an agentic generation pipeline and gated by a behavioral-probe test
+  (cards are resolved in a populated game state, not just type-checked, to
+  catch silent no-op scripts).
+- **`arcana-web`** — a playable browser client (axum + a vanilla-JS
+  frontend): play solo against a bot, or start a LAN match with a friend via
+  a 4-character lobby code. See [Quickstart](#quickstart-web-client) below.
+- **`arcana-cli`** — developer/player tools: an interactive terminal game
+  (`play`), self-play recording, replay viewing, and bot-strength evaluation
+  (`selfplay` / `replay` / `eval` / `arena`).
+- **`arcana-session`** — a session layer wrapping the pure engine step
+  function for human-play flows (used by both `arcana-cli` and
+  `arcana-web`).
+- **`arcana-ai`** — RL-facing utilities: legal-action enumeration,
+  observation encoding, information-set projection/determinization, and
+  several search policies (flat Monte Carlo, PIMC, ISMCTS, a learned-value
+  leaf). Also home to the frozen research code below.
+- **`arcana-py`** — PyO3 bindings exposing a Gymnasium-compatible `MtgEnv`
+  for Python-side experimentation.
+- **`arcana-gen`** — the agentic card-generation pipeline: Scryfall
+  ingestion, prompt rendering, subagent codegen, cargo-check + behavioral
+  verify, and the bake-off/regen tooling used to grow the catalog.
 
 | Crate            | Role                                                                 |
 | ---------------- | -------------------------------------------------------------------- |
-| `arcana-core`    | Pure rules engine. Game state, turn structure, priority, stack, combat, layers, zones. No card-specific logic. |
-| `arcana-cards`   | Card registry. Generated card code lives in `src/generated/`.        |
-| `arcana-session` | Session layer wrapping the pure step function for human-play flows. |
-| `arcana-ai`      | RL-facing utilities: legal-action enumeration, observation encoding, reward computation, information-set projection. |
-| `arcana-py`      | PyO3 bindings exposing a Gymnasium-compatible `MtgEnv`.              |
-| `arcana-gen`     | Agentic card-generation pipeline: Scryfall parsing, classifier, prompt rendering, cargo-check verify, bake-off driver. |
-| `arcana-cli`     | Developer tools: interactive debugger, state inspector, replay viewer, benchmarks. |
+| `arcana-core`    | Pure rules engine — state, turn structure, priority, stack, combat, layers, zones. |
+| `arcana-cards`   | Generated card registry (20,590 cards), behavioral-probe gated.      |
+| `arcana-ai`      | Legal-action enumeration, observation encoding, information sets, search policies; frozen RL research. |
+| `arcana-py`      | PyO3 bindings exposing a Gymnasium-compatible `MtgEnv`.               |
+| `arcana-gen`     | Agentic card-generation pipeline (Scryfall parsing, prompting, verify, regen). |
+| `arcana-cli`     | Interactive play, self-play, replay, and bot-strength evaluation.    |
+| `arcana-session` | Session layer wrapping the pure step function for human-play flows.  |
+| `arcana-web`     | Browser client: solo-vs-bot and LAN 2-player over HTTP/WebSocket.    |
+
+## Quickstart: web client
+
+```bash
+cargo run -p arcana-web
+```
+
+Opens on `http://127.0.0.1:8080` by default. Solo play works immediately;
+click "Play a friend" for a 4-character lobby code the other player enters
+on their machine (same LAN, or `HOST=0.0.0.0` — see below — plus port
+forwarding for anything further).
+
+Environment variables (all optional):
+
+| Var | Effect | Default |
+|---|---|---|
+| `HOST` | Bind address. Set `0.0.0.0` to expose on the LAN so a friend can join. | `127.0.0.1` (loopback only) |
+| `PORT` | Bind port. | `8080` |
+| `ARCANA_ART_CACHE` | Directory for cached Scryfall card-art images. | `$HOME/.cache/arcana/art` (or a temp dir if `$HOME` is unset) |
+| `MATCH_STATE_DIR` | Directory to persist networked-match transcripts to (opt-in; unset means matches are memory-only and don't survive a restart). | unset |
+| `MATCH_TIMEOUT_SECS` | How long a networked match waits for a vanished peer before reaping it. | `60` |
+
+Solo-game routes (`/state`, `/action`, `/new`, …) are restricted to the host
+machine even on a LAN bind; the `/lobby/*` and `/m/*` networked-match routes
+are the ones meant to be reachable by a guest.
+
+## Quickstart: terminal play
+
+```bash
+cargo run -p arcana-cli -- play
+```
+
+Defaults to a human (you) vs. a bot (`snappy`, short-rollout value-MC).
+Flags: `--p0 KIND --p1 KIND --seed N`, where `KIND` is one of
+`human|snappy|pimc|mc|random`. Run `cargo run -p arcana-cli` with no
+arguments for the full command list (`selfplay`, `replay`, `eval`, `arena`).
 
 ## Build & test
 
 ```bash
-cargo check                    # Type-check workspace
-cargo test                     # All non-ignored tests
-cargo test -p arcana-core      # Specific crate
-cargo bench -p arcana-core     # Benchmarks
+cargo build --workspace
+cargo test --workspace       # ~1,624 tests across the workspace
+cargo test -p arcana-core    # a specific crate
 ```
 
-Tests tagged `#[ignore]` spawn external processes (cargo, network) and are run explicitly:
+Tests tagged `#[ignore]` spawn external processes (cargo, network) and are
+run explicitly:
 
 ```bash
 cargo test -p arcana-gen --lib -- --ignored --test-threads=1
 ```
 
-## Roadmap
+## Why this exists
 
-| Phase | Scope                                                     | Status              |
-|-------|-----------------------------------------------------------|---------------------|
-| 1     | Core engine (state, turn, priority, stack, combat, layers, mulligan) | nearly complete |
-| 2     | Effects, keywords, seed cards, session layer              | active              |
-| 3     | Agentic card-generation pipeline                          | scaffolded          |
-| 4     | Python / AI / Gym bindings                                | scaffolded          |
-| 5     | Polish, research, human play                              | not yet started     |
+*Magic: The Gathering* is one of the most computationally interesting
+environments still missing a serious open RL benchmark: an enormous state
+space, a high-branching contextual action space, large portions of hidden
+state, and rules intricate enough that off-the-shelf simulators routinely
+sacrifice fidelity for speed. That's the origin of this project — `arcana-core`
+was built as an RL substrate first (deterministic step function,
+information-set-projected observations, a pure step boundary), with
+`arcana-ai` and `arcana-py` as the research-facing layers on top of it.
 
-Performance targets (not yet measured): >20,000 games/sec single-threaded, <10 μs observation encoding, <20% PyO3 overhead. Bench harness is the next deliverable on the Phase 1 task list.
+Performance targets were set early (>20,000 games/sec single-threaded,
+<10 μs observation encoding, <20% PyO3 overhead) but were **never formally
+measured** — the project's center of gravity shifted toward building out
+the engine, the card catalog, and a playable client instead.
+
+The RL research arcs that were run (self-play value-function learning,
+deck-evaluation/deckbuilding) are **frozen as closed, documented negative
+results** — see [`docs/rl-status.md`](docs/rl-status.md) and
+[`docs/rl-benchmark.md`](docs/rl-benchmark.md) for what was tried and why
+it's parked. The one live thread for a future resumption (PIMC action
+distillation) is noted in [`docs/audit-2026-08.md`](docs/audit-2026-08.md).
+
+## Status & roadmap
+
+Current status, known issues, and the active work plan live in
+[`docs/audit-2026-08.md`](docs/audit-2026-08.md) — treat it as the
+up-to-date source of truth. `STATUS_2026-04-21.md`, `KEYWORDS.md`, and
+`ROADMAP.md` are earlier snapshots kept for history; each now carries a
+banner pointing here.
 
 ## Author
 
