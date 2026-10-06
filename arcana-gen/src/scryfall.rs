@@ -5,7 +5,10 @@
 //! [`ScryfallPool`]. Downloads-and-caches on first use; subsequent
 //! runs read from the local cache unless the file is removed.
 //!
-//! Wire format: <https://scryfall.com/docs/api/bulk-data>.
+//! Wire format: <https://scryfall.com/docs/api/bulk-data>. Scryfall
+//! publishes the dump as gzipped JSON Lines, one card object per line;
+//! the plain JSON array it used to serve is gone, but caches written
+//! before the switch hold that array and still load.
 //!
 //! Deliberately *not* exhaustive of Scryfall's card schema — fields
 //! are added as downstream work (tier classifier, prompt retrieval)
@@ -19,20 +22,25 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
+use flate2::read::MultiGzDecoder;
 use serde::{Deserialize, Serialize};
 
 /// Scryfall `bulk_data` entry as returned by
 /// `GET /bulk-data/oracle-cards`. Only the fields we need to locate
-/// the actual card dump.
+/// the actual card dump, which is the gzipped JSONL file at
+/// `jsonl_download_uri` (the entry no longer carries `download_uri`).
 #[derive(Debug, Clone, Deserialize)]
 struct BulkDataEntry {
     #[serde(rename = "type")]
     kind: String,
-    download_uri: String,
+    jsonl_download_uri: String,
     updated_at: String,
     #[serde(default)]
-    size: u64,
+    compressed_size: u64,
 }
+
+/// The first two bytes of every gzip stream (RFC 1952).
+const GZIP_MAGIC: [u8; 2] = [0x1f, 0x8b];
 
 /// One card from the Scryfall `oracle_cards` bulk dump. Fields are
 /// the subset we've needed so far; serde ignores the rest.
@@ -309,6 +317,37 @@ impl ScryfallPool {
         Ok(Self::from_cards(cards))
     }
 
+    /// Build a pool from an `oracle_cards` dump in any form the loader
+    /// meets: the gzipped JSONL Scryfall serves, that file decompressed,
+    /// or the JSON array of a pre-JSONL cache. Gzip is recognized by its
+    /// magic bytes, the array by its leading `[`.
+    pub fn from_bulk_bytes(bytes: &[u8]) -> Result<Self> {
+        let decompressed;
+        let text = if bytes.starts_with(&GZIP_MAGIC) {
+            let mut buf = String::new();
+            MultiGzDecoder::new(bytes)
+                .read_to_string(&mut buf)
+                .context("decompressing oracle_cards bulk")?;
+            decompressed = buf;
+            decompressed.as_str()
+        } else {
+            std::str::from_utf8(bytes).context("oracle_cards bulk is not UTF-8")?
+        };
+        if text.trim_start().starts_with('[') {
+            return Self::from_json_str(&text);
+        }
+        let mut cards = Vec::new();
+        for (i, line) in text.lines().enumerate() {
+            if line.trim().is_empty() {
+                continue;
+            }
+            let card = serde_json::from_str(line)
+                .with_context(|| format!("parsing oracle_cards JSONL line {}", i + 1))?;
+            cards.push(card);
+        }
+        Ok(Self::from_cards(cards))
+    }
+
     fn from_cards(cards: Vec<Card>) -> Self {
         let mut by_oracle_id = HashMap::with_capacity(cards.len());
         let mut by_name = HashMap::with_capacity(cards.len());
@@ -321,31 +360,43 @@ impl ScryfallPool {
 
     /// Load the oracle_cards bulk from `cache_path` if it exists,
     /// otherwise download it from Scryfall and save a copy for
-    /// subsequent runs. Explicit refresh: delete the file.
+    /// subsequent runs. The copy is the downloaded file as served
+    /// (gzipped JSONL), written only once it has parsed, so a broken
+    /// download never becomes the cache. Explicit refresh: delete the
+    /// file.
     pub fn from_cache_or_download(cache_path: &Path) -> Result<Self> {
         if cache_path.exists() {
             tracing::info!(path = %cache_path.display(), "loading Scryfall pool from cache");
-            let json = fs::read_to_string(cache_path)
+            let bytes = fs::read(cache_path)
                 .with_context(|| format!("reading cache {}", cache_path.display()))?;
-            return Self::from_json_str(&json);
+            return Self::from_bulk_bytes(&bytes)
+                .with_context(|| format!("loading cache {}", cache_path.display()));
         }
         if let Some(parent) = cache_path.parent() {
             fs::create_dir_all(parent)
                 .with_context(|| format!("creating cache dir {}", parent.display()))?;
         }
         tracing::info!(path = %cache_path.display(), "downloading Scryfall oracle_cards bulk");
-        let json = fetch_oracle_cards_remote()?;
-        fs::write(cache_path, &json)
+        let bytes = fetch_oracle_cards_remote()?;
+        let pool = Self::from_bulk_bytes(&bytes)?;
+        fs::write(cache_path, &bytes)
             .with_context(|| format!("writing cache {}", cache_path.display()))?;
-        Self::from_json_str(&json)
+        Ok(pool)
     }
 
     /// Convenience wrapper that defaults `cache_path` to
-    /// `<workspace>/target/scryfall-cache/oracle-cards.json`. The
+    /// `<workspace>/target/scryfall-cache/oracle-cards.jsonl.gz`. The
     /// `target/` dir is gitignored, so the cache file never
-    /// pollutes the working tree.
+    /// pollutes the working tree. A cache from before the JSONL switch
+    /// (`oracle-cards.json` beside it) is used while it is the only one
+    /// there, so a pinned pool stays pinned until it is deleted.
     pub fn load_default() -> Result<Self> {
-        Self::from_cache_or_download(&default_cache_path())
+        let path = default_cache_path();
+        let legacy = path.with_file_name(LEGACY_CACHE_FILE);
+        if !path.exists() && legacy.exists() {
+            return Self::from_cache_or_download(&legacy);
+        }
+        Self::from_cache_or_download(&path)
     }
 
     // --- query API -------------------------------------------------
@@ -389,9 +440,10 @@ const SCRYFALL_USER_AGENT: &str = concat!(
 );
 
 /// Two-step fetch per Scryfall's API:
-///   1. GET /bulk-data/oracle-cards → returns metadata with download_uri
-///   2. GET that download_uri         → returns the actual JSON array
-fn fetch_oracle_cards_remote() -> Result<String> {
+///   1. GET /bulk-data/oracle-cards → metadata with jsonl_download_uri
+///   2. GET that jsonl_download_uri → the gzipped JSONL dump, returned
+///      still compressed
+fn fetch_oracle_cards_remote() -> Result<Vec<u8>> {
     let agent = ureq::AgentBuilder::new()
         .timeout_connect(Duration::from_secs(10))
         .timeout_read(Duration::from_secs(120))
@@ -413,25 +465,27 @@ fn fetch_oracle_cards_remote() -> Result<String> {
         ));
     }
     tracing::info!(
-        download_uri = %meta.download_uri,
-        updated_at   = %meta.updated_at,
-        size_bytes   = meta.size,
+        jsonl_download_uri = %meta.jsonl_download_uri,
+        updated_at         = %meta.updated_at,
+        compressed_bytes   = meta.compressed_size,
         "resolved Scryfall oracle_cards metadata"
     );
 
-    // Stream the body to a string. The bulk file is tens of MB — fits
-    // in memory comfortably and keeps the control flow simple.
-    let mut body = String::new();
+    // Read the whole body. The compressed file is tens of MB — fits in
+    // memory comfortably and keeps the control flow simple.
+    let mut body = Vec::new();
     agent
-        .get(&meta.download_uri)
-        .set("Accept", "application/json")
+        .get(&meta.jsonl_download_uri)
         .call()
-        .with_context(|| format!("GET {}", meta.download_uri))?
+        .with_context(|| format!("GET {}", meta.jsonl_download_uri))?
         .into_reader()
-        .read_to_string(&mut body)
+        .read_to_end(&mut body)
         .context("reading oracle_cards bulk body")?;
     Ok(body)
 }
+
+/// The cache file name used while Scryfall served a plain JSON array.
+const LEGACY_CACHE_FILE: &str = "oracle-cards.json";
 
 fn default_cache_path() -> PathBuf {
     let manifest = env!("CARGO_MANIFEST_DIR");
@@ -439,7 +493,7 @@ fn default_cache_path() -> PathBuf {
         .join("..")
         .join("target")
         .join("scryfall-cache")
-        .join("oracle-cards.json")
+        .join("oracle-cards.jsonl.gz")
 }
 
 // =============================================================================
@@ -643,7 +697,88 @@ mod tests {
         let p = default_cache_path();
         let s = p.to_string_lossy();
         assert!(s.contains("target"), "cache path must live under target/: {s}");
-        assert!(s.ends_with("oracle-cards.json"), "cache filename: {s}");
+        assert!(s.ends_with("oracle-cards.jsonl.gz"), "cache filename: {s}");
+    }
+
+    /// Five rows of Scryfall's `oracle_cards` dump as served on
+    /// 2026-10-06 (`oracle-cards-20261006210159.jsonl.gz`), verbatim and
+    /// re-gzipped with `gzip -n -9`: a creature, an instant, a basic
+    /// land, an adventure and a transform card.
+    const SAMPLE_JSONL_GZ: &[u8] = include_bytes!("../testdata/oracle-cards-sample.jsonl.gz");
+
+    /// `GET /bulk-data/oracle-cards`, recorded 2026-10-06.
+    const RECORDED_META: &str = r#"{"object":"bulk_data","id":"27bf3214-1271-490b-bdfe-c0be6c23d02e","type":"oracle_cards","updated_at":"2026-10-06T21:01:59.184+00:00","uri":"https://api.scryfall.com/bulk-data/27bf3214-1271-490b-bdfe-c0be6c23d02e","name":"Oracle Cards","description":"A JSON file containing one Scryfall card object for each Oracle ID on Scryfall. The chosen sets for the cards are an attempt to return the most up-to-date recognizable version of the card.","jsonl_download_uri":"https://data.scryfall.io/oracle-cards/oracle-cards-20261006210159.jsonl.gz","compressed_size":24597036}"#;
+
+    fn sample_jsonl() -> String {
+        let mut text = String::new();
+        MultiGzDecoder::new(SAMPLE_JSONL_GZ).read_to_string(&mut text).unwrap();
+        text
+    }
+
+    #[test]
+    fn bulk_metadata_names_the_jsonl_download() {
+        let meta: BulkDataEntry = serde_json::from_str(RECORDED_META).expect("metadata parses");
+        assert_eq!(meta.kind, "oracle_cards");
+        assert!(meta.jsonl_download_uri.ends_with(".jsonl.gz"), "{}", meta.jsonl_download_uri);
+        assert_eq!(meta.compressed_size, 24_597_036);
+    }
+
+    #[test]
+    fn parses_gzipped_jsonl_sample() {
+        let pool = ScryfallPool::from_bulk_bytes(SAMPLE_JSONL_GZ).expect("sample parses");
+        assert_eq!(pool.len(), 5);
+        let bears = pool.find_by_name("Grizzly Bears").expect("bears");
+        assert!(bears.is_creature());
+        assert_eq!(bears.front_power().as_deref(), Some("2"));
+        assert!(pool.find_by_name("Lightning Bolt").unwrap().is_instant());
+        assert!(pool.find_by_name("Mountain").unwrap().is_land());
+        let giant = pool.find_by_name("Bonecrusher Giant // Stomp").expect("adventure");
+        assert!(giant.is_adventure_layout());
+        assert_eq!(giant.card_faces.as_ref().map(Vec::len), Some(2));
+        let delver = pool
+            .find_by_name("Delver of Secrets // Insectile Aberration")
+            .expect("transform");
+        assert!(delver.is_transform_layout());
+        assert_eq!(delver.front_mana_cost().as_deref(), Some("{U}"));
+    }
+
+    #[test]
+    fn bulk_bytes_accept_every_cache_form() {
+        let from_gz = ScryfallPool::from_bulk_bytes(SAMPLE_JSONL_GZ).unwrap();
+        let jsonl = sample_jsonl();
+        let from_jsonl = ScryfallPool::from_bulk_bytes(jsonl.as_bytes()).unwrap();
+        let array = format!("[{}]", jsonl.lines().collect::<Vec<_>>().join(","));
+        let from_array = ScryfallPool::from_bulk_bytes(array.as_bytes()).unwrap();
+        let names = |p: &ScryfallPool| p.iter().map(|c| c.name.clone()).collect::<Vec<_>>();
+        assert_eq!(names(&from_gz), names(&from_jsonl));
+        assert_eq!(names(&from_gz), names(&from_array));
+        assert_eq!(from_gz.len(), 5);
+    }
+
+    #[test]
+    fn jsonl_error_names_the_line() {
+        let mut jsonl = sample_jsonl();
+        jsonl.push_str("{\"name\": \"no oracle id\"}\n");
+        let err = ScryfallPool::from_bulk_bytes(jsonl.as_bytes()).unwrap_err();
+        assert!(format!("{err:#}").contains("JSONL line 6"), "{err:#}");
+    }
+
+    #[test]
+    fn truncated_gzip_is_refused() {
+        // Every line is intact; only the CRC and length trailer is missing.
+        let cut = &SAMPLE_JSONL_GZ[..SAMPLE_JSONL_GZ.len() - 8];
+        assert!(ScryfallPool::from_bulk_bytes(cut).is_err());
+    }
+
+    #[test]
+    fn cache_holding_the_old_json_array_still_loads() {
+        let dir = std::env::temp_dir().join(format!("arcana-gen-legacy-cache-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join(LEGACY_CACHE_FILE);
+        std::fs::write(&path, FIXTURE).unwrap();
+        let pool = ScryfallPool::from_cache_or_download(&path).expect("legacy cache loads");
+        assert_eq!(pool.len(), 4);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// Live Scryfall fetch. Ignored by default — run manually with
@@ -652,7 +787,7 @@ mod tests {
     #[test]
     #[ignore]
     fn scryfall_live_download_and_cache() {
-        let tmp = std::env::temp_dir().join("arcana-gen-scryfall-test.json");
+        let tmp = std::env::temp_dir().join("arcana-gen-scryfall-test.jsonl.gz");
         let _ = std::fs::remove_file(&tmp);
         let pool = ScryfallPool::from_cache_or_download(&tmp).expect("download");
         assert!(pool.len() > 1000, "expected real Scryfall pool, got {}", pool.len());

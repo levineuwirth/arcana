@@ -224,6 +224,79 @@ impl BulkCard {
     }
 }
 
+/// The `oracle_cards` download in Scryfall's `/bulk-data` index. Scryfall
+/// serves the dump only as gzipped JSONL, under `jsonl_download_uri`; the
+/// plain-array `download_uri` is gone.
+fn oracle_cards_jsonl_uri(idx: &serde_json::Value) -> Option<String> {
+    idx.get("data")?.as_array()?.iter()
+        .find(|o| o.get("type").and_then(|t| t.as_str()) == Some("oracle_cards"))?
+        .get("jsonl_download_uri")?.as_str().map(str::to_string)
+}
+
+/// Lowercased name → art URLs from the bulk file as served: gzipped JSON
+/// Lines, one card object per line, decoded a line at a time.
+fn bulk_map_from_jsonl_gz(gz: &[u8]) -> Result<std::collections::HashMap<String, ArtUrls>, String> {
+    use std::io::BufRead;
+    let mut map = std::collections::HashMap::new();
+    let lines = std::io::BufReader::new(flate2::read::MultiGzDecoder::new(gz)).lines();
+    for (i, line) in lines.enumerate() {
+        let line = line.map_err(|e| format!("decompressing the bulk file: {e}"))?;
+        if line.trim().is_empty() { continue; }
+        let c: BulkCard = serde_json::from_str(&line)
+            .map_err(|e| format!("bulk file line {}: {e}", i + 1))?;
+        let key = c.name.to_lowercase();
+        let urls = c.best_urls();
+        if !urls.is_empty() {
+            map.entry(key).or_insert(urls);
+        }
+    }
+    if map.is_empty() {
+        return Err("the bulk file held no card images".into());
+    }
+    Ok(map)
+}
+
+#[cfg(test)]
+mod art_bulk_tests {
+    use super::*;
+
+    /// Five rows of Scryfall's `oracle_cards` file as served on 2026-10-06,
+    /// shared with arcana-gen's loader tests.
+    const SAMPLE_JSONL_GZ: &[u8] =
+        include_bytes!("../../arcana-gen/testdata/oracle-cards-sample.jsonl.gz");
+
+    #[test]
+    fn index_names_the_jsonl_download() {
+        // `GET /bulk-data` as recorded 2026-10-06, trimmed to two entries.
+        let idx: serde_json::Value = serde_json::from_str(r#"{"object":"list","has_more":false,"data":[
+            {"object":"bulk_data","type":"oracle_cards","updated_at":"2026-10-06T21:01:59.184+00:00","name":"Oracle Cards","jsonl_download_uri":"https://data.scryfall.io/oracle-cards/oracle-cards-20261006210159.jsonl.gz","compressed_size":24597036},
+            {"object":"bulk_data","type":"unique_artwork","updated_at":"2026-10-06T21:02:33.960+00:00","name":"Unique Artwork","jsonl_download_uri":"https://data.scryfall.io/unique-artwork/unique-artwork-20261006210233.jsonl.gz","compressed_size":37840653}
+        ]}"#).unwrap();
+        assert_eq!(
+            oracle_cards_jsonl_uri(&idx).as_deref(),
+            Some("https://data.scryfall.io/oracle-cards/oracle-cards-20261006210159.jsonl.gz"),
+        );
+    }
+
+    #[test]
+    fn bulk_map_reads_the_gzipped_jsonl_file() {
+        let map = bulk_map_from_jsonl_gz(SAMPLE_JSONL_GZ).expect("sample parses");
+        assert_eq!(map.len(), 5);
+        let bears = &map["grizzly bears"];
+        assert!(bears.full.as_deref().is_some_and(|u| u.contains("/normal/")));
+        assert!(bears.art.as_deref().is_some_and(|u| u.contains("/art_crop/")));
+        // A transform card has no top-level image; its front face's is used.
+        let delver = &map["delver of secrets // insectile aberration"];
+        assert!(delver.full.as_deref().is_some_and(|u| u.contains("/front/")));
+    }
+
+    #[test]
+    fn bulk_map_refuses_a_truncated_file() {
+        // Every line is intact; only the CRC and length trailer is missing.
+        assert!(bulk_map_from_jsonl_gz(&SAMPLE_JSONL_GZ[..SAMPLE_JSONL_GZ.len() - 8]).is_err());
+    }
+}
+
 /// Live progress of the bulk art download (see `post_art_warm_all`).
 #[derive(Default)]
 struct WarmState {
@@ -270,12 +343,16 @@ impl ArtCache {
             return true;
         }
         match self.load_bulk().await {
-            Some(map) => {
+            Ok(map) => {
                 self.save_bulk_to_disk(&map).await;
                 *self.bulk.write().await = Some(map);
                 true
             }
-            None => false,
+            Err(e) => {
+                eprintln!("arcana-web: no Scryfall bulk art map ({e}); \
+                           card art falls back to the rate-limited API");
+                false
+            }
         }
     }
 
@@ -310,27 +387,25 @@ impl ArtCache {
         }
         let _ = tokio::fs::write(self.map_path(), s).await;
     }
-    async fn load_bulk(&self) -> Option<std::collections::HashMap<String, ArtUrls>> {
+    async fn load_bulk(&self) -> Result<std::collections::HashMap<String, ArtUrls>, String> {
         // 1) bulk-data index → the oracle_cards download URI (on the CDN).
-        let idx_bytes = self.client
-            .get("https://api.scryfall.com/bulk-data").send().await.ok()?
-            .bytes().await.ok()?;
-        let idx: serde_json::Value = serde_json::from_slice(&idx_bytes).ok()?;
-        let uri = idx.get("data")?.as_array()?.iter()
-            .find(|o| o.get("type").and_then(|t| t.as_str()) == Some("oracle_cards"))?
-            .get("download_uri")?.as_str()?.to_string();
-        // 2) the bulk JSON (one big CDN download), parsed into name→image URL.
-        let bytes = self.client.get(&uri).send().await.ok()?.bytes().await.ok()?;
-        let cards: Vec<BulkCard> = serde_json::from_slice(&bytes).ok()?;
-        let mut map = std::collections::HashMap::with_capacity(cards.len());
-        for c in cards {
-            let key = c.name.to_lowercase();
-            let urls = c.best_urls();
-            if !urls.is_empty() {
-                map.entry(key).or_insert(urls);
-            }
-        }
-        Some(map)
+        const INDEX: &str = "https://api.scryfall.com/bulk-data";
+        let idx_bytes = self.client.get(INDEX).send().await
+            .and_then(|r| r.error_for_status())
+            .map_err(|e| format!("{INDEX}: {e}"))?
+            .bytes().await.map_err(|e| format!("{INDEX}: {e}"))?;
+        let idx: serde_json::Value = serde_json::from_slice(&idx_bytes)
+            .map_err(|e| format!("{INDEX}: {e}"))?;
+        let uri = oracle_cards_jsonl_uri(&idx)
+            .ok_or_else(|| format!("{INDEX} names no oracle_cards jsonl_download_uri"))?;
+        // 2) the bulk file (one big CDN download), parsed into name→image URL
+        //    on a blocking thread: it is ~200 MB once decompressed.
+        let bytes = self.client.get(&uri).send().await
+            .and_then(|r| r.error_for_status())
+            .map_err(|e| format!("{uri}: {e}"))?
+            .bytes().await.map_err(|e| format!("{uri}: {e}"))?;
+        tokio::task::spawn_blocking(move || bulk_map_from_jsonl_gz(&bytes))
+            .await.map_err(|e| e.to_string())?
     }
 
     fn warm_status(&self) -> WarmStatus {

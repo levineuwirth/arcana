@@ -950,7 +950,7 @@ mod tests {
     #[ignore]
     fn classifier_live_tier_distribution() {
         use crate::scryfall::ScryfallPool;
-        let tmp = std::env::temp_dir().join("arcana-gen-classify-test.json");
+        let tmp = std::env::temp_dir().join("arcana-gen-classify-test.jsonl.gz");
         let pool = ScryfallPool::from_cache_or_download(&tmp).expect("download");
 
         let mut counts = [0usize; 5];
