@@ -2374,6 +2374,9 @@ fn combat_decision_pending(state: &GameState) -> bool {
 /// when the loop iteration started, so each pass makes forward
 /// progress.
 fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
+    // Snapshots held for abilities that triggered in earlier sweeps
+    // go once nothing is left to resolve them.
+    state.release_held_lki();
     for _ in 0..MAX_SETTLE_ITERATIONS {
         // 1. SBAs — CR 704.3.
         apply_state_based_actions(state);
@@ -2419,7 +2422,7 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
         let end = state.event_log.len();
         if start == end {
             // Nothing new happened; scanner has nothing to do.
-            state.clear_lki();
+            state.retire_lki();
             return;
         }
         let new_events: Vec<crate::events::GameEvent> =
@@ -2428,10 +2431,11 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
 
         let pending = collect_pending_triggers(state, registry, &new_events);
 
-        // LKI served this pass's trigger scan; drop it before we
-        // head into the next iteration's SBAs so subsequent moves
-        // don't accumulate on top of stale entries.
-        state.clear_lki();
+        // LKI served this pass's trigger scan as a source list; retire
+        // it before the next iteration's SBAs so later moves are not
+        // scanned against stale entries. The abilities just found keep
+        // reading it from `lki_held` until they resolve.
+        state.retire_lki();
 
         if pending.is_empty() { return; }
 
@@ -3747,8 +3751,7 @@ fn resolution_effects(
                     state, entry.source, *trigger_id);
             }
             let source = entry.source;
-            let Some(obj) = state.objects.get(source)
-                .or_else(|| state.lki.get(&source))
+            let Some(obj) = state.object_or_lki(source)
                 else { return Vec::new(); };
             let pt = crate::triggers::PendingTrigger {
                 source,

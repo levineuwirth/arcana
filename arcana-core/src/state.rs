@@ -176,12 +176,22 @@ pub struct GameState {
     /// by the old id.
     ///
     /// Populated by [`Self::move_object_to_zone`] just before the
-    /// arena swaps in the re-id'd object. Cleared at the top of each
-    /// trigger-sweep iteration in
-    /// [`crate::engine::run_sba_and_triggers`] — one full SBA+trigger
-    /// pass is the CR-mandated retention window for LKI used by
-    /// triggers that watch zone changes.
+    /// arena swaps in the re-id'd object. Holds only the current
+    /// sweep's moves: [`crate::engine::run_sba_and_triggers`] scans
+    /// these entries as trigger sources, then retires them into
+    /// [`Self::lki_held`] — one full SBA+trigger pass is the
+    /// CR-mandated retention window for LKI used by triggers that
+    /// watch zone changes.
     pub lki: HashMap<ObjectId, GameObject>,
+    /// LKI snapshots from earlier sweeps, kept so an ability that
+    /// triggered on a zone change can still read its source and the
+    /// moved object when it is put on the stack and when it resolves
+    /// (CR 608.2h): a dies trigger's source has left the battlefield
+    /// by then. Never scanned for trigger sources. Read through
+    /// [`Self::lki`] and [`Self::object_or_lki`]; released once the
+    /// stack, the trigger queue and any parked resolution are all
+    /// empty.
+    pub lki_held: HashMap<ObjectId, GameObject>,
     /// CR 606.3 — the set of planeswalkers whose controller has
     /// activated a loyalty ability this turn. Each PW can have at most
     /// one loyalty ability activated by its controller per turn; this
@@ -311,6 +321,7 @@ impl GameState {
             currently_resolving: None,
             pending_choice_follow_up: None,
             lki: HashMap::default(),
+            lki_held: HashMap::default(),
             loyalty_activated_this_turn: crate::collections::HashSet::default(),
             abilities_activated_this_turn: crate::collections::HashSet::default(),
             turn_event_log_start: 0,
@@ -510,12 +521,13 @@ impl GameState {
         self.lki.insert(obj.id, obj);
     }
 
-    /// Fetch the LKI snapshot for `id`, if any. Used by trigger
-    /// matching, replacement-effect classification, and any other code
-    /// path that needs the pre-transition characteristics of an object
-    /// that has already moved zones.
+    /// Fetch the LKI snapshot for `id`, if any, from this sweep's
+    /// moves or from [`Self::lki_held`]. Used by trigger matching,
+    /// replacement-effect classification, trigger resolution, and any
+    /// other code path that needs the pre-transition characteristics
+    /// of an object that has already moved zones.
     pub fn lki(&self, id: ObjectId) -> Option<&GameObject> {
-        self.lki.get(&id)
+        self.lki.get(&id).or_else(|| self.lki_held.get(&id))
     }
 
     /// Live arena entry first; LKI snapshot as fallback. Preferred
@@ -525,12 +537,32 @@ impl GameState {
         self.objects.get(id).or_else(|| self.lki(id))
     }
 
-    /// Clear the LKI table. Called at the top of each settle pass in
-    /// [`crate::engine::run_sba_and_triggers`] — one SBA-plus-trigger
-    /// sweep is the retention window CR requires for leaves-the-
-    /// battlefield triggers.
+    /// End this sweep's LKI window: move [`Self::lki`] into
+    /// [`Self::lki_held`]. Called by
+    /// [`crate::engine::run_sba_and_triggers`] once the sweep's
+    /// trigger scan is done — one SBA-plus-trigger sweep is the
+    /// retention window CR requires for leaves-the-battlefield
+    /// triggers, but the abilities it found still read the snapshots.
+    pub fn retire_lki(&mut self) {
+        self.lki_held.extend(self.lki.drain());
+    }
+
+    /// Drop [`Self::lki_held`] once nothing can read it: no stack
+    /// entry, no queued trigger, no parked resolution or choice.
+    pub fn release_held_lki(&mut self) {
+        if self.stack_is_empty()
+            && self.pending_trigger_queue.is_empty()
+            && self.pending_resolution.is_none()
+            && self.pending_choice.is_none()
+        {
+            self.lki_held.clear();
+        }
+    }
+
+    /// Clear both LKI tables. Called when the game ends.
     pub fn clear_lki(&mut self) {
         self.lki.clear();
+        self.lki_held.clear();
     }
 
     // --- ETB lifecycle hook -------------------------------------------------

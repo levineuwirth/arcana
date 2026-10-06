@@ -311,7 +311,7 @@ pub fn creatures_of_subtype_died_this_turn(
             // creature just left the battlefield).
             let chars = state.objects.get(*object_id)
                 .map(|o| &o.characteristics)
-                .or_else(|| state.lki.get(object_id).map(|o| &o.characteristics));
+                .or_else(|| state.lki(*object_id).map(|o| &o.characteristics));
             if let Some(c) = chars {
                 if c.subtypes.contains(sym) { n += 1; }
             }
@@ -334,7 +334,7 @@ pub fn spells_cast_this_turn(
         if let crate::events::GameEvent::SpellCast { object_id, .. } = ev {
             // Look the spell up via arena or LKI to inspect chars.
             let obj = state.objects.get(*object_id)
-                .or_else(|| state.lki.get(object_id));
+                .or_else(|| state.lki(*object_id));
             if let Some(o) = obj {
                 if filter.matches(o, state, you) { n += 1; }
             }
@@ -359,7 +359,7 @@ pub fn spells_cast_this_turn_by(
         if let crate::events::GameEvent::SpellCast { object_id, controller, .. } = ev {
             if *controller != caster { continue; }
             let obj = state.objects.get(*object_id)
-                .or_else(|| state.lki.get(object_id));
+                .or_else(|| state.lki(*object_id));
             if let Some(o) = obj {
                 if filter.matches(o, state, caster) { n += 1; }
             }
@@ -456,7 +456,7 @@ pub fn player_attacked_this_turn(state: &GameState, player: PlayerId) -> bool {
     this_turn_events(state).iter().any(|ev| {
         if let crate::events::GameEvent::CreatureAttacks { attacker, .. } = ev {
             state.objects.get(*attacker)
-                .or_else(|| state.lki.get(attacker))
+                .or_else(|| state.lki(*attacker))
                 .is_some_and(|o| o.controller == player)
         } else {
             false
@@ -472,7 +472,7 @@ pub fn permanent_left_battlefield_this_turn(state: &GameState, player: PlayerId)
     this_turn_events(state).iter().any(|ev| {
         if let crate::events::GameEvent::LeavesBattlefield { object_id, .. } = ev {
             state.objects.get(*object_id)
-                .or_else(|| state.lki.get(object_id))
+                .or_else(|| state.lki(*object_id))
                 .is_some_and(|o| o.controller == player)
         } else {
             false
@@ -538,7 +538,7 @@ pub fn entered_this_turn_matching(
     for ev in this_turn_events(state) {
         if let crate::events::GameEvent::EntersBattlefield { object_id, .. } = ev {
             let obj = state.objects.get(*object_id)
-                .or_else(|| state.lki.get(object_id));
+                .or_else(|| state.lki(*object_id));
             if let Some(o) = obj {
                 if filter.matches(o, state, you) { n += 1; }
             }
@@ -665,7 +665,7 @@ pub fn creatures_died_this_turn_controlled_by(state: &GameState, player: PlayerI
     if !valid(state, player) { return 0; }
     this_turn_events(state).iter().filter(|ev| match ev {
         crate::events::GameEvent::Dies { object_id } => {
-            state.objects.get(*object_id).or_else(|| state.lki.get(object_id))
+            state.objects.get(*object_id).or_else(|| state.lki(*object_id))
                 .is_some_and(|o| o.controller == player)
         }
         _ => false,
