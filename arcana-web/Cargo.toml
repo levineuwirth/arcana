@@ -2,6 +2,7 @@
 name = "arcana-web"
 version = "0.1.0"
 edition = "2021"
+rust-version.workspace = true
 description = "Axum web/server GUI for human play against a bot — MVP web frontend."
 
 # Split into a lib (testable game-driving core) + a thin binary (HTTP wiring) so

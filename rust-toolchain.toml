@@ -1,0 +1,7 @@
+# Pinned so that every machine, CI included, builds with the same compiler.
+# rustup installs it on the first cargo call. Bump deliberately, with a
+# full workspace test run in the same commit.
+[toolchain]
+channel = "1.99.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"
