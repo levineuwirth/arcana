@@ -269,9 +269,9 @@
     personalities: [],
   };
 
-  // ---- localStorage helpers (shared format with the deckbuilder) ----
-  function loadProfileName() { try { return JSON.parse(localStorage.getItem("arcana.profile") || "{}").name || ""; } catch { return ""; } }
-  function saveProfileName(name) { try { localStorage.setItem("arcana.profile", JSON.stringify({ name })); } catch {} }
+  // ---- player name (stored by app.js, apart from the deck-sync id) ----
+  function loadProfileName() { return A.Profile.name(); }
+  function saveProfileName(name) { A.Profile.setName(name); }
 
   function renderPips(into, letters) {
     into.innerHTML = "";

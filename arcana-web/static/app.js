@@ -548,14 +548,43 @@
      local mutation) is the conflict guard: the server refuses a stale push
      with a 409 carrying its newer copy, which we adopt (last-write-wins — no
      merge). `arcana-decks-synced` fires after adopting a server copy so open
-     pages can re-render; `Decks.ready` resolves after the initial pull. */
+     pages can re-render; `Decks.ready` resolves after the initial pull. A
+     failed sync is logged and fires `arcana-decks-sync-error` (detail:
+     {status, message}) instead of failing silently.
+
+     The sync id lives under `arcana.profile` and must pass the server's
+     check (8-64 of [A-Za-z0-9-]); the Stage's player name lives under
+     `arcana.playerName`. The Stage once wrote {"name":…} over the id, so a
+     browser holding that shape has lost its id and orphaned whatever the
+     server stored under it: it keeps the name and starts a new id. */
   const PROFILE_KEY = "arcana.profile";
+  const NAME_KEY = "arcana.playerName";
+  const PROFILE_ID_RE = /^[A-Za-z0-9-]{8,64}$/;
   function profileId() {
     let p = null;
     try { p = localStorage.getItem(PROFILE_KEY); } catch {}
+    if (p && !PROFILE_ID_RE.test(p)) {
+      let legacyName = "";
+      try { legacyName = JSON.parse(p).name || ""; } catch {}
+      try {
+        if (legacyName && !localStorage.getItem(NAME_KEY)) localStorage.setItem(NAME_KEY, legacyName);
+      } catch {}
+      console.warn("arcana: the deck-sync profile id was overwritten (" + p + "); " +
+        "the old id is lost and any decks the server stored under it are orphaned. " +
+        "Starting a new id; this browser's decks will sync under it.");
+      p = null;
+    }
     if (!p) { p = genId(); try { localStorage.setItem(PROFILE_KEY, p); } catch {} }
     return p;
   }
+  function playerName() {
+    profileId(); // rescue a name left under the id key first
+    try { return localStorage.getItem(NAME_KEY) || ""; } catch { return ""; }
+  }
+  function setPlayerName(name) {
+    try { localStorage.setItem(NAME_KEY, name); } catch {}
+  }
+  Arcana.Profile = { id: profileId, name: playerName, setName: setPlayerName };
   let syncOff = false;    // server said 503 (sync disabled) — stop trying
   let syncTimer = null;
   const syncUrl = () => "/decks/store?profile=" + encodeURIComponent(profileId());
@@ -582,7 +611,18 @@
       });
       if (r.status === 503) syncOff = true;
       else if (r.status === 409) adoptServer(await r.text());
+      else if (!r.ok) await syncFailed("PUT", r);
     } catch {}
+  }
+  /** A refused sync is the server telling us something (a bad profile id,
+      an oversized store): say so rather than dropping it. */
+  async function syncFailed(method, r) {
+    let message = "";
+    try { message = (await r.text()).trim(); } catch {}
+    console.error("arcana: deck sync " + method + " refused: HTTP " + r.status +
+      (message ? " — " + message : ""));
+    window.dispatchEvent(new CustomEvent("arcana-decks-sync-error",
+      { detail: { status: r.status, message } }));
   }
   function scheduleSync() {
     if (syncOff) return;
@@ -598,7 +638,7 @@
         if (Object.keys(readStore().decks).length) pushStore();
         return;
       }
-      if (!r.ok) return;
+      if (!r.ok) { await syncFailed("GET", r); return; }
       if (!adoptServer(await r.text())) {
         // Local is as new or newer (e.g. edits made while the server was
         // down) — reconcile by pushing.
