@@ -4,9 +4,9 @@ A *Magic: The Gathering* rules engine in Rust — a rules-accurate core, a
 generated card catalog of over 20,000 cards, a playable web client, and a
 frozen line of RL research that motivated the whole project.
 
-For current project status and the active work plan, see
-[`docs/audit-2026-08.md`](docs/audit-2026-08.md) — it supersedes the
-status/roadmap docs below it in this README.
+For current project status see the latest dated audit under
+[`docs/audits/`](docs/audits/); it supersedes the status/roadmap docs
+named below.
 
 ## What's here
 
@@ -124,11 +124,12 @@ distillation) is noted in [`docs/audit-2026-08.md`](docs/audit-2026-08.md).
 
 ## Status & roadmap
 
-Current status, known issues, and the active work plan live in
-[`docs/audit-2026-08.md`](docs/audit-2026-08.md) — treat it as the
-up-to-date source of truth. `STATUS_2026-04-21.md`, `KEYWORDS.md`, and
-`ROADMAP.md` are earlier snapshots kept for history; each now carries a
-banner pointing here.
+The most recent audit is [`docs/audits/2026-10-06.md`](docs/audits/2026-10-06.md):
+what works, what is broken, and what the evidence says about each
+direction. Dated audits under `docs/audits/` are the status record; the
+active work plan is maintained outside the repository and cites them.
+`docs/audit-2026-08.md`, `STATUS_2026-04-21.md`, `KEYWORDS.md`, and
+`ROADMAP.md` are earlier snapshots kept for history.
 
 ## Author
 
