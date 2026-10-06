@@ -35,8 +35,12 @@
     border-radius: var(--radius-panel); background: var(--bg-offset);
   }
   .phasebar.you-turn { border-left-color: var(--text); }
-  .arrows { position: fixed; inset: 0; z-index: 110; pointer-events: none; }
-  .arrows path { fill: none; stroke-width: 3; opacity: .92; stroke-linecap: round; }
+  /* An <svg> is a replaced element: inset alone leaves it at its intrinsic
+     300x150, clipping every arrow outside the top-left corner. */
+  .arrows { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 110; pointer-events: none; }
+  /* The drawn arrows only: a rule matching the <marker> paths too would
+     override their fill attribute and leave every arrowhead empty. */
+  #arrow-layer path { fill: none; stroke-width: 3; opacity: .92; stroke-linecap: round; }
 
   /* board-click targeting */
   .ac-card.targeting-src .ac-frame { box-shadow: 0 0 0 3px var(--tgt, #caa45a); }
@@ -2191,8 +2195,6 @@ function renderArrows() {
   }
   drawTargetingArrows(layer); // phase 2: source → hovered/candidate target
 }
-// Placeholder filled in by the targeting feature.
-function drawTargetingArrows(_layer) {}
 
 function renderAll() {
   const resp = G.resp;
