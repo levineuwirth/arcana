@@ -60,7 +60,7 @@ use arcana_web::{
     StateResponse, Suggestion,
 };
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
-use axum::extract::{ConnectInfo, Query, Request, State};
+use axum::extract::{ConnectInfo, DefaultBodyLimit, Query, Request, State};
 use axum::http::StatusCode;
 use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Response};
@@ -1518,8 +1518,11 @@ async fn main() {
         .route("/search", post(post_search))
         // Networked-match lobby + per-seat play (open on a LAN — that's the point).
         // Per-profile deck-store sync (Phase 2.2) — open on the LAN like the
-        // lobby: the unguessable profile id is the capability.
-        .route("/decks/store", get(get_deck_store).put(put_deck_store))
+        // lobby: the unguessable profile id is the capability. The body limit
+        // is the store's own cap, so an oversized store is refused with 413
+        // before it is buffered (axum's default would refuse at 2 MiB).
+        .route("/decks/store", get(get_deck_store).put(put_deck_store)
+            .layer(DefaultBodyLimit::max(arcana_web::deckstore::MAX_STORE_BYTES)))
         .route("/lobby/create", post(lobby_create))
         .route("/lobby/join", post(lobby_join))
         .route("/lobby/info", get(lobby_info))

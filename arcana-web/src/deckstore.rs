@@ -25,7 +25,9 @@ use std::path::PathBuf;
 
 /// Upper bound on a stored envelope. The store carries full `CardInfo` blobs
 /// per deck entry (so any page renders without a round-trip), which is bulky
-/// but bounded: even a hundred 250-card decks fit comfortably.
+/// but bounded: even a hundred 250-card decks fit comfortably. The HTTP route
+/// enforces it as its body limit (an oversized PUT gets 413 and is never
+/// buffered); [`DeckStore::save`] checks it again for direct callers.
 pub const MAX_STORE_BYTES: usize = 8 * 1024 * 1024;
 
 /// Envelope metadata the server actually reads; everything else rides along
