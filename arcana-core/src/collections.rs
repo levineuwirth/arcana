@@ -35,42 +35,108 @@
 pub use rustc_hash::FxHashMap as HashMap;
 pub use rustc_hash::FxHashSet as HashSet;
 
-/// Byte offsets at which `text` names a standard-library hash collection
-/// through `std::collections`: a direct path (`std::collections::HashMap`),
-/// a brace group that includes one (`std::collections::{HashMap, HashSet}`,
-/// across lines or not), or a glob (`std::collections::*`). Paths into
-/// `hash_map`/`hash_set` submodules (`DefaultHasher`, `Entry`) are not
-/// collections and are allowed.
+/// Byte offsets of every path in `text` that reaches a standard-library
+/// hash collection through `std`. Each `std` token that starts a path is
+/// expanded as a use-tree (`std::{collections::{HashMap, hash_map::Entry}}`
+/// becomes two full paths) and each full path is judged by its segments:
+/// `std::collections::HashMap`, `::HashSet`, `::*`, the `hash_map` and
+/// `hash_set` submodules' `HashMap`/`HashSet`/`*`, and any import that
+/// stops at the `collections`, `hash_map` or `hash_set` module itself
+/// (which would let a later `hash_map::HashMap` escape) are offenders;
+/// `std::*` is too. `hash_map::DefaultHasher`, `::Entry`, `::RandomState`
+/// and the ordered collections are not.
 #[cfg(test)]
 fn std_hash_collection_offsets(text: &str) -> Vec<usize> {
-    const PREFIX: &str = "std::collections::";
-    let mut out = Vec::new();
-    let mut from = 0;
-    while let Some(rel) = text[from..].find(PREFIX) {
-        let at = from + rel;
-        let rest = &text[at + PREFIX.len()..];
-        let offending = if rest.starts_with("HashMap") || rest.starts_with("HashSet") || rest.starts_with('*') {
-            true
-        } else if let Some(body) = rest.strip_prefix('{') {
-            // Take the brace group, nested braces included, and look for
-            // the collection names as whole tokens inside it.
-            let mut depth = 1usize;
-            let mut end = body.len();
-            for (i, c) in body.char_indices() {
-                match c {
-                    '{' => depth += 1,
-                    '}' => { depth -= 1; if depth == 0 { end = i; break; } }
-                    _ => {}
+    #[derive(Clone, Copy, PartialEq)]
+    enum Tok<'a> { Ident(&'a str), PathSep, Open, Close, Comma, Star, Other }
+    let bytes = text.as_bytes();
+    let mut toks: Vec<(Tok, usize)> = Vec::new();
+    let mut i = 0;
+    while i < bytes.len() {
+        let c = bytes[i] as char;
+        if c.is_ascii_alphabetic() || c == '_' {
+            let st = i;
+            while i < bytes.len() && ((bytes[i] as char).is_ascii_alphanumeric() || bytes[i] == b'_') { i += 1; }
+            toks.push((Tok::Ident(&text[st..i]), st));
+            continue;
+        }
+        if c.is_ascii_digit() {
+            // a digit run glued to a preceding identifier was consumed above;
+            // a bare number is not part of any path
+            while i < bytes.len() && (bytes[i] as char).is_ascii_alphanumeric() { i += 1; }
+            toks.push((Tok::Other, i));
+            continue;
+        }
+        if c.is_whitespace() { i += 1; continue; }
+        if bytes[i..].starts_with(b"::") { toks.push((Tok::PathSep, i)); i += 2; continue; }
+        toks.push((match c { '{' => Tok::Open, '}' => Tok::Close, ',' => Tok::Comma, '*' => Tok::Star, _ => Tok::Other }, i));
+        i += 1;
+    }
+
+    // Parse a path starting at `at`; return its flattened segment lists
+    // and the index after it. A brace group ends the path.
+    fn parse_path<'a>(toks: &[(Tok<'a>, usize)], mut at: usize) -> (Vec<Vec<&'a str>>, usize) {
+        let mut prefix: Vec<&'a str> = Vec::new();
+        loop {
+            match toks.get(at).map(|t| t.0) {
+                Some(Tok::Ident(s)) => { prefix.push(s); at += 1; }
+                Some(Tok::Star) => { prefix.push("*"); at += 1; return (vec![prefix], at); }
+                Some(Tok::Open) => {
+                    at += 1;
+                    let mut out = Vec::new();
+                    loop {
+                        match toks.get(at).map(|t| t.0) {
+                            Some(Tok::Close) => { at += 1; break; }
+                            Some(Tok::Comma) => { at += 1; }
+                            Some(_) => {
+                                let (subs, next) = parse_path(toks, at);
+                                if next == at { at += 1; continue; } // unparseable token: skip it
+                                at = next;
+                                for sub in subs {
+                                    let mut full = prefix.clone();
+                                    full.extend(sub);
+                                    out.push(full);
+                                }
+                            }
+                            None => break,
+                        }
+                    }
+                    return (out, at);
                 }
+                _ => return (if prefix.is_empty() { Vec::new() } else { vec![prefix] }, at),
             }
-            body[..end]
-                .split(|c: char| !(c.is_alphanumeric() || c == '_'))
-                .any(|tok| tok == "HashMap" || tok == "HashSet")
+            if toks.get(at).map(|t| t.0) == Some(Tok::PathSep) { at += 1; } else { return (vec![prefix], at); }
+        }
+    }
+
+    fn offends(path: &[&str]) -> bool {
+        if path.first() != Some(&"std") { return false; }
+        let is_set = |s: &str| s == "HashMap" || s == "HashSet" || s == "*";
+        match path.get(1) {
+            Some(&"*") => true,
+            Some(&"collections") => match path.get(2) {
+                None => true,                                  // `use std::collections;`
+                Some(s) if is_set(s) => true,
+                Some(&"hash_map") | Some(&"hash_set") => match path.get(3) {
+                    None => true,                              // `use std::collections::hash_map;`
+                    Some(s) => is_set(s),
+                },
+                Some(_) => false,                              // BTreeMap, VecDeque, ...
+            },
+            _ => false,
+        }
+    }
+
+    let mut out = Vec::new();
+    let mut at = 0;
+    while at < toks.len() {
+        if toks[at].0 == Tok::Ident("std") && toks.get(at + 1).map(|t| t.0) == Some(Tok::PathSep) {
+            let (paths, next) = parse_path(&toks, at);
+            if paths.iter().any(|p| offends(p)) { out.push(toks[at].1); }
+            at = next.max(at + 1);
         } else {
-            false
-        };
-        if offending { out.push(at); }
-        from = at + PREFIX.len();
+            at += 1;
+        }
     }
     out
 }
@@ -83,28 +149,47 @@ mod tests {
         text[..offset].matches('\n').count() + 1
     }
 
+    fn offends(src: &str) -> bool { !std_hash_collection_offsets(src).is_empty() }
+
     #[test]
     fn scanner_catches_every_import_shape() {
-        let direct = "let m: std::collections::HashMap<u8, u8> = Default::default();";
-        assert_eq!(std_hash_collection_offsets(direct).len(), 1, "direct path");
-        let grouped = "use std::collections::{HashMap, HashSet};";
-        assert_eq!(std_hash_collection_offsets(grouped).len(), 1, "grouped import, the state.rs shape");
-        let multiline = "use std::collections::{\n    BTreeMap,\n    HashSet,\n};";
-        assert_eq!(std_hash_collection_offsets(multiline).len(), 1, "multiline group");
-        let nested = "use std::collections::{hash_map::{Entry, HashMap}, VecDeque};";
-        assert_eq!(std_hash_collection_offsets(nested).len(), 1, "nested group");
-        let glob = "use std::collections::*;";
-        assert_eq!(std_hash_collection_offsets(glob).len(), 1, "glob");
+        for (src, why) in [
+            ("let m: std::collections::HashMap<u8, u8> = Default::default();", "direct path"),
+            ("use std::collections::{HashMap, HashSet};", "grouped import, the state.rs shape"),
+            ("use std::collections::{\n    BTreeMap,\n    HashSet,\n};", "multiline group"),
+            ("use std::collections::{hash_map::{Entry, HashMap}, VecDeque};", "nested group"),
+            ("use std::collections::*;", "glob"),
+            ("use std::collections::{*};", "braced glob"),
+            ("use std::collections::hash_map::HashMap;", "submodule re-export"),
+            ("use std::collections::hash_set::HashSet;", "hash_set re-export"),
+            ("use std::collections::hash_map::*;", "submodule glob"),
+            ("use std::{collections::{HashMap, HashSet}};", "group above collections"),
+            ("use std::{io, collections::hash_map::HashMap};", "mixed group above collections"),
+            ("use std::collections::HashMap as Map;", "rename"),
+            ("use std::collections;", "module import, lets `collections::HashMap` escape"),
+            ("use std::collections::hash_map;", "submodule import, lets `hash_map::HashMap` escape"),
+            ("use std::collections::hash_map as hm;", "renamed submodule import"),
+            ("let m = ::std::collections::HashMap::<u8, u8>::default();", "leading :: and turbofish"),
+            ("use std::*;", "std glob"),
+        ] {
+            assert!(offends(src), "missed: {why}: {src}");
+        }
     }
 
     #[test]
     fn scanner_allows_non_collection_paths() {
-        let hasher = "use std::collections::hash_map::DefaultHasher;";
-        assert!(std_hash_collection_offsets(hasher).is_empty(), "a hasher is not a map");
-        let others = "use std::collections::{BTreeMap, VecDeque, BinaryHeap};";
-        assert!(std_hash_collection_offsets(others).is_empty(), "ordered collections are fine");
-        let alias = "use crate::collections::{HashMap, HashSet};";
-        assert!(std_hash_collection_offsets(alias).is_empty(), "the alias is the point");
+        for (src, why) in [
+            ("use std::collections::hash_map::DefaultHasher;", "a hasher is not a map"),
+            ("use std::collections::hash_map::{DefaultHasher, Entry, RandomState};", "hasher, entry, state"),
+            ("use std::collections::{BTreeMap, VecDeque, BinaryHeap};", "ordered collections"),
+            ("use std::collections::{BTreeMap, hash_map::Entry};", "mixed, nothing hashed"),
+            ("use crate::collections::{HashMap, HashSet};", "the alias is the point"),
+            ("use std::{io, fmt};", "unrelated std group"),
+            ("let my_std = 1; my_std::x", "not the std token"),
+            ("use rustc_hash::FxHashMap as HashMap;", "the alias definition itself"),
+        ] {
+            assert!(!offends(src), "false positive: {why}: {src}");
+        }
     }
 
     /// Every `.rs` file under `src/` except this one is free of the
