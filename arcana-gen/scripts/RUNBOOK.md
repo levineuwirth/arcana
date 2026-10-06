@@ -1,9 +1,10 @@
 # Runbook — bulk card generation via Claude Code subagents
 
 This is a **self-contained, machine-portable procedure**. It does not
-depend on any prior chat session. Everything needed is in this branch
-(`cardgen-subagent-pipeline`) plus this file. A fresh Claude Code
-session on any machine can execute it end to end.
+depend on any prior chat session. Everything needed is on `main` plus
+this file (the pipeline was developed on a branch named
+`cardgen-subagent-pipeline`, merged into `main` in August 2026). A fresh
+Claude Code session on any machine can execute it end to end.
 
 ## What this does
 
@@ -19,12 +20,12 @@ deterministic and complete, not a sample.
 
 ## Prerequisites
 
-- Repo checked out on branch `cardgen-subagent-pipeline`.
+- Repo checked out on `main` (or a branch from it).
 - Rust toolchain (workspace builds with stable).
 - Network access on the **first** run only (downloads the Scryfall
   oracle bulk into the gitignored `target/scryfall-cache/`; cached
   thereafter).
-- Run from the workspace root (`.../mtg`).
+- Run from the workspace root (the directory holding the top-level `Cargo.toml`).
 
 ## Step 1 — Dump prompts (deterministic, no LLM, no GPU)
 
