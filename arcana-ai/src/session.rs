@@ -221,6 +221,9 @@ impl<'a> Session<'a> {
     /// [`AutoPass::Default`]). See [`AutoPass`].
     pub fn set_auto_pass(&mut self, level: AutoPass) { self.auto_pass = level; }
 
+    /// The current auto-pass level.
+    pub fn auto_pass(&self) -> AutoPass { self.auto_pass }
+
     /// Arm (or clear, with `None`) a one-shot [`PassUntil`] skip for `seat`.
     /// Call [`advance`](Self::advance) afterward to let it run; in a
     /// multi-human game the directive persists on the session and consumes

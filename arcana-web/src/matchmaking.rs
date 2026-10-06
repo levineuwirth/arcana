@@ -24,6 +24,7 @@ use std::time::{Duration, Instant};
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, oneshot};
 
+use arcana_ai::session::AutoPass;
 use arcana_core::actions::Action;
 
 use arcana_core::objects::ObjectId;
@@ -103,6 +104,39 @@ struct PersistedMatch {
     seed: u64,
     seats: Vec<PersistedSeat>,
     actions: Vec<Action>,
+    /// Absent in transcripts written before it was persisted.
+    #[serde(default)]
+    auto_pass: PersistedAutoPass,
+}
+
+/// [`AutoPass`] as a transcript stores it, in the API's wire values
+/// (arcana-ai's type carries no serde). The replay does not need it, since
+/// every auto-pass is a recorded action; it is the players' setting, which a
+/// restored match would otherwise lose.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum PersistedAutoPass {
+    #[default]
+    Default,
+    FullControl,
+}
+
+impl From<AutoPass> for PersistedAutoPass {
+    fn from(level: AutoPass) -> Self {
+        match level {
+            AutoPass::Default => Self::Default,
+            AutoPass::FullControl => Self::FullControl,
+        }
+    }
+}
+
+impl From<PersistedAutoPass> for AutoPass {
+    fn from(level: PersistedAutoPass) -> Self {
+        match level {
+            PersistedAutoPass::Default => Self::Default,
+            PersistedAutoPass::FullControl => Self::FullControl,
+        }
+    }
 }
 
 /// Where + what a match thread writes after each action (the `actions` are
@@ -136,11 +170,12 @@ fn run_match(
     // thread (which read as "the match has ended" to both clients, with no log).
     let what = format!("match {code}");
     while let Some(cmd) = rx.blocking_recv() {
-        // A command that can change the game state → re-persist the transcript.
+        // A command that can change the game state or the persisted auto-pass
+        // level → re-persist the transcript.
         let mutating = matches!(cmd,
             MatchCmd::Action { .. } | MatchCmd::Combat { .. } | MatchCmd::AutoTap { .. }
             | MatchCmd::Activate { .. } | MatchCmd::Bottom { .. }
-            | MatchCmd::PassUntil { .. });
+            | MatchCmd::SetAutoPass { .. } | MatchCmd::PassUntil { .. });
         match cmd {
             MatchCmd::State { seat, reply } => {
                 let _ = reply.send(contain(&what, || Ok(core.snapshot_for(seat))));
@@ -184,6 +219,7 @@ fn run_match(
             if let Some((path, meta)) = persist.as_ref() {
                 let mut pm = meta.clone();
                 pm.actions = core.record().actions.clone();
+                pm.auto_pass = core.auto_pass().into();
                 if let Ok(json) = serde_json::to_string(&pm) {
                     // Atomic write (W-5): temp + rename, so a crash mid-write
                     // can't leave a torn transcript that silently fails to
@@ -269,10 +305,11 @@ struct NetMatch {
     /// (the thread + `GameCore` are created then). Dropping it stops the thread.
     tx: Option<mpsc::UnboundedSender<MatchCmd>>,
     /// Last contact time per seat (monotonic). Bumped on any authenticated
-    /// command ([`Matches::route`]) and by the open WebSocket's keepalive
-    /// ([`Matches::touch`]). A filled seat that goes silent past the reap timeout
-    /// is treated as vanished, and [`Matches::reap_stale`] drops the match so the
-    /// present player isn't frozen forever.
+    /// command ([`Matches::route`]), by the open WebSocket's keepalive
+    /// ([`Matches::touch`]), and for a lobby's host by each [`Matches::info`]
+    /// poll. A filled seat that goes silent past the reap timeout is treated as
+    /// vanished, and [`Matches::reap_stale`] drops the match so the present
+    /// player isn't frozen forever, or the lobby nobody is waiting on.
     last_seen: [Instant; 2],
 }
 
@@ -343,7 +380,10 @@ impl Matches {
             identity: s.identity.clone(),
             deck: s.deck.clone(),
         }).collect();
-        Some((path, PersistedMatch { code: code.to_string(), seed, seats: pseats, actions: Vec::new() }))
+        Some((path, PersistedMatch {
+            code: code.to_string(), seed, seats: pseats, actions: Vec::new(),
+            auto_pass: PersistedAutoPass::default(),
+        }))
     }
 
     /// Delete a match's persistence file (on leave / reap / prune).
@@ -358,7 +398,7 @@ impl Matches {
     /// two-human has none) is BUILT INSIDE the thread from `Send` inputs.
     fn spawn_match(
         reg: &'static CardRegistry, seed: u64, deck0: Vec<CardId>, deck1: Vec<CardId>,
-        actions: Vec<Action>, code: &str, persist: Option<PersistWriter>,
+        actions: Vec<Action>, auto_pass: AutoPass, code: &str, persist: Option<PersistWriter>,
     ) -> Result<mpsc::UnboundedSender<MatchCmd>, String> {
         let (tx, rx) = mpsc::unbounded_channel::<MatchCmd>();
         let code = code.to_string();
@@ -370,11 +410,13 @@ impl Matches {
                 // logged and the thread exits cleanly rather than unwinding
                 // through a poisoned-lock cascade upstream (W-3).
                 let built = crate::contain(&format!("match {code} (build)"), || {
-                    Ok(if actions.is_empty() {
+                    let mut core = if actions.is_empty() {
                         GameCore::new_two_human(reg, seed, deck0, deck1)
                     } else {
                         GameCore::resume_two_human(reg, seed, deck0, deck1, &actions)
-                    })
+                    };
+                    core.set_auto_pass(auto_pass);
+                    Ok(core)
                 });
                 if let Ok(core) = built {
                     run_match(code, core, rx, persist);
@@ -433,7 +475,7 @@ impl Matches {
         let (deck0, deck1) = (seats[0].deck.clone(), seats[1].deck.clone());
         let persist = self.persist_writer(&pm.code, pm.seed, &seats);
         let tx = match Self::spawn_match(
-            self.reg, pm.seed, deck0, deck1, pm.actions, &pm.code, persist) {
+            self.reg, pm.seed, deck0, deck1, pm.actions, pm.auto_pass.into(), &pm.code, persist) {
             Ok(tx) => tx,
             Err(e) => {
                 eprintln!("[arcana-web] couldn't restore match {}: {e}", pm.code);
@@ -581,7 +623,8 @@ impl Matches {
         let m_ref = &self.by_code[code];
         let (deck0, deck1) = (m_ref.seats[0].deck.clone(), m_ref.seats[1].deck.clone());
         let persist = self.persist_writer(code, seed, &m_ref.seats);
-        let tx = match Self::spawn_match(reg, seed, deck0, deck1, Vec::new(), code, persist) {
+        let tx = match Self::spawn_match(
+            reg, seed, deck0, deck1, Vec::new(), AutoPass::default(), code, persist) {
             Ok(tx) => tx,
             Err(e) => {
                 // Roll the lobby back so the guest can retry (spawn failure is
@@ -599,8 +642,14 @@ impl Matches {
 
     /// Public lobby info for `code` (presentation only — no decks/tokens), or
     /// `None` if there's no such match.
-    pub fn info(&self, code: &str) -> Option<LobbyInfo> {
-        let m = self.by_code.get(code)?;
+    pub fn info(&mut self, code: &str) -> Option<LobbyInfo> {
+        let m = self.by_code.get_mut(code)?;
+        // A waiting host polls this; while the match is still a lobby, the
+        // poll is how the host is seen, so the reaper only drops a lobby
+        // nobody is waiting on.
+        if m.status == MatchStatus::Lobby {
+            m.last_seen[0] = Instant::now();
+        }
         Some(LobbyInfo {
             code: m.code.clone(),
             status: m.status,
@@ -645,13 +694,15 @@ impl Matches {
     }
 
     /// Drop every Active match with a filled seat that hasn't been seen within
-    /// `timeout` (a vanished player), returning the removed codes so the caller can
-    /// notify the surviving client (its next fetch 404s → an `ended` notice).
-    /// Dropping the entry drops the match's command sender, ending its game thread.
+    /// `timeout` (a vanished player), and every lobby whose host hasn't polled
+    /// [`info`](Self::info) within it (an abandoned lobby), returning the
+    /// removed codes so the caller can notify the surviving client (its next
+    /// fetch 404s → an `ended` notice). Dropping the entry drops the match's
+    /// command sender, ending its game thread.
     pub fn reap_stale(&mut self, timeout: Duration) -> Vec<String> {
         let now = Instant::now();
         let stale: Vec<String> = self.by_code.iter()
-            .filter(|(_, m)| m.status == MatchStatus::Active)
+            .filter(|(_, m)| matches!(m.status, MatchStatus::Active | MatchStatus::Lobby))
             .filter(|(_, m)| m.seats.iter().enumerate().any(|(i, s)|
                 s.filled && now.duration_since(m.last_seen[i]) > timeout))
             .map(|(c, _)| c.clone())
@@ -685,6 +736,12 @@ impl Matches {
         let s = self.route(code, seat, token)?;
         let (reply, rx) = oneshot::channel();
         s.0.send(MatchCmd::Action { seat, index, reply }).map_err(|_| "match ended".to_string())?;
+        rx.blocking_recv().map_err(|_| "match ended".to_string())?
+    }
+    fn set_auto_pass(&mut self, code: &str, seat: PlayerId, token: &str, level: AutoPass) -> Result<StateResponse, String> {
+        let s = self.route(code, seat, token)?;
+        let (reply, rx) = oneshot::channel();
+        s.0.send(MatchCmd::SetAutoPass { seat, level, reply }).map_err(|_| "match ended".to_string())?;
         rx.blocking_recv().map_err(|_| "match ended".to_string())?
     }
 }
@@ -739,20 +796,25 @@ mod tests {
             "exactly one seat is on the clock");
     }
 
-    /// The reaper drops Active matches whose player vanished (stale past the
-    /// timeout), never touches lobbies, keeps fresh/just-touched matches, and
-    /// returns the removed codes so the survivor can be notified.
+    /// The reaper drops Active matches whose player vanished and lobbies whose
+    /// host stopped polling (stale past the timeout), keeps fresh, just-touched
+    /// and just-polled ones, and returns the removed codes so the survivor can
+    /// be notified.
     #[test]
-    fn reap_stale_drops_vanished_matches() {
+    fn reap_stale_drops_vanished_matches_and_abandoned_lobbies() {
         use std::time::Duration;
         let reg = leaked_catalog();
         let mut m = Matches::new(reg, 77, None);
 
-        // A lobby is never reaped, even at zero timeout.
+        // A lobby older than the timeout survives while its host polls it,
+        // and goes once the polling stops.
         let lob = m.create(profile("Solo"), DeckIdentity::default(), deck(reg)).unwrap();
+        std::thread::sleep(Duration::from_millis(200));
+        assert!(m.info(&lob.code).is_some(), "the waiting host polls");
+        assert!(m.reap_stale(Duration::from_millis(100)).is_empty(), "a polled lobby is kept");
         std::thread::sleep(Duration::from_millis(2));
-        assert!(m.reap_stale(Duration::ZERO).is_empty(), "lobbies are never reaped");
-        assert!(m.info(&lob.code).is_some());
+        assert_eq!(m.reap_stale(Duration::ZERO), vec![lob.code.clone()], "an unpolled lobby is reaped");
+        assert!(m.info(&lob.code).is_none(), "reaped lobby is gone");
 
         // A fresh Active match under a generous timeout is kept.
         let host = m.create(profile("Alice"), DeckIdentity::default(), deck(reg)).unwrap();
@@ -797,6 +859,7 @@ mod tests {
                     identity: DeckIdentity::default(), deck: deck(reg) },
             ],
             actions: Vec::new(),
+            auto_pass: PersistedAutoPass::default(),
         };
         std::fs::write(dir.join("RSTR.json"), serde_json::to_string(&pm).unwrap()).unwrap();
 
@@ -814,6 +877,51 @@ mod tests {
         // Leaving deletes the persisted file.
         m.leave("RSTR", 0, "tok0").unwrap();
         assert!(!dir.join("RSTR.json").exists(), "leave removes the persisted file");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// The auto-pass level is part of the transcript: setting it re-persists,
+    /// and a restored match comes back with it, so its next write still
+    /// carries it. A transcript from before the field loads as the default.
+    #[test]
+    fn auto_pass_level_survives_a_restart() {
+        let reg = leaked_catalog();
+        let dir = std::env::temp_dir().join(format!("arcana-mm-{}-autopass", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut m = Matches::new(reg, 5, Some(dir.clone()));
+        let host = m.create(profile("Alice"), DeckIdentity::default(), deck(reg)).unwrap();
+        let guest = m.join(&host.code, profile("Bob"), DeckIdentity::default(), deck(reg)).unwrap();
+        let path = dir.join(format!("{}.json", host.code));
+        // A match thread replies before it writes, so wait for the write.
+        let persisted_when = |done: &dyn Fn(&serde_json::Value) -> bool| -> serde_json::Value {
+            for _ in 0..500 {
+                let read = std::fs::read_to_string(&path).ok()
+                    .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok());
+                if let Some(v) = read.filter(|v| done(v)) { return v; }
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            panic!("the transcript at {} never reached the awaited state", path.display());
+        };
+
+        m.set_auto_pass(&host.code, 0, &host.token, AutoPass::FullControl).unwrap();
+        let before = persisted_when(&|v| v["auto_pass"] == "full_control");
+        let n = before["actions"].as_array().unwrap().len();
+
+        drop(m);
+        let mut m = Matches::new(reg, 6, Some(dir.clone()));
+        let creds = [(0, &host.token), (1, &guest.token)];
+        let (seat, token) = creds.into_iter()
+            .find(|(s, t)| !m.snapshot(&host.code, *s, t).unwrap().view.legal.is_empty())
+            .expect("one seat is on the clock");
+        m.action(&host.code, seat, token, 0).unwrap();
+        let after = persisted_when(&|v| v["actions"].as_array().unwrap().len() > n);
+        assert_eq!(after["auto_pass"], "full_control",
+            "the restored match kept its level and wrote it back");
+
+        let old: PersistedMatch = serde_json::from_str(
+            r#"{"code":"OLDT","seed":1,"seats":[],"actions":[]}"#).unwrap();
+        assert_eq!(old.auto_pass, PersistedAutoPass::Default);
         let _ = std::fs::remove_dir_all(&dir);
     }
 

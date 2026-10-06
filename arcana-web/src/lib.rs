@@ -1068,6 +1068,12 @@ impl GameCore {
         self.session.set_auto_pass(level);
     }
 
+    /// The session's auto-pass level (one for the whole session, so in a
+    /// networked match both seats share it).
+    pub fn auto_pass(&self) -> arcana_ai::session::AutoPass {
+        self.session.auto_pass()
+    }
+
     /// Arm the one-shot "pass until \<phase\>" skip for the solo human and
     /// advance — see [`arcana_ai::session::PassUntil`] for the stop/interrupt
     /// contract. Returns the state at the stop point (or interrupt).

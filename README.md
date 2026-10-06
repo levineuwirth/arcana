@@ -67,7 +67,7 @@ Environment variables (all optional):
 | `PORT` | Bind port. | `8080` |
 | `ARCANA_ART_CACHE` | Directory for cached Scryfall card-art images. | `$HOME/.cache/arcana/art` (or a temp dir if `$HOME` is unset) |
 | `MATCH_STATE_DIR` | Directory to persist networked-match transcripts to (opt-in; unset means matches are memory-only and don't survive a restart). | unset |
-| `MATCH_TIMEOUT_SECS` | How long a networked match waits for a vanished peer before reaping it. | `60` |
+| `MATCH_TIMEOUT_SECS` | How long a networked match waits for a vanished peer before reaping it, and how long an open lobby outlives its host's last poll. | `60` |
 
 Solo-game routes (`/state`, `/action`, `/new`, …) are restricted to the host
 machine even on a LAN bind; the `/lobby/*` and `/m/*` networked-match routes

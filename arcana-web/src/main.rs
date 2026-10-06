@@ -1449,9 +1449,11 @@ async fn main() {
         tokio::spawn(async move { art.ensure_bulk().await; });
     }
     // Reaper: drop networked matches whose player vanished (no contact past the
-    // timeout) so the surviving client isn't frozen forever. MATCH_TIMEOUT_SECS
-    // (default 60) — a live client bumps last-seen via every REST call + a 20s WS
-    // keepalive, so only a truly gone peer trips it. Notifies the survivor's WS.
+    // timeout) so the surviving client isn't frozen forever, and lobbies whose
+    // host stopped polling /lobby/info. MATCH_TIMEOUT_SECS (default 60) — a live
+    // client bumps last-seen via every REST call + a 20s WS keepalive, and a
+    // waiting host polls every 1.5s, so only a truly gone peer trips it.
+    // Notifies the survivor's WS.
     {
         let matches = state.matches.clone();
         let changes = state.changes.clone();
