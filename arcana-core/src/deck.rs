@@ -233,14 +233,14 @@ pub fn check_legality(
     }
 
     // Copy limits + bans: combine main+sideboard counts per card name.
-    use std::collections::HashMap;
-    let mut by_name: HashMap<&str, (u32, bool)> = HashMap::new(); // name -> (count, is_basic)
+    use crate::collections::HashMap;
+    let mut by_name: HashMap<&str, (u32, bool)> = HashMap::default(); // name -> (count, is_basic)
     for (id, count) in main.iter().chain(sideboard.iter()) {
         let name = card_name(reg, *id);
         let e = by_name.entry(name).or_insert((0, is_basic_land(reg, *id)));
         e.0 += count;
     }
-    let banned: std::collections::HashSet<&str> = spec.banned.iter().map(|s| s.as_str()).collect();
+    let banned: crate::collections::HashSet<&str> = spec.banned.iter().map(|s| s.as_str()).collect();
     let mut names: Vec<&str> = by_name.keys().copied().collect();
     names.sort_unstable();
     for name in names {

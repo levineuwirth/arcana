@@ -1027,7 +1027,7 @@ fn enumerate_blocker_declarations(state: &GameState, defender: PlayerId) -> Vec<
     // emission, this yields declarations that block SEVERAL different
     // attackers at once — what a defender normally wants. Cap-threaded so a
     // wide board can't explode the output.
-    let mut used: std::collections::HashSet<ObjectId> = std::collections::HashSet::new();
+    let mut used: crate::collections::HashSet<ObjectId> = crate::collections::HashSet::default();
     let mut acc: Vec<BlockerDeclaration> = Vec::new();
     product_block_assignments(&per_attacker, &attackers, 0, &mut used, &mut acc, &mut out);
     out
@@ -1043,7 +1043,7 @@ fn product_block_assignments(
     per_attacker: &[Vec<Vec<ObjectId>>],
     attackers: &[ObjectId],
     i: usize,
-    used: &mut std::collections::HashSet<ObjectId>,
+    used: &mut crate::collections::HashSet<ObjectId>,
     acc: &mut Vec<BlockerDeclaration>,
     out: &mut Vec<Action>,
 ) {
@@ -2854,8 +2854,8 @@ pub fn available_mana(
     // taps or is consumed, so progress is bounded by the permanent count; `+ 8`
     // covers the rarer hand/graveyard mana activations.
     let guard = sim.objects.objects_in_zone(Zone::Battlefield).count() + 8;
-    let mut done: std::collections::HashSet<(ObjectId, usize)> =
-        std::collections::HashSet::new();
+    let mut done: crate::collections::HashSet<(ObjectId, usize)> =
+        crate::collections::HashSet::default();
 
     for _ in 0..guard {
         // `apply_activate_ability` pays/produces as the priority player; retarget
@@ -2911,7 +2911,7 @@ pub fn playable_cards(
     player: PlayerId,
     registry: &CardRegistry,
 ) -> Vec<ObjectId> {
-    let mut set: std::collections::HashSet<ObjectId> =
+    let mut set: crate::collections::HashSet<ObjectId> =
         potential_actions(state, player, registry)
             .iter()
             .filter_map(|a| match a {
@@ -2995,8 +2995,8 @@ pub fn activatable_sources(
     state: &GameState,
     player: PlayerId,
     registry: &CardRegistry,
-) -> std::collections::HashSet<ObjectId> {
-    let mut set: std::collections::HashSet<ObjectId> =
+) -> crate::collections::HashSet<ObjectId> {
+    let mut set: crate::collections::HashSet<ObjectId> =
         potential_actions(state, player, registry)
             .into_iter()
             .filter_map(|a| match a {
@@ -5815,7 +5815,7 @@ mod tests {
         // (5, 0), (2, 3), (3, 2), (4, 1). The enumerator generates in
         // terminate-first + lethal-or-more recursion order. Canonical
         // set is the 4 distributions above.
-        let flattened: std::collections::HashSet<_> = dists.iter()
+        let flattened: crate::collections::HashSet<_> = dists.iter()
             .map(|d| d[0].distribution.clone())
             .collect();
         assert!(flattened.contains(&vec![(b1, 5)]),
@@ -5932,7 +5932,7 @@ mod tests {
             = Some(PendingDamagePass::Regular);
 
         let actions = legal_actions(&s, &reg);
-        let dists: std::collections::HashSet<Vec<(ObjectId, u32)>> = actions.iter()
+        let dists: crate::collections::HashSet<Vec<(ObjectId, u32)>> = actions.iter()
             .filter_map(|a| match a {
                 Action::AssignCombatDamage { distributions } =>
                     Some(distributions.clone()),
@@ -6024,7 +6024,7 @@ mod tests {
             = Some(PendingDamagePass::Regular);
 
         let actions = legal_actions(&s, &reg);
-        let dists: std::collections::HashSet<Vec<(ObjectId, u32)>> = actions.iter()
+        let dists: crate::collections::HashSet<Vec<(ObjectId, u32)>> = actions.iter()
             .filter_map(|a| match a {
                 Action::AssignCombatDamage { distributions } =>
                     Some(distributions.clone()),

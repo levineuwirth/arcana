@@ -4473,8 +4473,8 @@ fn name_card_and_exile(state: &mut GameState, _chooser: PlayerId, target: Player
     if !valid_player(state, target) { return; }
     let zones = [Zone::Hand(target), Zone::Graveyard(target), Zone::Library(target)];
     // Tally (count, max mana value) per card name.
-    let mut tally: std::collections::HashMap<crate::types::SmallString, (u32, u32)> =
-        std::collections::HashMap::new();
+    let mut tally: crate::collections::HashMap<crate::types::SmallString, (u32, u32)> =
+        crate::collections::HashMap::default();
     for z in zones {
         for o in state.objects.objects_in_zone(z) {
             let mv = o.characteristics.mana_cost.as_ref()
@@ -6342,7 +6342,7 @@ mod tests {
         assert_eq!(lib.len(), 5, "no cards left the library");
         assert_eq!(&lib[..3], &ids[2..5], "the untouched cards stay on top");
         // The two swept cards are now the bottom two (order is seeded-random).
-        let bottom: std::collections::HashSet<_> = lib[3..].iter().copied().collect();
+        let bottom: crate::collections::HashSet<_> = lib[3..].iter().copied().collect();
         assert_eq!(bottom, ids[..2].iter().copied().collect());
     }
 
@@ -6812,7 +6812,7 @@ mod tests {
         // Over many rolls with an advancing seed we see more than one
         // distinct face (not a stuck constant) and never out of range.
         let mut s = GameState::new(2, 0);
-        let mut seen = std::collections::HashSet::new();
+        let mut seen = crate::collections::HashSet::default();
         for _ in 0..40 {
             Effect::RollDie { player: 0, sides: 6, outcomes: vec![] }.execute(&mut s);
             if let Some(GameEvent::DieRolled { result, .. }) = s.event_log.last() {

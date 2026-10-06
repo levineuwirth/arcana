@@ -265,7 +265,7 @@ pub fn blocker_options(legal: &[Action]) -> Vec<(ObjectId, Vec<ObjectId>)> {
 /// built combination is illegal (must-attack, etc.) or was beyond the
 /// enumeration cap, and the frontend should re-prompt.
 pub fn match_attack(legal: &[Action], chosen: &[AttackerDeclaration]) -> Option<Action> {
-    use std::collections::HashSet;
+    use crate::collections::HashSet;
     let want: HashSet<(ObjectId, DefendingEntity)> =
         chosen.iter().map(|d| (d.attacker, d.defending)).collect();
     legal.iter().find(|a| match a {
@@ -279,7 +279,7 @@ pub fn match_attack(legal: &[Action], chosen: &[AttackerDeclaration]) -> Option<
 /// Find the legal `DeclareBlockers` whose blocker/attacker set equals `chosen`
 /// (order-independent). `None` if the combination is illegal / beyond the cap.
 pub fn match_block(legal: &[Action], chosen: &[BlockerDeclaration]) -> Option<Action> {
-    use std::collections::HashSet;
+    use crate::collections::HashSet;
     let want: HashSet<(ObjectId, ObjectId)> =
         chosen.iter().map(|b| (b.blocker, b.blocking)).collect();
     legal.iter().find(|a| match a {
@@ -309,10 +309,10 @@ pub fn legal_block_declaration(
     defender: PlayerId,
     chosen: &[BlockerDeclaration],
 ) -> Option<Action> {
-    use std::collections::{HashMap, HashSet};
+    use crate::collections::{HashMap, HashSet};
     let combat = state.combat.as_ref()?;
-    let mut seen: HashSet<ObjectId> = HashSet::new();
-    let mut per_attacker: HashMap<ObjectId, u32> = HashMap::new();
+    let mut seen: HashSet<ObjectId> = HashSet::default();
+    let mut per_attacker: HashMap<ObjectId, u32> = HashMap::default();
     for d in chosen {
         let blk = state.objects.get(d.blocker)?;
         // Mirror can_block (legal_actions) + apply_declared_blockers' gate.
@@ -361,7 +361,7 @@ pub fn ordering_targets(legal: &[Action]) -> Vec<(ObjectId, Vec<ObjectId>)> {
 /// (order WITHIN each attacker's list is the chosen damage order and matters;
 /// the order of attackers between entries does not). `None` if not offered.
 pub fn match_ordering(legal: &[Action], chosen: &[(ObjectId, Vec<ObjectId>)]) -> Option<Action> {
-    use std::collections::HashMap;
+    use crate::collections::HashMap;
     let want: HashMap<ObjectId, &Vec<ObjectId>> =
         chosen.iter().map(|(atk, ord)| (*atk, ord)).collect();
     legal.iter().find(|a| match a {
@@ -397,7 +397,7 @@ pub fn damage_targets(legal: &[Action]) -> Vec<(ObjectId, Vec<ObjectId>)> {
 /// distribution isn't legal (lethal-first / sum / trample rules) or wasn't
 /// enumerated — the frontend re-prompts.
 pub fn match_damage(legal: &[Action], chosen: &[DamageAssignment]) -> Option<Action> {
-    use std::collections::HashMap;
+    use crate::collections::HashMap;
     let want: HashMap<ObjectId, &Vec<(ObjectId, u32)>> =
         chosen.iter().map(|d| (d.attacker, &d.distribution)).collect();
     legal.iter().find(|a| match a {
@@ -995,8 +995,8 @@ impl GameState {
         // constraint keyword through a single path.
         let constraint_violators: Vec<ObjectId> = {
             let mut violators = Vec::new();
-            let mut seen: std::collections::HashSet<ObjectId>
-                = std::collections::HashSet::new();
+            let mut seen: crate::collections::HashSet<ObjectId>
+                = crate::collections::HashSet::default();
             for d in &valid {
                 if !seen.insert(d.blocking) { continue; }
                 let constraints = self.block_constraints(d.blocking);

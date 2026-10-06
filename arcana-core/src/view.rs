@@ -285,7 +285,7 @@ pub fn build_choice_view(
     // you look at the WHOLE zone (CR 701.19); but a "look at the top N" effect
     // (DigTopN) only reveals the cards looked at — don't leak the rest of the
     // library, so its pool stays the candidates alone.
-    let cand: std::collections::HashSet<ObjectId> = candidates.iter().copied().collect();
+    let cand: crate::collections::HashSet<ObjectId> = candidates.iter().copied().collect();
     let mut pool: Vec<CardView> = candidates.iter()
         .map(|&id| card_view(state, registry, id)).collect();
     let look_at_whole_zone = !matches!(
@@ -429,14 +429,14 @@ pub fn view_state(
 
     // Which of the perspective player's hand cards are playable this turn (cast
     // or play if they tap out). Computed once; only that player's hand is shown.
-    let playable: std::collections::HashSet<ObjectId> =
+    let playable: crate::collections::HashSet<ObjectId> =
         crate::legal_actions::playable_cards(state, perspective, registry)
             .into_iter().collect();
 
     // Permanents the perspective player could ACTIVATE this turn if they tapped
     // out (potential, mana-floated) — sources of activate actions in the
     // mana-floated enumeration. Lets the UI offer auto-tap activation (Codie).
-    let activatable: std::collections::HashSet<ObjectId> =
+    let activatable: crate::collections::HashSet<ObjectId> =
         crate::legal_actions::activatable_sources(state, perspective, registry);
 
     let players = (0..state.num_players()).map(|p| {
@@ -681,7 +681,7 @@ mod tests {
         // Every discard action exposes the picked hand card as a target, so the
         // UI can map a hand card to its choice (click-to-discard) rather than a
         // "Choose <card>" button. Each has exactly one object target, no source.
-        let hand: std::collections::HashSet<_> =
+        let hand: crate::collections::HashSet<_> =
             s.objects.ids_in_zone_sorted(Zone::Hand(0)).into_iter().collect();
         assert!(!view.legal.is_empty());
         for a in &view.legal {

@@ -297,7 +297,7 @@ impl GameObject {
             zone,
             card_id,
             characteristics,
-            counters: CounterMap::new(),
+            counters: CounterMap::default(),
             attachments: Vec::new(),
             attached_to: None,
             damage_marked: 0,

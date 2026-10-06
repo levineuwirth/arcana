@@ -16,7 +16,7 @@
 //! before Python bindings land.
 
 use serde::{Serialize, Deserialize};
-use std::collections::{HashMap, HashSet};
+use crate::collections::{HashMap, HashSet};
 
 use crate::combat::CombatState;
 use crate::events::GameEvent;

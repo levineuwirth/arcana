@@ -632,7 +632,7 @@ pub fn distinct_card_types_in_graveyard(state: &GameState, player: PlayerId) -> 
 /// (Lunar Insight-style "for each different mana value"). `you` resolves the
 /// filter's controller constraints.
 pub fn distinct_mana_values(state: &GameState, filter: &ObjectFilter, you: PlayerId) -> u32 {
-    let mut set: std::collections::HashSet<u32> = Default::default();
+    let mut set: crate::collections::HashSet<u32> = Default::default();
     for o in state.objects.objects_in_zone(Zone::Battlefield) {
         if filter.matches(o, state, you) { set.insert(o.characteristics.mana_value()); }
     }
@@ -649,7 +649,7 @@ pub fn distinct_mana_values_in_graveyard(
     state: &GameState, filter: &ObjectFilter, player: PlayerId, you: PlayerId,
 ) -> u32 {
     if !valid(state, player) { return 0; }
-    let mut set: std::collections::HashSet<u32> = Default::default();
+    let mut set: crate::collections::HashSet<u32> = Default::default();
     for o in state.objects.objects_in_zone(Zone::Graveyard(player)) {
         if filter.matches(o, state, you) { set.insert(o.characteristics.mana_value()); }
     }

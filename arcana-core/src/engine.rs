@@ -9789,7 +9789,7 @@ mod tests {
         let lib = &s.player(0).library_top_to_bottom;
         assert_eq!(lib.len(), 4);
         assert_eq!(&lib[..2], &[ids[3], ids[4]], "untouched cards stay on top");
-        let bottom: std::collections::HashSet<_> = lib[2..].iter().copied().collect();
+        let bottom: crate::collections::HashSet<_> = lib[2..].iter().copied().collect();
         assert_eq!(bottom, [a, c].into_iter().collect(),
             "unchosen looked-at cards swept to the bottom");
     }

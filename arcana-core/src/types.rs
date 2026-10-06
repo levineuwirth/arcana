@@ -4,7 +4,7 @@
 //! modules — pure data types with accompanying unit tests.
 
 use serde::{Serialize, Deserialize};
-use std::collections::{HashMap, HashSet};
+use crate::collections::{HashMap, HashSet};
 use std::ops::{BitAnd, BitOr, BitXor, Not};
 
 // =============================================================================
@@ -52,7 +52,7 @@ impl Default for StringInterner {
         // `unwrap_or_default()` miss) must resolve to "" — NOT to whichever card
         // happened to be interned first (the "renders as Aura" bug). Callers
         // already treat an empty name as "no name".
-        let mut s = Self { strings: Vec::new(), index: HashMap::new() };
+        let mut s = Self { strings: Vec::new(), index: HashMap::default() };
         s.intern("");
         s
     }
@@ -858,7 +858,7 @@ mod tests {
 
     #[test]
     fn counter_map_works() {
-        let mut m: CounterMap = CounterMap::new();
+        let mut m: CounterMap = CounterMap::default();
         m.insert(CounterKind::PlusOnePlusOne, 3);
         m.insert(CounterKind::Loyalty, 5);
         assert_eq!(m.get(&CounterKind::PlusOnePlusOne), Some(&3));
