@@ -1,0 +1,16 @@
+Arcana is unofficial Fan Content permitted under the Fan Content Policy.
+Not approved/endorsed by Wizards. Portions of the materials used are
+property of Wizards of the Coast. ©Wizards of the Coast LLC.
+
+The MIT license in LICENSE covers the code in this repository: the rules
+engine, the generation pipeline, the clients, and the structure of the
+card scripts. It does not and cannot cover the Magic: The Gathering card
+names, oracle text, mechanics and set identifiers that the card scripts
+under arcana-cards/ quote and implement; those remain the property of
+Wizards of the Coast, and their use here is governed by the Fan Content
+Policy (https://company.wizards.com/en/legal/fancontentpolicy), which
+among other things requires that fan content be made available free of
+charge. Card data is obtained at build time from Scryfall
+(https://scryfall.com) under Scryfall's terms; Scryfall is not affiliated
+with this project. Card art, when displayed by the web client, is fetched
+from Scryfall at run time and never stored in this repository.

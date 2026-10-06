@@ -131,6 +131,14 @@ active work plan is maintained outside the repository and cites them.
 `docs/audit-2026-08.md`, `STATUS_2026-04-21.md`, `KEYWORDS.md`, and
 `ROADMAP.md` are earlier snapshots kept for history.
 
+## License
+
+The code is released under the [MIT License](LICENSE). *Magic: The
+Gathering* and all card names, oracle text and mechanics are the property
+of Wizards of the Coast; Arcana is unofficial Fan Content under the
+[Fan Content Policy](https://company.wizards.com/en/legal/fancontentpolicy)
+and is not approved or endorsed by Wizards. See [`NOTICE`](NOTICE).
+
 ## Author
 
 Levi Neuwirth — [ln@levineuwirth.org](mailto:ln@levineuwirth.org) · [levineuwirth.org](https://levineuwirth.org)
