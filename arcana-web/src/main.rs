@@ -242,13 +242,7 @@ struct WarmStatus {
 }
 
 impl ArtCache {
-    fn new() -> Self {
-        let dir = std::env::var("ARCANA_ART_CACHE")
-            .map(PathBuf::from)
-            .unwrap_or_else(|_| match std::env::var("HOME") {
-                Ok(h) => PathBuf::from(h).join(".cache/arcana/art"),
-                Err(_) => std::env::temp_dir().join("arcana-art"),
-            });
+    fn new(dir: PathBuf) -> Self {
         let _ = std::fs::create_dir_all(&dir);
         let client = reqwest::Client::builder()
             .user_agent("Arcana/0.1 (card-art proxy)")
@@ -1424,22 +1418,16 @@ async fn post_new(State(app): State<AppState>, body: String) -> Response {
 
 #[tokio::main]
 async fn main() {
-    let (tx, rx) = mpsc::unbounded_channel::<Command>();
     // Build + leak the catalog once; shared by the solo worker and every match
     // thread (it's `&'static`, Send + Sync, so it crosses thread boundaries free).
     let reg: &'static CardRegistry = Box::leak(Box::new(arcana_cards::build_catalog()));
-    // Server-push bus: a handler announces a changed match code, open /m/ws tasks
-    // re-fetch + push. Capacity is generous; lagged receivers just resync.
-    let (changes, _) = broadcast::channel::<String>(256);
-    // The SOLO game lives on its own thread (the bot's `advance` rollouts stay
-    // off the async runtime). Networked matches each get their own thread too.
-    std::thread::Builder::new()
-        .name("arcana-game".into())
-        .spawn(move || run_worker(rx, reg))
-        .expect("spawn game worker");
-
+    let art_dir = std::env::var("ARCANA_ART_CACHE")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| match std::env::var("HOME") {
+            Ok(h) => PathBuf::from(h).join(".cache/arcana/art"),
+            Err(_) => std::env::temp_dir().join("arcana-art"),
+        });
     let match_state_dir = std::env::var("MATCH_STATE_DIR").ok().map(std::path::PathBuf::from);
-    let matches = Arc::new(std::sync::Mutex::new(Matches::new(reg, time_seed(), match_state_dir)));
     // Deck-store persistence: default ON under the user's data dir (decks are
     // user data — losing them to an unset env var would be worse than the
     // disk write). `ARCANA_DECK_STORE` overrides the location; set it to an
@@ -1452,10 +1440,7 @@ async fn main() {
             Err(_) => Some(std::env::temp_dir().join("arcana-decks")),
         },
     };
-    let deck_store = Arc::new(arcana_web::deckstore::DeckStore::new(deck_dir));
-    let state = AppState {
-        tx, art: Arc::new(ArtCache::new()), changes, matches, decks: deck_store,
-    };
+    let state = build_state(reg, art_dir, match_state_dir, deck_dir);
     // Warm the bulk name→CDN-URL map in the background so on-demand art resolves
     // from the (unthrottled) CDN instead of the rate-limited API. Instant once
     // the map is cached to disk; ~30–60s the very first time.
@@ -1485,6 +1470,62 @@ async fn main() {
         });
     }
 
+    let app = router(state);
+
+    // Port is overridable via PORT; HOST too (default loopback). Set
+    // HOST=0.0.0.0 to expose the server on the LAN so a friend can join.
+    let port: u16 = std::env::var("PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8080);
+    let host: IpAddr = std::env::var("HOST").ok()
+        .and_then(|h| h.parse().ok())
+        .unwrap_or(IpAddr::from([127, 0, 0, 1]));
+    let addr = SocketAddr::new(host, port);
+    let listener = tokio::net::TcpListener::bind(addr)
+        .await
+        .unwrap_or_else(|e| panic!("failed to bind {addr}: {e}"));
+    if host.is_loopback() {
+        println!("arcana-web listening on http://{addr}  (open it in a browser)");
+    } else {
+        println!("arcana-web listening on http://{addr}  (LAN: a friend opens \
+                  http://<this-machine's-IP>:{port} ; solo controls stay host-only)");
+    }
+    // ConnectInfo lets `guard_local_only` see the peer IP (loopback vs LAN).
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
+        .await
+        .expect("server error");
+}
+
+/// The server's shared state, with the solo game's worker thread spawned
+/// behind it. `main` reads the environment and calls this; the HTTP tests
+/// call it with scratch directories.
+fn build_state(
+    reg: &'static CardRegistry,
+    art_dir: PathBuf,
+    match_state_dir: Option<PathBuf>,
+    deck_dir: Option<PathBuf>,
+) -> AppState {
+    let (tx, rx) = mpsc::unbounded_channel::<Command>();
+    // Server-push bus: a handler announces a changed match code, open /m/ws tasks
+    // re-fetch + push. Capacity is generous; lagged receivers just resync.
+    let (changes, _) = broadcast::channel::<String>(256);
+    // The SOLO game lives on its own thread (the bot's `advance` rollouts stay
+    // off the async runtime). Networked matches each get their own thread too.
+    std::thread::Builder::new()
+        .name("arcana-game".into())
+        .spawn(move || run_worker(rx, reg))
+        .expect("spawn game worker");
+    let matches = Arc::new(std::sync::Mutex::new(Matches::new(reg, time_seed(), match_state_dir)));
+    AppState {
+        tx,
+        art: Arc::new(ArtCache::new(art_dir)),
+        changes,
+        matches,
+        decks: Arc::new(arcana_web::deckstore::DeckStore::new(deck_dir)),
+    }
+}
+
+/// Every route, with `state` applied. Building it binds no socket, so the
+/// HTTP tests drive it with `tower::ServiceExt::oneshot`.
+fn router(state: AppState) -> Router {
     // SOLO routes drive the host's single local game. On a LAN bind they're
     // restricted to the host machine (loopback) so a guest can't reset or play
     // the host's solo game; the networked /lobby + /m/* routes stay open.
@@ -1501,7 +1542,7 @@ async fn main() {
         .route("/new", post(post_new))
         .layer(middleware::from_fn(guard_local_only));
 
-    let app = Router::new()
+    Router::new()
         .route("/", get(stage))
         .route("/duel", get(index))
         .route("/decks", get(decks))
@@ -1546,28 +1587,7 @@ async fn main() {
         .route("/art/warm-all",
             post(post_art_warm_all).route_layer(middleware::from_fn(guard_local_only)))
         .merge(solo)
-        .with_state(state);
-
-    // Port is overridable via PORT; HOST too (default loopback). Set
-    // HOST=0.0.0.0 to expose the server on the LAN so a friend can join.
-    let port: u16 = std::env::var("PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8080);
-    let host: IpAddr = std::env::var("HOST").ok()
-        .and_then(|h| h.parse().ok())
-        .unwrap_or(IpAddr::from([127, 0, 0, 1]));
-    let addr = SocketAddr::new(host, port);
-    let listener = tokio::net::TcpListener::bind(addr)
-        .await
-        .unwrap_or_else(|e| panic!("failed to bind {addr}: {e}"));
-    if host.is_loopback() {
-        println!("arcana-web listening on http://{addr}  (open it in a browser)");
-    } else {
-        println!("arcana-web listening on http://{addr}  (LAN: a friend opens \
-                  http://<this-machine's-IP>:{port} ; solo controls stay host-only)");
-    }
-    // ConnectInfo lets `guard_local_only` see the peer IP (loopback vs LAN).
-    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
-        .await
-        .expect("server error");
+        .with_state(state)
 }
 
 /// Restrict the SOLO game routes to the host machine. Loopback peers (the host)
@@ -1584,5 +1604,202 @@ async fn guard_local_only(req: Request, next: Next) -> Response {
         (StatusCode::FORBIDDEN,
          err("this control is only available on the host machine — join via the Stage instead"))
             .into_response()
+    }
+}
+
+/// The HTTP layer (W-9), driven through [`router`] with `oneshot`, so no
+/// socket is bound. `axum::serve` gives every request a `ConnectInfo`;
+/// `oneshot` gives none, and [`guard_local_only`] admits a request without
+/// one, so every request here carries a peer address set by hand, loopback
+/// unless the test says otherwise.
+#[cfg(test)]
+mod http_tests {
+    use super::*;
+    use axum::body::Body;
+    use http_body_util::BodyExt;
+    use tower::ServiceExt;
+
+    const LOOPBACK: [u8; 4] = [127, 0, 0, 1];
+    const LAN_PEER: [u8; 4] = [192, 168, 1, 20];
+    /// No card has this id; a deck holding it must be refused at the boundary.
+    const UNKNOWN_CARD: CardId = CardId::MAX;
+
+    fn catalog() -> &'static CardRegistry {
+        static REG: std::sync::OnceLock<&'static CardRegistry> = std::sync::OnceLock::new();
+        REG.get_or_init(|| Box::leak(Box::new(arcana_cards::build_catalog())))
+    }
+
+    fn good_deck() -> Vec<CardId> {
+        arcana_cards::sample_deck(catalog(), arcana_web::DECK_SEED)
+    }
+
+    fn bad_deck() -> Vec<CardId> {
+        let mut deck = good_deck();
+        deck[0] = UNKNOWN_CARD;
+        deck
+    }
+
+    /// The router over fresh scratch directories, removed on drop. With
+    /// `deck_store` false, sync is disabled as `ARCANA_DECK_STORE=""` does.
+    struct Server { app: Router, dir: PathBuf }
+
+    impl Drop for Server {
+        fn drop(&mut self) { let _ = std::fs::remove_dir_all(&self.dir); }
+    }
+
+    fn server(tag: &str, deck_store: bool) -> Server {
+        let dir = std::env::temp_dir()
+            .join(format!("arcana-web-http-{tag}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let decks = deck_store.then(|| dir.join("decks"));
+        Server { app: router(build_state(catalog(), dir.join("art"), None, decks)), dir }
+    }
+
+    /// One request from `peer`: the status and the body as text.
+    async fn send(
+        s: &Server, peer: [u8; 4], method: &str, uri: &str, body: impl Into<Body>,
+    ) -> (StatusCode, String) {
+        let mut req = axum::http::Request::builder()
+            .method(method).uri(uri)
+            .header("content-type", "application/json")
+            .body(body.into()).unwrap();
+        req.extensions_mut().insert(ConnectInfo(SocketAddr::from((peer, 40000))));
+        let resp = s.app.clone().oneshot(req).await.unwrap();
+        let status = resp.status();
+        let bytes = resp.into_body().collect().await.unwrap().to_bytes();
+        (status, String::from_utf8_lossy(&bytes).into_owned())
+    }
+
+    fn lobby_body(deck: Vec<CardId>, code: Option<&str>) -> String {
+        let mut v = serde_json::json!({ "deck": deck });
+        if let Some(c) = code { v["code"] = c.into(); }
+        v.to_string()
+    }
+
+    /// A deck-store envelope of exactly `len` bytes.
+    fn envelope(rev: u64, len: usize) -> String {
+        let head = format!(r#"{{"version":2,"rev":{rev},"decks":{{}},"pad":""#);
+        let tail = r#""}"#;
+        format!("{head}{}{tail}", "x".repeat(len - head.len() - tail.len()))
+    }
+
+    #[tokio::test]
+    async fn new_refuses_an_invalid_deck() {
+        let s = server("new", true);
+        let config = |deck: Vec<CardId>| serde_json::json!({ "config": {
+            "seats": [{ "kind": "Local", "deck": deck }, { "kind": "Bot", "deck": good_deck() }],
+            "seed": 1,
+        }}).to_string();
+        let (status, body) = send(&s, LOOPBACK, "POST", "/new", config(bad_deck())).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+        assert!(body.contains("seat 0") && body.contains("unknown card id"), "{body}");
+        let (status, body) = send(&s, LOOPBACK, "POST", "/new", config(vec![])).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+        let (status, body) = send(&s, LOOPBACK, "POST", "/new", config(good_deck())).await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+    }
+
+    #[tokio::test]
+    async fn lobby_create_and_join_refuse_an_invalid_deck() {
+        let s = server("lobby", true);
+        let (status, body) = send(&s, LOOPBACK, "POST", "/lobby/create", lobby_body(bad_deck(), None)).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+        assert!(body.contains("unknown card id"), "{body}");
+
+        let (status, body) = send(&s, LOOPBACK, "POST", "/lobby/create", lobby_body(good_deck(), None)).await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+        let host: serde_json::Value = serde_json::from_str(&body).unwrap();
+        let code = host["code"].as_str().unwrap().to_string();
+
+        let (status, body) = send(&s, LAN_PEER, "POST", "/lobby/join", lobby_body(bad_deck(), Some(&code))).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+        assert!(body.contains("unknown card id"), "{body}");
+        let (status, body) = send(&s, LAN_PEER, "POST", "/lobby/join", lobby_body(vec![], Some(&code))).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+        // The refused joins left the seat open.
+        let (status, body) = send(&s, LAN_PEER, "POST", "/lobby/join", lobby_body(good_deck(), Some(&code))).await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+    }
+
+    #[tokio::test]
+    async fn match_routes_refuse_a_bad_seat_token() {
+        let s = server("seat", true);
+        let (_, body) = send(&s, LOOPBACK, "POST", "/lobby/create", lobby_body(good_deck(), None)).await;
+        let host: serde_json::Value = serde_json::from_str(&body).unwrap();
+        let (code, token) = (host["code"].as_str().unwrap(), host["token"].as_str().unwrap());
+        let (status, body) = send(&s, LAN_PEER, "POST", "/lobby/join", lobby_body(good_deck(), Some(code))).await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+
+        let state = |seat: u8, tok: &str, c: &str| format!("/m/state?code={c}&seat={seat}&token={tok}");
+        let (status, body) = send(&s, LOOPBACK, "GET", &state(0, token, code), "").await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+        for (uri, why) in [
+            (state(0, "not-the-token", code), "not authorized for this seat"),
+            (state(1, token, code), "not authorized for this seat"),
+            (state(0, token, "ZZZZ"), "no match with that code"),
+        ] {
+            let (status, body) = send(&s, LAN_PEER, "GET", &uri, "").await;
+            assert_eq!(status, StatusCode::BAD_REQUEST, "{uri}: {body}");
+            assert!(body.contains(why), "{uri}: {body}");
+        }
+        let uri = format!("/m/action?code={code}&seat=0&token=not-the-token");
+        let (status, body) = send(&s, LAN_PEER, "POST", &uri, r#"{"index":0}"#).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+        assert!(body.contains("not authorized for this seat"), "{body}");
+    }
+
+    #[tokio::test]
+    async fn deck_store_statuses() {
+        let s = server("decks", true);
+        let at = |p: &str| format!("/decks/store?profile={p}");
+        let (status, body) = send(&s, LAN_PEER, "GET", &at("bad%20id!"), "").await;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+        let (status, body) = send(&s, LAN_PEER, "PUT", &at("bad%20id!"), envelope(1, 100)).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+        let (status, body) = send(&s, LAN_PEER, "PUT", &at("http-test-0001"), "{}").await;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+
+        let (status, _) = send(&s, LAN_PEER, "GET", &at("http-test-0001"), "").await;
+        assert_eq!(status, StatusCode::NO_CONTENT);
+        let (status, body) = send(&s, LAN_PEER, "PUT", &at("http-test-0001"), envelope(2, 100)).await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+        // A stale rev is refused with the stored copy.
+        let (status, body) = send(&s, LAN_PEER, "PUT", &at("http-test-0001"), envelope(1, 100)).await;
+        assert_eq!(status, StatusCode::CONFLICT, "{body}");
+        assert_eq!(body, envelope(2, 100));
+
+        // The body limit is the store's own cap (A1.3): exactly the cap is
+        // stored, one byte more is refused before it is buffered.
+        let cap = arcana_web::deckstore::MAX_STORE_BYTES;
+        let (status, body) = send(&s, LAN_PEER, "PUT", &at("http-test-0001"), envelope(3, cap)).await;
+        assert_eq!(status, StatusCode::OK, "{}", &body[..body.len().min(200)]);
+        let (status, _) = send(&s, LAN_PEER, "PUT", &at("http-test-0001"), envelope(4, cap + 1)).await;
+        assert_eq!(status, StatusCode::PAYLOAD_TOO_LARGE);
+    }
+
+    #[tokio::test]
+    async fn deck_store_disabled_is_503() {
+        let s = server("nodecks", false);
+        let at = "/decks/store?profile=http-test-0001";
+        let (status, body) = send(&s, LAN_PEER, "GET", at, "").await;
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{body}");
+        let (status, body) = send(&s, LAN_PEER, "PUT", at, envelope(1, 100)).await;
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{body}");
+    }
+
+    #[tokio::test]
+    async fn solo_routes_admit_loopback_and_refuse_a_lan_peer() {
+        let s = server("guard", true);
+        let (status, body) = send(&s, LOOPBACK, "GET", "/state", "").await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+        let (status, body) = send(&s, LAN_PEER, "GET", "/state", "").await;
+        assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
+        let (status, body) = send(&s, LAN_PEER, "POST", "/new", "").await;
+        assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
+        let (status, body) = send(&s, LAN_PEER, "POST", "/art/warm-all", "").await;
+        assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
+        // The networked routes stay open to the LAN peer.
+        let (status, body) = send(&s, LAN_PEER, "GET", "/lobby/info?code=ZZZZ", "").await;
+        assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
     }
 }

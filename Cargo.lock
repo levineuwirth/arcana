@@ -141,10 +141,12 @@ dependencies = [
  "arcana-core",
  "axum",
  "getrandom 0.2.17",
+ "http-body-util",
  "reqwest",
  "serde",
  "serde_json",
  "tokio",
+ "tower",
 ]
 
 [[package]]

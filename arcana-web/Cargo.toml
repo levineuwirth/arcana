@@ -29,3 +29,10 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 # Seat tokens need OS entropy (W-4) — the splitmix stream stays for public
 # codes/seeds only. Already in the tree via rand.
 getrandom = "0.2"
+
+[dev-dependencies]
+# The HTTP-layer tests in src/main.rs drive the router with
+# `tower::ServiceExt::oneshot` and read bodies with `BodyExt::collect`; both
+# crates are already in the tree through axum.
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
