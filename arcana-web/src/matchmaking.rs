@@ -18,7 +18,7 @@
 //! its thread and never crosses a thread boundary.
 
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
@@ -86,10 +86,11 @@ impl SeatSlot {
     }
 }
 
-/// Serializable snapshot of an in-progress match — everything needed to
-/// reconstruct it after a server restart: seat metadata (tokens/decks) plus the
-/// replayable action transcript. Written by the match thread after each action
-/// when persistence is enabled (`MATCH_STATE_DIR`).
+/// Serializable snapshot of an open lobby or an in-progress match — everything
+/// needed to reconstruct it after a server restart: seat metadata (tokens/decks)
+/// plus the replayable action transcript. Written when a lobby opens, again
+/// when the guest joins, and by the match thread after each action, when
+/// persistence is enabled (`MATCH_STATE_DIR`).
 #[derive(Clone, Serialize, Deserialize)]
 struct PersistedSeat {
     token: String,
@@ -102,6 +103,7 @@ struct PersistedSeat {
 struct PersistedMatch {
     code: String,
     seed: u64,
+    /// The filled seats, in seat order: the host's alone while it is a lobby.
     seats: Vec<PersistedSeat>,
     actions: Vec<Action>,
     /// Each seat's level, indexed by seat. Absent in transcripts written
@@ -159,6 +161,17 @@ impl From<PersistedAutoPass> for AutoPass {
 /// Where + what a match thread writes after each action (the `actions` are
 /// refreshed from the live game before each write). `None` when persistence is off.
 type PersistWriter = (PathBuf, PersistedMatch);
+
+/// Write a transcript to `path`. Atomic (W-5): temp + rename, so a crash
+/// mid-write can't leave a torn transcript that silently fails to restore on
+/// the next startup. A failure is logged; the lobby or match goes on in memory.
+fn write_transcript(path: &Path, pm: &PersistedMatch, what: &str) {
+    let Ok(json) = serde_json::to_string(pm) else { return };
+    let tmp = path.with_extension("json.tmp");
+    if let Err(e) = std::fs::write(&tmp, &json).and_then(|()| std::fs::rename(&tmp, path)) {
+        eprintln!("[arcana-web] {what}: transcript persist failed: {e}");
+    }
+}
 
 /// A command to a per-match game thread. The acting `seat` is already
 /// authenticated by the coordinator; each carries a oneshot reply. Private — the
@@ -237,17 +250,7 @@ fn run_match(
                 let mut pm = meta.clone();
                 pm.actions = core.record().actions.clone();
                 pm.auto_pass = [0, 1].map(|seat| core.auto_pass_for(seat).into());
-                if let Ok(json) = serde_json::to_string(&pm) {
-                    // Atomic write (W-5): temp + rename, so a crash mid-write
-                    // can't leave a torn transcript that silently fails to
-                    // restore on the next startup.
-                    let tmp = path.with_extension("json.tmp");
-                    if let Err(e) = std::fs::write(&tmp, &json)
-                        .and_then(|()| std::fs::rename(&tmp, path))
-                    {
-                        eprintln!("[arcana-web] {what}: transcript persist failed: {e}");
-                    }
-                }
+                write_transcript(path, &pm, &what);
             }
         }
     }
@@ -368,8 +371,9 @@ pub struct Matches {
     rng: u64,
     /// Monotonic match-creation counter (recency for [`prune`](Self::prune)).
     next_seq: u64,
-    /// When set, Active matches are persisted here (one `<code>.json` transcript
-    /// each) and reloaded on startup, so a restart doesn't drop live games.
+    /// When set, open lobbies and Active matches are persisted here (one
+    /// `<code>.json` transcript each) and reloaded on startup, so a restart
+    /// drops neither a live game nor the code a waiting host has shared.
     state_dir: Option<PathBuf>,
 }
 
@@ -388,10 +392,11 @@ impl Matches {
     }
 
     /// Build the per-match transcript writer handed to its game thread (or `None`
-    /// when persistence is off).
+    /// when persistence is off). It records the filled seats only, so a lobby's
+    /// transcript holds its host alone.
     fn persist_writer(&self, code: &str, seed: u64, seats: &[SeatSlot; 2]) -> Option<PersistWriter> {
         let path = self.persist_path(code)?;
-        let pseats = seats.iter().map(|s| PersistedSeat {
+        let pseats = seats.iter().filter(|s| s.filled).map(|s| PersistedSeat {
             token: s.token.clone(),
             name: s.profile.name.clone(),
             identity: s.identity.clone(),
@@ -403,7 +408,7 @@ impl Matches {
         }))
     }
 
-    /// Delete a match's persistence file (on leave / reap / prune).
+    /// Delete a match's or lobby's persistence file (on leave / reap / prune).
     fn del_persist(&self, code: &str) {
         if let Some(p) = self.persist_path(code) {
             let _ = std::fs::remove_file(p);
@@ -446,7 +451,7 @@ impl Matches {
         Ok(tx)
     }
 
-    /// Reload persisted in-progress matches from `state_dir` at startup.
+    /// Reload persisted lobbies and in-progress matches from `state_dir` at startup.
     fn load_persisted(&mut self) {
         let Some(dir) = self.state_dir.clone() else { return; };
         let _ = std::fs::create_dir_all(&dir);
@@ -478,12 +483,10 @@ impl Matches {
         }
     }
 
-    /// Reconstruct one match from its persisted transcript (spawns a resuming
-    /// game thread and re-registers the Active match).
+    /// Reconstruct one lobby or match from its persisted transcript. A lobby
+    /// (the host's seat alone) reopens under its code; a match gets a resuming
+    /// game thread and is re-registered Active.
     fn restore(&mut self, pm: PersistedMatch) {
-        if pm.seats.len() != 2 {
-            return;
-        }
         let seat_of = |ps: &PersistedSeat| SeatSlot {
             filled: true,
             token: ps.token.clone(),
@@ -491,15 +494,24 @@ impl Matches {
             identity: ps.identity.clone(),
             deck: ps.deck.clone(),
         };
-        let seats = [seat_of(&pm.seats[0]), seat_of(&pm.seats[1])];
-        let (deck0, deck1) = (seats[0].deck.clone(), seats[1].deck.clone());
-        let persist = self.persist_writer(&pm.code, pm.seed, &seats);
-        let tx = match Self::spawn_match(
-            self.reg, pm.seed, deck0, deck1, pm.actions, pm.auto_pass.map(AutoPass::from),
-            &pm.code, persist) {
-            Ok(tx) => tx,
-            Err(e) => {
-                eprintln!("[arcana-web] couldn't restore match {}: {e}", pm.code);
+        let (status, seats, tx) = match pm.seats.as_slice() {
+            [host] => (MatchStatus::Lobby, [seat_of(host), SeatSlot::empty()], None),
+            [s0, s1] => {
+                let seats = [seat_of(s0), seat_of(s1)];
+                let (deck0, deck1) = (seats[0].deck.clone(), seats[1].deck.clone());
+                let persist = self.persist_writer(&pm.code, pm.seed, &seats);
+                match Self::spawn_match(
+                    self.reg, pm.seed, deck0, deck1, pm.actions, pm.auto_pass.map(AutoPass::from),
+                    &pm.code, persist) {
+                    Ok(tx) => (MatchStatus::Active, seats, Some(tx)),
+                    Err(e) => {
+                        eprintln!("[arcana-web] couldn't restore match {}: {e}", pm.code);
+                        return;
+                    }
+                }
+            }
+            other => {
+                eprintln!("[arcana-web] skipping match file {} with {} seats", pm.code, other.len());
                 return;
             }
         };
@@ -507,11 +519,13 @@ impl Matches {
         self.next_seq += 1;
         self.by_code.insert(pm.code.clone(), NetMatch {
             code: pm.code,
-            status: MatchStatus::Active,
+            status,
             seed: pm.seed,
             seq,
             seats,
-            tx: Some(tx),
+            tx,
+            // However long the server was down, a restored seat counts as seen
+            // now, so a lobby's host has a whole timeout to poll again.
             last_seen: [Instant::now(); 2],
         });
     }
@@ -541,6 +555,7 @@ impl Matches {
         for (_, code) in lobbies {
             if excess == 0 { break; }
             self.by_code.remove(&code);
+            self.del_persist(&code);
             excess -= 1;
         }
     }
@@ -618,6 +633,11 @@ impl Matches {
             tx: None,
             last_seen: [Instant::now(); 2],
         });
+        // Persisted from the start, so the code the host shares outlives a
+        // restart while the host's Stage keeps polling.
+        if let Some((path, pm)) = self.persist_writer(&code, seed, &self.by_code[&code].seats) {
+            write_transcript(&path, &pm, &format!("lobby {code}"));
+        }
         Ok(SeatCredentials { code, seat: 0, token })
     }
 
@@ -644,6 +664,7 @@ impl Matches {
         let m_ref = &self.by_code[code];
         let (deck0, deck1) = (m_ref.seats[0].deck.clone(), m_ref.seats[1].deck.clone());
         let persist = self.persist_writer(code, seed, &m_ref.seats);
+        let kickoff = persist.clone();
         let tx = match Self::spawn_match(
             reg, seed, deck0, deck1, Vec::new(), [AutoPass::default(); 2], code, persist) {
             Ok(tx) => tx,
@@ -654,6 +675,11 @@ impl Matches {
                 return Err(e);
             }
         };
+        // The match's transcript replaces the lobby's now, not at the first
+        // action, so a restart in between restores the match the guest joined.
+        if let Some((path, pm)) = &kickoff {
+            write_transcript(path, pm, &format!("match {code}"));
+        }
         let m = self.by_code.get_mut(code).unwrap();
         m.tx = Some(tx);
         m.status = MatchStatus::Active;
@@ -930,8 +956,9 @@ mod tests {
 
         let levels = serde_json::json!(["default", "full_control"]);
         m.set_auto_pass(&host.code, 1, &guest.token, AutoPass::FullControl).unwrap();
-        // The first write: no command before this one re-persists.
-        let before = persisted_when(&|_| true);
+        // The join wrote both seats' defaults; wait for this command's write.
+        let joined = serde_json::json!(["default", "default"]);
+        let before = persisted_when(&|v| v["auto_pass"] != joined);
         assert_eq!(before["auto_pass"], levels, "the guest's choice is the guest's alone");
         let n = before["actions"].as_array().unwrap().len();
 
@@ -952,6 +979,71 @@ mod tests {
         let shared: PersistedMatch = serde_json::from_str(
             r#"{"code":"SHRD","seed":1,"seats":[],"actions":[],"auto_pass":"full_control"}"#).unwrap();
         assert_eq!(shared.auto_pass, [PersistedAutoPass::FullControl; 2]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// An open lobby is on disk from the moment it opens and comes back on
+    /// startup under its code, with its host and deck, so a guest can join by
+    /// the code the host shared and the host plays with the token it holds.
+    /// The join replaces the lobby's file, so a second restart before any
+    /// action restores the match, not the lobby.
+    #[test]
+    fn a_waiting_lobby_survives_a_restart() {
+        let reg = leaked_catalog();
+        let dir = std::env::temp_dir().join(format!("arcana-mm-{}-lobby", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut m = Matches::new(reg, 3, Some(dir.clone()));
+        let host = m.create(profile("Alice"), DeckIdentity::default(), deck(reg)).unwrap();
+
+        drop(m);
+        let mut m = Matches::new(reg, 4, Some(dir.clone()));
+        let info = m.info(&host.code).expect("the lobby is back under its code");
+        assert_eq!(info.status, MatchStatus::Lobby);
+        assert!(info.seats[0].filled && !info.seats[1].filled);
+        assert_eq!(info.seats[0].name, "Alice");
+        assert_eq!(m.by_code[&host.code].seats[0].deck, deck(reg), "the host's deck came back");
+
+        let guest = m.join(&host.code, profile("Bob"), DeckIdentity::default(), deck(reg)).unwrap();
+        let s0 = m.snapshot(&host.code, 0, &host.token).expect("the host's token plays seat 0");
+        assert_eq!(s0.view.perspective, 0);
+
+        drop(m);
+        let mut m = Matches::new(reg, 5, Some(dir.clone()));
+        assert_eq!(m.info(&host.code).unwrap().status, MatchStatus::Active,
+            "a match joined but not yet played comes back as the match");
+        let s1 = m.snapshot(&host.code, 1, &guest.token).expect("the guest's seat came back");
+        assert_eq!(s1.view.perspective, 1);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A lobby that closes, whether cancelled by its host, reaped once the
+    /// host stops polling, or evicted by the registry's bound, takes its file
+    /// with it: a restart brings back exactly the lobbies still open.
+    #[test]
+    fn closed_lobbies_are_not_restored() {
+        let reg = leaked_catalog();
+        let dir = std::env::temp_dir().join(format!("arcana-mm-{}-closed", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut m = Matches::new(reg, 8, Some(dir.clone()));
+        let d = deck(reg);
+        let cancelled = m.create(profile("A"), DeckIdentity::default(), d.clone()).unwrap();
+        m.leave(&cancelled.code, 0, &cancelled.token).unwrap();
+        let reaped = m.create(profile("B"), DeckIdentity::default(), d.clone()).unwrap();
+        std::thread::sleep(Duration::from_millis(2));
+        assert_eq!(m.reap_stale(Duration::ZERO), vec![reaped.code]);
+        for _ in 0..200 {
+            m.create(profile("C"), DeckIdentity::default(), d.clone()).unwrap();
+        }
+        let mut open: Vec<String> = m.by_code.keys().cloned().collect();
+
+        drop(m);
+        let m = Matches::new(reg, 9, Some(dir.clone()));
+        let mut restored: Vec<String> = m.by_code.keys().cloned().collect();
+        open.sort();
+        restored.sort();
+        assert_eq!(restored, open, "the open lobbies come back, and no other");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
