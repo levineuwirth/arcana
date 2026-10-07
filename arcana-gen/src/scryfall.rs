@@ -320,7 +320,9 @@ impl ScryfallPool {
     /// Build a pool from an `oracle_cards` dump in any form the loader
     /// meets: the gzipped JSONL Scryfall serves, that file decompressed,
     /// or the JSON array of a pre-JSONL cache. Gzip is recognized by its
-    /// magic bytes, the array by its leading `[`.
+    /// magic bytes, the array by its leading `[`. A dump holding no cards
+    /// is refused: a cache whose write failed at its first byte is an
+    /// empty file, which would otherwise load as an empty pool.
     pub fn from_bulk_bytes(bytes: &[u8]) -> Result<Self> {
         let decompressed;
         let text = if bytes.starts_with(&GZIP_MAGIC) {
@@ -333,19 +335,24 @@ impl ScryfallPool {
         } else {
             std::str::from_utf8(bytes).context("oracle_cards bulk is not UTF-8")?
         };
-        if text.trim_start().starts_with('[') {
-            return Self::from_json_str(&text);
-        }
-        let mut cards = Vec::new();
-        for (i, line) in text.lines().enumerate() {
-            if line.trim().is_empty() {
-                continue;
+        let pool = if text.trim_start().starts_with('[') {
+            Self::from_json_str(text)?
+        } else {
+            let mut cards = Vec::new();
+            for (i, line) in text.lines().enumerate() {
+                if line.trim().is_empty() {
+                    continue;
+                }
+                let card = serde_json::from_str(line)
+                    .with_context(|| format!("parsing oracle_cards JSONL line {}", i + 1))?;
+                cards.push(card);
             }
-            let card = serde_json::from_str(line)
-                .with_context(|| format!("parsing oracle_cards JSONL line {}", i + 1))?;
-            cards.push(card);
+            Self::from_cards(cards)
+        };
+        if pool.cards.is_empty() {
+            return Err(anyhow!("oracle_cards bulk holds no cards"));
         }
-        Ok(Self::from_cards(cards))
+        Ok(pool)
     }
 
     fn from_cards(cards: Vec<Card>) -> Self {
@@ -768,6 +775,33 @@ mod tests {
         // Every line is intact; only the CRC and length trailer is missing.
         let cut = &SAMPLE_JSONL_GZ[..SAMPLE_JSONL_GZ.len() - 8];
         assert!(ScryfallPool::from_bulk_bytes(cut).is_err());
+    }
+
+    #[test]
+    fn empty_bulk_is_refused() {
+        let mut empty_gz = Vec::new();
+        flate2::write::GzEncoder::new(&mut empty_gz, flate2::Compression::default())
+            .finish()
+            .unwrap();
+        for (form, bytes) in [
+            ("zero bytes", &b""[..]),
+            ("blank lines", &b"\n \n"[..]),
+            ("empty array", &b"[]"[..]),
+            ("gzip of nothing", &empty_gz[..]),
+        ] {
+            let err = ScryfallPool::from_bulk_bytes(bytes)
+                .err()
+                .unwrap_or_else(|| panic!("{form} loaded as a pool"));
+            assert!(format!("{err:#}").contains("no cards"), "{form}: {err:#}");
+        }
+        // The case that matters: a cache whose write failed at its first byte.
+        let dir = std::env::temp_dir().join(format!("arcana-gen-empty-cache-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("oracle-cards.jsonl.gz");
+        std::fs::write(&path, b"").unwrap();
+        let loaded = ScryfallPool::from_cache_or_download(&path);
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!(loaded.is_err(), "a zero-byte cache loaded as a pool");
     }
 
     #[test]
