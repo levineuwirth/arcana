@@ -357,7 +357,9 @@
     combat: (body) => M.active() ? call("POST", "/m/combat" + M.qs(), body) : call("POST", "/combat", body),
     autotap: (objectId) => M.active() ? call("POST", "/m/autotap" + M.qs(), { object_id: objectId }) : call("POST", "/autotap", { object_id: objectId }),
     activate: (objectId) => M.active() ? call("POST", "/m/activate" + M.qs(), { object_id: objectId }) : call("POST", "/activate", { object_id: objectId }),
-    autoPass: (level) => call("POST", "/autopass", { level }),
+    autoPass: (level) => M.active()
+      ? call("POST", "/m/autopass" + M.qs(), { level })
+      : call("POST", "/autopass", { level }),
     passUntil: (until) => M.active()
       ? call("POST", "/m/pass-until" + M.qs(), { until })
       : call("POST", "/pass-until", { until }),

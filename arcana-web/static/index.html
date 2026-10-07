@@ -2454,6 +2454,7 @@ window.addEventListener("scroll", scheduleArrows, true); // capture: catches pan
 
 // Auto-pass level — persisted, and synced to the server on load (the worker
 // keeps it across new games, so we only need to push it when it changes / loads).
+// In a networked duel it is this seat's own level; the opponent keeps theirs.
 const FULLCTL_KEY = "arcana.fullcontrol";
 const fullctlBtn = document.getElementById("fullctl");
 let fullControl = false;
@@ -2543,9 +2544,6 @@ function enterMatchMode(ctx) {
   Arcana.Match.set(ctx);
   saveMatchCreds(ctx);
   document.querySelector(".sub").textContent = "cockpit · seat " + ctx.seat + " · " + ctx.code;
-  // Auto-pass is a solo convenience; hide it in a networked duel.
-  const ap = document.querySelector(".autopass-ctl");
-  if (ap) ap.style.display = "none";
   // Repurpose "New duel →" as "Leave match".
   const nb = document.getElementById("new");
   if (nb) { nb.textContent = "Leave match"; nb.title = "Leave this networked duel"; nb.onclick = leaveMatch; }
@@ -2591,9 +2589,13 @@ async function loadOpponentName() {
   }
   await loadOpponentName();
   Arcana.loadGlossary();
-  // Sync saved full-control to the server (solo only); the server already defaults
-  // to smart auto-pass, so we only push when full control was left on.
-  if (!Arcana.Match.active() && fullControl) {
+  // Sync saved full-control to the server. Solo: the worker already defaults to
+  // smart auto-pass, so we only push when full control was left on. In a duel
+  // the level is this seat's own and the server keeps it (across a restart
+  // too), so push it either way and the chip shows what the seat plays at.
+  if (Arcana.Match.active()) {
+    await setFullControl(fullControl, false);
+  } else if (fullControl) {
     try { await Arcana.Api.autoPass("full_control"); } catch (e) { /* ignore */ }
   }
   await getState();

@@ -104,14 +104,31 @@ struct PersistedMatch {
     seed: u64,
     seats: Vec<PersistedSeat>,
     actions: Vec<Action>,
-    /// Absent in transcripts written before it was persisted.
-    #[serde(default)]
-    auto_pass: PersistedAutoPass,
+    /// Each seat's level, indexed by seat. Absent in transcripts written
+    /// before it was persisted; a single level in those written while it was
+    /// one per match, when it applied to both seats.
+    #[serde(default, deserialize_with = "seat_levels")]
+    auto_pass: [PersistedAutoPass; 2],
+}
+
+/// Reads [`PersistedMatch::auto_pass`] in either stored shape: a level per
+/// seat, or one level shared by both.
+fn seat_levels<'de, D: serde::Deserializer<'de>>(d: D) -> Result<[PersistedAutoPass; 2], D::Error> {
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Stored {
+        PerSeat([PersistedAutoPass; 2]),
+        Shared(PersistedAutoPass),
+    }
+    Ok(match Stored::deserialize(d)? {
+        Stored::PerSeat(levels) => levels,
+        Stored::Shared(level) => [level; 2],
+    })
 }
 
 /// [`AutoPass`] as a transcript stores it, in the API's wire values
 /// (arcana-ai's type carries no serde). The replay does not need it, since
-/// every auto-pass is a recorded action; it is the players' setting, which a
+/// every auto-pass is a recorded action; it is each player's setting, which a
 /// restored match would otherwise lose.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -202,7 +219,7 @@ fn run_match(
             }
             MatchCmd::SetAutoPass { seat, level, reply } => {
                 let _ = reply.send(contain(&what, || {
-                    core.set_auto_pass(level);
+                    core.set_auto_pass_for(seat, level);
                     Ok(core.snapshot_for(seat))
                 }));
             }
@@ -219,7 +236,7 @@ fn run_match(
             if let Some((path, meta)) = persist.as_ref() {
                 let mut pm = meta.clone();
                 pm.actions = core.record().actions.clone();
-                pm.auto_pass = core.auto_pass().into();
+                pm.auto_pass = [0, 1].map(|seat| core.auto_pass_for(seat).into());
                 if let Ok(json) = serde_json::to_string(&pm) {
                     // Atomic write (W-5): temp + rename, so a crash mid-write
                     // can't leave a torn transcript that silently fails to
@@ -382,7 +399,7 @@ impl Matches {
         }).collect();
         Some((path, PersistedMatch {
             code: code.to_string(), seed, seats: pseats, actions: Vec::new(),
-            auto_pass: PersistedAutoPass::default(),
+            auto_pass: Default::default(),
         }))
     }
 
@@ -394,11 +411,12 @@ impl Matches {
     }
 
     /// Spawn a match's game thread. `actions` empty → a fresh game; non-empty →
-    /// resume by replaying the transcript. The `GameCore` (`!Send` via bots, though
-    /// two-human has none) is BUILT INSIDE the thread from `Send` inputs.
+    /// resume by replaying the transcript. `auto_pass` is each seat's level.
+    /// The `GameCore` (`!Send` via bots, though two-human has none) is BUILT
+    /// INSIDE the thread from `Send` inputs.
     fn spawn_match(
         reg: &'static CardRegistry, seed: u64, deck0: Vec<CardId>, deck1: Vec<CardId>,
-        actions: Vec<Action>, auto_pass: AutoPass, code: &str, persist: Option<PersistWriter>,
+        actions: Vec<Action>, auto_pass: [AutoPass; 2], code: &str, persist: Option<PersistWriter>,
     ) -> Result<mpsc::UnboundedSender<MatchCmd>, String> {
         let (tx, rx) = mpsc::unbounded_channel::<MatchCmd>();
         let code = code.to_string();
@@ -415,7 +433,9 @@ impl Matches {
                     } else {
                         GameCore::resume_two_human(reg, seed, deck0, deck1, &actions)
                     };
-                    core.set_auto_pass(auto_pass);
+                    for (seat, level) in (0..).zip(auto_pass) {
+                        core.set_auto_pass_for(seat, level);
+                    }
                     Ok(core)
                 });
                 if let Ok(core) = built {
@@ -475,7 +495,8 @@ impl Matches {
         let (deck0, deck1) = (seats[0].deck.clone(), seats[1].deck.clone());
         let persist = self.persist_writer(&pm.code, pm.seed, &seats);
         let tx = match Self::spawn_match(
-            self.reg, pm.seed, deck0, deck1, pm.actions, pm.auto_pass.into(), &pm.code, persist) {
+            self.reg, pm.seed, deck0, deck1, pm.actions, pm.auto_pass.map(AutoPass::from),
+            &pm.code, persist) {
             Ok(tx) => tx,
             Err(e) => {
                 eprintln!("[arcana-web] couldn't restore match {}: {e}", pm.code);
@@ -624,7 +645,7 @@ impl Matches {
         let (deck0, deck1) = (m_ref.seats[0].deck.clone(), m_ref.seats[1].deck.clone());
         let persist = self.persist_writer(code, seed, &m_ref.seats);
         let tx = match Self::spawn_match(
-            reg, seed, deck0, deck1, Vec::new(), AutoPass::default(), code, persist) {
+            reg, seed, deck0, deck1, Vec::new(), [AutoPass::default(); 2], code, persist) {
             Ok(tx) => tx,
             Err(e) => {
                 // Roll the lobby back so the guest can retry (spawn failure is
@@ -859,7 +880,7 @@ mod tests {
                     identity: DeckIdentity::default(), deck: deck(reg) },
             ],
             actions: Vec::new(),
-            auto_pass: PersistedAutoPass::default(),
+            auto_pass: Default::default(),
         };
         std::fs::write(dir.join("RSTR.json"), serde_json::to_string(&pm).unwrap()).unwrap();
 
@@ -880,11 +901,14 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    /// The auto-pass level is part of the transcript: setting it re-persists,
-    /// and a restored match comes back with it, so its next write still
-    /// carries it. A transcript from before the field loads as the default.
+    /// Each seat's auto-pass level is its own and part of the transcript: the
+    /// guest choosing full control leaves the host on the default, setting it
+    /// re-persists, and a restored match comes back with both, so its next
+    /// write still carries them. A transcript from before the field loads as
+    /// the default for both seats; one from when the level was shared loads
+    /// that level for both.
     #[test]
-    fn auto_pass_level_survives_a_restart() {
+    fn each_seats_auto_pass_level_survives_a_restart() {
         let reg = leaked_catalog();
         let dir = std::env::temp_dir().join(format!("arcana-mm-{}-autopass", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
@@ -904,8 +928,11 @@ mod tests {
             panic!("the transcript at {} never reached the awaited state", path.display());
         };
 
-        m.set_auto_pass(&host.code, 0, &host.token, AutoPass::FullControl).unwrap();
-        let before = persisted_when(&|v| v["auto_pass"] == "full_control");
+        let levels = serde_json::json!(["default", "full_control"]);
+        m.set_auto_pass(&host.code, 1, &guest.token, AutoPass::FullControl).unwrap();
+        // The first write: no command before this one re-persists.
+        let before = persisted_when(&|_| true);
+        assert_eq!(before["auto_pass"], levels, "the guest's choice is the guest's alone");
         let n = before["actions"].as_array().unwrap().len();
 
         drop(m);
@@ -916,12 +943,15 @@ mod tests {
             .expect("one seat is on the clock");
         m.action(&host.code, seat, token, 0).unwrap();
         let after = persisted_when(&|v| v["actions"].as_array().unwrap().len() > n);
-        assert_eq!(after["auto_pass"], "full_control",
-            "the restored match kept its level and wrote it back");
+        assert_eq!(after["auto_pass"], levels,
+            "the restored match kept each seat's level and wrote them back");
 
         let old: PersistedMatch = serde_json::from_str(
             r#"{"code":"OLDT","seed":1,"seats":[],"actions":[]}"#).unwrap();
-        assert_eq!(old.auto_pass, PersistedAutoPass::Default);
+        assert_eq!(old.auto_pass, [PersistedAutoPass::Default; 2]);
+        let shared: PersistedMatch = serde_json::from_str(
+            r#"{"code":"SHRD","seed":1,"seats":[],"actions":[],"auto_pass":"full_control"}"#).unwrap();
+        assert_eq!(shared.auto_pass, [PersistedAutoPass::FullControl; 2]);
         let _ = std::fs::remove_dir_all(&dir);
     }
 

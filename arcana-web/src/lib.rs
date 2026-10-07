@@ -1063,15 +1063,21 @@ impl GameCore {
         self.reg
     }
 
-    /// Set the human auto-pass level (none / middle-ground / full).
+    /// Set the solo human's auto-pass level (smart default / full control).
     pub fn set_auto_pass(&mut self, level: arcana_ai::session::AutoPass) {
-        self.session.set_auto_pass(level);
+        self.set_auto_pass_for(HUMAN, level);
     }
 
-    /// The session's auto-pass level (one for the whole session, so in a
-    /// networked match both seats share it).
-    pub fn auto_pass(&self) -> arcana_ai::session::AutoPass {
-        self.session.auto_pass()
+    /// As [`set_auto_pass`](Self::set_auto_pass) for a specific seat
+    /// (networked): the level is per seat, so one player's choice never
+    /// changes how the other's windows surface.
+    pub fn set_auto_pass_for(&mut self, seat: PlayerId, level: arcana_ai::session::AutoPass) {
+        self.session.set_auto_pass(seat, level);
+    }
+
+    /// `seat`'s auto-pass level.
+    pub fn auto_pass_for(&self, seat: PlayerId) -> arcana_ai::session::AutoPass {
+        self.session.auto_pass(seat)
     }
 
     /// Arm the one-shot "pass until \<phase\>" skip for the solo human and

@@ -143,9 +143,11 @@ pub struct Session<'a> {
     /// the full state — correct since a played/cast/attacking card is public.
     /// Cleared each `advance`; passes and empty declarations are not recorded.
     log: Vec<(PlayerId, String)>,
-    /// How a HUMAN's priority windows are surfaced ([`AutoPass`]). Defaults to
-    /// [`AutoPass::Default`] (the smart middle ground). Bots are unaffected.
-    auto_pass: AutoPass,
+    /// Per-seat: how that HUMAN's priority windows are surfaced ([`AutoPass`]).
+    /// Each defaults to [`AutoPass::Default`] (the smart middle ground); in a
+    /// two-human game one player's choice never changes the other's. Bots are
+    /// unaffected.
+    auto_pass: Vec<AutoPass>,
     /// Per-seat armed "pass until \<phase\>" directive ([`PassUntil`]); `None`
     /// when idle. One-shot: consumed by reaching its checkpoint or by ANY
     /// decision surfacing to that seat.
@@ -212,17 +214,24 @@ impl<'a> Session<'a> {
         assert_eq!(decks.len(), seats.len(), "one seat per deck");
         let record = GameRecord::new(decks.clone(), seed);
         let (state, yld) = new_game_first_player(decks, registry, seed, first);
+        let auto_pass = vec![AutoPass::default(); seats.len()];
         let pass_until = vec![None; seats.len()];
         Self { state, yld, registry, seats, record, log: Vec::new(),
-               auto_pass: AutoPass::default(), pass_until }
+               auto_pass, pass_until }
     }
 
-    /// Set how the human's priority windows surface (default
-    /// [`AutoPass::Default`]). See [`AutoPass`].
-    pub fn set_auto_pass(&mut self, level: AutoPass) { self.auto_pass = level; }
+    /// Set how `seat`'s priority windows surface (default
+    /// [`AutoPass::Default`]); the other seats keep their own. See [`AutoPass`].
+    pub fn set_auto_pass(&mut self, seat: PlayerId, level: AutoPass) {
+        if let Some(slot) = self.auto_pass.get_mut(seat as usize) {
+            *slot = level;
+        }
+    }
 
-    /// The current auto-pass level.
-    pub fn auto_pass(&self) -> AutoPass { self.auto_pass }
+    /// `seat`'s current auto-pass level.
+    pub fn auto_pass(&self, seat: PlayerId) -> AutoPass {
+        self.auto_pass.get(seat as usize).copied().unwrap_or_default()
+    }
 
     /// Arm (or clear, with `None`) a one-shot [`PassUntil`] skip for `seat`.
     /// Call [`advance`](Self::advance) afterward to let it run; in a
@@ -323,8 +332,8 @@ impl<'a> Session<'a> {
             }
 
             // Auto-pass a HUMAN's dead priority window (no meaningful play — only
-            // passing or tapping mana with nothing to spend it on), per the
-            // configured level. Bots are unaffected. Gated on a priority window so
+            // passing or tapping mana with nothing to spend it on), per that
+            // seat's level. Bots are unaffected. Gated on a priority window so
             // it never short-circuits mulligans, combat declarations, or choices.
             // A just-reached PassUntil checkpoint window always surfaces.
             if !at_checkpoint
@@ -341,7 +350,7 @@ impl<'a> Session<'a> {
                 // in `log` for the passive feed, it just no longer HALTS the human
                 // to acknowledge something they can't act on. Full control surfaces
                 // every window regardless.
-                let skip = match self.auto_pass {
+                let skip = match self.auto_pass[player as usize] {
                     AutoPass::Default => true,
                     AutoPass::FullControl => false,
                 };
@@ -514,7 +523,8 @@ mod tests {
             let deck = arcana_cards::sample_deck(&reg, 7);
             let seats = vec![Seat::Human, Seat::Human];
             let mut session = Session::new(vec![deck.clone(), deck], &reg, seats, 7);
-            session.set_auto_pass(level);
+            session.set_auto_pass(0, level);
+            session.set_auto_pass(1, level);
 
             let mut saw_dead = false;
             let mut guard = 0;
@@ -546,6 +556,57 @@ mod tests {
             "full control must surface at least one no-play window");
         assert!(!run(AutoPass::Default),
             "the default must never surface a no-play priority window");
+    }
+
+    /// Two humans, two levels: each seat's windows follow its OWN level. The
+    /// full-control seat is stopped at dead windows while the default seat in
+    /// the same game never is — tried both ways round, so a shared level
+    /// (either seat's choice applying to both) fails one of them.
+    #[test]
+    fn auto_pass_level_is_per_seat() {
+        use arcana_core::legal_actions::has_meaningful_play;
+        let reg = arcana_cards::build_catalog();
+        let deck = arcana_cards::sample_deck(&reg, 7);
+
+        // Dead priority windows surfaced to each seat, under the given levels.
+        let run = |levels: [AutoPass; 2]| -> [usize; 2] {
+            let seats = vec![Seat::Human, Seat::Human];
+            let mut session = Session::new(vec![deck.clone(), deck.clone()], &reg, seats, 7);
+            session.set_auto_pass(0, levels[0]);
+            session.set_auto_pass(1, levels[1]);
+            assert_eq!([session.auto_pass(0), session.auto_pass(1)], levels);
+            let mut dead = [0usize; 2];
+            let mut guard = 0;
+            loop {
+                guard += 1;
+                assert!(guard < 100_000, "session must terminate");
+                match session.advance() {
+                    Turn::GameOver(_) => break,
+                    Turn::AwaitingHuman { legal, player, .. } => {
+                        let is_priority = legal.iter().any(|a| matches!(a, Action::PassPriority));
+                        if is_priority && !has_meaningful_play(session.state(), player, &reg) {
+                            dead[player as usize] += 1;
+                        }
+                        let pick = legal.iter()
+                            .position(|a| matches!(a, Action::MulliganKeep))
+                            .or_else(|| legal.iter().position(|a|
+                                matches!(a, Action::PlayLand { .. } | Action::CastSpell { .. })))
+                            .or_else(|| legal.iter().position(|a| matches!(a, Action::PassPriority)))
+                            .unwrap_or(0);
+                        session.apply(legal[pick].clone());
+                    }
+                }
+            }
+            dead
+        };
+
+        let (full, default) = (AutoPass::FullControl, AutoPass::Default);
+        let dead = run([full, default]);
+        assert!(dead[0] > 0, "seat 0 chose full control and is stopped at dead windows");
+        assert_eq!(dead[1], 0, "seat 1 kept the default; seat 0's choice must not reach it");
+        let dead = run([default, full]);
+        assert_eq!(dead[0], 0, "seat 0 kept the default; seat 1's choice must not reach it");
+        assert!(dead[1] > 0, "seat 1 chose full control and is stopped at dead windows");
     }
 
     /// Overhaul step 2: "pass until <phase>" skips windows the player COULD
@@ -700,7 +761,7 @@ mod tests {
         for seed in 0u64..6 {
             let seats = vec![Seat::Human, Seat::Bot(Box::new(RandomStatePolicy::new(seed*7+1)))];
             let mut session = Session::new(vec![deck.clone(), deck.clone()], &reg, seats, seed);
-            session.set_auto_pass(AutoPass::FullControl);
+            session.set_auto_pass(0, AutoPass::FullControl);
             let mut guard = 0;
             loop {
                 guard += 1; assert!(guard < 400_000, "session must terminate");
