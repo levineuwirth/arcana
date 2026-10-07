@@ -6,6 +6,7 @@
 <title>Arcana — Deckbuilder</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("arcana.theme")||"dark";}catch(e){document.documentElement.dataset.theme="dark";}</script>
 <link rel="stylesheet" href="/theme.css" />
+<link rel="stylesheet" href="/assets/mana.css" />
 <style>
   /* .topbar / .wordmark / .sub are shared (theme.css); keep the deckbuilder
      header sticky as the page scrolls. */
@@ -39,7 +40,7 @@
   }
   .colorpips .pip:hover { opacity: .85; }
   .colorpips .pip.active { opacity: 1; filter: none; border-color: var(--text-muted); background: var(--bg-offset); }
-  .colorpips .pip img, .colorpips .pip .ac-sym { width: 19px; height: 19px; display: block; }
+  .colorpips .pip .ac-sym { --sym: calc(19px / 1.3); display: block; margin: 0; }
   .mv-range { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-muted); }
   .mv-range input { width: 52px; padding: 4px 6px; }
   .arttools { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
@@ -80,7 +81,7 @@
   /* colors: colored-pip requirement tiles */
   #deckstats .colors { display: flex; gap: 9px; flex-wrap: wrap; }
   #deckstats .colors .ctile { display: inline-flex; align-items: center; gap: 3px; font-variant-numeric: tabular-nums; }
-  #deckstats .colors .ctile .ac-sym { width: 14px; height: 14px; display: block; }
+  #deckstats .colors .ctile .ac-sym { --sym: calc(14px / 1.3); display: block; margin: 0; }
   #deckstats .colors .ctile b { font-weight: 600; }
 
   .sectlabel { margin: 12px 0 5px; }

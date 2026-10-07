@@ -13,12 +13,19 @@
    ========================================================================== */
 
 /* ---- Fonts ---------------------------------------------------------------- */
-/* @font-face is wired to /assets/fonts/*.woff2 but the var() stacks below fall
-   back cleanly to system serif/sans/mono if the binaries are not vendored. */
+/* Served by the server from /assets/fonts/: WOFF2 subsets built by
+   arcana-web/scripts/vendor-assets.py from pinned upstream releases, each
+   family's SIL Open Font License beside its files. The faces are the ones
+   the client asks for; a weight not listed is drawn from the nearest. */
 @font-face {
   font-family: "Spectral";
   src: url("/assets/fonts/Spectral-Regular.woff2") format("woff2");
   font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Spectral";
+  src: url("/assets/fonts/Spectral-Italic.woff2") format("woff2");
+  font-weight: 400; font-style: italic; font-display: swap;
 }
 @font-face {
   font-family: "Spectral";
@@ -32,8 +39,13 @@
 }
 @font-face {
   font-family: "Spectral";
-  src: url("/assets/fonts/Spectral-Italic.woff2") format("woff2");
-  font-weight: 400; font-style: italic; font-display: swap;
+  src: url("/assets/fonts/Spectral-SemiBoldItalic.woff2") format("woff2");
+  font-weight: 600; font-style: italic; font-display: swap;
+}
+@font-face {
+  font-family: "Spectral";
+  src: url("/assets/fonts/Spectral-Bold.woff2") format("woff2");
+  font-weight: 700; font-style: normal; font-display: swap;
 }
 @font-face {
   font-family: "Fira Sans";
@@ -46,10 +58,186 @@
   font-weight: 500; font-style: normal; font-display: swap;
 }
 @font-face {
+  font-family: "Fira Sans";
+  src: url("/assets/fonts/FiraSans-SemiBold.woff2") format("woff2");
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+@font-face {
   font-family: "JetBrains Mono";
   src: url("/assets/fonts/JetBrainsMono-Regular.woff2") format("woff2");
   font-weight: 400; font-style: normal; font-display: swap;
 }
+
+/* Fallback faces. Before a web font arrives, and wherever it never does,
+   the player sees a system font; unadjusted, its lines run longer or shorter
+   and the page reflows when Spectral or Fira Sans swaps in. Each face below
+   names a common system font with local() and scales it to set the
+   catalog's text to the web font's width, with the web font's ascent and
+   descent; they sit second in the stacks (--font-serif, --font-sans). The
+   levineuwirth.org recipe, measured on Arcana's text: regenerate with the
+   script rather than editing here. */
+/* BEGIN fallback faces — written by arcana-web/scripts/vendor-assets.py */
+@font-face {
+  font-family: "Spectral on Georgia";
+  src: local("Georgia"), local("Gelasio Regular"), local("Gelasio-Regular");
+  font-weight: 400;
+  font-style: normal;
+  size-adjust: 98.0%;
+  ascent-override: 108.0%;
+  descent-override: 47.2%;
+  line-gap-override: 0.0%;
+}
+@font-face {
+  font-family: "Spectral on Georgia";
+  src: local("Georgia Italic"), local("Georgia-Italic"), local("Gelasio Italic"), local("Gelasio-Italic");
+  font-weight: 400;
+  font-style: italic;
+  size-adjust: 88.9%;
+  ascent-override: 119.1%;
+  descent-override: 52.1%;
+  line-gap-override: 0.0%;
+}
+@font-face {
+  font-family: "Spectral on Georgia";
+  src: local("Georgia Bold"), local("Georgia-Bold"), local("Gelasio Bold"), local("Gelasio-Bold");
+  font-weight: 600 700;
+  font-style: normal;
+  size-adjust: 86.5%;
+  ascent-override: 122.4%;
+  descent-override: 53.5%;
+  line-gap-override: 0.0%;
+}
+@font-face {
+  font-family: "Spectral on Georgia";
+  src: local("Georgia Bold Italic"), local("Georgia-BoldItalic"), local("Gelasio Bold Italic"), local("Gelasio-BoldItalic");
+  font-weight: 600 700;
+  font-style: italic;
+  size-adjust: 79.4%;
+  ascent-override: 133.4%;
+  descent-override: 58.3%;
+  line-gap-override: 0.0%;
+}
+@font-face {
+  font-family: "Spectral on Times";
+  src: local("Times New Roman"), local("TimesNewRomanPSMT"), local("Liberation Serif"), local("LiberationSerif"), local("Tinos"), local("Tinos-Regular");
+  font-weight: 400;
+  font-style: normal;
+  size-adjust: 105.5%;
+  ascent-override: 100.4%;
+  descent-override: 43.9%;
+  line-gap-override: 0.0%;
+}
+@font-face {
+  font-family: "Spectral on Times";
+  src: local("Times New Roman Italic"), local("TimesNewRomanPS-ItalicMT"), local("Liberation Serif Italic"), local("LiberationSerif-Italic"), local("Tinos Italic"), local("Tinos-Italic");
+  font-weight: 400;
+  font-style: italic;
+  size-adjust: 98.3%;
+  ascent-override: 107.7%;
+  descent-override: 47.1%;
+  line-gap-override: 0.0%;
+}
+@font-face {
+  font-family: "Spectral on Times";
+  src: local("Times New Roman Bold"), local("TimesNewRomanPS-BoldMT"), local("Liberation Serif Bold"), local("LiberationSerif-Bold"), local("Tinos Bold"), local("Tinos-Bold");
+  font-weight: 600 700;
+  font-style: normal;
+  size-adjust: 102.9%;
+  ascent-override: 102.9%;
+  descent-override: 45.0%;
+  line-gap-override: 0.0%;
+}
+@font-face {
+  font-family: "Spectral on Times";
+  src: local("Times New Roman Bold Italic"), local("TimesNewRomanPS-BoldItalicMT"), local("Liberation Serif Bold Italic"), local("LiberationSerif-BoldItalic"), local("Tinos Bold Italic"), local("Tinos-BoldItalic");
+  font-weight: 600 700;
+  font-style: italic;
+  size-adjust: 100.2%;
+  ascent-override: 105.7%;
+  descent-override: 46.2%;
+  line-gap-override: 0.0%;
+}
+@font-face {
+  font-family: "Spectral on Noto";
+  src: local("Noto Serif"), local("NotoSerif-Regular");
+  font-weight: 400;
+  font-style: normal;
+  size-adjust: 91.5%;
+  ascent-override: 115.8%;
+  descent-override: 50.6%;
+  line-gap-override: 0.0%;
+}
+@font-face {
+  font-family: "Spectral on Noto";
+  src: local("Noto Serif Italic"), local("NotoSerif-Italic");
+  font-weight: 400;
+  font-style: italic;
+  size-adjust: 86.5%;
+  ascent-override: 122.5%;
+  descent-override: 53.5%;
+  line-gap-override: 0.0%;
+}
+@font-face {
+  font-family: "Spectral on Noto";
+  src: local("Noto Serif Bold"), local("NotoSerif-Bold");
+  font-weight: 600 700;
+  font-style: normal;
+  size-adjust: 88.3%;
+  ascent-override: 119.9%;
+  descent-override: 52.4%;
+  line-gap-override: 0.0%;
+}
+@font-face {
+  font-family: "Spectral on Noto";
+  src: local("Noto Serif Bold Italic"), local("NotoSerif-BoldItalic");
+  font-weight: 600 700;
+  font-style: italic;
+  size-adjust: 81.6%;
+  ascent-override: 129.8%;
+  descent-override: 56.8%;
+  line-gap-override: 0.0%;
+}
+@font-face {
+  font-family: "Fira Sans on Arial";
+  src: local("Arial"), local("ArialMT"), local("Liberation Sans"), local("LiberationSans"), local("Arimo"), local("Arimo-Regular");
+  font-weight: 400;
+  font-style: normal;
+  size-adjust: 100.9%;
+  ascent-override: 92.7%;
+  descent-override: 26.3%;
+  line-gap-override: 0.0%;
+}
+@font-face {
+  font-family: "Fira Sans on Arial";
+  src: local("Arial Bold"), local("Arial-BoldMT"), local("Liberation Sans Bold"), local("LiberationSans-Bold"), local("Arimo Bold"), local("Arimo-Bold");
+  font-weight: 600 700;
+  font-style: normal;
+  size-adjust: 94.2%;
+  ascent-override: 99.3%;
+  descent-override: 28.1%;
+  line-gap-override: 0.0%;
+}
+@font-face {
+  font-family: "Fira Sans on Roboto";
+  src: local("Roboto"), local("Roboto-Regular");
+  font-weight: 400;
+  font-style: normal;
+  size-adjust: 101.5%;
+  ascent-override: 92.1%;
+  descent-override: 26.1%;
+  line-gap-override: 0.0%;
+}
+@font-face {
+  font-family: "Fira Sans on Roboto";
+  src: local("Roboto Bold"), local("Roboto-Bold");
+  font-weight: 600 700;
+  font-style: normal;
+  size-adjust: 100.6%;
+  ascent-override: 92.9%;
+  descent-override: 26.3%;
+  line-gap-override: 0.0%;
+}
+/* END fallback faces */
 
 /* ---- Light (default :root palette) --------------------------------------- */
 :root {
@@ -58,14 +246,45 @@
   --bg-offset: #f2f0eb;
   --text: #1a1a1a;
   --text-muted: #555555;
-  --text-faint: #888888;
+  /* The site's 2026-09-06 value: #888888 was 3.34:1 on --bg, under the
+     4.5:1 small text needs; #6e6a64 is 5.07:1 on --bg, 4.72:1 on --bg-offset. */
+  --text-faint: #6e6a64;
   --border: #cccccc;
   --border-muted: #aaaaaa;
+  --danger: #9e2f2f;
   --link: #1a1a1a;
-  --link-underline: #888888;
+  --link-underline: #6e6a64;
   --link-hover: #1a1a1a;
   --selection-bg: #1a1a1a;
   --selection-text: #faf8f4;
+
+  /* Cockpit states. Rings and arrows hold 3:1 on every background; the ink
+     on a filled badge or chip, and the counters drawn as text, hold 4.5:1.
+     Lethal is the danger colour. */
+  --target: #8a6820;
+  --target-ink: #ffffff;
+  --attack: #b8392a;
+  --attack-ink: #ffffff;
+  --block: #2f62b0;
+  --block-ink: #ffffff;
+  --lethal: var(--danger);
+  --energy: #94561a;
+  --poison: #4f6b3a;
+  /* A deck's diff against its parent (My Decks): lines added and removed. */
+  --added: #4f6b3a;
+  --removed: var(--danger);
+
+  /* Text on a glow: the radial light atop the Stage and My Decks (12% of
+     --link at its peak) and the champion panel (up to 23% of the deck's
+     colour). --text-faint and --text-muted lose 4.5:1 there, so the quieter
+     text on a glow takes --text-on-glow: --text-muted moved just far enough
+     toward --text to hold 4.5:1 at every glow's peak, in every faction
+     colour. The contrast test models the glows; the browser check holds the
+     text on them to these inks. */
+  --text-on-glow: color-mix(in srgb, var(--text) 12%, var(--text-muted));
+  /* The halo behind the halls' titles, a text-shadow of --link: the
+     strongest at which a title still holds 3:1 over the glow. */
+  --glow-title: 45%;
 
   /* Mana — parchment-harmonised (desaturated) WUBRG + colorless. The ONLY
      sanctioned chrome colour. Muted so it sits calmly within the warm frame. */
@@ -80,8 +299,8 @@
   --mana-ink-light: #f3efe6;
 
   /* Type */
-  --font-serif: "Spectral", "Georgia", "Times New Roman", serif;
-  --font-sans: "Fira Sans", "Helvetica Neue", "Arial", sans-serif;
+  --font-serif: "Spectral", "Spectral on Georgia", "Spectral on Times", "Spectral on Noto", "Georgia", "Times New Roman", serif;
+  --font-sans: "Fira Sans", "Fira Sans on Arial", "Fira Sans on Roboto", "Helvetica Neue", "Arial", sans-serif;
   --font-mono: "JetBrains Mono", "Consolas", "Menlo", monospace;
 
   /* Layout */
@@ -115,11 +334,25 @@
   --text-faint: #8b8680;
   --border: #333333;
   --border-muted: #444444;
+  --danger: #e08a84;
   --link: #d4d0c8;
   --link-underline: #8b8680;
   --link-hover: #ffffff;
   --selection-bg: #d4d0c8;
   --selection-text: #121212;
+
+  --target: #caa45a;
+  --target-ink: #1a1205;
+  --attack: #c8402b;
+  --attack-ink: #ffffff;
+  --block: #2f6cc0;
+  --block-ink: #ffffff;
+  --energy: #cf9384;
+  --poison: #9bb088;
+  --added: #9bb088;
+
+  --text-on-glow: color-mix(in srgb, var(--text) 56%, var(--text-muted));
+  --glow-title: 45%;
 
   --mana-w: #d8cba6;
   --mana-u: #93b0c4;
@@ -138,14 +371,32 @@
   --bg-offset: #4a3324;
   --text: #ead0a0;
   --text-muted: #d0b888;
-  --text-faint: #b09575;
+  /* The site's 2026-09-06 value: #b09575 was 3.66:1 on --bg; #c6ac88 is
+     4.78:1. */
+  --text-faint: #c6ac88;
   --border: #7a5d44;
   --border-muted: #6a4f38;
+  --danger: #ffb0a0;
   --link: #ead0a0;
-  --link-underline: #b09575;
+  --link-underline: #c6ac88;
   --link-hover: #f5e6c0;
   --selection-bg: #ead0a0;
   --selection-text: #3a2418;
+
+  --target: #e8c060;
+  --target-ink: #2a1a08;
+  --attack: #f08a72;
+  --attack-ink: #2a160c;
+  --block: #8fb8f0;
+  --block-ink: #1c2430;
+  --energy: #f0b48c;
+  --poison: #b4c896;
+  --added: #b4c896;
+
+  /* Cappuccino's glows leave no quieter tier: on the champion panel's
+     brightest faction glow, --text itself holds 4.53:1. */
+  --text-on-glow: var(--text);
+  --glow-title: 28%;
 
   --mana-w: #e2cfa0;
   --mana-u: #9bb3bf;
@@ -193,9 +444,9 @@ a:hover { color: var(--link-hover); text-decoration-color: var(--link-hover); }
 /* Small-caps metadata label. */
 .meta-label {
   font-family: var(--font-sans);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
-  text-transform: uppercase;
+  font-variant-caps: all-small-caps;
   letter-spacing: .08em;
   color: var(--text-faint);
 }
@@ -278,13 +529,16 @@ button.ghost, .btn.ghost { background: transparent; }
 .mana-pip.g { background: var(--mana-g); color: var(--mana-ink-dark); }
 .mana-pip.c, .mana-pip.generic { background: var(--mana-c); color: var(--mana-ink-dark); }
 
-/* Real MTG mana symbols (Scryfall SVGs), inline at the surrounding font size. */
-.ac-sym {
-  height: 1.05em;
-  width: auto;
-  vertical-align: -0.16em;
+/* Mana symbols, drawn in the Mana font (/assets/mana.css), inline at the
+   surrounding font size: Mana's cost circle is 1.3em of its own size, so .81em
+   makes it 1.05em of the text around it. --sym sets the circle in px where a
+   control needs a fixed one. Mana's own vertical-align (middle) stays: a
+   hybrid symbol is drawn in pseudo-elements and has no baseline of its own. */
+.ms.ac-sym {
+  font-size: var(--sym, .81em);
   margin: 0 .5px;
 }
+.ac-sym-text { font-family: var(--font-mono); font-size: .85em; }
 
 /* ---- Shared card component ----------------------------------------------- */
 /* Art-first: the image fills the tile. The slot reserves layout space so a
@@ -404,7 +658,9 @@ button.ghost, .btn.ghost { background: transparent; }
   font-weight: 500;
   line-height: 1.2;
   color: #f3efe6;
-  background: linear-gradient(to top, rgba(8, 7, 6, .92), rgba(8, 7, 6, 0));
+  /* The band holds .85 under the text and fades only in the padding above
+     it, so the name reads over the brightest art. */
+  background: linear-gradient(to top, rgba(8, 7, 6, .92), rgba(8, 7, 6, .85) calc(100% - 14px), rgba(8, 7, 6, 0));
   opacity: 0;
   transition: opacity var(--transition-fast);
   z-index: 1;
@@ -425,9 +681,9 @@ button.ghost, .btn.ghost { background: transparent; }
   right: 0;
   padding: 2px 4px;
   font-family: var(--font-sans);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
-  text-transform: uppercase;
+  font-variant-caps: all-small-caps;
   letter-spacing: .04em;
   text-align: center;
   color: #f3efe6;
@@ -570,4 +826,4 @@ button.ghost, .btn.ghost { background: transparent; }
 .topbar a.ghost:hover { color: var(--link-hover); }
 .wordmark { font-family: var(--font-serif); font-size: 20px; letter-spacing: .14em; text-transform: uppercase; }
 .wordmark b { color: var(--link); font-weight: 700; }
-.topbar .sub { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--text-faint); }
+.topbar .sub { font-size: 13px; font-variant-caps: all-small-caps; letter-spacing: .12em; color: var(--text-faint); }

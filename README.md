@@ -137,7 +137,9 @@ The code is released under the [MIT License](LICENSE). *Magic: The
 Gathering*, its card names and its oracle text are the property of
 Wizards of the Coast; Arcana is unofficial Fan Content under the
 [Fan Content Policy](https://company.wizards.com/en/legal/fancontentpolicy)
-and is not approved or endorsed by Wizards. See [`NOTICE`](NOTICE).
+and is not approved or endorsed by Wizards. The web client's fonts and
+mana symbols are vendored under their own licenses (the SIL Open Font
+License, and MIT for the Mana stylesheet); see [`NOTICE`](NOTICE).
 
 ## Author
 

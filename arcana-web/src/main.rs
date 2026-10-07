@@ -8,6 +8,8 @@
 //! * `GET  /deck`   → the deckbuilder UI (`static/deck.html`, embedded).
 //! * `GET  /theme.css` → the shared design-token stylesheet (themes, mana palette).
 //! * `GET  /app.js` → the shared frontend module (card component, theme, Api).
+//! * `GET  /assets/…` → the vendored fonts, the Mana symbol font and stylesheet,
+//!   and their licences ([`arcana_web::assets`], embedded).
 //! * `GET  /glossary`→ keyword reminder text (base name → reminder), static.
 //! * `GET  /state`  → advance through bot/trivial decisions, return the human's
 //!   [`ViewState`](arcana_core::view::ViewState) + the opponent action log.
@@ -60,7 +62,7 @@ use arcana_web::{
     StateResponse, Suggestion,
 };
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
-use axum::extract::{ConnectInfo, DefaultBodyLimit, Query, Request, State};
+use axum::extract::{ConnectInfo, DefaultBodyLimit, Path, Query, Request, State};
 use axum::http::StatusCode;
 use axum::middleware::{self, Next};
 use axum::response::{Html, IntoResponse, Response};
@@ -751,6 +753,21 @@ async fn theme_css() -> Response {
 }
 
 /// The shared frontend module (card component, theme switcher, zoom, Api client).
+/// A vendored asset (fonts, the Mana stylesheet, licences); see
+/// [`arcana_web::assets`]. They change only with the binary, so a day's cache.
+async fn asset(Path(path): Path<String>) -> Response {
+    match arcana_web::assets::get(&path) {
+        Some(a) => (
+            [
+                (axum::http::header::CONTENT_TYPE, a.content_type),
+                (axum::http::header::CACHE_CONTROL, "public, max-age=86400"),
+            ],
+            a.bytes,
+        )
+            .into_response(),
+        None => (StatusCode::NOT_FOUND, "no such asset").into_response(),
+    }
+}
 async fn app_js() -> Response {
     (
         [(axum::http::header::CONTENT_TYPE, "application/javascript; charset=utf-8")],
@@ -1626,6 +1643,7 @@ fn router(state: AppState) -> Router {
         .route("/deck", get(deckbuilder))
         .route("/theme.css", get(theme_css))
         .route("/app.js", get(app_js))
+        .route("/assets/{*path}", get(asset))
         .route("/formats", get(get_formats))
         .route("/import", post(post_import))
         .route("/legality", post(post_legality))
@@ -1758,6 +1776,32 @@ mod http_tests {
         let head = format!(r#"{{"version":2,"rev":{rev},"decks":{{}},"pad":""#);
         let tail = r#""}"#;
         format!("{head}{}{tail}", "x".repeat(len - head.len() - tail.len()))
+    }
+
+    /// The vendored fonts and the Mana stylesheet are served with their media
+    /// types, to a LAN guest as to the host; an unknown asset is a 404.
+    #[tokio::test]
+    async fn assets_are_served_with_their_media_types() {
+        let s = server("assets", true);
+        for (peer, uri, media, magic) in [
+            (LAN_PEER, "/assets/fonts/Spectral-Regular.woff2", "font/woff2", &b"wOF2"[..]),
+            (LOOPBACK, "/assets/fonts/FiraSans-Regular.woff2", "font/woff2", &b"wOF2"[..]),
+            (LAN_PEER, "/assets/fonts/mana.woff2", "font/woff2", &b"wOF2"[..]),
+            (LAN_PEER, "/assets/mana.css", "text/css; charset=utf-8", &b"/*"[..]),
+            (LAN_PEER, "/assets/fonts/OFL-Spectral.txt", "text/plain; charset=utf-8", &b"Copyright"[..]),
+        ] {
+            let mut req = axum::http::Request::builder().uri(uri).body(Body::empty()).unwrap();
+            req.extensions_mut().insert(ConnectInfo(SocketAddr::from((peer, 40000))));
+            let resp = s.app.clone().oneshot(req).await.unwrap();
+            assert_eq!(resp.status(), StatusCode::OK, "{uri}");
+            assert_eq!(resp.headers()[axum::http::header::CONTENT_TYPE], media, "{uri}");
+            let bytes = resp.into_body().collect().await.unwrap().to_bytes();
+            assert!(bytes.starts_with(magic), "{uri}");
+        }
+        let (status, _) = send(&s, LAN_PEER, "GET", "/assets/fonts/Missing.woff2", "").await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+        let (status, _) = send(&s, LAN_PEER, "GET", "/assets/../Cargo.toml", "").await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
     }
 
     #[tokio::test]

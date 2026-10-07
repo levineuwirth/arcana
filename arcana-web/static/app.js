@@ -7,7 +7,7 @@
 
      Arcana.Theme            theme apply/persist + a mountable switcher
      Arcana.art(name)        Scryfall art URL helper
-     Arcana.renderMana(cost) "{2}{R}" -> a fragment of muted mana pips
+     Arcana.renderMana(cost) "{2}{R}" -> a fragment of mana symbols (Mana font)
      Arcana.renderCard(...)  the art-first card tile (board/hand/stack/deck/zoom)
      Arcana.Zoom             the right-click zoom overlay (+ keyword chips)
      Arcana.loadGlossary()   fetch + cache keyword reminder text
@@ -71,31 +71,47 @@
     return "/art?crop=art&name=" + encodeURIComponent(name);
   };
 
-  /* ---- Mana pips --------------------------------------------------------- */
-  const COLOR_CLASS = { W: "w", U: "u", B: "b", R: "r", G: "g", C: "c" };
-
-  // Real MTG mana symbols, served by Scryfall (the game-provided symbology):
-  // "{2}"->2.svg, "{R}"->R.svg, "{W/U}"->WU.svg, "{G/P}"->GP.svg, "{T}"->T.svg, "{C}"->C.svg.
-  Arcana.manaSymbolUrl = function (code) {
-    const c = String(code).replace(/[{}]/g, "").replace(/\//g, "").toUpperCase();
-    return "https://svgs.scryfall.io/card-symbols/" + encodeURIComponent(c) + ".svg";
+  /* ---- Mana symbols ------------------------------------------------------ */
+  // Costs draw in the Mana font (/assets/mana.css, vendored): "{R}" is
+  // <i class="ms ms-cost ms-r">, "{W/U}" ms-wu, "{2/W}" ms-2w, "{G/P}" ms-gp.
+  // A symbol the font has no class for is written as its code.
+  const MANA_SPECIAL = {
+    T: "tap", Q: "untap", "\u221E": "infinity", "\u00BD": "1-2", "1/2": "1-2",
+    TK: "tk", HW: "w ms-half", HR: "r ms-half", "C/P": "p",
   };
-  /** A single inline mana-symbol <img> as an HTML string (for innerHTML contexts). */
+  const MANA_CLASS = /^(?:\d|1\d|20|100|1000000|[wubrgcxyzspelh]|tk|tap|untap|infinity|1-2|(?:wu|wb|ub|ur|br|bg|rw|rg|gw|gu)p?|2[wubrg]|c[wubrg]|[wubrg]p)(?: ms-half)?$/;
+  /** The Mana class for one symbol ("{R}", "R" or "W/U"), or null. */
+  Arcana.manaSymbolClass = function (code) {
+    const c = String(code).replace(/[{}]/g, "").toUpperCase();
+    const cls = MANA_SPECIAL[c] || c.replace(/\//g, "").toLowerCase();
+    return MANA_CLASS.test(cls) ? "ms-" + cls : null;
+  };
+  function manaSymbolNode(code) {
+    const tok = "{" + String(code).replace(/[{}]/g, "") + "}";
+    const cls = Arcana.manaSymbolClass(tok);
+    if (!cls) {
+      const t = document.createElement("span");
+      t.className = "ac-sym-text";
+      t.textContent = tok;
+      return t;
+    }
+    const i = document.createElement("i");
+    i.className = "ms ms-cost ac-sym " + cls;
+    i.setAttribute("role", "img");
+    i.setAttribute("aria-label", tok);
+    i.title = tok;
+    return i;
+  }
+  /** A single inline mana symbol as an HTML string (for innerHTML contexts). */
   Arcana.manaSymbolHtml = function (code) {
-    return '<img class="ac-sym" src="' + Arcana.manaSymbolUrl(code) + '" alt="' + code + '" />';
+    return manaSymbolNode(code).outerHTML;
   };
-  /** Render a cost string ("{2}{R}{R}") as a fragment of real mana symbols. */
+  /** Render a cost string ("{2}{R}{R}") as a fragment of mana symbols. */
   Arcana.renderMana = function (cost) {
     const frag = document.createDocumentFragment();
     const tokens = (cost || "").match(/\{[^}]+\}/g);
     if (!tokens) return frag;
-    for (const tok of tokens) {
-      const img = document.createElement("img");
-      img.className = "ac-sym";
-      img.alt = tok;
-      img.src = Arcana.manaSymbolUrl(tok);
-      frag.appendChild(img);
-    }
+    for (const tok of tokens) frag.appendChild(manaSymbolNode(tok));
     return frag;
   };
 

@@ -6,6 +6,7 @@
 <title>Arcana — My Decks</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("arcana.theme")||"dark";}catch(e){document.documentElement.dataset.theme="dark";}</script>
 <link rel="stylesheet" href="/theme.css" />
+<link rel="stylesheet" href="/assets/mana.css" />
 <style>
   html, body { height: 100%; }
   body {
@@ -20,9 +21,10 @@
   .hall-title h1 {
     font-family: var(--font-serif); font-weight: 600; letter-spacing: .42em;
     text-transform: uppercase; font-size: 24px; margin: 0;
-    text-shadow: 0 0 24px color-mix(in srgb, var(--link) 40%, transparent);
+    text-shadow: 0 0 24px color-mix(in srgb, var(--link) var(--glow-title), transparent);
   }
-  .hall-title p { color: var(--text-faint); margin: 6px 0 0; font-size: 13px; letter-spacing: .05em; }
+  /* The hall glows, so its quieter text takes --text-on-glow (theme.css). */
+  .hall-title p { color: var(--text-on-glow); margin: 6px 0 0; font-size: 13px; letter-spacing: .05em; }
 
   .toolbar { display: flex; justify-content: center; gap: 12px; margin-bottom: 22px; }
   .btn {
@@ -57,20 +59,20 @@
   .pip.W{background:var(--mana-w);color:var(--mana-w);} .pip.U{background:var(--mana-u);color:var(--mana-u);}
   .pip.B{background:var(--mana-b);color:var(--mana-b);} .pip.R{background:var(--mana-r);color:var(--mana-r);}
   .pip.G{background:var(--mana-g);color:var(--mana-g);} .pip.C{background:var(--mana-c);color:var(--mana-c);}
-  .badge { text-transform: uppercase; letter-spacing: .1em; font-size: 9px; padding: 2px 7px; border-radius: var(--radius-pill);
+  .badge { font-variant-caps: all-small-caps; letter-spacing: .1em; font-size: 11px; padding: 2px 7px; border-radius: var(--radius-pill);
            border: 1px solid var(--border-muted); color: var(--text-faint); }
   .badge.native { color: var(--link); border-color: color-mix(in srgb, var(--link) 50%, var(--border)); }
-  .badge.fork { color: var(--mana-r); } .badge.variation { color: var(--mana-u); }
+  .badge.fork, .badge.variation { color: var(--text-muted); }
   .ddiff { font-size: 11px; color: var(--text-faint); }
-  .ddiff .add { color: var(--mana-g); } .ddiff .rem { color: var(--mana-r); }
+  .ddiff .add { color: var(--added); } .ddiff .rem { color: var(--removed); }
 
   .actions { display: flex; flex-wrap: wrap; gap: 6px 10px; margin-top: 2px; }
   .actions a { cursor: pointer; font-size: 12px; color: var(--text-muted); }
   .actions a:hover { color: var(--link-hover); }
   .actions a.primary { color: var(--link); font-weight: 600; }
-  .actions a.danger:hover { color: var(--mana-r); }
+  .actions a.danger:hover { color: var(--danger); }
 
-  .empty { text-align: center; color: var(--text-faint); padding: 60px 0; }
+  .empty { text-align: center; color: var(--text-on-glow); padding: 60px 0; }
   .muted { color: var(--text-muted); }
 
   /* ---- inspector: version history + compare ---- */
@@ -93,9 +95,9 @@
   .diffblock { margin-bottom: 16px; }
   .diffgrid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
   @media (max-width: 620px) { .diffgrid { grid-template-columns: 1fr; } }
-  .diffcol h4 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--text-faint); }
+  .diffcol h4 { margin: 0 0 6px; font-size: 13px; font-variant-caps: all-small-caps; letter-spacing: .12em; color: var(--text-faint); }
   .diffcol .line { font-size: 13px; line-height: 1.5; font-variant-numeric: tabular-nums; }
-  .diffcol.add .line { color: var(--mana-g); } .diffcol.rem .line { color: var(--mana-r); } .diffcol.chg .line { color: var(--text); }
+  .diffcol.add .line { color: var(--added); } .diffcol.rem .line { color: var(--removed); } .diffcol.chg .line { color: var(--text); }
   .diffcol .none { color: var(--text-faint); font-size: 12px; font-style: italic; }
   .ver { display: flex; align-items: baseline; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--border-muted); flex-wrap: wrap; }
   .ver .vlabel { font-size: 13px; } .ver .spacer { flex: 1; }

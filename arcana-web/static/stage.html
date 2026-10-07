@@ -6,6 +6,7 @@
 <title>Arcana — The Stage</title>
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("arcana.theme")||"dark";}catch(e){document.documentElement.dataset.theme="dark";}</script>
 <link rel="stylesheet" href="/theme.css" />
+<link rel="stylesheet" href="/assets/mana.css" />
 <style>
   /* ===== The World Stage: a deck-select / match-setup "grand hall" ===== */
   html, body { height: 100%; }
@@ -33,13 +34,15 @@
     font-family: var(--font-serif); font-weight: 600;
     letter-spacing: .42em; text-transform: uppercase; font-size: 26px; margin: 0;
     color: var(--text);
-    text-shadow: 0 0 24px color-mix(in srgb, var(--link) 45%, transparent);
+    text-shadow: 0 0 24px color-mix(in srgb, var(--link) var(--glow-title), transparent);
   }
-  .hall-title p { color: var(--text-faint); margin: 6px 0 0; letter-spacing: .06em; font-size: 13px; }
+  /* The hall and the champion panel glow, so their quieter text takes
+     --text-on-glow (theme.css), which holds 4.5:1 there. */
+  .hall-title p { color: var(--text-on-glow); margin: 6px 0 0; letter-spacing: .06em; font-size: 13px; }
 
   .section-label {
     font-family: var(--font-serif); text-transform: uppercase; letter-spacing: .26em;
-    font-size: 13px; color: var(--text-muted); margin: 0 0 12px;
+    font-size: 13px; color: var(--text-on-glow); margin: 0 0 12px;
     display: flex; align-items: center; gap: 12px;
   }
   .section-label::after { content: ""; flex: 1; height: 1px; background: var(--border-muted); }
@@ -64,11 +67,11 @@
     display: flex; align-items: center; justify-content: center;
   }
   .portrait img { width: 100%; height: 100%; object-fit: cover; }
-  .portrait .ph { color: var(--text-faint); font-size: 12px; text-align: center; padding: 8px; }
+  .portrait .ph { color: var(--text-on-glow); font-size: 12px; text-align: center; padding: 8px; }
 
   .throne-body { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
   .field { display: flex; flex-direction: column; gap: 5px; }
-  .field > label { font-size: 11px; text-transform: uppercase; letter-spacing: .14em; color: var(--text-faint); }
+  .field > label { font-size: 13px; font-variant-caps: all-small-caps; letter-spacing: .14em; color: var(--text-on-glow); }
   .field input[type=text], .field select {
     background: var(--bg-nav); color: var(--text); border: 1px solid var(--border);
     border-radius: var(--radius-control); padding: 9px 11px; font-size: 14px; font-family: var(--font-sans);
@@ -77,6 +80,7 @@
     font-family: var(--font-serif) !important; font-size: 22px !important; letter-spacing: .02em;
     border-color: transparent !important; background: transparent !important; padding-left: 0 !important;
   }
+  .faction-name input::placeholder { color: var(--text-on-glow); opacity: 1; }
   .faction-name input:focus { border-color: var(--border) !important; background: var(--bg-nav) !important; padding-left: 11px !important; }
 
   .pips { display: inline-flex; gap: 6px; align-items: center; }
@@ -90,7 +94,7 @@
   .pip.C { background: var(--mana-c); color: var(--mana-c); }
 
   .meta-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; color: var(--text-muted); font-size: 13px; }
-  .tag { text-transform: uppercase; letter-spacing: .12em; font-size: 11px; color: var(--text-muted);
+  .tag { font-variant-caps: all-small-caps; letter-spacing: .12em; font-size: 13px; color: var(--text-muted);
          border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 3px 9px; }
   .foe .ftr .tags { display: flex; gap: 6px; }
   /* Play-style tag: tinted so a rival's temperament reads at a glance. */
@@ -131,10 +135,10 @@
   .begin:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.08);
     box-shadow: 0 0 44px color-mix(in srgb, var(--link) 65%, transparent); }
   .begin:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
-  .begin-hint { margin-top: 10px; color: var(--text-faint); font-size: 12px; min-height: 1.2em; }
+  .begin-hint { margin-top: 10px; color: var(--text-on-glow); font-size: 12px; min-height: 1.2em; }
   /* Duel-a-friend band */
   .friend-band { gap: 18px; }
-  .friend-sep { color: var(--text-faint); font-size: 12px; text-transform: uppercase; letter-spacing: .2em; align-self: center; }
+  .friend-sep { color: var(--text-on-glow); font-size: 15px; font-variant-caps: all-small-caps; letter-spacing: .2em; align-self: center; }
   .friend-band .field { flex-direction: row; align-items: center; gap: 8px; }
   .code-pill {
     font-family: var(--font-serif); font-size: 22px; letter-spacing: .35em;
@@ -143,6 +147,7 @@
   }
 
   .muted { color: var(--text-muted); }
+  .throne .meta-row, .throne .muted, .throne .tag:not(.style) { color: var(--text-on-glow); }
   /* curtain transition into the duel */
   .curtain { position: fixed; inset: 0; background: var(--bg); opacity: 0; pointer-events: none;
              transition: opacity .5s ease; z-index: 50; display: flex; align-items: center; justify-content: center; }

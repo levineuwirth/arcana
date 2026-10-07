@@ -17,8 +17,11 @@
 
 use std::fmt;
 
+pub mod assets;
 pub mod deckstore;
 pub mod matchmaking;
+#[cfg(test)]
+mod theme_contrast;
 
 use arcana_ai::information_set::project;
 use arcana_ai::search::{MaterialValue, Playstyle, ValueMcPolicy};

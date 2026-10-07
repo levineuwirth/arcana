@@ -16,3 +16,16 @@ game's rules is this project's own code. Card data is obtained at build time fro
 (https://scryfall.com) under Scryfall's terms; Scryfall is not affiliated
 with this project. Card art, when displayed by the web client, is fetched
 from Scryfall at run time and never stored in this repository.
+
+The web client serves fonts vendored under arcana-web/static/assets/,
+each under the SIL Open Font License 1.1 with its notice beside it:
+Spectral (the Spectral Project Authors), Fira Sans (the Mozilla
+Foundation, Telefonica S.A., bBox Type GmbH and Carrois Corporate GbR;
+the notice reserves the name "Fira", so the subsets are named "Arcana
+Sans" in their own name tables), JetBrains Mono (the JetBrains Mono
+Project Authors), and Andrew Gioia's Mana, whose stylesheet, mana.css,
+is under the MIT License, its notice at the head of the file. The mana,
+tap and card type symbols Mana draws are the property of Wizards of the
+Coast. These files remain under their own licenses, not this
+repository's; arcana-web/scripts/vendor-assets.py rebuilds them from
+pinned upstream releases.

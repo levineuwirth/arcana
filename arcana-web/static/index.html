@@ -7,6 +7,7 @@
 <!-- apply the persisted theme before paint to avoid a flash -->
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("arcana.theme")||"dark";}catch(e){document.documentElement.dataset.theme="dark";}</script>
 <link rel="stylesheet" href="/theme.css" />
+<link rel="stylesheet" href="/assets/mana.css" />
 <style>
   /* =========================================================================
      ANALYST COCKPIT — a fixed-viewport, dockable panel workspace.
@@ -43,19 +44,19 @@
   #arrow-layer path { fill: none; stroke-width: 3; opacity: .92; stroke-linecap: round; }
 
   /* board-click targeting */
-  .ac-card.targeting-src .ac-frame { box-shadow: 0 0 0 3px var(--tgt, #caa45a); }
-  .ac-card.target .ac-frame { box-shadow: 0 0 0 3px #caa45a; cursor: pointer; }
-  .ac-card.target:hover .ac-frame { box-shadow: 0 0 0 4px #caa45a; }
-  .phud.target-player { cursor: pointer; outline: 2px solid #caa45a; outline-offset: 2px; border-radius: var(--radius-control); }
+  .ac-card.targeting-src .ac-frame { box-shadow: 0 0 0 3px var(--target); }
+  .ac-card.target .ac-frame { box-shadow: 0 0 0 3px var(--target); cursor: pointer; }
+  .ac-card.target:hover .ac-frame { box-shadow: 0 0 0 4px var(--target); }
+  .phud.target-player { cursor: pointer; outline: 2px solid var(--target); outline-offset: 2px; border-radius: var(--radius-control); }
   .targetbanner {
     position: fixed; top: 56px; left: 50%; transform: translateX(-50%); z-index: 130;
     display: flex; align-items: center; gap: 14px; padding: 8px 16px;
-    background: var(--bg-offset); border: 1px solid #caa45a; border-radius: var(--radius-panel);
+    background: var(--bg-offset); border: 1px solid var(--target); border-radius: var(--radius-panel);
     box-shadow: var(--shadow-float); font-family: var(--font-serif); font-size: 15px; color: var(--text);
   }
   .targetbanner button { font-size: 12px; }
-  .autopass-ctl { display: inline-flex; align-items: center; gap: 6px; font-size: 11px;
-    text-transform: uppercase; letter-spacing: .06em; color: var(--text-faint); }
+  .autopass-ctl { display: inline-flex; align-items: center; gap: 6px; font-size: 13px;
+    font-variant-caps: all-small-caps; letter-spacing: .06em; color: var(--text-faint); }
   .autopass-ctl select {
     font-family: var(--font-sans); font-size: 12px; text-transform: none; letter-spacing: 0;
     color: var(--text); background: var(--bg-offset); border: 1px solid var(--border);
@@ -69,7 +70,7 @@
   }
   #fullctl:hover { border-color: var(--text-muted); color: var(--text); }
   #fullctl.active {
-    color: #1a1205; background: var(--tgt, #caa45a); border-color: var(--tgt, #caa45a);
+    color: var(--target-ink); background: var(--target); border-color: var(--target);
     font-weight: 600;
   }
   /* "Pass until <phase>" skip cluster — same chip language as #fullctl. */
@@ -82,10 +83,10 @@
   .skipctl:disabled { opacity: .5; cursor: default; }
   #skipgroup { display: inline-flex; align-items: center; gap: 4px; }
   #skipgroup .lbl { font-size: 11px; color: var(--text-muted); }
-  .kbd { opacity: .6; font-size: 10px; margin-left: 5px; letter-spacing: .04em; }
+  .kbd { color: var(--text-faint); font-size: 10px; margin-left: 5px; letter-spacing: .04em; }
   .phasebar .turn { font-variant-numeric: tabular-nums; color: var(--text-muted); font-size: 13px; }
   .phasebar .step { font-family: var(--font-serif); font-weight: 600; font-size: 17px; color: var(--text); }
-  .phasebar .who { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
+  .phasebar .who { font-size: 13px; font-variant-caps: all-small-caps; letter-spacing: .08em; font-weight: 600; }
   .phasebar .who.you { color: var(--text); }
   .phasebar .who.opp { color: var(--text-faint); }
 
@@ -140,8 +141,8 @@
     border-bottom: 1px solid var(--border); background: var(--bg-nav);
   }
   .panel-head .ptitle-text {
-    flex: 1; font-family: var(--font-sans); font-size: 10px; font-weight: 500;
-    text-transform: uppercase; letter-spacing: .08em; color: var(--text-faint);
+    flex: 1; font-family: var(--font-sans); font-size: 12px; font-weight: 500;
+    font-variant-caps: all-small-caps; letter-spacing: .08em; color: var(--text-faint);
   }
   .panel-head .pcollapse {
     border: none; background: transparent; padding: 0 4px; font-size: 11px; line-height: 1;
@@ -166,8 +167,8 @@
   }
   .player.you { border-color: var(--border-muted); }
   .ptitle { flex: 0 0 auto; display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 2px; }
-  .ptitle .who { font-family: var(--font-sans); font-size: 11px; font-weight: 500;
-    text-transform: uppercase; letter-spacing: .1em; color: var(--text-faint); }
+  .ptitle .who { font-family: var(--font-sans); font-size: 13px; font-weight: 500;
+    font-variant-caps: all-small-caps; letter-spacing: .1em; color: var(--text-faint); }
   .ptitle .life { font-family: var(--font-serif); font-weight: 600; font-size: 22px;
     font-variant-numeric: tabular-nums; line-height: 1; }
   .ptitle .life .unit { font-size: 11px; color: var(--text-faint); font-weight: 400; margin-left: 3px; }
@@ -252,18 +253,25 @@
     flex: 0 0 auto; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
     padding: 2px 2px 4px; font-family: var(--font-sans); font-size: 12px; color: var(--text-muted);
   }
-  .phud .who { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .1em; color: var(--text-faint); }
+  .phud .who { font-size: 13px; font-weight: 500; font-variant-caps: all-small-caps; letter-spacing: .1em; color: var(--text-faint); }
   .phud .life { font-family: var(--font-serif); font-weight: 600; font-size: 20px; color: var(--text);
     font-variant-numeric: tabular-nums; line-height: 1; }
   .phud .life .unit { font-size: 10px; color: var(--text-faint); font-weight: 400; margin-left: 3px; }
-  .phud .energy { font-family: var(--font-serif); font-weight: 600; font-size: 16px; color: var(--mana-r, #d08a2a);
+  .phud .energy { font-family: var(--font-serif); font-weight: 600; font-size: 16px; color: var(--energy);
     font-variant-numeric: tabular-nums; line-height: 1; }
   .phud .energy .unit { font-size: 10px; color: var(--text-faint); font-weight: 400; margin-left: 3px; }
-  .phud .poison { font-family: var(--font-serif); font-weight: 600; font-size: 16px; color: var(--mana-g, #5aa15a);
+  .phud .poison { font-family: var(--font-serif); font-weight: 600; font-size: 16px; color: var(--poison);
     font-variant-numeric: tabular-nums; line-height: 1; }
   .phud .poison .unit { font-size: 10px; color: var(--text-faint); font-weight: 400; margin-left: 3px; }
-  .phud .poison.lethal { color: #c0432a; animation: poison-pulse 1.2s ease-in-out infinite; }
-  @keyframes poison-pulse { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
+  /* Lethal poison: the count stays opaque in the danger colour, and a ring
+     around it pulses; text never fades (the contrast test holds this). */
+  .phud .poison.lethal { color: var(--lethal); position: relative; }
+  .phud .poison.lethal::after {
+    content: ""; position: absolute; inset: -3px -6px; pointer-events: none;
+    border: 2px solid var(--lethal); border-radius: var(--radius-control);
+    animation: poison-pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes poison-pulse { 0%,100% { opacity: .3; } 50% { opacity: 1; } }
   .phud .gauge { display: flex; align-items: center; gap: 8px; }
   .phud .gauge .gpip { display: inline-flex; align-items: center; gap: 1px; font-variant-numeric: tabular-nums; }
   .phud .gauge .floating { color: var(--text-faint); }
@@ -312,16 +320,16 @@
   #stack { flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; }
   #log { flex: 1; min-height: 0; font-size: 12px; overflow-y: auto; }
   #log .ln { line-height: 1.4; padding: 1px 0 1px 8px; border-left: 2px solid transparent; }
-  #log .you { color: var(--text); border-left-color: var(--blk); }
-  #log .opp { color: var(--text-muted); border-left-color: var(--atk); }
+  #log .you { color: var(--text); border-left-color: var(--block); }
+  #log .opp { color: var(--text-muted); border-left-color: var(--attack); }
   #log .sys { color: var(--text-faint); font-style: italic; }
   /* effect outcomes (life/damage/draw/death) — subtle, indented under the action */
   #log .evt { color: var(--text-muted); border-left-color: var(--border-muted); font-size: 11px; padding-left: 14px; }
 
   /* ---- Eval panel (chess-style bar) ---- */
   .evalwrap { display: flex; flex-direction: column; gap: 6px; }
-  .evalends { display: flex; justify-content: space-between; font-size: 10px;
-    text-transform: uppercase; letter-spacing: .08em; color: var(--text-faint); }
+  .evalends { display: flex; justify-content: space-between; font-size: 12px;
+    font-variant-caps: all-small-caps; letter-spacing: .08em; color: var(--text-faint); }
   .evalbar {
     position: relative; height: 22px; border: 1px solid var(--border);
     border-radius: var(--radius-control); background: var(--bg); overflow: hidden;
@@ -339,7 +347,7 @@
   .draw-total { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
   .draw-total b { color: var(--text); font-variant-numeric: tabular-nums; }
   .draw-sec { margin-bottom: 10px; }
-  .draw-sec-h { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: .08em;
+  .draw-sec-h { font-size: 12px; font-weight: 500; font-variant-caps: all-small-caps; letter-spacing: .08em;
     color: var(--text-faint); margin-bottom: 4px; }
   .draw-types { display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: 12px; }
   .draw-types span b { font-variant-numeric: tabular-nums; }
@@ -360,7 +368,7 @@
   /* ---- Suggested-lines panel ---- */
   #suggestpanel { display: flex; flex-direction: column; gap: 4px; min-height: 0; height: 100%; overflow-y: auto; }
   .sg-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 2px; }
-  .sg-status { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-faint); }
+  .sg-status { font-size: 12px; font-variant-caps: all-small-caps; letter-spacing: .08em; color: var(--text-faint); }
   .sg-row {
     display: flex; align-items: center; gap: 8px; padding: 3px 4px;
     border: 1px solid transparent; border-radius: var(--radius-control);
@@ -401,18 +409,18 @@
     border-radius: var(--radius-control); box-shadow: var(--shadow-float); padding: 4px;
   }
   .action-menu button { text-align: left; white-space: nowrap; }
-  .action-menu-head { font-size: 10px; text-transform: uppercase; letter-spacing: .08em;
+  .action-menu-head { font-size: 12px; font-variant-caps: all-small-caps; letter-spacing: .08em;
     color: var(--text-faint); padding: 2px 4px 4px; }
 
   /* combat highlight: red = attacking, blue = blocking — semantic colored rings
-     (override the monochrome selection rings) + solid colored badges for contrast. */
-  :root { --atk: #d4452f; --blk: #3b7dd8; }
-  .ac-card.atk .ac-frame { box-shadow: 0 0 0 3px var(--atk); border-color: var(--atk); }
-  .ac-card.blk .ac-frame { box-shadow: 0 0 0 3px var(--blk); border-color: var(--blk); }
-  .ac-card.atk.clickable:hover .ac-frame { box-shadow: 0 0 0 4px var(--atk); }
-  .ac-card.blk.clickable:hover .ac-frame { box-shadow: 0 0 0 4px var(--blk); }
-  .ac-card.atk .ac-badge { background: var(--atk); color: #fff; }
-  .ac-card.blk .ac-badge { background: var(--blk); color: #fff; }
+     (override the monochrome selection rings) + solid colored badges for contrast.
+     The colours are per-theme tokens in theme.css. */
+  .ac-card.atk .ac-frame { box-shadow: 0 0 0 3px var(--attack); border-color: var(--attack); }
+  .ac-card.blk .ac-frame { box-shadow: 0 0 0 3px var(--block); border-color: var(--block); }
+  .ac-card.atk.clickable:hover .ac-frame { box-shadow: 0 0 0 4px var(--attack); }
+  .ac-card.blk.clickable:hover .ac-frame { box-shadow: 0 0 0 4px var(--block); }
+  .ac-card.atk .ac-badge { background: var(--attack); color: var(--attack-ink); }
+  .ac-card.blk .ac-badge { background: var(--block); color: var(--block-ink); }
 
   /* ---- transient overlay (combat builder + mulligan bottoming) ----
      The backdrop only DIMS — it does not capture pointer events, so the board
@@ -533,9 +541,9 @@
 
   <!-- Targeting / combat arrows are drawn here, above the board, below modals. -->
   <svg id="arrows" class="arrows"><defs>
-    <marker id="ah-atk" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#d4452f"/></marker>
-    <marker id="ah-blk" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#3b7dd8"/></marker>
-    <marker id="ah-tgt" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#caa45a"/></marker>
+    <marker id="ah-atk" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" style="fill: var(--attack)"/></marker>
+    <marker id="ah-blk" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" style="fill: var(--block)"/></marker>
+    <marker id="ah-tgt" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" style="fill: var(--target)"/></marker>
   </defs><g id="arrow-layer"></g></svg>
 
   <!-- Transient combat / mulligan UI floats here (does not reflow the dock). -->
@@ -2164,13 +2172,13 @@ function drawArrow(layer, from, to, mark) {
   const mx = (from.x + to.x) / 2, my = (from.y + to.y) / 2 - lift;
   const p = document.createElementNS(SVGNS, "path");
   p.setAttribute("d", "M " + from.x + " " + from.y + " Q " + mx + " " + my + " " + to.x + " " + to.y);
-  p.setAttribute("stroke", mark.color);
+  p.style.stroke = mark.color; // a style, since the attribute cannot read var()
   p.setAttribute("marker-end", "url(#" + mark.id + ")");
   layer.appendChild(p);
 }
-const ARROW_ATK = { color: "#d4452f", id: "ah-atk" };
-const ARROW_BLK = { color: "#3b7dd8", id: "ah-blk" };
-const ARROW_TGT = { color: "#caa45a", id: "ah-tgt" };
+const ARROW_ATK = { color: "var(--attack)", id: "ah-atk" };
+const ARROW_BLK = { color: "var(--block)", id: "ah-blk" };
+const ARROW_TGT = { color: "var(--target)", id: "ah-tgt" };
 
 // Redraw all live arrows: combat declarations now, targeting in renderTargeting.
 function renderArrows() {
