@@ -50,9 +50,9 @@ use arcana_core::types::CardId;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
-use crate::deckeval::{fixed_policy, Deck};
+use crate::deckeval::Deck;
 use crate::information_set::DeckList;
-use crate::search::{play_match, PimcPolicy, RandomStatePolicy, StatePolicy};
+use crate::search::{play_match, MaterialValue, PimcPolicy, RandomStatePolicy, StatePolicy, ValueMcPolicy};
 
 // PIMC referee budget — deliberately small (a gauntlet plays many full games).
 const PIMC_SAMPLES: u32 = 8;
@@ -95,31 +95,35 @@ impl Referee {
 /// policy seeded by its `u64` argument.
 fn maker_for(
     referee: Referee,
+    budgets: &RefereeBudgets,
     seat_decks: &[Vec<CardId>],
 ) -> Box<dyn Fn(u64) -> Box<dyn StatePolicy>> {
+    let b = *budgets;
     match referee {
         Referee::Random => {
             Box::new(|s: u64| -> Box<dyn StatePolicy> { Box::new(RandomStatePolicy::new(s)) })
                 as Box<dyn Fn(u64) -> Box<dyn StatePolicy>>
         }
         Referee::VmcMaterial => {
-            Box::new(|s: u64| -> Box<dyn StatePolicy> { fixed_policy(s) })
-                as Box<dyn Fn(u64) -> Box<dyn StatePolicy>>
+            Box::new(move |s: u64| -> Box<dyn StatePolicy> {
+                Box::new(ValueMcPolicy::with_budget(
+                    Box::new(MaterialValue),
+                    s,
+                    b.vmc_rollouts,
+                    b.vmc_depth,
+                    b.vmc_candidates,
+                ))
+            }) as Box<dyn Fn(u64) -> Box<dyn StatePolicy>>
         }
         Referee::Pimc => {
             let decks: Vec<DeckList> = seat_decks.to_vec();
-            // Budget overridable for higher-fidelity referee arms (default 8/80).
-            let samples: u32 = std::env::var("CORPUS_PIMC_SAMPLES")
-                .ok().and_then(|s| s.parse().ok()).unwrap_or(PIMC_SAMPLES);
-            let cap: u32 = std::env::var("CORPUS_PIMC_CAP")
-                .ok().and_then(|s| s.parse().ok()).unwrap_or(PIMC_CAP);
             Box::new(move |s: u64| -> Box<dyn StatePolicy> {
                 Box::new(PimcPolicy::with_budget(
                     s,
                     decks.clone(),
-                    samples,
-                    cap,
-                    PIMC_MAX_CANDIDATES,
+                    b.pimc_samples,
+                    b.pimc_cap,
+                    b.pimc_candidates,
                 ))
             }) as Box<dyn Fn(u64) -> Box<dyn StatePolicy>>
         }
@@ -132,6 +136,63 @@ fn maker_for(
 
 /// One reproducible gauntlet's parameters. The whole run is deterministic in
 /// `base_seed`.
+/// The referees' search budgets. [`Default`] is the field gauntlet's own, as
+/// July ran it: material Monte Carlo at deckeval's fixed budget (4 rollouts,
+/// depth 20, 8 candidates) and PIMC at 8 samples, cap 80, 8 candidates.
+/// [`RefereeBudgets::capsule`] is A2.1's capsule policies.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RefereeBudgets {
+    pub vmc_rollouts: u32,
+    pub vmc_depth: u32,
+    pub vmc_candidates: usize,
+    pub pimc_samples: u32,
+    pub pimc_cap: u32,
+    pub pimc_candidates: usize,
+}
+
+impl Default for RefereeBudgets {
+    fn default() -> Self {
+        Self {
+            vmc_rollouts: crate::deckeval::FIXED_ROLLOUTS,
+            vmc_depth: crate::deckeval::FIXED_ROLLOUT_CAP,
+            vmc_candidates: crate::deckeval::FIXED_MAX_CANDIDATES,
+            pimc_samples: PIMC_SAMPLES,
+            pimc_cap: PIMC_CAP,
+            pimc_candidates: PIMC_MAX_CANDIDATES,
+        }
+    }
+}
+
+impl RefereeBudgets {
+    /// A2.1's capsule policies (`benchmark.rs`'s capsule tests): material
+    /// Monte Carlo at 6 rollouts, depth 25, 10 candidates, and PIMC with 10
+    /// candidates at the samples and cap given.
+    pub fn capsule(pimc_samples: u32, pimc_cap: u32) -> Self {
+        Self {
+            vmc_rollouts: 6,
+            vmc_depth: 25,
+            vmc_candidates: 10,
+            pimc_samples,
+            pimc_cap,
+            pimc_candidates: 10,
+        }
+    }
+
+    /// As the field tests read the environment: `CORPUS_POLICIES=capsule`
+    /// selects [`Self::capsule`], anything else the default, and
+    /// `CORPUS_PIMC_SAMPLES` and `CORPUS_PIMC_CAP` set PIMC's budget either way.
+    pub fn from_env() -> Self {
+        let num = |k: &str, d: u32| std::env::var(k).ok().and_then(|s| s.parse().ok()).unwrap_or(d);
+        let samples = num("CORPUS_PIMC_SAMPLES", PIMC_SAMPLES);
+        let cap = num("CORPUS_PIMC_CAP", PIMC_CAP);
+        if std::env::var("CORPUS_POLICIES").as_deref() == Ok("capsule") {
+            Self::capsule(samples, cap)
+        } else {
+            Self { pimc_samples: samples, pimc_cap: cap, ..Self::default() }
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct ExperimentConfig {
     /// Policy both seats play under.
@@ -150,6 +211,8 @@ pub struct ExperimentConfig {
     /// Bootstrap resamples for each per-deck 95% CI (e.g. 2000; 0 collapses the
     /// CI to the point estimate).
     pub bootstrap_samples: u32,
+    /// The referee's search budgets.
+    pub budgets: RefereeBudgets,
 }
 
 impl Default for ExperimentConfig {
@@ -160,6 +223,7 @@ impl Default for ExperimentConfig {
             max_steps: 4000,
             base_seed: 0,
             bootstrap_samples: 2000,
+            budgets: RefereeBudgets::default(),
         }
     }
 }
@@ -345,6 +409,56 @@ fn csv_escape(field: &str) -> String {
 
 /// Run a seat-swapped, common-seed gauntlet over `decks` and return a
 /// [`GauntletReport`] with per-deck point-rates + block bootstrap 95% CIs.
+/// The unordered deck pairs of an `n`-deck gauntlet, in the order
+/// [`run_gauntlet`] plays them: (0, 1), (0, 2), …, (n-2, n-1). A shard of a
+/// gauntlet is the pairs whose index in this list is `k` modulo `K`.
+pub fn gauntlet_pairs(n: usize) -> Vec<(usize, usize)> {
+    (0..n).flat_map(|i| (i + 1..n).map(move |j| (i, j))).collect()
+}
+
+/// One duel's four scores: game A seats deck `i` first, game B swaps seats.
+/// Each is a deck's points in that game (win 1, draw ½, loss 0).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DuelResult {
+    pub a_i: f32,
+    pub a_j: f32,
+    pub b_i: f32,
+    pub b_j: f32,
+}
+
+/// Duel `d` of the pair (`i`, `j`), as [`run_gauntlet`] plays it: both games
+/// share the engine seed `mix4(base_seed, i, j, d)` and per-deck policy seeds,
+/// and swap seats. Its seeds depend only on the pair and the duel, so any
+/// subset of a gauntlet's duels played apart gives the same games.
+pub fn play_duel(
+    decks: &[Deck],
+    registry: &CardRegistry,
+    cfg: &ExperimentConfig,
+    i: usize,
+    j: usize,
+    d: u32,
+) -> DuelResult {
+    let engine_seed = mix4(cfg.base_seed, i as u64, j as u64, d as u64);
+    // Per-DECK policy seeds, constant across the seat swap so the
+    // policy RNG is shared between both seatings (paired per deck).
+    let seed_i = engine_seed ^ 0xA5A5_A5A5_A5A5_A5A5;
+    let seed_j = engine_seed ^ 0x5A5A_5A5A_5A5A_5A5A;
+
+    // Game A: deck i = seat 0, deck j = seat 1.
+    let seat_a = vec![decks[i].cards.clone(), decks[j].cards.clone()];
+    let mk_a = maker_for(cfg.referee, &cfg.budgets, &seat_a);
+    let ra = play_seated(seat_a, registry, engine_seed, &*mk_a, seed_i, seed_j, cfg.max_steps);
+    let (a_i, a_j) = seat_scores(&ra); // (deck i score, deck j score)
+
+    // Game B (seat swap): deck j = seat 0, deck i = seat 1 — SAME
+    // engine seed, SAME per-deck policy seeds.
+    let seat_b = vec![decks[j].cards.clone(), decks[i].cards.clone()];
+    let mk_b = maker_for(cfg.referee, &cfg.budgets, &seat_b);
+    let rb = play_seated(seat_b, registry, engine_seed, &*mk_b, seed_j, seed_i, cfg.max_steps);
+    let (b_j, b_i) = seat_scores(&rb); // (deck j score, deck i score)
+    DuelResult { a_i, a_j, b_i, b_j }
+}
+
 pub fn run_gauntlet(
     decks: &[Deck],
     registry: &CardRegistry,
@@ -356,45 +470,26 @@ pub fn run_gauntlet(
     let mut per_deck_outcomes: Vec<Vec<f32>> = vec![Vec::new(); n];
     let mut per_deck_blocks: Vec<Vec<f32>> = vec![Vec::new(); n];
 
-    for i in 0..n {
-        for j in (i + 1)..n {
-            for d in 0..cfg.paired_duels_per_pair {
-                let engine_seed = mix4(cfg.base_seed, i as u64, j as u64, d as u64);
-                // Per-DECK policy seeds, constant across the seat swap so the
-                // policy RNG is shared between both seatings (paired per deck).
-                let seed_i = engine_seed ^ 0xA5A5_A5A5_A5A5_A5A5;
-                let seed_j = engine_seed ^ 0x5A5A_5A5A_5A5A_5A5A;
+    for (i, j) in gauntlet_pairs(n) {
+        for d in 0..cfg.paired_duels_per_pair {
+            let DuelResult { a_i, a_j, b_i, b_j } = play_duel(decks, registry, cfg, i, j, d);
 
-                // Game A: deck i = seat 0, deck j = seat 1.
-                let seat_a = vec![decks[i].cards.clone(), decks[j].cards.clone()];
-                let mk_a = maker_for(cfg.referee, &seat_a);
-                let ra = play_seated(seat_a, registry, engine_seed, &*mk_a, seed_i, seed_j, cfg.max_steps);
-                let (a_i, a_j) = seat_scores(&ra); // (deck i score, deck j score)
+            // Per-game outcomes (for transparency / external stats).
+            per_deck_outcomes[i].push(a_i);
+            per_deck_outcomes[i].push(b_i);
+            per_deck_outcomes[j].push(a_j);
+            per_deck_outcomes[j].push(b_j);
 
-                // Game B (seat swap): deck j = seat 0, deck i = seat 1 — SAME
-                // engine seed, SAME per-deck policy seeds.
-                let seat_b = vec![decks[j].cards.clone(), decks[i].cards.clone()];
-                let mk_b = maker_for(cfg.referee, &seat_b);
-                let rb = play_seated(seat_b, registry, engine_seed, &*mk_b, seed_j, seed_i, cfg.max_steps);
-                let (b_j, b_i) = seat_scores(&rb); // (deck j score, deck i score)
+            // The duel BLOCK = each deck's mean points over its two games.
+            // This is the bootstrap's experimental unit (the two games share
+            // seeds and are correlated).
+            per_deck_blocks[i].push((a_i + b_i) / 2.0);
+            per_deck_blocks[j].push((a_j + b_j) / 2.0);
 
-                // Per-game outcomes (for transparency / external stats).
-                per_deck_outcomes[i].push(a_i);
-                per_deck_outcomes[i].push(b_i);
-                per_deck_outcomes[j].push(a_j);
-                per_deck_outcomes[j].push(b_j);
-
-                // The duel BLOCK = each deck's mean points over its two games.
-                // This is the bootstrap's experimental unit (the two games share
-                // seeds and are correlated).
-                per_deck_blocks[i].push((a_i + b_i) / 2.0);
-                per_deck_blocks[j].push((a_j + b_j) / 2.0);
-
-                score_matrix[i][j] += a_i + b_i;
-                score_matrix[j][i] += a_j + b_j;
-                games_matrix[i][j] += 2;
-                games_matrix[j][i] += 2;
-            }
+            score_matrix[i][j] += a_i + b_i;
+            score_matrix[j][i] += a_j + b_j;
+            games_matrix[i][j] += 2;
+            games_matrix[j][i] += 2;
         }
     }
 
@@ -537,6 +632,85 @@ fn mix4(a: u64, b: u64, c: u64, d: u64) -> u64 {
 
 #[cfg(test)]
 mod tests {
+    /// `RefereeBudgets::capsule` plays A2.1's capsule policies move for move:
+    /// a game refereed through `maker_for` records the same actions as one
+    /// between policies built directly at A2.1's budgets, for material Monte
+    /// Carlo and for PIMC. For material, the field's default budgets record
+    /// different actions, so that comparison can tell; for PIMC the test
+    /// checks equality with the direct policy and pins both budget sets.
+    #[test]
+    fn capsule_budgets_play_a21s_policies() {
+        use crate::search::play_match_recorded;
+        let reg = arcana_cards::build_catalog();
+        let deck = arcana_cards::sample_deck(&reg, 7);
+        let seats = vec![deck.clone(), deck.clone()];
+        let actions = |mk: &dyn Fn(u64) -> Box<dyn StatePolicy>| {
+            let (mut p0, mut p1) = (mk(11), mk(12));
+            let (_, rec) = play_match_recorded(seats.clone(), &reg, 5, &mut [p0.as_mut(), p1.as_mut()], 300);
+            format!("{:?}", rec.actions)
+        };
+        let capsule = RefereeBudgets::capsule(2, 12);
+        let vmc_direct = |s: u64| {
+            Box::new(ValueMcPolicy::with_budget(Box::new(MaterialValue), s, 6, 25, 10)) as Box<dyn StatePolicy>
+        };
+        let vmc = actions(&*maker_for(Referee::VmcMaterial, &capsule, &seats));
+        assert_eq!(vmc, actions(&vmc_direct));
+        assert_ne!(vmc, actions(&*maker_for(Referee::VmcMaterial, &RefereeBudgets::default(), &seats)));
+        let ds = seats.clone();
+        let pimc_direct = move |s: u64| {
+            Box::new(PimcPolicy::with_budget(s, ds.clone(), 2, 12, 10)) as Box<dyn StatePolicy>
+        };
+        assert_eq!(actions(&*maker_for(Referee::Pimc, &capsule, &seats)), actions(&pimc_direct));
+        assert_eq!(RefereeBudgets::capsule(16, 160), RefereeBudgets {
+            vmc_rollouts: 6, vmc_depth: 25, vmc_candidates: 10,
+            pimc_samples: 16, pimc_cap: 160, pimc_candidates: 10,
+        });
+        assert_eq!(RefereeBudgets::default(), RefereeBudgets {
+            vmc_rollouts: 4, vmc_depth: 20, vmc_candidates: 8,
+            pimc_samples: 8, pimc_cap: 80, pimc_candidates: 8,
+        });
+    }
+
+    /// Duels split into pair shards and played apart, in another order, sum
+    /// exactly to `run_gauntlet`'s score matrix: no state crosses from one
+    /// duel to the next, which is what lets a cluster run a gauntlet as shards.
+    #[test]
+    fn duel_shards_sum_to_run_gauntlet() {
+        let reg = arcana_cards::build_catalog();
+        let decks: Vec<Deck> = (1..=3)
+            .map(|s| Deck { name: format!("d{s}"), cards: arcana_cards::sample_deck(&reg, s) })
+            .collect();
+        let cfg = ExperimentConfig {
+            referee: Referee::Random,
+            paired_duels_per_pair: 2,
+            max_steps: 4000,
+            base_seed: 7,
+            bootstrap_samples: 10,
+            budgets: RefereeBudgets::default(),
+        };
+        let whole = run_gauntlet(&decks, &reg, &cfg);
+        let pairs = gauntlet_pairs(decks.len());
+        assert_eq!(pairs, vec![(0, 1), (0, 2), (1, 2)]);
+        let mut m = vec![vec![0.0f32; 3]; 3];
+        for k in [1, 0] {
+            for (p, &(i, j)) in pairs.iter().enumerate() {
+                if p % 2 != k {
+                    continue;
+                }
+                for d in (0..2).rev() {
+                    let r = play_duel(&decks, &reg, &cfg, i, j, d);
+                    m[i][j] += r.a_i + r.b_i;
+                    m[j][i] += r.a_j + r.b_j;
+                }
+            }
+        }
+        assert_eq!(m, whole.score_matrix);
+        assert!(
+            pairs.iter().any(|&(i, j)| m[i][j] != 2.0),
+            "every game a draw: the comparison would hold vacuously"
+        );
+    }
+
     use super::*;
     use crate::deckeval::{mono_color_creature_deck, standard_deck_set};
 
@@ -564,6 +738,7 @@ mod tests {
             max_steps: 4000,
             base_seed: 7,
             bootstrap_samples: 200,
+            budgets: RefereeBudgets::default(),
         };
         let report = run_gauntlet(&decks, &reg, &cfg);
 
@@ -633,6 +808,7 @@ mod tests {
             max_steps: 4000,
             base_seed: 42,
             bootstrap_samples: 64,
+            budgets: RefereeBudgets::default(),
         };
         let a = run_gauntlet(&decks, &reg, &cfg);
         let b = run_gauntlet(&decks, &reg, &cfg);
@@ -670,6 +846,7 @@ mod tests {
             max_steps: 4000,
             base_seed: 0,
             bootstrap_samples: 2000,
+            budgets: RefereeBudgets::default(),
         };
         let report = run_gauntlet(&decks, &reg, &cfg);
         println!("\n{}\n", report.format_table());

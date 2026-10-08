@@ -406,7 +406,7 @@ mod tests {
     #[test]
     #[ignore]
     fn corpus_gauntlet() {
-        use crate::deckeval_runner::{run_gauntlet, ExperimentConfig, Referee};
+        use crate::deckeval_runner::{run_gauntlet, ExperimentConfig, Referee, RefereeBudgets};
         let base = std::env::var("KAGGLE_DECKS").expect("set KAGGLE_DECKS");
         let format = std::env::var("CORPUS_FORMAT").unwrap_or_else(|_| "PI".into());
         let referee = match std::env::var("CORPUS_REFEREE").as_deref() {
@@ -441,10 +441,87 @@ mod tests {
             max_steps: 4000,
             base_seed,
             bootstrap_samples: 2000,
+            budgets: RefereeBudgets::from_env(),
         };
         let gauntlet = run_gauntlet(&decks, &reg, &cfg);
         println!("\n{}\n", gauntlet.format_table());
         println!("{}", gauntlet.to_csv());
+    }
+
+    /// One shard of [`corpus_gauntlet`] for a cluster array: the duels of the
+    /// pairs whose index in [`crate::deckeval_runner::gauntlet_pairs`] is `k`
+    /// modulo `K` (`CORPUS_SHARD=k/K`, default `0/1`, the whole gauntlet), each
+    /// played by [`crate::deckeval_runner::play_duel`] exactly as
+    /// `run_gauntlet` plays it. No aggregation: it prints the playable decks
+    /// and one row per duel, which merge across shards.
+    ///
+    ///   `config,<referee>,<budgets>,<duels>,<base seed>,<k>/<K>`
+    ///   `deck,<index>,<name>`
+    ///   `duel,<i>,<j>,<d>,<a_i>,<a_j>,<b_i>,<b_j>,<seconds>`
+    ///
+    /// where game A seats deck i first and game B swaps seats. Same variables
+    /// as `corpus_gauntlet`: `CORPUS_POLICIES=capsule` gives A2.1's capsule
+    /// policies instead of the field's ([`crate::deckeval_runner::RefereeBudgets`]),
+    /// and `CORPUS_PIMC_SAMPLES`/`CORPUS_PIMC_CAP` set PIMC's budget;
+    /// `CORPUS_DUELS` defaults to 1 here.
+    /// `KAGGLE_DECKS=<dir> CORPUS_SHARD=0/8 cargo test -p arcana-ai --release corpus_gauntlet_shard -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn corpus_gauntlet_shard() {
+        use crate::deckeval_runner::{gauntlet_pairs, play_duel, ExperimentConfig, Referee, RefereeBudgets};
+        use std::time::Instant;
+        let base = std::env::var("KAGGLE_DECKS").expect("set KAGGLE_DECKS");
+        let format = std::env::var("CORPUS_FORMAT").unwrap_or_else(|_| "PI".into());
+        let referee = match std::env::var("CORPUS_REFEREE").as_deref() {
+            Ok("random") => Referee::Random,
+            Ok("pimc") => Referee::Pimc,
+            _ => Referee::VmcMaterial,
+        };
+        let env = |k: &str, default: u64| -> u64 {
+            std::env::var(k).ok().and_then(|s| s.parse().ok()).unwrap_or(default)
+        };
+        let duels = env("CORPUS_DUELS", 1) as u32;
+        let (k, shards) = std::env::var("CORPUS_SHARD")
+            .ok()
+            .map(|s| {
+                let (a, b) = s.split_once('/').expect("CORPUS_SHARD is k/K");
+                (a.parse::<usize>().expect("k"), b.parse::<usize>().expect("K"))
+            })
+            .unwrap_or((0, 1));
+        assert!(k < shards, "CORPUS_SHARD {k}/{shards}: k must be below K");
+
+        let reg = arcana_cards::build_catalog();
+        let dir = std::path::Path::new(&base).join(&format);
+        let loaded = decks_from_dir(&dir, &format, &reg).expect("read corpus dir");
+        let decks = playable_decks(&loaded, 60, 60);
+        for (i, d) in decks.iter().enumerate() {
+            println!("deck,{i},{}", d.name);
+        }
+        let cfg = ExperimentConfig {
+            referee,
+            paired_duels_per_pair: duels,
+            max_steps: 4000,
+            base_seed: env("CORPUS_BASE_SEED", 0),
+            bootstrap_samples: 0,
+            budgets: RefereeBudgets::from_env(),
+        };
+        println!(
+            "config,{:?},{:?},{duels},{},{k}/{shards}",
+            cfg.referee, cfg.budgets, cfg.base_seed
+        );
+        for (p, &(i, j)) in gauntlet_pairs(decks.len()).iter().enumerate() {
+            if p % shards != k {
+                continue;
+            }
+            for d in 0..duels {
+                let t = Instant::now();
+                let r = play_duel(&decks, &reg, &cfg, i, j, d);
+                println!(
+                    "duel,{i},{j},{d},{},{},{},{},{:.2}",
+                    r.a_i, r.a_j, r.b_i, r.b_j, t.elapsed().as_secs_f64()
+                );
+            }
+        }
     }
 
     /// Build FIDELITY-CONTROLLED Pioneer subsets to separate referee-bias from
