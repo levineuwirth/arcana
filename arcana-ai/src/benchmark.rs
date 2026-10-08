@@ -667,7 +667,8 @@ mod tests {
     /// against PIMC at each budget in `CAP_TIMING_BUDGETS` (samples/cap,
     /// default `12/120,16/160,32/320`), and against itself, for
     /// `CAP_TIMING_GAMES` games each (default 4), games `CAP_TIMING_FIRST` on
-    /// (default 0) of [`crate::search::pair_game`]'s schedule. One row per game:
+    /// (default 0) of [`crate::search::pair_game`]'s schedule; `CAP_TIMING_MIRROR=0`
+    /// drops the mirror, as A2.1's head-to-head does. One row per game:
     ///
     ///   `timing,<deck>,<pairing>,<game>,<outcome>,<seconds>`
     ///
@@ -719,7 +720,9 @@ mod tests {
                     )
                 })
                 .collect();
-            pairings.push(("vmc-material vs vmc-material".into(), Box::new(vmc)));
+            if envu("CAP_TIMING_MIRROR", 1) != 0 {
+                pairings.push(("vmc-material vs vmc-material".into(), Box::new(vmc)));
+            }
             for (name, opponent) in &pairings {
                 for g in first..first + games {
                     let t = Instant::now();

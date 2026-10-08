@@ -1,0 +1,30 @@
+#!/bin/bash
+# replication.lsf — A2.1's arm R: July's experiment 1 on today's engine, one
+# capsule deck per task.
+#
+#   cd ~/arcana-runs && bsub < ~/Repos/arcana/arcana-ai/scripts/dtu/replication.lsf
+#
+# Runs benchmark::tests::capsule_pimc_distill from the binary build.lsf left
+# in ~/arcana-runs/<commit>/ with July's settings (docs/rl-benchmark/
+# capsule-distill.txt, b795e0b2): 12 games a pair, 30 self-play games to train
+# each leaf, PIMC 12/120, CAP_DECK = the task index − 1. The whole output goes
+# to replication-deck<k>.txt there. July took 626 to 1,386 s a deck on the
+# laptop; a DTU game ran 1.3 to 2.1 times faster (docs/a2-sizing).
+#BSUB -q hpc
+#BSUB -J arcana-replication[1-5]%5
+#BSUB -n 1
+#BSUB -R "rusage[mem=1GB]"
+#BSUB -M 1GB
+#BSUB -W 1:00
+#BSUB -o replication_%J_%I.out
+#BSUB -e replication_%J_%I.err
+set -euo pipefail
+repo="${ARCANA_REPO:-$HOME/Repos/arcana}"
+commit="${ARCANA_COMMIT:-$(git -C "$repo" rev-parse HEAD)}"
+out="$HOME/arcana-runs/$commit"
+deck=$((LSB_JOBINDEX - 1))
+CAPSULE_DIR="$repo/docs/capsule-pioneer/seeds" CAP_DECK="$deck" \
+  CAP_GAMES=12 CAP_TRAIN=30 CAP_PIMC_SAMPLES=12 CAP_PIMC_CAP=120 \
+  "$out/arcana_ai_tests" --ignored --exact benchmark::tests::capsule_pimc_distill --nocapture \
+  > "$out/replication-deck$deck.txt" 2>&1
+echo "deck $deck on $(hostname): done"
