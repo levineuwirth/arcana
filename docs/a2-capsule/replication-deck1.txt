@@ -1,0 +1,20 @@
+
+running 1 test
+test benchmark::tests::capsule_pimc_distill ... capsule: 1 decks — Golgari Scales [23743_364886]
+  [deck 1/1] Golgari Scales [23743_364886]: random=0.12 vmc-material=0.81 vmc-learned-rand=0.50 vmc-learned-pimc=0.44 pimc=0.62
+
+capsule yardstick — 1 decks: Golgari Scales [23743_364886]
+  vmc-material      pr= 0.812  (48 games)   vs random=0.92  vs vmc-learned-rand=0.67  vs vmc-learned-pimc=0.92  vs pimc=0.75
+  pimc              pr= 0.625  (48 games)   vs random=0.92  vs vmc-material=0.25  vs vmc-learned-rand=0.83  vs vmc-learned-pimc=0.50
+  vmc-learned-rand  pr= 0.500  (48 games)   vs random=0.83  vs vmc-material=0.33  vs vmc-learned-pimc=0.67  vs pimc=0.17
+  vmc-learned-pimc  pr= 0.438  (48 games)   vs random=0.83  vs vmc-material=0.08  vs vmc-learned-rand=0.33  vs pimc=0.50
+  random            pr= 0.125  (48 games)   vs vmc-material=0.08  vs vmc-learned-rand=0.17  vs vmc-learned-pimc=0.17  vs pimc=0.08
+
+
+# HELD-OUT READ (leaf vs an opponent it was NOT trained against):
+  vmc-learned-rand  vs pimc=0.17  vs material=0.33  (teacher=random)
+  vmc-learned-pimc  vs pimc=0.50  vs material=0.08  (teacher=pimc (NOT held-out))
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 120 filtered out; finished in 1748.68s
+

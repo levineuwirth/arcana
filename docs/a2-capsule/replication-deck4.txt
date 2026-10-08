@@ -1,0 +1,20 @@
+
+running 1 test
+test benchmark::tests::capsule_pimc_distill ... capsule: 1 decks — Red Deck Wins [24148_368536]
+  [deck 1/1] Red Deck Wins [24148_368536]: random=0.04 vmc-material=0.67 vmc-learned-rand=0.65 vmc-learned-pimc=0.54 pimc=0.60
+
+capsule yardstick — 1 decks: Red Deck Wins [24148_368536]
+  vmc-material      pr= 0.667  (48 games)   vs random=1.00  vs vmc-learned-rand=0.50  vs vmc-learned-pimc=0.67  vs pimc=0.50
+  vmc-learned-rand  pr= 0.646  (48 games)   vs random=0.83  vs vmc-material=0.50  vs vmc-learned-pimc=0.67  vs pimc=0.58
+  pimc              pr= 0.604  (48 games)   vs random=1.00  vs vmc-material=0.50  vs vmc-learned-rand=0.42  vs vmc-learned-pimc=0.50
+  vmc-learned-pimc  pr= 0.542  (48 games)   vs random=1.00  vs vmc-material=0.33  vs vmc-learned-rand=0.33  vs pimc=0.50
+  random            pr= 0.042  (48 games)   vs vmc-material=0.00  vs vmc-learned-rand=0.17  vs vmc-learned-pimc=0.00  vs pimc=0.00
+
+
+# HELD-OUT READ (leaf vs an opponent it was NOT trained against):
+  vmc-learned-rand  vs pimc=0.58  vs material=0.50  (teacher=random)
+  vmc-learned-pimc  vs pimc=0.50  vs material=0.33  (teacher=pimc (NOT held-out))
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 120 filtered out; finished in 2036.00s
+

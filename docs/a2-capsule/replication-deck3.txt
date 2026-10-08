@@ -1,0 +1,20 @@
+
+running 1 test
+test benchmark::tests::capsule_pimc_distill ... capsule: 1 decks — Rakdos Aggro [24126_368389]
+  [deck 1/1] Rakdos Aggro [24126_368389]: random=0.17 vmc-material=0.83 vmc-learned-rand=0.27 vmc-learned-pimc=0.73 pimc=0.50
+
+capsule yardstick — 1 decks: Rakdos Aggro [24126_368389]
+  vmc-material      pr= 0.833  (48 games)   vs random=1.00  vs vmc-learned-rand=0.83  vs vmc-learned-pimc=0.58  vs pimc=0.92
+  vmc-learned-pimc  pr= 0.729  (48 games)   vs random=0.83  vs vmc-material=0.42  vs vmc-learned-rand=1.00  vs pimc=0.67
+  pimc              pr= 0.500  (48 games)   vs random=0.83  vs vmc-material=0.08  vs vmc-learned-rand=0.75  vs vmc-learned-pimc=0.33
+  vmc-learned-rand  pr= 0.271  (48 games)   vs random=0.67  vs vmc-material=0.17  vs vmc-learned-pimc=0.00  vs pimc=0.25
+  random            pr= 0.167  (48 games)   vs vmc-material=0.00  vs vmc-learned-rand=0.33  vs vmc-learned-pimc=0.17  vs pimc=0.17
+
+
+# HELD-OUT READ (leaf vs an opponent it was NOT trained against):
+  vmc-learned-rand  vs pimc=0.25  vs material=0.17  (teacher=random)
+  vmc-learned-pimc  vs pimc=0.67  vs material=0.42  (teacher=pimc (NOT held-out))
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 120 filtered out; finished in 1756.35s
+
