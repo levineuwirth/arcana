@@ -8,12 +8,13 @@
 # rows to timing-deck<k>.csv there. The CAP_TIMING_* variables pass through.
 # A game process peaked at 111 MB on the laptop, and deck 0's games cost 31 to
 # 33 s at PIMC 12/120 and 6 to 9 s in the vmc mirror there, so a task of the
-# default four games per pairing should take about 20 minutes.
+# default four games per pairing should take about 20 minutes. DTU refuses -M
+# more than 5% above the rusage request.
 #BSUB -q hpc
 #BSUB -J arcana-timing[1-5]%5
 #BSUB -n 1
 #BSUB -R "rusage[mem=1GB]"
-#BSUB -M 2GB
+#BSUB -M 1GB
 #BSUB -W 1:00
 #BSUB -o timing_%J_%I.out
 #BSUB -e timing_%J_%I.err

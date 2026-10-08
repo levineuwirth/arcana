@@ -10,13 +10,14 @@
 # Memory: rustc compiling arcana-cards in release passed 4.9 GB on the laptop
 # (its peak was not caught: the laptop builds through sccache), so each slot
 # asks 12 GB, which holds one such rustc whether DTU applies -M per slot or
-# per process. build.log records the true peak (/usr/bin/time -v).
+# per process. build.log records the true peak (/usr/bin/time -v). DTU's
+# submission filter refuses -M more than 5% above the rusage request.
 #BSUB -q hpc
 #BSUB -J arcana-build
 #BSUB -n 4
 #BSUB -R "span[hosts=1]"
 #BSUB -R "rusage[mem=12GB]"
-#BSUB -M 13GB
+#BSUB -M 12GB
 #BSUB -W 1:30
 #BSUB -o build_%J.out
 #BSUB -e build_%J.err
