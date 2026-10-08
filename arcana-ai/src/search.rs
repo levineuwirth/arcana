@@ -1052,26 +1052,54 @@ pub fn win_rate(
 ) -> (u32, u32, u32) {
     let (mut a_wins, mut b_wins, mut draws) = (0, 0, 0);
     for g in 0..n_games {
-        let a_seat: PlayerId = (g % 2) as PlayerId; // alternate who is player 0
-        let mut pa = mk_a(g as u64 * 2 + 1);
-        let mut pb = mk_b(g as u64 * 2 + 2);
-        let decks = if a_seat == 0 {
-            vec![deck_a.to_vec(), deck_b.to_vec()]
-        } else {
-            vec![deck_b.to_vec(), deck_a.to_vec()]
-        };
-        let mut slots: Vec<&mut dyn StatePolicy> = if a_seat == 0 {
-            vec![pa.as_mut(), pb.as_mut()]
-        } else {
-            vec![pb.as_mut(), pa.as_mut()]
-        };
-        match play_match(decks, registry, g as u64, &mut slots, max_steps) {
-            GameResult::Win(p) if p == a_seat => a_wins += 1,
-            GameResult::Win(_) => b_wins += 1,
-            _ => draws += 1,
+        match pair_game(deck_a, deck_b, registry, g as u64, max_steps, mk_a, mk_b) {
+            PairOutcome::AWin => a_wins += 1,
+            PairOutcome::BWin => b_wins += 1,
+            PairOutcome::Draw => draws += 1,
         }
     }
     (a_wins, b_wins, draws)
+}
+
+/// How one game of a pairing ended, for its first contestant.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PairOutcome {
+    AWin,
+    BWin,
+    Draw,
+}
+
+/// Game `g` of a pairing, as [`win_rate`] schedules it: `a` sits as player
+/// `g % 2`, the policies are seeded `2g + 1` and `2g + 2`, and the game `g`.
+/// [`win_rate`] plays games `0..n`; any other range of `g` plays further games
+/// of the same schedule, so disjoint ranges run apart sum to one run.
+pub fn pair_game(
+    deck_a: &[CardId],
+    deck_b: &[CardId],
+    registry: &CardRegistry,
+    g: u64,
+    max_steps: u32,
+    mk_a: &dyn Fn(u64) -> Box<dyn StatePolicy>,
+    mk_b: &dyn Fn(u64) -> Box<dyn StatePolicy>,
+) -> PairOutcome {
+    let a_seat: PlayerId = (g % 2) as PlayerId; // alternate who is player 0
+    let mut pa = mk_a(g * 2 + 1);
+    let mut pb = mk_b(g * 2 + 2);
+    let decks = if a_seat == 0 {
+        vec![deck_a.to_vec(), deck_b.to_vec()]
+    } else {
+        vec![deck_b.to_vec(), deck_a.to_vec()]
+    };
+    let mut slots: Vec<&mut dyn StatePolicy> = if a_seat == 0 {
+        vec![pa.as_mut(), pb.as_mut()]
+    } else {
+        vec![pb.as_mut(), pa.as_mut()]
+    };
+    match play_match(decks, registry, g, &mut slots, max_steps) {
+        GameResult::Win(p) if p == a_seat => PairOutcome::AWin,
+        GameResult::Win(_) => PairOutcome::BWin,
+        _ => PairOutcome::Draw,
+    }
 }
 
 // =============================================================================

@@ -637,6 +637,105 @@ mod tests {
         }
     }
 
+    /// Games split into disjoint ranges of `g` and played apart give exactly
+    /// `win_rate`'s totals: no state crosses from one game to the next, which
+    /// is what lets a cluster run one pairing as many shards.
+    #[test]
+    fn pair_game_ranges_sum_to_win_rate() {
+        use crate::search::{pair_game, win_rate, PairOutcome};
+        let reg = arcana_cards::build_catalog();
+        let (da, db) = (arcana_cards::sample_deck(&reg, 7), arcana_cards::sample_deck(&reg, 3));
+        let ma = |s: u64| Box::new(RandomStatePolicy::new(s)) as Box<dyn StatePolicy>;
+        let mb = |s: u64| {
+            Box::new(ValueMcPolicy::with_budget(Box::new(MaterialValue), s, 2, 10, 4)) as Box<dyn StatePolicy>
+        };
+        let whole = win_rate(&da, &db, &reg, 6, 4000, &ma, &mb);
+        let mut split = (0, 0, 0);
+        for g in (3..6).chain(0..3) {
+            match pair_game(&da, &db, &reg, g, 4000, &ma, &mb) {
+                PairOutcome::AWin => split.0 += 1,
+                PairOutcome::BWin => split.1 += 1,
+                PairOutcome::Draw => split.2 += 1,
+            }
+        }
+        assert_eq!(split, whole);
+    }
+
+    /// A2.0 — what one game costs on the capsule, to size cluster runs. For
+    /// each capsule deck (or the one `CAP_DECK` names) it plays July's
+    /// `vmc-material` (6 rollouts, depth 25, 10 candidates) in the mirror
+    /// against PIMC at each budget in `CAP_TIMING_BUDGETS` (samples/cap,
+    /// default `12/120,16/160,32/320`), and against itself, for
+    /// `CAP_TIMING_GAMES` games each (default 4), games `CAP_TIMING_FIRST` on
+    /// (default 0) of [`crate::search::pair_game`]'s schedule. One row per game:
+    ///
+    ///   `timing,<deck>,<pairing>,<game>,<outcome>,<seconds>`
+    ///
+    /// The outcome depends only on the commit and the seeds, so two machines at
+    /// one commit print the same rows bar the seconds. Release:
+    ///   CAPSULE_DIR=$(pwd)/docs/capsule-pioneer/seeds \
+    ///   cargo test -p arcana-ai --release benchmark::tests::capsule_timing -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn capsule_timing() {
+        use crate::search::{pair_game, PairOutcome};
+        use std::time::Instant;
+        let reg = arcana_cards::build_catalog();
+        let dir = std::env::var("CAPSULE_DIR").expect("set CAPSULE_DIR to docs/capsule-pioneer/seeds");
+        let games = envu("CAP_TIMING_GAMES", 4) as u64;
+        let first = envu("CAP_TIMING_FIRST", 0) as u64;
+        let budgets: Vec<(u32, u32)> = std::env::var("CAP_TIMING_BUDGETS")
+            .unwrap_or_else(|_| "12/120,16/160,32/320".into())
+            .split(',')
+            .map(|b| {
+                let (s, c) = b.trim().split_once('/').expect("a budget is samples/cap");
+                (s.parse().expect("samples"), c.parse().expect("cap"))
+            })
+            .collect();
+        let max_steps = 4000u32;
+        let mut decks = load_capsule(&dir, &reg);
+        assert_eq!(decks.len(), 5, "the capsule has five playable decks");
+        if let Ok(idx) = std::env::var("CAP_DECK") {
+            let i: usize = idx.parse().expect("CAP_DECK is an index");
+            assert!(i < decks.len(), "CAP_DECK {i} out of range ({} decks)", decks.len());
+            decks = vec![decks[i].clone()];
+        }
+        let vmc = |s: u64| {
+            Box::new(ValueMcPolicy::with_budget(Box::new(MaterialValue), s, 6, 25, 10)) as Box<dyn StatePolicy>
+        };
+        println!("timing,deck,pairing,game,outcome,seconds");
+        for deck in &decks {
+            let d = deck.cards.clone();
+            let mut pairings: Vec<(String, Box<dyn Fn(u64) -> Box<dyn StatePolicy>>)> = budgets
+                .iter()
+                .map(|&(samples, cap)| {
+                    let dp = d.clone();
+                    (
+                        format!("vmc-material vs pimc-{samples}/{cap}"),
+                        Box::new(move |s: u64| {
+                            Box::new(PimcPolicy::with_budget(s, vec![dp.clone(), dp.clone()], samples, cap, 10))
+                                as Box<dyn StatePolicy>
+                        }) as Box<dyn Fn(u64) -> Box<dyn StatePolicy>>,
+                    )
+                })
+                .collect();
+            pairings.push(("vmc-material vs vmc-material".into(), Box::new(vmc)));
+            for (name, opponent) in &pairings {
+                for g in first..first + games {
+                    let t = Instant::now();
+                    let outcome = pair_game(&d, &d, &reg, g, max_steps, &vmc, opponent.as_ref());
+                    let secs = t.elapsed().as_secs_f64();
+                    let o = match outcome {
+                        PairOutcome::AWin => "a",
+                        PairOutcome::BWin => "b",
+                        PairOutcome::Draw => "draw",
+                    };
+                    println!("timing,{},{name},{g},{o},{secs:.2}", deck.name);
+                }
+            }
+        }
+    }
+
     fn envu(k: &str, default: u32) -> u32 {
         std::env::var(k).ok().and_then(|s| s.parse().ok()).unwrap_or(default)
     }

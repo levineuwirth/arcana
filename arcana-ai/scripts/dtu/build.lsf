@@ -1,0 +1,40 @@
+#!/bin/bash
+# build.lsf — compile the arcana-ai test binary once per commit on a DTU
+# compute node, and run the criterion bench there.
+#
+#   mkdir -p ~/arcana-runs && cd ~/arcana-runs && bsub < ~/Repos/arcana/arcana-ai/scripts/dtu/build.lsf
+#
+# Builds offline (setup.sh fetched the crates) in node-local $TMPDIR, copies
+# the release test binary to ~/arcana-runs/<commit>/arcana_ai_tests, where
+# array tasks run it with no cargo, and writes the bench's report beside it.
+# Memory: rustc compiling arcana-cards in release passed 4.9 GB on the laptop
+# (its peak was not caught: the laptop builds through sccache), so each slot
+# asks 12 GB, which holds one such rustc whether DTU applies -M per slot or
+# per process. build.log records the true peak (/usr/bin/time -v).
+#BSUB -q hpc
+#BSUB -J arcana-build
+#BSUB -n 4
+#BSUB -R "span[hosts=1]"
+#BSUB -R "rusage[mem=12GB]"
+#BSUB -M 13GB
+#BSUB -W 1:30
+#BSUB -o build_%J.out
+#BSUB -e build_%J.err
+set -euo pipefail
+repo="${ARCANA_REPO:-$HOME/Repos/arcana}"
+export PATH="$HOME/.cargo/bin:$PATH"
+export CARGO_TARGET_DIR="${TMPDIR:-/tmp}/arcana-target-$LSB_JOBID"
+cd "$repo"
+commit="$(git rev-parse HEAD)"
+out="$HOME/arcana-runs/$commit"
+mkdir -p "$out"
+
+timer=(); [ -x /usr/bin/time ] && timer=(/usr/bin/time -v)
+"${timer[@]}" cargo test -p arcana-ai --release --locked --offline --no-run 2> "$out/build.log"
+bin="$(grep -o 'Executable unittests src/lib.rs ([^)]*)' "$out/build.log" | sed 's/.*(\(.*\))/\1/')"
+cp "$bin" "$out/arcana_ai_tests"
+
+cargo bench -p arcana-core --bench simulation --locked --offline \
+  -- --warm-up-time 1 --measurement-time 4 > "$out/bench.txt" 2>&1
+echo "built $commit on $(hostname): $out/arcana_ai_tests"
+rm -rf "$CARGO_TARGET_DIR"

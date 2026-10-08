@@ -1,0 +1,28 @@
+#!/bin/bash
+# timing.lsf — A2.0: what one game costs on the capsule, one deck per task.
+#
+#   cd ~/arcana-runs && ARCANA_COMMIT=<commit> bsub < ~/Repos/arcana/arcana-ai/scripts/dtu/timing.lsf
+#
+# Runs benchmark::tests::capsule_timing from the binary build.lsf left in
+# ~/arcana-runs/<commit>/, with CAP_DECK = the task index − 1, and writes its
+# rows to timing-deck<k>.csv there. The CAP_TIMING_* variables pass through.
+# A game process peaked at 111 MB on the laptop, and deck 0's games cost 31 to
+# 33 s at PIMC 12/120 and 6 to 9 s in the vmc mirror there, so a task of the
+# default four games per pairing should take about 20 minutes.
+#BSUB -q hpc
+#BSUB -J arcana-timing[1-5]%5
+#BSUB -n 1
+#BSUB -R "rusage[mem=1GB]"
+#BSUB -M 2GB
+#BSUB -W 1:00
+#BSUB -o timing_%J_%I.out
+#BSUB -e timing_%J_%I.err
+set -euo pipefail
+commit="${ARCANA_COMMIT:?set ARCANA_COMMIT to the built commit}"
+repo="${ARCANA_REPO:-$HOME/Repos/arcana}"
+out="$HOME/arcana-runs/$commit"
+deck=$((LSB_JOBINDEX - 1))
+CAPSULE_DIR="$repo/docs/capsule-pioneer/seeds" CAP_DECK="$deck" \
+  "$out/arcana_ai_tests" --ignored --exact benchmark::tests::capsule_timing --nocapture \
+  | grep '^timing,' > "$out/timing-deck$deck.csv"
+echo "deck $deck on $(hostname): $(($(wc -l < "$out/timing-deck$deck.csv") - 1)) games"
