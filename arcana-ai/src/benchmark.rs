@@ -668,7 +668,12 @@ mod tests {
     /// default `12/120,16/160,32/320`), and against itself, for
     /// `CAP_TIMING_GAMES` games each (default 4), games `CAP_TIMING_FIRST` on
     /// (default 0) of [`crate::search::pair_game`]'s schedule; `CAP_TIMING_MIRROR=0`
-    /// drops the mirror, as A2.1's head-to-head does. One row per game:
+    /// drops the mirror, as A2.1's head-to-head does, and `CAP_TIMING_BUDGETS=none`
+    /// drops the PIMC pairings. `CAP_TIMING_SAMPLED=1` adds A2.2's arm I:
+    /// `vmc-material` rolling out from the true state (side `a`) against the
+    /// same search at the same budget rolling out from sampled worlds
+    /// ([`ValueMcPolicy::sampled_with_budget`], side `b`), pairing
+    /// `vmc-material vs vmc-material-sampled`. One row per game:
     ///
     ///   `timing,<deck>,<pairing>,<game>,<outcome>,<seconds>`
     ///
@@ -685,9 +690,11 @@ mod tests {
         let dir = std::env::var("CAPSULE_DIR").expect("set CAPSULE_DIR to docs/capsule-pioneer/seeds");
         let games = envu("CAP_TIMING_GAMES", 4) as u64;
         let first = envu("CAP_TIMING_FIRST", 0) as u64;
-        let budgets: Vec<(u32, u32)> = std::env::var("CAP_TIMING_BUDGETS")
-            .unwrap_or_else(|_| "12/120,16/160,32/320".into())
+        let budgets_var = std::env::var("CAP_TIMING_BUDGETS")
+            .unwrap_or_else(|_| "12/120,16/160,32/320".into());
+        let budgets: Vec<(u32, u32)> = budgets_var
             .split(',')
+            .filter(|_| budgets_var != "none")
             .map(|b| {
                 let (s, c) = b.trim().split_once('/').expect("a budget is samples/cap");
                 (s.parse().expect("samples"), c.parse().expect("cap"))
@@ -722,6 +729,17 @@ mod tests {
                 .collect();
             if envu("CAP_TIMING_MIRROR", 1) != 0 {
                 pairings.push(("vmc-material vs vmc-material".into(), Box::new(vmc)));
+            }
+            if envu("CAP_TIMING_SAMPLED", 0) != 0 {
+                let dp = d.clone();
+                pairings.push((
+                    "vmc-material vs vmc-material-sampled".into(),
+                    Box::new(move |s: u64| {
+                        Box::new(ValueMcPolicy::sampled_with_budget(
+                            Box::new(MaterialValue), s, 6, 25, 10, vec![dp.clone(), dp.clone()]))
+                            as Box<dyn StatePolicy>
+                    }),
+                ));
             }
             for (name, opponent) in &pairings {
                 for g in first..first + games {

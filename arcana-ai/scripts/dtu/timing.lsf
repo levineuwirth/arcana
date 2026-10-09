@@ -20,9 +20,16 @@
 #     A2_FIRST_BASE=1000, CAP_TIMING_BUDGETS=12/120, CAP_TIMING_GAMES=72,
 #     CAP_TIMING_MIRROR=0" < timing.lsf
 #
+# A2.2's arm I, true-state against sampled-state vmc-material, games 2000 to
+# 2215, A2_SHARDS shards a deck as its sizing step sets (four of 54 here):
+#   bsub -J "arcana-info[1-20]%24" -env "all, A2_TAG=info, A2_SHARDS=4,
+#     A2_FIRST_BASE=2000, CAP_TIMING_BUDGETS=none, CAP_TIMING_MIRROR=0,
+#     CAP_TIMING_SAMPLED=1, CAP_TIMING_GAMES=54" < timing.lsf
+#
 # A retry names its range outright: with A2_DECK and A2_FIRST both set, the
 # task plays CAP_TIMING_GAMES games of that deck from that game, whatever its
-# index, so one failed shard is rerun as two jobs of half its games.
+# index, so one failed shard is rerun as two jobs of half its games. A single
+# game that exceeds its limit reruns alone with -W 4:00 on the command line.
 # A game process peaked at 111 MB on the laptop, and deck 0's games cost 31 to
 # 33 s at PIMC 12/120 and 6 to 9 s in the vmc mirror there, so a task of the
 # default four games per pairing should take about 20 minutes. DTU refuses -M

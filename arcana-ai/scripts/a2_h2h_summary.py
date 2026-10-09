@@ -38,6 +38,15 @@ registered flags when the budgets are 12/120, 16/160 and 32/320, optionally
 then 64/640: H1, H2a, H2b, H3, the 64/640 condition, D1 and D2. Only D2's
 tie rule rounds, to three decimals (half to even, on the exact rates). The decisions themselves are registered in the planning
 vault, "Arcana A2.1 pre-registration (2026-10-08)".
+
+A2.2's arm I reads the same way with `--budget sampled`, which stands for the
+pairing `vmc-material vs vmc-material-sampled` (true-state against
+sampled-state vmc-material, capsule_timing with CAP_TIMING_SAMPLED=1). Asked
+for alone, its DECISIONS line carries A2.2's flags: I1 (s_I > 1/2 and its
+interval above 1/2), I2 (s_I < 17/30, A2.1's exact s_32) and E3's direction
+(`above` when the interval lies wholly above 1/2, `below` when wholly below,
+`unresolved` otherwise), registered in "Arcana A2.2 pre-registration
+(2026-10-08)".
 """
 
 import argparse
@@ -58,6 +67,14 @@ POINTS = {"a": 1.0, "draw": 0.5, "b": 0.0}
 HALF_POINTS = {"a": 2, "draw": 1, "b": 0}
 HEADER = ["deck", "pairing", "game", "outcome", "seconds"]
 REGISTERED = ["12/120", "16/160", "32/320"]
+SAMPLED = "sampled"
+
+
+def pairing_of(budget):
+    """The capsule_timing pairing a --budget names."""
+    if budget == SAMPLED:
+        return "vmc-material vs vmc-material-sampled"
+    return f"vmc-material vs pimc-{budget}"
 
 
 def parse(paths):
@@ -106,7 +123,7 @@ def validate(rows, faults, budgets, first, n):
     faults = list(faults)
     if not rows:
         faults.append("no rows")
-    wanted = {f"vmc-material vs pimc-{b}": b for b in budgets}
+    wanted = {pairing_of(b): b for b in budgets}
     seen = collections.Counter()
     for deck, pairing, g, _, _ in rows:
         if pairing not in wanted:
@@ -153,8 +170,9 @@ def statistics_of(rows, budgets, first, n):
     half-widths from the games (per deck) or the seed blocks (pooled and
     paired). Exact values are Fractions under keys ending in `_exact`."""
     table = collections.defaultdict(dict)
+    budget_of = {pairing_of(b): b for b in budgets}
     for deck, pairing, g, outcome, secs in rows:
-        table[pairing.removeprefix("vmc-material vs pimc-")][(deck, g)] = (outcome, secs)
+        table[budget_of[pairing]][(deck, g)] = (outcome, secs)
     games = range(first, first + n)
     k = len(EXPECTED_DECKS)
     out = {"budgets": {}, "differences": {}}
@@ -189,11 +207,20 @@ def statistics_of(rows, budgets, first, n):
 
 def decisions(st, budgets):
     """The registered flags; None unless the budgets are 12/120, 16/160 and
-    32/320, optionally followed by 64/640. Rates and differences compare as
-    exact fractions; interval endpoints are floats."""
+    32/320, optionally followed by 64/640, or arm I's flags when the budgets
+    are `sampled` alone. Rates and differences compare as exact fractions;
+    interval endpoints are floats."""
+    F = fractions.Fraction
+    if budgets == [SAMPLED]:
+        r = st["budgets"][SAMPLED]
+        s_i = r["rate_exact"]
+        return {
+            "I1": s_i > F(1, 2) and r["lo"] > 0.5,
+            "I2": s_i < F(17, 30),
+            "E3_direction": "above" if r["lo"] > 0.5 else "below" if r["hi"] < 0.5 else "unresolved",
+        }
     if budgets[:3] != REGISTERED or budgets[3:] not in ([], ["64/640"]):
         return None
-    F = fractions.Fraction
     r = {b: st["budgets"][b] for b in budgets}
     s12, s16, s32 = (r[b]["rate_exact"] for b in REGISTERED)
     d = st["differences"]
@@ -229,7 +256,7 @@ def report(rows, budgets, first, n):
     st = statistics_of(rows, budgets, first, n)
     for b in budgets:
         x = st["budgets"][b]
-        print(f"\nvmc-material vs pimc-{b}: point-rate of vmc-material, {len(EXPECTED_DECKS)} decks x {n} games")
+        print(f"\n{pairing_of(b)}: point-rate of vmc-material, {len(EXPECTED_DECKS)} decks x {n} games")
         for deck, y in x["decks"].items():
             w, dr, l = y["wdl"]
             print(f"  {deck:<32} point-rate {y['rate']:.3f} [{y['lo']:.3f}, {y['hi']:.3f}]  w/d/l {w}/{dr}/{l}"

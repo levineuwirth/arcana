@@ -32,7 +32,7 @@ use rand::seq::SliceRandom;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
-use crate::information_set::{determinize, project, DeckList};
+use crate::information_set::{determinize, project, sample_world, DeckList};
 
 /// A policy that chooses an action given the live game state (so it can
 /// simulate). `decider` is the player to move — the policy maximizes that
@@ -355,39 +355,99 @@ impl StatePolicy for GreedyValuePolicy {
 /// mean. This is [`FlatMonteCarloPolicy`] generalized — the short rollout
 /// supplies the lookahead a [`GreedyValuePolicy`] lacks (so it isn't myopic),
 /// and `value` supplies the leaf signal, which a learned
-/// `crate::learn::LinearValue` can sharpen. Perfect-information (rolls out from
-/// the true state), so A/B-ing two leaf values is apples-to-apples.
+/// `crate::learn::LinearValue` can sharpen. By default perfect-information:
+/// it rolls out from the true state, seeing hidden cards and the engine's RNG
+/// seed, so A/B-ing two leaf values is apples-to-apples. A policy built with
+/// [`Self::sampled_with_budget`] is the same search on sampled worlds instead
+/// (A2.2's arm I): the same candidate selection, rollout policy, leaf and
+/// budget, but rollout `r` of every candidate starts from world `r`, sampled
+/// by [`sample_world`] from the decider's view alone.
 pub struct ValueMcPolicy {
     pub value: Box<dyn ValueFn>,
     rng: ChaCha8Rng,
     pub rollouts: u32,
     pub rollout_step_cap: u32,
     pub max_candidates: usize,
+    sampled: Option<SampledWorlds>,
 }
+
+/// Sampled-state mode's own state: the seat-ordered decklists worlds are
+/// sampled from, and a second random stream for their seeds, so the policy's
+/// first stream (candidate selection, rollouts) draws as it does in true-state
+/// mode.
+struct SampledWorlds {
+    decks: Vec<DeckList>,
+    rng: ChaCha8Rng,
+}
+
 impl ValueMcPolicy {
     pub fn new(value: Box<dyn ValueFn>, seed: u64) -> Self {
         Self { value, rng: ChaCha8Rng::seed_from_u64(seed),
-               rollouts: 10, rollout_step_cap: 30, max_candidates: 16 }
+               rollouts: 10, rollout_step_cap: 30, max_candidates: 16, sampled: None }
     }
     pub fn with_budget(value: Box<dyn ValueFn>, seed: u64, rollouts: u32,
                        cap: u32, max_candidates: usize) -> Self {
         Self { value, rng: ChaCha8Rng::seed_from_u64(seed),
-               rollouts, rollout_step_cap: cap, max_candidates }
+               rollouts, rollout_step_cap: cap, max_candidates, sampled: None }
+    }
+    /// As [`Self::with_budget`], but rolling out from worlds sampled from the
+    /// decider's view (`decks` are the seats' starting decklists, as PIMC
+    /// takes them). The world stream is seeded from `seed` by a fixed mix.
+    pub fn sampled_with_budget(value: Box<dyn ValueFn>, seed: u64, rollouts: u32,
+                               cap: u32, max_candidates: usize, decks: Vec<DeckList>) -> Self {
+        let sampled = SampledWorlds {
+            decks,
+            rng: ChaCha8Rng::seed_from_u64(seed ^ 0x5A3B_1ED0_57A7_E5ED),
+        };
+        Self { sampled: Some(sampled), ..Self::with_budget(value, seed, rollouts, cap, max_candidates) }
+    }
+    /// Whether this policy rolls out from sampled worlds.
+    pub fn is_sampled(&self) -> bool {
+        self.sampled.is_some()
     }
     fn candidate_indices(&mut self, legal: &[Action]) -> Vec<usize> {
         select_candidates(legal, self.max_candidates, &mut self.rng)
+    }
+    /// Each evaluated candidate's index into `legal` and its mean rollout
+    /// value for `decider`, in evaluation order; [`StatePolicy::choose`] takes
+    /// the first strict maximum. Candidates are selected before any world is
+    /// sampled, from the first stream in both modes.
+    pub fn score_actions(&mut self, state: &GameState, registry: &CardRegistry,
+                         decider: PlayerId, legal: &[Action]) -> Vec<(usize, f32)> {
+        let cands = self.candidate_indices(legal);
+        let worlds: Option<Vec<GameState>> = self.sampled.as_mut().map(|w| {
+            let view = project(state, decider);
+            (0..self.rollouts)
+                .map(|_| {
+                    let seed: u64 = w.rng.gen();
+                    let engine_seed: u64 = w.rng.gen();
+                    sample_world(&view, &w.decks, registry, seed, engine_seed)
+                })
+                .collect()
+        });
+        cands
+            .into_iter()
+            .map(|ci| {
+                let v = match &worlds {
+                    None => score_candidate(state, registry, decider, &legal[ci],
+                        self.value.as_ref(), self.rollouts, self.rollout_step_cap, &mut self.rng),
+                    Some(ws) => score_candidate_from(|r| &ws[r as usize], registry, decider,
+                        &legal[ci], self.value.as_ref(), self.rollouts, self.rollout_step_cap,
+                        &mut self.rng),
+                };
+                (ci, v)
+            })
+            .collect()
     }
 }
 impl StatePolicy for ValueMcPolicy {
     fn choose(&mut self, state: &GameState, registry: &CardRegistry,
               decider: PlayerId, legal: &[Action]) -> Action {
         if legal.len() <= 1 { return legal[0].clone(); }
-        let cands = self.candidate_indices(legal);
-        let mut best_idx = cands[0];
+        let scored = self.score_actions(state, registry, decider, legal);
+        let mut best_idx = scored[0].0;
         let mut best_avg = f32::NEG_INFINITY;
-        for ci in cands {
-            let avg = score_candidate(state, registry, decider, &legal[ci],
-                self.value.as_ref(), self.rollouts, self.rollout_step_cap, &mut self.rng);
+        for (ci, avg) in scored {
             if avg > best_avg { best_avg = avg; best_idx = ci; }
         }
         legal[best_idx].clone()
@@ -421,9 +481,19 @@ fn score_candidate(
     state: &GameState, registry: &CardRegistry, decider: PlayerId, action: &Action,
     value_fn: &dyn ValueFn, rollouts: u32, cap: u32, rng: &mut ChaCha8Rng,
 ) -> f32 {
+    score_candidate_from(|_| state, registry, decider, action, value_fn, rollouts, cap, rng)
+}
+
+/// [`score_candidate`] with rollout `r` starting from `start(r)`: the true
+/// state for every rollout in true-state mode, world `r` in sampled-state mode.
+#[allow(clippy::too_many_arguments)]
+fn score_candidate_from<'s>(
+    start: impl Fn(u32) -> &'s GameState, registry: &CardRegistry, decider: PlayerId,
+    action: &Action, value_fn: &dyn ValueFn, rollouts: u32, cap: u32, rng: &mut ChaCha8Rng,
+) -> f32 {
     let mut sum = 0.0f32;
-    for _ in 0..rollouts {
-        let (s, y) = step(state.clone(), action.clone(), registry);
+    for r in 0..rollouts {
+        let (s, y) = step(start(r).clone(), action.clone(), registry);
         let leaf = play_out(s, y, registry, cap, rng);
         sum += value_fn.value(&leaf, decider);
     }
@@ -1539,5 +1609,239 @@ mod tests {
             &[("random", &f_rand), ("flatMC", &f_flat), ("pimc", &f_pimc), ("ismcts", &f_is)],
             &deck, &reg, 8, 4000);
         println!("Full tournament:\n{}", rr.format_table());
+    }
+
+    /// A2.2 true-state parity: `vmc-material` at A2.1's budget (6/25/10),
+    /// rolling out from the true state, plays a whole game exactly as it did
+    /// before the sampled-state mode existed. The fingerprint (FNV-1a) covers
+    /// every scored candidate's index and value bits and every action, so a
+    /// change in true-state mode's draws or rollouts fails here even where the
+    /// actions would survive it (an extra draw per decision leaves the first
+    /// 80 decisions' scores bit-identical, then shows by the 150th). Recorded
+    /// at `2be0ed11` from the pre-change `choose` run step by step: its
+    /// candidates, then `score_candidate` per candidate on the policy's stream.
+    /// The game is played by production `choose`; a second policy pair at the
+    /// same seeds scores each decision in lockstep, and every production
+    /// choice must be the first strict maximum of those scores.
+    #[test]
+    fn vmc_true_state_game_matches_the_recorded_fixture() {
+        let reg = arcana_cards::build_catalog();
+        let decks = vec![arcana_cards::sample_deck(&reg, 4), arcana_cards::sample_deck(&reg, 9)];
+        let pair = || [ValueMcPolicy::with_budget(Box::new(MaterialValue), 11, 6, 25, 10),
+                       ValueMcPolicy::with_budget(Box::new(MaterialValue), 12, 6, 25, 10)];
+        let (mut players, mut scorers) = (pair(), pair());
+        let (mut state, mut yld) = new_game(decks, &reg, 2026);
+        let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+        let mut eat = |b: &[u8]| for &x in b { h ^= x as u64; h = h.wrapping_mul(0x0100_0000_01b3); };
+        let mut decisions = 0;
+        let result = loop {
+            let (player, legal) = match yld {
+                EngineYield::PendingDecision { player, legal_actions, .. } => (player, legal_actions),
+                EngineYield::GameOver(r) => break r,
+            };
+            assert!(decisions < 4000, "the fixture game ends");
+            // Production choice plays the game; the scorer, in lockstep on the
+            // same stream, holds the scores it must be the first maximum of.
+            let a = players[player as usize].choose(&state, &reg, player, &legal);
+            if legal.len() > 1 {
+                let sc = scorers[player as usize].score_actions(&state, &reg, player, &legal);
+                let (mut bi, mut bv) = (sc[0].0, f32::NEG_INFINITY);
+                for &(i, v) in &sc {
+                    eat(format!("{i}:{};", v.to_bits()).as_bytes());
+                    if v > bv { bv = v; bi = i; }
+                }
+                assert_eq!(a, legal[bi], "decision {decisions}: choose is not the scores' first maximum");
+            }
+            eat(format!("{a:?};").as_bytes());
+            let (s, y) = step(state, a, &reg);
+            state = s; yld = y; decisions += 1;
+        };
+        assert_eq!((decisions, result), (475, GameResult::Win(1)));
+        assert_eq!(h, 0xc8d5_ef2b_9ba3_55f5, "fingerprint {h:#018x}");
+    }
+
+    /// Give objects `a` and `b` each other's printed identity, keeping their
+    /// ids, owners and zones, as a game setup would have instantiated them.
+    fn swap_identity(state: &mut GameState, reg: &CardRegistry, a: ObjectId, b: ObjectId) {
+        let (oa, ob) = (state.objects.get(a).unwrap().clone(), state.objects.get(b).unwrap().clone());
+        state.objects.remove(a);
+        state.objects.remove(b);
+        state.objects.insert(arcana_core::engine::instantiate_card_object(reg, a, oa.owner, oa.zone, ob.card_id));
+        state.objects.insert(arcana_core::engine::instantiate_card_object(reg, b, ob.owner, ob.zone, oa.card_id));
+    }
+
+    /// A state `decider` cannot tell from `state`: an opponent's hand card and
+    /// library card trade identities, another opponent hand object and library
+    /// object trade places (the hidden ids' division between hand and library),
+    /// two of the decider's own library cards trade identities, every library's
+    /// hidden positions are reversed, and the engine RNG seed differs. Panics
+    /// if a change cannot be made, so a twin that silently equals its original
+    /// cannot pass the guard.
+    fn visible_twin(state: &GameState, reg: &CardRegistry, decider: PlayerId) -> GameState {
+        let view = project(state, decider);
+        let mut twin = state.clone();
+        let opp = 1 - decider;
+        let opp_hand: Vec<ObjectId> = state.objects.objects_in_zone(Zone::Hand(opp)).map(|o| o.id).collect();
+        let opp_lib = &state.player(opp).library_top_to_bottom;
+        let (h, l) = opp_hand.iter().flat_map(|&h| opp_lib.iter().map(move |&l| (h, l)))
+            .find(|&(h, l)| state.objects.get(h).unwrap().card_id != state.objects.get(l).unwrap().card_id)
+            .expect("an opponent hand card and library card with different identities");
+        swap_identity(&mut twin, reg, h, l);
+        let (h2, l2) = (*opp_hand.iter().find(|&&x| x != h).expect("two opponent hand cards"),
+                        *opp_lib.iter().find(|&&x| x != l).expect("two opponent library cards"));
+        for (id, zone) in [(h2, Zone::Library(opp)), (l2, Zone::Hand(opp))] {
+            let mut o = twin.objects.remove(id).unwrap();
+            o.zone = zone;
+            twin.objects.insert(o);
+        }
+        for slot in twin.player_mut(opp).library_top_to_bottom.iter_mut() {
+            if *slot == l2 { *slot = h2; }
+        }
+        let own_lib = &state.player(decider).library_top_to_bottom;
+        let (a, b) = own_lib.iter().flat_map(|&a| own_lib.iter().map(move |&b| (a, b)))
+            .find(|&(a, b)| state.objects.get(a).unwrap().card_id != state.objects.get(b).unwrap().card_id)
+            .expect("two own library cards with different identities");
+        swap_identity(&mut twin, reg, a, b);
+        for p in 0..state.num_players() {
+            let lib = &mut twin.player_mut(p).library_top_to_bottom;
+            let slots: Vec<usize> = (0..lib.len()).filter(|&k| view.anonymous_ids.contains(&lib[k])).collect();
+            let ids: Vec<ObjectId> = slots.iter().rev().map(|&k| lib[k]).collect();
+            assert!(ids.len() > 1, "player {p}'s library has hidden positions to reorder");
+            for (&k, id) in slots.iter().zip(ids) {
+                lib[k] = id;
+            }
+        }
+        twin.rng_seed = state.rng_seed ^ 0x7E57_0F5E_ED00_0001;
+        twin
+    }
+
+    /// The game at its first decision (the active player's mulligan, where a
+    /// mulligan reshuffles through the engine seed), the first decision on
+    /// turn 3 or later with at least three legal actions, and decision 87,
+    /// where a review found sampled scores at 6/25/10 depending on which hidden
+    /// ids sat in the opponent's hand. Reached by random play.
+    fn guard_states(reg: &CardRegistry, decks: &[Vec<CardId>]) -> Vec<(GameState, PlayerId, Vec<Action>)> {
+        let mut out = Vec::new();
+        let (mut state, mut yld) = new_game(decks.to_vec(), reg, 77);
+        let mut rand = RandomStatePolicy::new(5);
+        let mut turn3 = false;
+        for decision in 0..2000 {
+            let EngineYield::PendingDecision { player, legal_actions, .. } = yld else { break };
+            let first_turn3 = !turn3 && state.turn.turn_number >= 3 && legal_actions.len() >= 3;
+            if decision == 0 || first_turn3 || decision == 87 {
+                out.push((state.clone(), player, legal_actions.clone()));
+                turn3 |= first_turn3;
+            }
+            if out.len() == 3 { break; }
+            let a = rand.choose(&state, reg, player, &legal_actions);
+            let (s, y) = step(state, a, reg);
+            state = s; yld = y;
+        }
+        assert_eq!(out.len(), 3, "the three guard states are reached");
+        out
+    }
+
+    fn bits(scored: &[(usize, f32)]) -> Vec<(usize, u32)> {
+        scored.iter().map(|&(i, v)| (i, v.to_bits())).collect()
+    }
+
+    /// A2.2's arm-I guard: sampled-state mode's scores and choice depend only
+    /// on what the decider can see. A state and its visible twin (different
+    /// hidden identities, library order and engine seed) give bit-identical
+    /// scores and the same choice at one seed, where true-state mode, which
+    /// sees all three, scores them differently. Fails if sampled mode rolls
+    /// out from the true state, keeps the game's engine seed in its worlds,
+    /// or lets the hidden ids' placement (hand or library, library order)
+    /// reach its worlds. Every state is checked at 150-step rollouts, so that
+    /// from the mulligan decision they reach played cards and the reshuffle
+    /// (at 25 true-state mode cannot tell that twin apart there). The
+    /// registered depth is held by
+    /// [`sampled_vmc_ignores_which_hidden_ids_sit_in_hand`].
+    #[test]
+    fn sampled_vmc_depends_only_on_what_the_decider_sees() {
+        let reg = arcana_cards::build_catalog();
+        let decks = vec![arcana_cards::sample_deck(&reg, 4), arcana_cards::sample_deck(&reg, 9)];
+        for (k, (state, decider, legal)) in guard_states(&reg, &decks).into_iter().enumerate() {
+            let twin = visible_twin(&state, &reg, decider);
+            let truth = |st: &GameState| {
+                ValueMcPolicy::with_budget(Box::new(MaterialValue), 31, 6, 150, 10)
+                    .score_actions(st, &reg, decider, &legal)
+            };
+            assert_ne!(bits(&truth(&state)), bits(&truth(&twin)),
+                "state {k}: true-state mode must tell the twin apart, or the guard has no teeth");
+            // The worlds themselves, in the arena's iteration order: identical
+            // object by object, so no hidden placement reaches them.
+            let world = |st: &GameState, seed: u64| {
+                let w = sample_world(&project(st, decider), &decks, &reg, seed, seed ^ 1);
+                let objs: Vec<String> = w.objects.iter()
+                    .map(|o| format!("{}:{}:{:?}", o.id, o.card_id, o.zone)).collect();
+                let libs: Vec<Vec<ObjectId>> = (0..w.num_players())
+                    .map(|p| w.player(p).library_top_to_bottom.clone()).collect();
+                (objs, libs, w.rng_seed)
+            };
+            for seed in 0..16 {
+                assert_eq!(world(&state, seed), world(&twin, seed), "state {k}: world {seed} differs");
+            }
+            let sampled = || ValueMcPolicy::sampled_with_budget(
+                Box::new(MaterialValue), 31, 6, 150, 10, decks.clone());
+            assert_eq!(bits(&sampled().score_actions(&state, &reg, decider, &legal)),
+                       bits(&sampled().score_actions(&twin, &reg, decider, &legal)),
+                       "state {k}: sampled mode scored the twin differently");
+            assert_eq!(sampled().choose(&state, &reg, decider, &legal),
+                       sampled().choose(&twin, &reg, decider, &legal));
+        }
+    }
+
+    /// A2.2's arm-I guard at the registered 6/25/10, on decision 87 of the
+    /// guard game, where a review found sampled scores depending on which of
+    /// the opponent's hidden ids sat in the hand: each single exchange of an
+    /// opponent hand object with one of the top twelve hidden library objects,
+    /// nothing else changed, leaves the scores bit-identical. Without the
+    /// canonical layout 95 of 216 such exchanges (three policy seeds) changed
+    /// them.
+    #[test]
+    fn sampled_vmc_ignores_which_hidden_ids_sit_in_hand() {
+        let reg = arcana_cards::build_catalog();
+        let decks = vec![arcana_cards::sample_deck(&reg, 4), arcana_cards::sample_deck(&reg, 9)];
+        let (state, decider, legal) = guard_states(&reg, &decks).swap_remove(2);
+        let opp = 1 - decider;
+        let hand: Vec<ObjectId> = state.objects.objects_in_zone(Zone::Hand(opp)).map(|o| o.id).collect();
+        let lib: Vec<ObjectId> = state.player(opp).library_top_to_bottom.iter().take(12).copied().collect();
+        assert!(hand.len() >= 2 && lib.len() == 12 && legal.len() >= 2, "decision 87 has the shape the guard needs");
+        let scores = |st: &GameState| bits(&ValueMcPolicy::sampled_with_budget(
+            Box::new(MaterialValue), 31, 6, 25, 10, decks.clone()).score_actions(st, &reg, decider, &legal));
+        let base = scores(&state);
+        for &h in &hand {
+            for &l in &lib {
+                let mut twin = state.clone();
+                for (id, zone) in [(h, Zone::Library(opp)), (l, Zone::Hand(opp))] {
+                    let mut o = twin.objects.remove(id).unwrap();
+                    o.zone = zone;
+                    twin.objects.insert(o);
+                }
+                for slot in twin.player_mut(opp).library_top_to_bottom.iter_mut() {
+                    if *slot == l { *slot = h; }
+                }
+                assert_eq!(scores(&twin), base, "exchanging hand {h} with library {l} changed the scores");
+            }
+        }
+    }
+
+    /// A2.2's arm-I guard: both modes select the same candidates at a first
+    /// decision from one seed, since worlds draw from their own stream.
+    #[test]
+    fn sampled_and_true_state_modes_select_the_same_candidates() {
+        let reg = arcana_cards::build_catalog();
+        let decks = vec![arcana_cards::sample_deck(&reg, 4), arcana_cards::sample_deck(&reg, 9)];
+        let (state, decider, legal) = guard_states(&reg, &decks).swap_remove(1);
+        assert!(legal.len() > 2, "a subset is drawn only when legal exceeds the candidate cap");
+        for seed in 0..8 {
+            let idx = |mut pol: ValueMcPolicy| -> Vec<usize> {
+                pol.score_actions(&state, &reg, decider, &legal).iter().map(|&(i, _)| i).collect()
+            };
+            let t = idx(ValueMcPolicy::with_budget(Box::new(MaterialValue), seed, 2, 25, 2));
+            let s = idx(ValueMcPolicy::sampled_with_budget(Box::new(MaterialValue), seed, 2, 25, 2, decks.clone()));
+            assert_eq!(t, s, "seed {seed}: the modes selected different candidates");
+        }
     }
 }

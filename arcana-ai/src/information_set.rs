@@ -348,6 +348,65 @@ pub fn determinize(
     state
 }
 
+/// A world sampled only from what `observable`'s perspective can see, for
+/// sampled-state search (A2.2's arm I). [`determinize`] alone, as PIMC uses
+/// it, leaves private things in its world: the game's engine RNG seed
+/// (`rng_seed`, which decides later shuffles, random discards, flips and
+/// rolls), and the hidden objects' ids, onto which it deals identities by
+/// sorted id. The ids are hidden metadata: which hidden ids sit in a hand and
+/// which in a library, and in what library order, are true facts about the
+/// game, and `new_game` allocates ids in decklist order. So this first lays
+/// each player's hidden hand and library objects out canonically from what
+/// is visible: their ids pooled and sorted, the smallest to the hand's hidden
+/// slots, the rest to the library's hidden positions top to bottom (cards the
+/// perspective knows, and face-down permanents, whose ids are public, stay as
+/// they are). Then it samples with `determinize` and gives the world
+/// `engine_seed` as its RNG seed. Two states
+/// the perspective cannot tell apart, differing in hidden identities, in the
+/// division of hidden ids between hand and library, in library order or in
+/// the engine seed, give the same world for the same `seed` and `engine_seed`.
+pub fn sample_world(
+    observable: &ObservableState,
+    decks: &[DeckList],
+    registry: &CardRegistry,
+    seed: u64,
+    engine_seed: u64,
+) -> GameState {
+    let canonical = canonical_hidden_layout(observable);
+    let mut world = determinize(&canonical, decks, registry, seed);
+    world.rng_seed = engine_seed;
+    world
+}
+
+/// `observable` with each player's hidden hand and library ids re-dealt as
+/// [`sample_world`] describes: pooled, sorted, the smallest to the hidden
+/// hand slots and the rest to the hidden library positions in order.
+fn canonical_hidden_layout(observable: &ObservableState) -> ObservableState {
+    let mut view = observable.clone();
+    for p in 0..view.state.num_players() {
+        let hidden = |id: &ObjectId| observable.anonymous_ids.contains(id);
+        let hand: Vec<ObjectId> = view.state.objects.objects_in_zone(Zone::Hand(p))
+            .map(|o| o.id).filter(hidden).collect();
+        let lib = view.state.player(p).library_top_to_bottom.clone();
+        let slots: Vec<usize> = (0..lib.len()).filter(|&k| hidden(&lib[k])).collect();
+        let mut pool: Vec<ObjectId> = hand.iter().copied().chain(slots.iter().map(|&k| lib[k])).collect();
+        pool.sort_unstable();
+        let (to_hand, to_lib) = pool.split_at(hand.len());
+        let moves = to_hand.iter().map(|&id| (id, Zone::Hand(p)))
+            .chain(to_lib.iter().map(|&id| (id, Zone::Library(p))));
+        for (id, zone) in moves {
+            let mut o = view.state.objects.remove(id).expect("a hidden object");
+            o.zone = zone;
+            view.state.objects.insert(o);
+        }
+        let lib = &mut view.state.player_mut(p).library_top_to_bottom;
+        for (&k, &id) in slots.iter().zip(to_lib) {
+            lib[k] = id;
+        }
+    }
+    view
+}
+
 // =============================================================================
 // tests
 // =============================================================================

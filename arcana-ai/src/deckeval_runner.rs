@@ -46,7 +46,7 @@
 
 use arcana_core::registry::CardRegistry;
 use arcana_core::state::GameResult;
-use arcana_core::types::CardId;
+use arcana_core::types::{CardId, PlayerId};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
@@ -459,6 +459,96 @@ pub fn play_duel(
     DuelResult { a_i, a_j, b_i, b_j }
 }
 
+/// A pilot for one seat of an A2.2 block: built from the deck's policy seed
+/// and the game's decklists in seat order (which PIMC samples hidden cards
+/// from).
+pub type PilotMaker<'a> = &'a dyn Fn(u64, Vec<DeckList>) -> Box<dyn StatePolicy>;
+
+/// The four games of an A2.2 arm-X block of the pair (`i`, `j`): pilot A on
+/// one deck against pilot B on the other, then the reverse assignment, each
+/// with seats swapped. Seat 0 and seat 1 of each game:
+///
+/// | game | seat 0      | seat 1      |
+/// |------|-------------|-------------|
+/// | 1    | A on deck i | B on deck j |
+/// | 2    | B on deck j | A on deck i |
+/// | 3    | A on deck j | B on deck i |
+/// | 4    | B on deck i | A on deck j |
+pub const BLOCK_GAMES: [(BlockDeck, BlockDeck, PlayerId); 4] = [
+    (BlockDeck::I, BlockDeck::J, 0),
+    (BlockDeck::J, BlockDeck::I, 1),
+    (BlockDeck::J, BlockDeck::I, 0),
+    (BlockDeck::I, BlockDeck::J, 1),
+];
+
+/// Which deck of a block's pair sits in a seat (see [`BLOCK_GAMES`], whose
+/// rows are seat 0's deck, seat 1's deck and pilot A's seat).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BlockDeck {
+    I,
+    J,
+}
+
+/// Block `d` of the pair (`i`, `j`) for A2.2's arm X, pilot A `vmc-material`
+/// and pilot B PIMC at `cfg.budgets`; see [`play_block_with`].
+pub fn play_block(
+    decks: &[Deck],
+    registry: &CardRegistry,
+    cfg: &ExperimentConfig,
+    i: usize,
+    j: usize,
+    d: u32,
+) -> [f32; 4] {
+    let b = cfg.budgets;
+    let vmc = move |s: u64, _seat_decks: Vec<DeckList>| -> Box<dyn StatePolicy> {
+        Box::new(ValueMcPolicy::with_budget(
+            Box::new(MaterialValue), s, b.vmc_rollouts, b.vmc_depth, b.vmc_candidates))
+    };
+    let pimc = move |s: u64, seat_decks: Vec<DeckList>| -> Box<dyn StatePolicy> {
+        Box::new(PimcPolicy::with_budget(s, seat_decks, b.pimc_samples, b.pimc_cap, b.pimc_candidates))
+    };
+    play_block_with(decks, registry, cfg.base_seed, cfg.max_steps, i, j, d, &vmc, &pimc)
+}
+
+/// The four games of block `d` of the pair (`i`, `j`) in [`BLOCK_GAMES`]'s
+/// order, returning pilot A's points in each (win 1, draw ½, loss 0). All four
+/// share the engine seed `mix4(base_seed, i, j, d)`; shuffles are seeded by
+/// seat, so games 1 and 4, and games 2 and 3, start from identical states with
+/// only the pilots exchanged. Each deck's pilot, A or B, takes that deck's
+/// policy seed, as in [`play_duel`]. Its seeds depend only on the pair and the
+/// block, so blocks played apart give the same games.
+#[allow(clippy::too_many_arguments)]
+pub fn play_block_with(
+    decks: &[Deck],
+    registry: &CardRegistry,
+    base_seed: u64,
+    max_steps: u32,
+    i: usize,
+    j: usize,
+    d: u32,
+    pilot_a: PilotMaker,
+    pilot_b: PilotMaker,
+) -> [f32; 4] {
+    let engine_seed = mix4(base_seed, i as u64, j as u64, d as u64);
+    let deck = |k: BlockDeck| match k {
+        BlockDeck::I => (i, engine_seed ^ 0xA5A5_A5A5_A5A5_A5A5),
+        BlockDeck::J => (j, engine_seed ^ 0x5A5A_5A5A_5A5A_5A5A),
+    };
+    BLOCK_GAMES.map(|(d0, d1, a_seat)| {
+        let ((k0, seed0), (k1, seed1)) = (deck(d0), deck(d1));
+        let seat_decks = vec![decks[k0].cards.clone(), decks[k1].cards.clone()];
+        let pilot = |seat: PlayerId, seed: u64| {
+            let maker = if seat == a_seat { pilot_a } else { pilot_b };
+            maker(seed, seat_decks.clone())
+        };
+        let (mut p0, mut p1) = (pilot(0, seed0), pilot(1, seed1));
+        let mut slots: Vec<&mut dyn StatePolicy> = vec![p0.as_mut(), p1.as_mut()];
+        let r = play_match(seat_decks.clone(), registry, engine_seed, &mut slots, max_steps);
+        let (s0, s1) = seat_scores(&r);
+        if a_seat == 0 { s0 } else { s1 }
+    })
+}
+
 pub fn run_gauntlet(
     decks: &[Deck],
     registry: &CardRegistry,
@@ -851,5 +941,152 @@ mod tests {
         let report = run_gauntlet(&decks, &reg, &cfg);
         println!("\n{}\n", report.format_table());
         println!("{}", report.to_csv());
+    }
+
+    /// What a recording pilot saw: its label, its policy seed, the decklists it
+    /// was built with, its seat, and the game as it stood at its first decision.
+    #[derive(Clone, Debug, Default)]
+    struct Seen {
+        label: char,
+        seed: u64,
+        seat_decks: Vec<DeckList>,
+        seat: Option<PlayerId>,
+        start: Option<String>,
+        dealt: Option<Vec<Vec<CardId>>>,
+    }
+
+    /// A random pilot that records what it saw into a shared log.
+    struct Recorder {
+        log: std::rc::Rc<std::cell::RefCell<Vec<Seen>>>,
+        slot: usize,
+        inner: RandomStatePolicy,
+    }
+
+    impl StatePolicy for Recorder {
+        fn choose(&mut self, state: &arcana_core::state::GameState, registry: &CardRegistry,
+                  decider: PlayerId, legal: &[arcana_core::actions::Action]) -> arcana_core::actions::Action {
+            let mut log = self.log.borrow_mut();
+            let seen = &mut log[self.slot];
+            if seen.seat.is_none() {
+                seen.seat = Some(decider);
+                seen.start = Some(start_fingerprint(state));
+                seen.dealt = Some((0..state.num_players()).map(|p| {
+                    let mut c: Vec<CardId> = state.objects.iter()
+                        .filter(|o| o.owner == p && matches!(o.zone,
+                            arcana_core::zones::Zone::Library(_) | arcana_core::zones::Zone::Hand(_)))
+                        .map(|o| o.card_id).collect();
+                    c.sort_unstable();
+                    c
+                }).collect());
+            }
+            drop(log);
+            self.inner.choose(state, registry, decider, legal)
+        }
+    }
+
+    /// Each seat's cards in library order, its hand by object id, life and the
+    /// engine seed: what two games starting from one state agree on.
+    fn start_fingerprint(state: &arcana_core::state::GameState) -> String {
+        let mut out = format!("seed {};", state.rng_seed);
+        for p in 0..state.num_players() {
+            let lib: Vec<CardId> = state.player(p).library_top_to_bottom.iter()
+                .map(|&id| state.objects.get(id).unwrap().card_id).collect();
+            let mut hand: Vec<(u64, CardId)> = state.objects
+                .objects_in_zone(arcana_core::zones::Zone::Hand(p))
+                .map(|o| (o.id as u64, o.card_id)).collect();
+            hand.sort_unstable();
+            out += &format!("p{p} life {} lib {lib:?} hand {hand:?};", state.player(p).life);
+        }
+        out
+    }
+
+    /// A2.2's arm-X guard on the block's assignment. Recording pilots stand in
+    /// for `vmc-material` (A) and PIMC (B). In every game each pilot sits on
+    /// the deck and seat `BLOCK_GAMES` names; each was built with that game's
+    /// decklists in seat order, which is what PIMC samples hidden cards from;
+    /// each deck's pilot gets that deck's seed whichever pilot it is; and
+    /// games 1 and 4, and games 2 and 3, start from identical states.
+    #[test]
+    fn block_assigns_pilots_seats_decklists_and_seeds_as_registered() {
+        let reg = arcana_cards::build_catalog();
+        let decks = tiny_decks(&reg);
+        let (i, j) = (0usize, 2usize);
+        let log = std::rc::Rc::new(std::cell::RefCell::new(Vec::<Seen>::new()));
+        let maker = |label: char| {
+            let log = log.clone();
+            move |seed: u64, seat_decks: Vec<DeckList>| -> Box<dyn StatePolicy> {
+                let slot = log.borrow().len();
+                log.borrow_mut().push(Seen { label, seed, seat_decks, ..Seen::default() });
+                Box::new(Recorder { log: log.clone(), slot, inner: RandomStatePolicy::new(seed) })
+            }
+        };
+        let (a, b) = (maker('A'), maker('B'));
+        play_block_with(&decks, &reg, 3000, 60, i, j, 0, &a, &b);
+        let log = log.borrow();
+        assert_eq!(log.len(), 8, "two pilots in each of four games");
+
+        let cards = |k: usize| decks[k].cards.clone();
+        // (deck index in seat 0, in seat 1, A's seat), as the registration names them.
+        let expect = [(i, j, 0), (j, i, 1), (j, i, 0), (i, j, 1)];
+        let mut starts = Vec::new();
+        let mut seed_of_deck: std::collections::HashMap<usize, u64> = Default::default();
+        for (g, &(k0, k1, a_seat)) in expect.iter().enumerate() {
+            let pair = &log[2 * g..2 * g + 2];
+            for seen in pair {
+                let seat = seen.seat.expect("every pilot decides at least once");
+                assert_eq!(seen.label == 'A', seat == a_seat, "game {}: pilot {} in seat {seat}", g + 1, seen.label);
+                assert_eq!(seen.seat_decks, vec![cards(k0), cards(k1)],
+                    "game {}: pilot {} was not given the decklists in seat order", g + 1, seen.label);
+                let deck = if seat == 0 { k0 } else { k1 };
+                let prior = *seed_of_deck.entry(deck).or_insert(seen.seed);
+                assert_eq!(prior, seen.seed, "game {}: deck {deck}'s pilot changed seed", g + 1);
+            }
+            let first = pair.iter().find(|s| s.seat == Some(0)).unwrap();
+            starts.push(first.start.clone().unwrap());
+        }
+        assert_ne!(seed_of_deck[&i], seed_of_deck[&j]);
+        assert_eq!(starts[0], starts[3], "games 1 and 4 must start from one state");
+        assert_eq!(starts[1], starts[2], "games 2 and 3 must start from one state");
+        assert_ne!(starts[0], starts[1], "the seat-swapped games must differ, or the check is vacuous");
+        // The decklists a pilot is given are the game's own, seat by seat:
+        // every seat's dealt cards (library and hand) are its list's cards.
+        for seen in log.iter() {
+            let sorted = |mut c: Vec<CardId>| { c.sort_unstable(); c };
+            let given: Vec<Vec<CardId>> = seen.seat_decks.iter().cloned().map(sorted).collect();
+            assert_eq!(seen.dealt.clone().unwrap(), given, "pilot {} saw seats dealt other decks", seen.label);
+        }
+    }
+
+    /// A2.2's arm-X guard: blocks played apart, in another order, give one
+    /// run's results, so the field array can play them as shards. Real pilots
+    /// at tiny budgets on three tiny decks.
+    #[test]
+    fn block_shards_sum_to_one_run() {
+        let reg = arcana_cards::build_catalog();
+        let decks = tiny_decks(&reg);
+        let cfg = ExperimentConfig {
+            referee: Referee::VmcMaterial,
+            paired_duels_per_pair: 1,
+            max_steps: 4000,
+            base_seed: 3000,
+            bootstrap_samples: 0,
+            budgets: RefereeBudgets {
+                vmc_rollouts: 1, vmc_depth: 5, vmc_candidates: 2,
+                pimc_samples: 1, pimc_cap: 5, pimc_candidates: 2,
+            },
+        };
+        let pairs = gauntlet_pairs(decks.len());
+        let whole: Vec<[f32; 4]> = pairs.iter().map(|&(i, j)| play_block(&decks, &reg, &cfg, i, j, 0)).collect();
+        let mut apart = vec![[0.0f32; 4]; pairs.len()];
+        for k in [1, 0] {
+            for (p, &(i, j)) in pairs.iter().enumerate().rev() {
+                if p % 2 == k {
+                    apart[p] = play_block(&decks, &reg, &cfg, i, j, 0);
+                }
+            }
+        }
+        assert_eq!(apart, whole);
+        let flat: Vec<f32> = whole.iter().flatten().copied().collect();
+        assert!(flat.iter().any(|&x| x != flat[0]), "every game alike: the comparison would hold vacuously");
     }
 }

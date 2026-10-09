@@ -282,6 +282,40 @@ pub fn playable_decks(decks: &[LoadedDeck], min_main: u32, max_main: u32) -> Vec
 // Tests
 // =============================================================================
 
+/// Why `decks` are not exactly the field a manifest pins (A2.2's
+/// `docs/a2-field/manifest-PI.csv`: `index,name,source,sha256`), or `None` when
+/// they are: the same decks by index and name, in order, none extra and none
+/// missing. The field shards check this before any game, so a directory with
+/// one playable deck more or less refuses to run rather than shifting every
+/// index. (The decklists' digests are checked by `field.lsf`.)
+pub fn field_manifest_mismatch(decks: &[Deck], manifest_csv: &str) -> Option<String> {
+    let mut want = Vec::new();
+    for (n, line) in manifest_csv.lines().enumerate().skip(1) {
+        let fields: Vec<&str> = line.split(',').collect();
+        let [index, name, _source, _sha] = fields[..] else {
+            return Some(format!("manifest line {}: {} fields, not 4", n + 1, fields.len()));
+        };
+        want.push((index.to_string(), name.to_string()));
+    }
+    let got: Vec<(String, String)> = decks.iter().enumerate().map(|(i, d)| (i.to_string(), d.name.clone())).collect();
+    if got == want {
+        return None;
+    }
+    let first = (0..got.len().max(want.len())).find(|&k| got.get(k) != want.get(k)).unwrap_or(0);
+    Some(format!("{} playable decks against the manifest's {}; first difference at index {first}", got.len(), want.len()))
+}
+
+/// The field shards' gate: with `CORPUS_MANIFEST` set, panic before any game
+/// unless `decks` are exactly the manifest's.
+fn require_manifest(decks: &[Deck]) {
+    if let Ok(path) = std::env::var("CORPUS_MANIFEST") {
+        let text = std::fs::read_to_string(&path).expect("read CORPUS_MANIFEST");
+        if let Some(why) = field_manifest_mismatch(decks, &text) {
+            panic!("the playable decks are not the manifest's field, so no game is played: {why}");
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -494,6 +528,7 @@ mod tests {
         let dir = std::path::Path::new(&base).join(&format);
         let loaded = decks_from_dir(&dir, &format, &reg).expect("read corpus dir");
         let decks = playable_decks(&loaded, 60, 60);
+        require_manifest(&decks);
         for (i, d) in decks.iter().enumerate() {
             println!("deck,{i},{}", d.name);
         }
@@ -520,6 +555,90 @@ mod tests {
                     "duel,{i},{j},{d},{},{},{},{},{:.2}",
                     r.a_i, r.a_j, r.b_i, r.b_j, t.elapsed().as_secs_f64()
                 );
+            }
+        }
+    }
+
+    /// The field gate refuses a directory whose playable decks differ from the
+    /// manifest's in membership or order, before any game; a review found
+    /// that one extra playable deck kept every digest and shifted indices.
+    #[test]
+    fn field_manifest_gate_requires_exact_membership_and_order() {
+        let deck = |n: &str| Deck { name: n.to_string(), cards: Vec::new() };
+        let manifest = "index,name,source,sha256\n0,A [1],1,x\n1,B [2],2,y\n";
+        assert_eq!(field_manifest_mismatch(&[deck("A [1]"), deck("B [2]")], manifest), None);
+        for (decks, why) in [
+            (vec![deck("A [1]"), deck("B [2]"), deck("C [3]")], "an extra deck"),
+            (vec![deck("A [1]")], "a missing deck"),
+            (vec![deck("B [2]"), deck("A [1]")], "another order"),
+            (vec![deck("A [1]"), deck("B [9]")], "another deck"),
+        ] {
+            assert!(field_manifest_mismatch(&decks, manifest).is_some(), "{why} must be refused");
+        }
+        assert!(field_manifest_mismatch(&[deck("A [1]")], "index,name\n0,A [1]\n").is_some(),
+            "a malformed manifest must be refused");
+    }
+
+    /// A2.2's arm X as shards for a cluster array: [`crate::deckeval_runner::play_block`]
+    /// for the pairs whose index in [`crate::deckeval_runner::gauntlet_pairs`]
+    /// is `k` modulo `K` (`CORPUS_SHARD=k/K`, default `0/1`), `vmc-material`
+    /// (pilot A) against PIMC (pilot B) at the budgets [`corpus_gauntlet_shard`]
+    /// reads (`CORPUS_POLICIES=capsule`, `CORPUS_PIMC_SAMPLES`, `CORPUS_PIMC_CAP`).
+    /// `CORPUS_BLOCKS` blocks a pair (default 1). It prints the playable decks
+    /// and one row per block, which merge across shards:
+    ///
+    ///   `config,block,<budgets>,<blocks>,<base seed>,<k>/<K>`
+    ///   `deck,<index>,<name>`
+    ///   `block,<i>,<j>,<d>,<g1>,<g2>,<g3>,<g4>,<seconds>`
+    ///
+    /// where `g1` to `g4` are `vmc-material`'s points in the block's four games
+    /// in `BLOCK_GAMES` order.
+    /// `KAGGLE_DECKS=<dir> CORPUS_SHARD=0/8 CORPUS_POLICIES=capsule CORPUS_PIMC_SAMPLES=32 CORPUS_PIMC_CAP=320 cargo test -p arcana-ai --release corpus_block_shard -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn corpus_block_shard() {
+        use crate::deckeval_runner::{gauntlet_pairs, play_block, ExperimentConfig, Referee, RefereeBudgets};
+        use std::time::Instant;
+        let base = std::env::var("KAGGLE_DECKS").expect("set KAGGLE_DECKS");
+        let format = std::env::var("CORPUS_FORMAT").unwrap_or_else(|_| "PI".into());
+        let env = |k: &str, default: u64| -> u64 {
+            std::env::var(k).ok().and_then(|s| s.parse().ok()).unwrap_or(default)
+        };
+        let blocks = env("CORPUS_BLOCKS", 1) as u32;
+        let (k, shards) = std::env::var("CORPUS_SHARD")
+            .ok()
+            .map(|s| {
+                let (a, b) = s.split_once('/').expect("CORPUS_SHARD is k/K");
+                (a.parse::<usize>().expect("k"), b.parse::<usize>().expect("K"))
+            })
+            .unwrap_or((0, 1));
+        assert!(k < shards, "CORPUS_SHARD {k}/{shards}: k must be below K");
+
+        let reg = arcana_cards::build_catalog();
+        let dir = std::path::Path::new(&base).join(&format);
+        let loaded = decks_from_dir(&dir, &format, &reg).expect("read corpus dir");
+        let decks = playable_decks(&loaded, 60, 60);
+        require_manifest(&decks);
+        for (i, d) in decks.iter().enumerate() {
+            println!("deck,{i},{}", d.name);
+        }
+        let cfg = ExperimentConfig {
+            referee: Referee::VmcMaterial,
+            paired_duels_per_pair: blocks,
+            max_steps: 4000,
+            base_seed: env("CORPUS_BASE_SEED", 0),
+            bootstrap_samples: 0,
+            budgets: RefereeBudgets::from_env(),
+        };
+        println!("config,block,{:?},{blocks},{},{k}/{shards}", cfg.budgets, cfg.base_seed);
+        for (p, &(i, j)) in gauntlet_pairs(decks.len()).iter().enumerate() {
+            if p % shards != k {
+                continue;
+            }
+            for d in 0..blocks {
+                let t = Instant::now();
+                let [g1, g2, g3, g4] = play_block(&decks, &reg, &cfg, i, j, d);
+                println!("block,{i},{j},{d},{g1},{g2},{g3},{g4},{:.2}", t.elapsed().as_secs_f64());
             }
         }
     }

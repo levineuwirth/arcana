@@ -31,7 +31,7 @@ FIRST, N = 1000, 4
 
 
 def rows(budget="12/120", outcome=lambda deck_i, g: "a", first=FIRST, n=N, decks=DECKS):
-    return [f"timing,{d},vmc-material vs pimc-{budget},{g},{outcome(i, g)},1.50"
+    return [f"timing,{d},{summary.pairing_of(budget)},{g},{outcome(i, g)},1.50"
             for i, d in enumerate(decks) for g in range(first, first + n)]
 
 
@@ -215,6 +215,48 @@ class Decisions(unittest.TestCase):
     def test_h2a_is_strict(self):
         self.assertFalse(self.flags({"12/120": 0.6, "16/160": 0.55, "32/320": 0.55})["H2a"])
         self.assertTrue(self.flags({"12/120": 0.6, "16/160": 0.55, "32/320": 0.5499})["H2a"])
+
+
+
+class ArmI(unittest.TestCase):
+    """A2.2's arm I: --budget sampled reads `vmc-material vs vmc-material-sampled`."""
+    run_main = Summary.run_main
+    assert_invalid = Summary.assert_invalid
+
+    def arm_i(self, outcome, n=N):
+        code, text = self.run_main(rows("sampled", outcome, n=n), budgets=("sampled",), n=n)
+        self.assertEqual(code, 0, text)
+        self.assertIn("vmc-material vs vmc-material-sampled: point-rate", text)
+        return json.loads(text.split("DECISIONS ", 1)[1])["flags"]
+
+    def test_arm_i_detects_an_effect_in_either_direction(self):
+        self.assertEqual(self.arm_i(lambda i, g: "a"), {"I1": True, "I2": False, "E3_direction": "above"})
+        self.assertEqual(self.arm_i(lambda i, g: "b"), {"I1": False, "I2": True, "E3_direction": "below"})
+        mixed = self.arm_i(lambda i, g: "ab"[(i + g) % 2], n=6)
+        self.assertEqual(mixed, {"I1": False, "I2": True, "E3_direction": "unresolved"})
+        # 16 of 30 is above one half, but its interval is not: I1 needs both.
+        order = [(i, g) for i in range(5) for g in range(FIRST, FIRST + 6)]
+        wins = set(order[:16])
+        above = self.arm_i(lambda i, g: "a" if (i, g) in wins else "b", n=6)
+        self.assertEqual(above, {"I1": False, "I2": True, "E3_direction": "unresolved"})
+
+    def test_arm_i_i2_is_strict_at_17_of_30(self):
+        # Six games a deck, 30 in all: 17 wins put s_I at exactly 17/30.
+        wins = {(i, g) for k, (i, g) in enumerate((i, g) for i in range(5) for g in range(FIRST, FIRST + 6)) if k < 17}
+        code, text = self.run_main(rows("sampled", lambda i, g: "a" if (i, g) in wins else "b", n=6),
+                                   budgets=("sampled",), n=6)
+        out = json.loads(text.split("DECISIONS ", 1)[1])
+        self.assertEqual(out["figures"]["budgets"]["sampled"]["rate_exact"], "17/30")
+        self.assertFalse(out["flags"]["I2"])
+
+    def test_arm_i_refuses_the_other_pairing(self):
+        self.assert_invalid(rows("12/120"), budgets=("sampled",))
+        self.assert_invalid(rows("sampled"), budgets=("12/120",))
+
+    def test_arm_i_beside_a_budget_gets_no_flags(self):
+        code, text = self.run_main(rows("sampled") + rows("12/120"), budgets=("sampled", "12/120"))
+        self.assertEqual(code, 0, text)
+        self.assertIsNone(json.loads(text.split("DECISIONS ", 1)[1])["flags"])
 
 
 if __name__ == "__main__":

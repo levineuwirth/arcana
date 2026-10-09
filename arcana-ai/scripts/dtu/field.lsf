@@ -1,0 +1,78 @@
+#!/bin/bash
+# field.lsf — A2.2's field arms, one pair shard per task.
+#
+#   cd ~/arcana-runs && bsub -J "arcana-<tag>[1-K]%24" -env "all, ..." < ~/Repos/arcana/arcana-ai/scripts/dtu/field.lsf
+#
+# Runs deck_corpus::tests::corpus_gauntlet_shard (A2_TEST=gauntlet: arms F, F',
+# R and P) or corpus_block_shard (A2_TEST=block: arm X) from the binary
+# build.lsf left in ~/arcana-runs/<commit>/, with CORPUS_SHARD=k/K, k the task
+# index - 1 and K = A2_K, and writes the shard's config, deck and duel or
+# block rows to <tag>-shard<k>of<K>.csv there. DTU's LSF does not forward the
+# submitting shell's environment: every variable goes through bsub -env,
+# CORPUS_* included, and ARCANA_COMMIT pins the commit.
+#
+# Before playing, a task checks the converted decklists in KAGGLE_DECKS
+# (default ~/arcana-runs/decks) against docs/a2-field/manifest-PI.csv: each of
+# the manifest's 64 decks must exist as PI/<source>.txt with the pinned
+# SHA-256; and the shard test, given CORPUS_MANIFEST, refuses unless the
+# directory's playable decks are exactly the manifest's, by index and name in
+# order (an extra playable file keeps every digest but shifts indices). Either
+# failure ends the task having played nothing. The lists come from the
+# pinned kaggle.zip on the login node, as docs/a2-field/README.md says:
+#   python3 -I arcana-ai/scripts/kaggle_to_decklists.py --zip kaggle.zip \
+#     --out ~/arcana-runs/decks --formats MO LE PI VI --cap 800
+#
+# The arms, with K set by the sizing step (the K here are placeholders):
+#   F:  -env "all, A2_TEST=gauntlet, A2_TAG=F, A2_K=24, CORPUS_REFEREE=vmc,
+#        CORPUS_POLICIES=capsule, CORPUS_BASE_SEED=1000"
+#   F': as F with A2_TAG=Fprime, CORPUS_BASE_SEED=2000
+#   R:  as F with A2_TAG=R, CORPUS_REFEREE=random, CORPUS_BASE_SEED=2000
+#   P:  -env "all, A2_TEST=gauntlet, A2_TAG=P, A2_K=..., CORPUS_REFEREE=pimc,
+#        CORPUS_POLICIES=capsule, CORPUS_PIMC_SAMPLES=16, CORPUS_PIMC_CAP=160,
+#        CORPUS_BASE_SEED=2000"
+#   X:  -env "all, A2_TEST=block, A2_TAG=X, A2_K=..., CORPUS_POLICIES=capsule,
+#        CORPUS_PIMC_SAMPLES=32, CORPUS_PIMC_CAP=320, CORPUS_BASE_SEED=3000"
+# The sizing step plays shard 0 of 200 (pair indices 0, 200, ..., 2000) of
+# each at CORPUS_BASE_SEED=4000, and only its seconds column is read.
+#
+# Retries. A shard's pairs are those with index k mod K, so shard k/K splits
+# exactly into k/2K and (k+K)/2K. A failed shard's file moves to
+# failed-<jobid>/ and the two halves rerun with A2_SHARD naming each outright
+# (A2_SHARD overrides the task index); a half that fails halves again. Once K
+# reaches 2016 a shard holds at most one pair, and it reruns alone with -W 4:00
+# on the command line.
+#BSUB -q hpc
+#BSUB -J arcana-field[1-24]%24
+#BSUB -n 1
+#BSUB -R "rusage[mem=1GB]"
+#BSUB -M 1GB
+#BSUB -W 1:00
+#BSUB -o field_%J_%I.out
+#BSUB -e field_%J_%I.err
+set -euo pipefail
+repo="${ARCANA_REPO:-$HOME/Repos/arcana}"
+commit="${ARCANA_COMMIT:-$(git -C "$repo" rev-parse HEAD)}"
+out="$HOME/arcana-runs/$commit"
+decks="${KAGGLE_DECKS:-$HOME/arcana-runs/decks}"
+case "${A2_TEST:?set A2_TEST to gauntlet or block}" in
+  gauntlet) test=deck_corpus::tests::corpus_gauntlet_shard ;;
+  block) test=deck_corpus::tests::corpus_block_shard ;;
+  *) echo "A2_TEST must be gauntlet or block" >&2; exit 2 ;;
+esac
+if [ -n "${A2_SHARD:-}" ]; then
+  shard="$A2_SHARD"
+else
+  shard="$(( LSB_JOBINDEX - 1 ))/${A2_K:?set A2_K, the number of shards}"
+fi
+k="${shard%/*}"; K="${shard#*/}"
+
+tail -n +2 "$repo/docs/a2-field/manifest-PI.csv" | while IFS=, read -r _idx _name source sha; do
+  got="$(sha256sum "$decks/PI/$source.txt" | cut -c1-64)"
+  [ "$got" = "$sha" ] || { echo "decklist $source: sha256 $got, manifest $sha" >&2; exit 1; }
+done
+
+file="$out/${A2_TAG:?set A2_TAG}-shard${k}of${K}.csv"
+KAGGLE_DECKS="$decks" CORPUS_SHARD="$shard" CORPUS_MANIFEST="$repo/docs/a2-field/manifest-PI.csv" \
+  "$out/arcana_ai_tests" --ignored --exact "$test" --nocapture \
+  | grep -E '^(config|deck|duel|block),' > "$file"
+echo "shard $shard of $A2_TAG on $(hostname): $(grep -cE '^(duel|block),' "$file") rows"
