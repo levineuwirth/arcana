@@ -1,0 +1,26 @@
+PI: blocked 60-card decks 723; missing exactly one card 226; exactly two 115
+ 117 decks  sole  66  Urborg, Tomb of Yawgmoth             outside                Legendary Land
+  67 decks  sole   0  Azorius Charm                        modal                  Instant
+  61 decks  sole   0  Search for Azcanta                   outside                Legendary Enchantment // Legendary Land
+  57 decks  sole  26  Lightning Axe                        outside                Instant
+  48 decks  sole  28  Embercleave                          outside                Legendary Artifact — Equipment
+  47 decks  sole  12  Nissa, Who Shakes the World          outside                Legendary Planeswalker — Nissa
+  47 decks  sole  23  Wicked Wolf                          outside                Creature — Wolf
+  46 decks  sole   0  Cast Out                             activated_enchantment  Enchantment
+  44 decks  sole   0  Ulamog, the Ceaseless Hunger         outside                Legendary Creature — Eldrazi
+  41 decks  sole   0  Detention Sphere                     outside                Enchantment
+  39 decks  sole   0  Blessed Alliance                     modal                  Instant
+  39 decks  sole  21  Collected Company                    outside                Instant
+  36 decks  sole   0  Hydroid Krasis                       x_spell                Creature — Jellyfish Hydra Beast
+  36 decks  sole   0  Nissa's Pilgrimage                   outside                Sorcery
+  33 decks  sole   3  Aether Hub                           outside                Land
+  33 decks  sole   3  Light Up the Stage                   spectacle              Sorcery
+  29 decks  sole   0  Grisly Salvage                       outside                Instant
+  29 decks  sole   0  Hieroglyphic Illumination            outside                Instant
+  29 decks  sole   0  Temple of Enlightenment              outside                Land
+  29 decks  sole   0  Temple of Mystery                    outside                Land
+  28 decks  sole   0  World Breaker                        outside                Creature — Eldrazi
+  27 decks  sole   2  Settle the Wreckage                  outside                Instant
+  27 decks  sole   1  Supreme Will                         modal                  Instant
+  24 decks  sole   0  Emrakul, the Promised End            outside                Legendary Creature — Eldrazi
+  24 decks  sole   0  Hissing Quagmire                     outside                Land

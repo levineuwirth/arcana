@@ -1,0 +1,77 @@
+decks 3200; distinct missing names 887; names not in Scryfall 19
+distinct missing cards by requirement: outside 738, x_spell 43, modal 39, activated_enchantment 37, unknown_name 19, overload 2, morph 2, spectacle 2, vehicle 2, prowl 1, activated_enchantment+modal 1, emerge 1
+
+== PI: 800 decks, 64 playable at 60, 723 blocked at 60
+family                  cards  copies  decks touched  unblocked alone
+outside                   247    4594            706              421
+modal                      22     537            169                6
+spectacle                   2     166             34                6
+unknown_name               11     106             52                4
+activated_enchantment      11     179             76                1
+overload                    2      28             21                1
+x_spell                    19     171             71                0
+emerge                      1       5              3                0
+morph                       1       5              2                0
+vehicle                     1       1              1                0
+prowl                       0       0              0                0
+unblocked by closing every R4 family together: 22; one card outside R4 short of it: 260
+
+== MO: 800 decks, 43 playable at 60, 732 blocked at 60
+family                  cards  copies  decks touched  unblocked alone
+outside                   264   10281            752              433
+modal                      19     714            266                3
+x_spell                    13     136             54                0
+unknown_name                5      14             10                0
+activated_enchantment       7      19              8                0
+overload                    1       6              4                0
+emerge                      0       0              0                0
+morph                       0       0              0                0
+prowl                       0       0              0                0
+spectacle                   0       0              0                0
+vehicle                     0       0              0                0
+unblocked by closing every R4 family together: 3; one card outside R4 short of it: 39
+
+== LE: 800 decks, 1 playable at 60, 751 blocked at 60
+family                  cards  copies  decks touched  unblocked alone
+outside                   298   13495            799              376
+x_spell                    12     642            220                0
+modal                       8     303            193                0
+activated_enchantment      16     199             57                0
+unknown_name                4      56             21                0
+morph                       1       4              2                0
+prowl                       1       1              1                0
+emerge                      0       0              0                0
+overload                    0       0              0                0
+spectacle                   0       0              0                0
+vehicle                     0       0              0                0
+unblocked by closing every R4 family together: 0; one card outside R4 short of it: 2
+
+== VI: 800 decks, 0 playable at 60, 754 blocked at 60
+family                  cards  copies  decks touched  unblocked alone
+outside                   231   16352            800              277
+x_spell                    14     530            274                0
+modal                       6     370            214                0
+activated_enchantment       9     107             63                0
+unknown_name                3      59             53                0
+vehicle                     2      24              7                0
+prowl                       1       1              1                0
+emerge                      0       0              0                0
+morph                       0       0              0                0
+overload                    0       0              0                0
+spectacle                   0       0              0                0
+unblocked by closing every R4 family together: 0; one card outside R4 short of it: 0
+
+== ALL: 3200 decks, 108 playable at 60, 2960 blocked at 60
+family                  cards  copies  decks touched  unblocked alone
+outside                   738   44722           3057             1507
+modal                      40    1924            842                9
+spectacle                   2     166             34                6
+unknown_name               19     235            136                4
+activated_enchantment      38     504            204                1
+overload                    2      34             25                1
+x_spell                    43    1479            619                0
+vehicle                     2      25              8                0
+morph                       2       9              4                0
+emerge                      1       5              3                0
+prowl                       1       2              2                0
+unblocked by closing every R4 family together: 25; one card outside R4 short of it: 301

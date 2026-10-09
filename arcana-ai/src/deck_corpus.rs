@@ -60,6 +60,14 @@ impl LoadedDeck {
         self.parsed.unresolved.iter().map(|(_, c)| c).sum()
     }
 
+    /// The listed maindeck's size, counting copies: resolved plus unresolved.
+    /// [`Self::main_count`] counts resolved cards only, so a 60-card list
+    /// missing four cards has a `main_count` of 56; anything asking how big
+    /// the list is (is it a 60-card deck?) wants this.
+    pub fn listed_count(&self) -> u32 {
+        self.main_count() + self.unresolved_count()
+    }
+
     /// True when every maindeck name resolved against the catalog.
     pub fn fully_covered(&self) -> bool {
         self.parsed.unresolved.is_empty()
@@ -355,6 +363,19 @@ mod tests {
         assert_eq!(playable_decks(&[small], 60, 60).len(), 0);
     }
 
+    /// A field count once filtered blocked decks on `main_count() == 60` and
+    /// found none, since `main_count` drops unresolved names: the listed size
+    /// is resolved plus unresolved copies.
+    #[test]
+    fn listed_count_counts_unresolved_copies() {
+        let reg = arcana_cards::build_catalog();
+        let loaded = load_deck("x", "pioneer",
+            "Deck\n4 Lightning Bolt\n52 Mountain\n4 Not A Card That Exists\n", &reg);
+        assert_eq!(loaded.main_count(), 56);
+        assert_eq!(loaded.unresolved_count(), 4);
+        assert_eq!(loaded.listed_count(), 60);
+    }
+
     #[test]
     fn deck_names_keep_source_id_when_header_renames_deck() {
         let reg = arcana_cards::build_catalog();
@@ -520,6 +541,35 @@ mod tests {
                     "duel,{i},{j},{d},{},{},{},{},{:.2}",
                     r.a_i, r.a_j, r.b_i, r.b_j, t.elapsed().as_secs_f64()
                 );
+            }
+        }
+    }
+
+    /// A3's field count (D14): every converted deck's catalog resolution, one
+    /// JSON object a line on stdout, for `arcana-ai/scripts/r4_field_count.py`:
+    ///
+    ///   `{"format", "source", "resolved", "listed", "missing": [[name, copies], …]}`
+    ///
+    /// where `resolved` is [`LoadedDeck::main_count`] and `listed` is
+    /// [`LoadedDeck::listed_count`], over `KAGGLE_DECKS/<format>/*.txt` for
+    /// MO, LE, PI and VI. Plays no game.
+    /// `KAGGLE_DECKS=<dir> cargo test -p arcana-ai --release corpus_unresolved -- --ignored --nocapture --test-threads=2`
+    #[test]
+    #[ignore]
+    fn corpus_unresolved() {
+        let base = std::env::var("KAGGLE_DECKS").expect("set KAGGLE_DECKS");
+        let reg = arcana_cards::build_catalog();
+        // A line of its own, so the first record is not glued to libtest's
+        // single-threaded `test … … ` prefix.
+        println!();
+        for format in ["MO", "LE", "PI", "VI"] {
+            let dir = std::path::Path::new(&base).join(format);
+            for d in decks_from_dir(&dir, format, &reg).expect("read corpus dir") {
+                let missing: Vec<(String, u32)> = d.parsed.unresolved.clone();
+                println!("{}", serde_json::json!({
+                    "format": format, "source": d.source_id, "resolved": d.main_count(),
+                    "listed": d.listed_count(), "missing": missing,
+                }));
             }
         }
     }

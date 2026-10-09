@@ -1,0 +1,3 @@
+oracle-ability exposure, not verified restoration: a card's implementation may still stub or misread it
+A2.2 field: 64 decks, 188 distinct cards; 6 with a trigger of their own on dying or leaving, 150 of 3840 maindeck copies, in 43 decks: Hangarback Walker; Murderous Rider; Rekindling Phoenix; Spell Queller; The Scarab God; Voice of Resurgence
+capsule: 5 decks, 57 distinct cards; 3 with a trigger of their own on dying or leaving, 14 of 300 maindeck copies, in 4 decks: Hangarback Walker; Rekindling Phoenix; Spell Queller
