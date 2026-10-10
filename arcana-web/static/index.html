@@ -28,8 +28,9 @@
   :root { --dock-left: 240px; --dock-right: 290px; }
 
   /* ---- top bar ---- */
-  /* .topbar / .wordmark / .sub are shared (theme.css). */
-  .topbar { flex: 0 0 auto; }
+  /* The top bar, chips and keyboard hints are shared (theme.css); the bar is
+     built by app.js around this page's tools. */
+  header.topbar { flex: 0 0 auto; }
   .phasebar {
     display: flex; align-items: baseline; gap: 12px;
     padding: 5px 14px; border: 1px solid var(--border); border-left: 3px solid var(--border);
@@ -55,35 +56,14 @@
     box-shadow: var(--shadow-float); font-family: var(--font-serif); font-size: 15px; color: var(--text);
   }
   .targetbanner button { font-size: 12px; }
-  .autopass-ctl { display: inline-flex; align-items: center; gap: 6px; font-size: 13px;
-    font-variant-caps: all-small-caps; letter-spacing: .06em; color: var(--text-faint); }
-  .autopass-ctl select {
-    font-family: var(--font-sans); font-size: 12px; text-transform: none; letter-spacing: 0;
-    color: var(--text); background: var(--bg-offset); border: 1px solid var(--border);
-    border-radius: var(--radius-control); padding: 2px 6px;
-  }
-  /* Full-control toggle (F): quiet when off, a lit amber chip when armed. */
-  #fullctl {
-    font-family: var(--font-sans); font-size: 12px; text-transform: none; letter-spacing: 0;
-    color: var(--text-muted); background: var(--bg-offset); border: 1px solid var(--border);
-    border-radius: var(--radius-control); padding: 2px 8px; cursor: pointer;
-  }
-  #fullctl:hover { border-color: var(--text-muted); color: var(--text); }
+  /* Full-control toggle (F): a chip, lit amber when armed. */
   #fullctl.active {
     color: var(--target-ink); background: var(--target); border-color: var(--target);
     font-weight: 600;
   }
-  /* "Pass until <phase>" skip cluster — same chip language as #fullctl. */
-  .skipctl {
-    font-family: var(--font-sans); font-size: 12px; text-transform: none; letter-spacing: 0;
-    color: var(--text-muted); background: var(--bg-offset); border: 1px solid var(--border);
-    border-radius: var(--radius-control); padding: 2px 8px; cursor: pointer;
-  }
-  .skipctl:hover { border-color: var(--text-muted); color: var(--text); }
-  .skipctl:disabled { opacity: .5; cursor: default; }
+  /* "Pass until <phase>" skip cluster: chips. */
   #skipgroup { display: inline-flex; align-items: center; gap: 4px; }
   #skipgroup .lbl { font-size: 11px; color: var(--text-muted); }
-  .kbd { color: var(--text-faint); font-size: 10px; margin-left: 5px; letter-spacing: .04em; }
   .phasebar .turn { font-variant-numeric: tabular-nums; color: var(--text-muted); font-size: 13px; }
   .phasebar .step { font-family: var(--font-serif); font-weight: 600; font-size: 17px; color: var(--text); }
   .phasebar .who { font-size: 13px; font-variant-caps: all-small-caps; letter-spacing: .08em; font-weight: 600; }
@@ -126,30 +106,20 @@
   .divider-v { width: 7px; cursor: col-resize; }
   .divider:hover, .divider.dragging { background: var(--border-muted); }
 
-  /* ---- panel chrome ---- */
-  .panel {
-    display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden;
-    border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--bg-offset);
-  }
+  /* ---- panels: the shared shell, laid out as dock columns ---- */
+  #workspace .panel { display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
   .panel.grow { flex: 1 1 0; }
   .panel:not(.grow) { flex: 0 0 auto; }
   .panel.collapsed { flex: 0 0 auto; }
   .panel.collapsed .panel-body { display: none; }
   .panel.hidden { display: none; }
-  .panel-head {
-    flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 3px 6px 3px 8px;
-    border-bottom: 1px solid var(--border); background: var(--bg-nav);
-  }
-  .panel-head .ptitle-text {
-    flex: 1; font-family: var(--font-sans); font-size: 12px; font-weight: 500;
-    font-variant-caps: all-small-caps; letter-spacing: .08em; color: var(--text-faint);
-  }
+  #workspace .panel-head { flex: 0 0 auto; gap: 6px; padding: 3px 6px 3px 8px; }
   .panel-head .pcollapse {
     border: none; background: transparent; padding: 0 4px; font-size: 11px; line-height: 1;
     color: var(--text-faint); cursor: pointer;
   }
   .panel-head .pcollapse:hover { color: var(--text); background: transparent; }
-  .panel-body {
+  #workspace .panel-body {
     flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
     overflow: auto; padding: 6px 8px;
   }
@@ -166,18 +136,6 @@
     padding: 4px 12px 6px; background: var(--bg);
   }
   .player.you { border-color: var(--border-muted); }
-  .ptitle { flex: 0 0 auto; display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 2px; }
-  .ptitle .who { font-family: var(--font-sans); font-size: 13px; font-weight: 500;
-    font-variant-caps: all-small-caps; letter-spacing: .1em; color: var(--text-faint); }
-  .ptitle .life { font-family: var(--font-serif); font-weight: 600; font-size: 22px;
-    font-variant-numeric: tabular-nums; line-height: 1; }
-  .ptitle .life .unit { font-size: 11px; color: var(--text-faint); font-weight: 400; margin-left: 3px; }
-  .ptitle .gauge { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); }
-  .ptitle .gauge .gpip { display: inline-flex; align-items: center; gap: 1px; font-variant-numeric: tabular-nums; }
-  .ptitle .gauge .floating { color: var(--text-faint); }
-  .ptitle .counts { display: flex; gap: 12px; font-size: 12px; color: var(--text-muted);
-    font-variant-numeric: tabular-nums; }
-  .ptitle .spacer { flex: 1; }
 
   /* the battlefield: lands (left) + permanents (right) as side-by-side COLUMNS,
      so a player band is ONE card tall (not two stacked rows) → cards fill the
@@ -246,7 +204,7 @@
   .ac-card.stacked::before { transform: translateX(5px); }
   .ac-card.stacked::after  { transform: translateX(10px); }
 
-  .empty { color: var(--text-faint); font-size: 12px; font-style: italic; font-family: var(--font-serif); padding: 2px 0; }
+  #workspace .empty { font-size: 12px; padding: 2px 0; }
 
   /* ---- consolidated player HUD (vitals on one line) ---- */
   .phud {
@@ -287,21 +245,10 @@
   .ac-card.castable .ac-frame { box-shadow: 0 0 0 2px var(--link), 0 0 16px color-mix(in srgb, var(--link) 45%, transparent); }
   .ac-card.castable:hover .ac-frame { box-shadow: 0 0 0 3px var(--link), 0 0 22px color-mix(in srgb, var(--link) 60%, transparent); }
 
-  /* zone viewer modal (browse graveyard / exile / library / hand) */
-  .zoneviewer {
-    position: fixed; inset: 0; z-index: 150; display: flex; align-items: center; justify-content: center;
-    background: rgba(8, 7, 6, .5); padding: 24px;
-  }
-  .zv-box {
-    display: flex; flex-direction: column; min-height: 0; max-height: 86vh; max-width: min(1100px, 94vw);
-    background: var(--bg-offset); border: 1px solid var(--border-muted);
-    border-radius: var(--radius-panel); box-shadow: var(--shadow-float); padding: 12px 16px;
-  }
-  .zv-head { flex: 0 0 auto; display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
-    font-family: var(--font-serif); font-weight: 600; font-size: 16px; margin-bottom: 10px; }
-  .zv-head .zv-n { color: var(--text-faint); font-weight: 400; font-size: 13px; }
-  .zv-close { font-size: 14px; line-height: 1; padding: 2px 8px; }
-  .zv-grid { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; }
+  /* zone viewer (browse graveyard / exile / library / hand): the shared modal */
+  #zoneviewer .modal-card { max-height: 86vh; max-width: min(1100px, 94vw); }
+  #zoneviewer .zv-n { color: var(--text-faint); font-weight: 400; font-size: 13px; }
+  .zv-grid { display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; }
   .zv-back {
     width: var(--card-w); height: var(--card-h); flex: 0 0 auto;
     border-radius: 6px; border: 1px solid var(--border-muted);
@@ -353,8 +300,7 @@
   .draw-types span b { font-variant-numeric: tabular-nums; }
   .draw-cmc-row { display: flex; align-items: center; gap: 6px; font-size: 11px; margin: 2px 0; }
   .draw-cmc-lbl { width: 26px; text-align: right; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-  .draw-cmc-track { flex: 1; min-width: 0; }
-  .draw-cmc-bar { height: 10px; background: var(--text-muted); border-radius: 2px; min-width: 1px; }
+  .draw-cmc-row .meter { flex: 1; min-width: 0; height: 10px; }
   .draw-cmc-cnt { color: var(--text-faint); font-variant-numeric: tabular-nums; width: 22px; }
   .draw-controls { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
   .draw-controls input { width: 58px; padding: 3px 6px; font-variant-numeric: tabular-nums; }
@@ -365,7 +311,7 @@
   .draw-odds-k { color: var(--text-faint); font-variant-numeric: tabular-nums; }
   .draw-odds-p { font-variant-numeric: tabular-nums; min-width: 52px; text-align: right; font-weight: 500; }
 
-  /* ---- Suggested-lines panel ---- */
+  /* ---- Suggested-lines panel (its meters are shared) ---- */
   #suggestpanel { display: flex; flex-direction: column; gap: 4px; min-height: 0; height: 100%; overflow-y: auto; }
   .sg-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 2px; }
   .sg-status { font-size: 12px; font-variant-caps: all-small-caps; letter-spacing: .08em; color: var(--text-faint); }
@@ -376,9 +322,7 @@
   .sg-row.clickable { cursor: pointer; }
   .sg-row.clickable:hover { background: var(--bg-offset); border-color: var(--border-muted); }
   .sg-best { border-color: var(--border-muted); }
-  .sg-meter { flex: 0 0 44px; height: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
-  .sg-fill { height: 100%; background: var(--text-muted); }
-  .sg-best .sg-fill { background: var(--text); }
+  .sg-row .meter { flex: 0 0 44px; }
   .sg-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
   .sg-pct { flex: 0 0 auto; font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
   .sg-delta { flex: 0 0 30px; text-align: right; font-size: 11px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
@@ -388,13 +332,10 @@
   .cp-row { display: flex; align-items: center; gap: 8px; padding: 2px 4px; border: 1px solid transparent; border-radius: var(--radius-control); }
   .cp-row.clickable { cursor: pointer; }
   .cp-row.clickable:hover { background: var(--bg-offset); border-color: var(--border-muted); }
-  .cp-meter { flex: 0 0 44px; height: 7px; background: var(--bg); border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
-  .cp-fill { height: 100%; background: var(--text-muted); }
+  .cp-row .meter { flex: 0 0 44px; height: 7px; }
   .cp-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
   .cp-pct { flex: 0 0 auto; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text-muted); }
 
-  /* ---- deferred panel slots (registry placeholders) ---- */
-  .deferred-note { font-size: 12px; font-style: italic; font-family: var(--font-serif); color: var(--text-faint); }
 
   /* ---- card-driven actions: hint + multi-ability chooser popup ---- */
   .action-hint { margin: 2px 0 4px; }
@@ -451,21 +392,9 @@
     animation: netwait-pulse 1.1s ease-in-out infinite;
   }
   @keyframes netwait-pulse { 0%,100% { opacity: .3; } 50% { opacity: 1; } }
-  /* visual library-search / tutor picker */
-  #search-modal {
-    position: fixed; inset: 0; z-index: 130; display: flex; align-items: center; justify-content: center;
-    padding: 24px; background: color-mix(in srgb, var(--bg) 82%, transparent);
-  }
-  #search-modal[hidden] { display: none; }
-  .search-card {
-    width: min(1100px, 96vw); max-height: 88vh; display: flex; flex-direction: column;
-    background: var(--bg-offset); border: 1px solid var(--border); border-radius: var(--radius-panel);
-    box-shadow: var(--shadow-float);
-  }
-  .search-head { display: flex; align-items: center; gap: 12px; padding: 13px 18px; border-bottom: 1px solid var(--border-muted); }
-  .search-head b { font-family: var(--font-serif); font-size: 17px; }
-  .search-head .spacer { flex: 1; }
-  .search-grid { overflow-y: auto; padding: 16px; display: grid;
+  /* visual library-search / tutor picker: the shared modal */
+  #search-modal .modal-card { width: min(1100px, 96vw); max-height: 88vh; }
+  .search-grid { display: grid;
     grid-template-columns: repeat(auto-fill, minmax(var(--card-w), 1fr)); gap: 12px; align-content: start; }
   .search-grid .pick { cursor: pointer; transition: transform var(--transition-fast); border-radius: 10px; }
   .search-grid .pick:hover { transform: translateY(-4px); }
@@ -502,25 +431,22 @@
 </style>
 </head>
 <body>
-  <header class="topbar">
-    <span class="wordmark">Arc<b>ana</b></span><span class="sub">cockpit</span>
+  <header class="topbar" data-label="cockpit">
     <div class="phasebar" id="phase"></div>
     <div class="spacer"></div>
     <span id="skipgroup">
       <span class="lbl">Skip to</span>
-      <button class="skipctl" data-until="combat" title="Pass until combat (C): auto-pass your windows up to this turn's combat. Stops early if anything hits the stack or a real decision comes up.">Combat<span class="kbd">C</span></button>
-      <button class="skipctl" data-until="end_of_turn" title="Pass until end of turn (E): auto-pass up to this turn's end step (declares no attackers on the way when legal). Stops early if anything hits the stack.">End<span class="kbd">E</span></button>
-      <button class="skipctl" data-until="my_next_turn" title="Pass until your next turn (N): auto-pass through the rest of this turn and the opponent's. Stops early if anything hits the stack or you must block.">Turn<span class="kbd">N</span></button>
+      <button class="chip skipctl" data-until="combat" title="Pass until combat (C): auto-pass your windows up to this turn's combat. Stops early if anything hits the stack or a real decision comes up.">Combat<span class="kbd">C</span></button>
+      <button class="chip skipctl" data-until="end_of_turn" title="Pass until end of turn (E): auto-pass up to this turn's end step (declares no attackers on the way when legal). Stops early if anything hits the stack.">End<span class="kbd">E</span></button>
+      <button class="chip skipctl" data-until="my_next_turn" title="Pass until your next turn (N): auto-pass through the rest of this turn and the opponent's. Stops early if anything hits the stack or you must block.">Turn<span class="kbd">N</span></button>
     </span>
-    <button id="fullctl" title="Full control (F): stop at EVERY priority window — hold up mana, bluff, or act at an unusual window. Off = smart auto-pass through windows where you have no play.">Full control<span class="kbd">F</span></button>
-    <a href="/deck">Deckbuilder →</a>
+    <button id="fullctl" class="chip" title="Full control (F): stop at EVERY priority window — hold up mana, bluff, or act at an unusual window. Off = smart auto-pass through windows where you have no play.">Full control<span class="kbd">F</span></button>
     <div class="menu-wrap" id="panels-menu">
       <button id="panelsbtn" class="ghost">Panels ▾</button>
       <div class="menu-pop" id="panels-pop"></div>
     </div>
     <button id="refresh" class="ghost">Refresh</button>
     <button id="new" title="Set up a new duel on the Stage">New duel →</button>
-    <span id="themeslot"></span>
   </header>
   <!-- Networked duel: shown while it's the opponent's turn (poll-while-waiting). -->
   <div id="netwait" hidden><span class="dot"></span><span id="netwait-text">Waiting for opponent…</span></div>
@@ -550,15 +476,15 @@
   <div id="overlay"><div class="overlay-card"><div id="combat"></div></div></div>
 
   <!-- Visual card picker for library searches / tutors / reanimation. -->
-  <div id="search-modal" hidden>
-    <div class="search-card">
-      <div class="search-head">
+  <div class="modal" id="search-modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="search-title">
+      <div class="modal-head">
         <b id="search-title">Search</b>
         <span id="search-sub" class="muted"></span>
         <span class="spacer"></span>
         <button id="search-none" class="ghost">Pick nothing</button>
       </div>
-      <div id="search-grid" class="search-grid"></div>
+      <div id="search-grid" class="modal-body search-grid"></div>
     </div>
   </div>
 
@@ -650,9 +576,6 @@ function buildDrawPanel(body) { body.innerHTML = '<div id="drawpanel"></div>'; }
 function buildSuggestPanel(body) { body.innerHTML = '<div id="suggestpanel"></div>'; }
 function buildCardPowerPanel(body) { body.innerHTML = '<div id="powerpanel"></div>'; }
 function buildLogPanel(body) { body.innerHTML = '<div id="log"></div>'; }
-function buildDeferred(note) {
-  return (body) => { const d = document.createElement("div"); d.className = "deferred-note"; d.textContent = note; body.appendChild(d); };
-}
 
 // ---- layout state + persistence ----
 const LAYOUT_KEY = "arcana.cockpit.layout.v4"; // bumped: Card-power now a real, default-visible panel
@@ -694,7 +617,7 @@ function buildWorkspace() {
     collapse.textContent = "▾";
     collapse.onclick = () => toggleCollapse(p.id);
     const title = document.createElement("span");
-    title.className = "ptitle-text"; title.textContent = p.title;
+    title.className = "panel-title"; title.textContent = p.title;
     head.append(collapse, title);
 
     const bodyEl = document.createElement("div");
@@ -856,8 +779,8 @@ function renderDraw(lib) {
     for (const [cmc, cnt] of lib.by_cmc) {
       const r = document.createElement("div"); r.className = "draw-cmc-row";
       const lbl = document.createElement("span"); lbl.className = "draw-cmc-lbl"; lbl.textContent = cmc;
-      const track = document.createElement("span"); track.className = "draw-cmc-track";
-      const bar = document.createElement("div"); bar.className = "draw-cmc-bar";
+      const track = document.createElement("span"); track.className = "meter";
+      const bar = document.createElement("div"); bar.className = "meter-fill";
       bar.style.width = Math.max(2, (cnt / max) * 100) + "%";
       track.appendChild(bar);
       const c = document.createElement("span"); c.className = "draw-cmc-cnt tnum"; c.textContent = cnt;
@@ -1004,8 +927,8 @@ function renderSuggest() {
     row.className = "sg-row clickable" + (l.win_pct === best ? " sg-best" : "");
     row.title = "Apply: " + l.label;
     row.onclick = () => sendAction(l.index, l.label);
-    const meter = document.createElement("div"); meter.className = "sg-meter";
-    const fill = document.createElement("div"); fill.className = "sg-fill";
+    const meter = document.createElement("div"); meter.className = "meter";
+    const fill = document.createElement("div"); fill.className = "meter-fill" + (l.win_pct === best ? " strong" : "");
     fill.style.width = Math.max(2, Math.min(100, l.win_pct)) + "%";
     meter.appendChild(fill);
     const name = document.createElement("span"); name.className = "sg-label"; name.textContent = l.label;
@@ -1039,8 +962,8 @@ function renderCardPower() {
     const row = document.createElement("div");
     row.className = "cp-row" + (card ? " clickable" : "");
     if (card) { row.title = "Zoom " + card.name; row.onclick = () => Arcana.Zoom.show(card); }
-    const meter = document.createElement("div"); meter.className = "cp-meter";
-    const fill = document.createElement("div"); fill.className = "cp-fill";
+    const meter = document.createElement("div"); meter.className = "meter";
+    const fill = document.createElement("div"); fill.className = "meter-fill";
     fill.style.width = Math.max(2, (c.win_pct / max) * 100) + "%";
     meter.appendChild(fill);
     const nm = document.createElement("span"); nm.className = "cp-label";
@@ -1335,16 +1258,19 @@ function exileDecor(c) {
 function showZoneViewer(title, cards, backCount, decor) {
   closeZoneViewer();
   const modal = document.createElement("div");
-  modal.id = "zoneviewer"; modal.className = "zoneviewer";
-  const box = document.createElement("div"); box.className = "zv-box";
-  const head = document.createElement("div"); head.className = "zv-head";
+  modal.id = "zoneviewer"; modal.className = "modal";
+  const box = document.createElement("div"); box.className = "modal-card";
+  box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true");
+  const head = document.createElement("div"); head.className = "modal-head";
   const n = cards.length || backCount || 0;
-  const ttl = document.createElement("span");
+  const ttl = document.createElement("b"); ttl.className = "modal-title";
   ttl.innerHTML = title + ' <span class="zv-n">(' + n + ")</span>";
-  const close = document.createElement("button"); close.className = "zv-close"; close.textContent = "✕";
+  const spacer = document.createElement("span"); spacer.className = "spacer";
+  const close = document.createElement("button"); close.className = "ghost sm"; close.textContent = "✕";
+  close.setAttribute("aria-label", "Close");
   close.onclick = closeZoneViewer;
-  head.append(ttl, close);
-  const grid = document.createElement("div"); grid.className = "zv-grid";
+  head.append(ttl, spacer, close);
+  const grid = document.createElement("div"); grid.className = "modal-body zv-grid";
   if (cards.length) {
     for (const c of cards) {
       const d = decor ? decor(c) : null;
@@ -1864,8 +1790,15 @@ function renderActions(view) {
   }
   if (concede) {
     const b = document.createElement("button");
-    b.className = "ghost"; b.textContent = "Concede";
-    b.onclick = () => { if (confirm("Concede this game?")) sendAction(concede.index, "Concede"); };
+    b.className = "danger"; b.textContent = "Concede";
+    b.onclick = async () => {
+      if (!(await Arcana.Dialog.confirm("Concede this game?", { ok: "Concede", danger: true }))) return;
+      // The legal list may have changed while the confirmation was open:
+      // concede by the current list, not by the index this button was drawn with.
+      const now = ((G.resp && G.resp.view && G.resp.view.legal) || []).find((a) => groupOf(a.label) === "concede");
+      if (!now) { logLine("sys", "Concede is not available at this point."); return; }
+      sendAction(now.index, "Concede");
+    };
     ctrl.appendChild(b);
   }
   if (pass || concede) root.appendChild(ctrl);
@@ -2446,7 +2379,6 @@ applyLayout();
 buildPanelsMenu();
 initResizers();
 
-Arcana.mountThemeSwitcher(document.getElementById("themeslot"));
 // The Stage (front door at "/") is where a new duel is configured.
 document.getElementById("new").onclick = () => { window.location = "/"; };
 document.getElementById("refresh").onclick = getState;
@@ -2558,7 +2490,7 @@ function enterMatchMode(ctx) {
 }
 
 async function leaveMatch() {
-  if (!confirm("Leave this match? Your opponent will be told it ended.")) return;
+  if (!(await Arcana.Dialog.confirm("Leave this match? Your opponent will be told it ended.", { ok: "Leave match", danger: true }))) return;
   Arcana.Match.closeSocket();
   try { await Arcana.Api.matchLeave(); } catch (e) { /* best-effort */ }
   clearMatchCreds();

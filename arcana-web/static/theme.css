@@ -502,33 +502,6 @@ button.primary:hover:not(:disabled), .btn.primary:hover {
 /* A quiet/ghost button (Concede, secondary actions). */
 button.ghost, .btn.ghost { background: transparent; }
 
-/* ---- Mana pips ----------------------------------------------------------- */
-.mana-pip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.25em;
-  height: 1.25em;
-  padding: 0 .28em;
-  border-radius: var(--radius-pill);
-  border: 1px solid rgba(0, 0, 0, .18);
-  font-family: var(--font-sans);
-  font-weight: 600;
-  font-size: .82em;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  color: var(--mana-ink-dark);
-  background: var(--mana-c);
-  vertical-align: middle;
-}
-.mana-pip + .mana-pip { margin-left: 2px; }
-.mana-pip.w { background: var(--mana-w); color: var(--mana-ink-dark); }
-.mana-pip.u { background: var(--mana-u); color: var(--mana-ink-light); }
-.mana-pip.b { background: var(--mana-b); color: var(--mana-ink-light); }
-.mana-pip.r { background: var(--mana-r); color: var(--mana-ink-dark); }
-.mana-pip.g { background: var(--mana-g); color: var(--mana-ink-dark); }
-.mana-pip.c, .mana-pip.generic { background: var(--mana-c); color: var(--mana-ink-dark); }
-
 /* Mana symbols, drawn in the Mana font (/assets/mana.css), inline at the
    surrounding font size: Mana's cost circle is 1.3em of its own size, so .81em
    makes it 1.05em of the text around it. --sym sets the circle in px where a
@@ -748,40 +721,6 @@ button.ghost, .btn.ghost { background: transparent; }
 /* dark zoom overlay → light text */
 .ac-zoom .pv-name, .ac-zoom .pv-kw-row b { color: #f3efe6; }
 .ac-zoom .pv-meta, .ac-zoom .pv-kw-row { color: #cfc9bd; }
-.ac-zoom .zoom-info {
-  font-family: var(--font-serif);
-  font-size: 15px;
-  color: #f3efe6;
-  max-width: 90vw;
-  text-align: center;
-}
-.ac-zoom .zoom-kw {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  justify-content: center;
-  max-width: 80vw;
-}
-.ac-zoom .zoom-chip {
-  padding: 3px 11px;
-  font-family: var(--font-sans);
-  font-size: 12px;
-  color: #f3efe6;
-  background: transparent;
-  border: 1px solid rgba(243, 239, 230, .4);
-  border-radius: var(--radius-pill);
-  cursor: help;
-}
-.ac-zoom .zoom-chip:hover { background: rgba(243, 239, 230, .14); }
-.ac-zoom .zoom-reminder {
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-size: 13px;
-  color: #d9d4c8;
-  max-width: 64ch;
-  text-align: center;
-  min-height: 18px;
-}
 
 /* ---- Theme switcher ------------------------------------------------------ */
 .theme-switch {
@@ -827,3 +766,119 @@ button.ghost, .btn.ghost { background: transparent; }
 .wordmark { font-family: var(--font-serif); font-size: 20px; letter-spacing: .14em; text-transform: uppercase; }
 .wordmark b { color: var(--link); font-weight: 700; }
 .topbar .sub { font-size: 13px; font-variant-caps: all-small-caps; letter-spacing: .12em; color: var(--text-faint); }
+
+/* ---- Components (A5.2) ------------------------------------------------------
+   One shared set (D15); each page's own <style> keeps its layout and the
+   variants only it needs. arcana-web's static-source test fails a page whose
+   <style> redefines one of these bare classes.
+   ------------------------------------------------------------------------- */
+
+/* The top bar's one link set, built by app.js (Arcana.mountTopbar) after the
+   wordmark and the page's label; the page's own tools follow it. */
+.topnav { display: inline-flex; align-items: center; gap: 14px; }
+.topnav a, .topnav a:visited { font-size: 13px; color: var(--text-muted); text-decoration: none; }
+.topnav a:hover { color: var(--link-hover); }
+.topnav a[aria-current="page"] {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--link-underline);
+  text-underline-offset: 4px;
+}
+.theme-slot { display: inline-flex; }
+
+/* Buttons: the base, .primary and .ghost above; .danger for what cannot be
+   undone; .lg for a page's one call to action; an <a class="btn"> looks like
+   a button, not a link. */
+button.danger, .btn.danger { color: var(--danger); background: transparent; border-color: var(--danger); }
+button.danger:hover:not(:disabled), .btn.danger:hover { background: var(--bg-offset); border-color: var(--danger); }
+button.lg, .btn.lg { font-size: 16px; padding: 10px 28px; }
+button.sm, .btn.sm { font-size: 12px; padding: 3px 9px; }
+a.btn, a.btn:visited { display: inline-flex; align-items: center; color: var(--text); text-decoration: none; }
+a.btn.primary, a.btn.primary:visited { color: var(--bg); }
+
+/* Panel: a bordered surface, with an optional head (title, controls) and body. */
+.panel { border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--bg-offset); }
+.panel-head {
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+  border-bottom: 1px solid var(--border); background: var(--bg-nav);
+  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+}
+.panel-title {
+  flex: 1; font-size: 12px; font-weight: 500; font-variant-caps: all-small-caps;
+  letter-spacing: .08em; color: var(--text-faint);
+}
+.panel-body { padding: 12px; }
+
+/* Modal: a backdrop over the page, and a card on a flat surface. */
+.modal {
+  position: fixed; inset: 0; z-index: 150;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  background: color-mix(in srgb, var(--bg) 80%, transparent);
+}
+.modal[hidden] { display: none; }
+.modal-card {
+  display: flex; flex-direction: column; min-height: 0; max-height: 90vh; max-width: 96vw;
+  overflow: hidden; background: var(--bg-offset); border: 1px solid var(--border);
+  border-radius: var(--radius-panel); box-shadow: var(--shadow-float);
+}
+.modal-head {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  border-bottom: 1px solid var(--border-muted);
+}
+.modal-title, .modal-head b { font-family: var(--font-serif); font-weight: 600; font-size: 17px; }
+.modal-head .spacer { flex: 1; }
+.modal-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 16px; }
+.modal-foot {
+  flex: 0 0 auto; display: flex; justify-content: flex-end; align-items: center; gap: 10px;
+  padding: 12px 16px; border-top: 1px solid var(--border-muted);
+}
+
+/* The dialog that replaces confirm, prompt and alert (Arcana.Dialog). */
+.modal.dialog-backdrop { z-index: 300; }
+.dialog { width: min(440px, 94vw); }
+.dialog-title { margin: 0; padding: 14px 16px 0; font-size: 17px; }
+.dialog-message { margin: 0; padding: 14px 16px; white-space: pre-wrap; }
+.dialog-input { margin: 0 16px 14px; font-size: 14px; padding: 7px 10px; }
+
+/* Meter: a track and its fill, whose width the page sets inline. Both are
+   blocks, so a <span> track and fill draw as a <div> pair does. */
+.meter { display: block; height: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-pill); overflow: hidden; }
+.meter-fill { display: block; height: 100%; background: var(--text-muted); border-radius: inherit; }
+.meter-fill.strong { background: var(--text); }
+
+/* Badge: a small-caps pill that labels; .accent for the one that matters. */
+.badge {
+  display: inline-flex; align-items: center; white-space: nowrap;
+  font-size: 12px; line-height: 1.4; font-variant-caps: all-small-caps; letter-spacing: .1em;
+  padding: 1px 8px; border: 1px solid var(--border); border-radius: var(--radius-pill);
+  color: var(--text-muted);
+}
+.badge.accent { color: var(--link); border-color: var(--link); }
+
+/* Chip: a compact toggle button; .active is lit. */
+button.chip, .chip {
+  font-size: 12px; padding: 2px 8px; color: var(--text-muted);
+  background: var(--bg-offset); border: 1px solid var(--border); border-radius: var(--radius-control);
+}
+button.chip:hover:not(:disabled) { color: var(--text); background: var(--bg-offset); border-color: var(--text-muted); }
+button.chip.active, .chip.active { color: var(--bg); background: var(--text); border-color: var(--text); font-weight: 600; }
+/* A keyboard hint inside a button or chip. */
+.kbd { color: var(--text-faint); font-size: 10px; margin-left: 5px; letter-spacing: .04em; }
+.chip.active .kbd { color: inherit; }
+
+/* Empty state: where nothing is yet, say so (and how to fill it). */
+.empty { color: var(--text-faint); font-family: var(--font-serif); font-style: italic; font-size: 13px; }
+.empty.block { text-align: center; padding: 48px 16px; }
+
+/* Identity dots: a deck's colours from the parchment palette, chrome only. */
+.pips { display: inline-flex; gap: 5px; align-items: center; }
+.pips > .pip {
+  --pip: 13px; width: var(--pip); height: var(--pip); border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, .35); box-shadow: inset 0 1px 2px rgba(255, 255, 255, .25);
+}
+.pips > .pip.W { background: var(--mana-w); color: var(--mana-w); }
+.pips > .pip.U { background: var(--mana-u); color: var(--mana-u); }
+.pips > .pip.B { background: var(--mana-b); color: var(--mana-b); }
+.pips > .pip.R { background: var(--mana-r); color: var(--mana-r); }
+.pips > .pip.G { background: var(--mana-g); color: var(--mana-g); }
+.pips > .pip.C { background: var(--mana-c); color: var(--mana-c); }

@@ -24,7 +24,7 @@
 use std::collections::BTreeMap;
 
 const THEME_CSS: &str = include_str!("../static/theme.css");
-const FILES: &[(&str, &str)] = &[
+pub(crate) const FILES: &[(&str, &str)] = &[
     ("theme.css", THEME_CSS),
     ("index.html", include_str!("../static/index.html")),
     ("stage.html", include_str!("../static/stage.html")),
@@ -37,8 +37,8 @@ const TEXT: &[&str] = &[
     "--text", "--text-muted", "--text-faint", "--link", "--link-hover",
     "--danger", "--lethal", "--energy", "--poison", "--added", "--removed", "--text-on-glow",
 ];
-/// The inks text on a glow may take: the Stage's and My Decks' halls and the
-/// champion panel, where --text-faint and --text-muted lose 4.5:1.
+/// The inks text on a glow may take: the Stage's hall and the champion panel,
+/// where --text-faint and --text-muted lose 4.5:1.
 const GLOW_TEXT: &[&str] = &["--text", "--text-on-glow", "--link", "--link-hover"];
 /// The page surfaces text sits on.
 const SURFACES: &[&str] = &["--bg", "--bg-nav", "--bg-offset"];
@@ -81,7 +81,7 @@ fn without_comments(css: &str) -> String {
 }
 
 /// A file's CSS: `theme.css` whole, a page's `<style>` blocks.
-fn stylesheet(file: &str, text: &str) -> String {
+pub(crate) fn stylesheet(file: &str, text: &str) -> String {
     if !file.ends_with(".html") {
         return without_comments(text);
     }
@@ -103,8 +103,8 @@ fn squash(s: &str) -> String {
 }
 
 /// A style rule with no rule nested in it.
-struct Rule {
-    selector: String,
+pub(crate) struct Rule {
+    pub(crate) selector: String,
     decls: Vec<(String, String)>,
 }
 
@@ -116,7 +116,7 @@ impl Rule {
 
 /// Every innermost rule: the text between the last brace and a `{` is its
 /// selector, so a rule inside `@media` keeps its own.
-fn rules(css: &str) -> Vec<Rule> {
+pub(crate) fn rules(css: &str) -> Vec<Rule> {
     let mut out = Vec::new();
     // After the last brace; the selector start and `{` of the open rule.
     let (mut after_brace, mut selector_start, mut open) = (0, 0, None);
@@ -396,27 +396,17 @@ fn backdrop(s: &Sheets, file: &str, panel: &str) -> Vec<String> {
 const ZOOM_SCRIM: (Rgb, f64) = ([8.0, 7.0, 6.0], 0.82);
 
 const COMPOSITES: &[Composite] = &[
-    // The halls: a radial light of --link atop the Stage and My Decks. Text
-    // on them takes a glow ink.
+    // The hall: a radial light of --link atop the Stage. Text on it takes a
+    // glow ink. (My Decks is a working page by D15 and has no hall light.)
     Composite {
         file: "stage.html", selector: "body", property: "background",
         value: "radial-gradient(1200px 600px at 50% -10%, color-mix(in srgb, var(--link) 12%, transparent), transparent 70%), var(--bg)",
         check: |t, _| inks_on(t, GLOW_TEXT, "the Stage's hall glow", &hall(t, 0.12)),
     },
     Composite {
-        file: "decks.html", selector: "body", property: "background",
-        value: "radial-gradient(1100px 520px at 50% -10%, color-mix(in srgb, var(--link) 10%, transparent), transparent 70%), var(--bg)",
-        check: |t, _| inks_on(t, GLOW_TEXT, "My Decks' hall glow", &hall(t, 0.10)),
-    },
-    Composite {
         file: "stage.html", selector: ".hall-title h1", property: "text-shadow",
         value: "0 0 24px color-mix(in srgb, var(--link) var(--glow-title), transparent)",
         check: |t, s| halo(t, s, "stage.html", ".hall-title h1", 0.12),
-    },
-    Composite {
-        file: "decks.html", selector: ".hall-title h1", property: "text-shadow",
-        value: "0 0 24px color-mix(in srgb, var(--link) var(--glow-title), transparent)",
-        check: |t, s| halo(t, s, "decks.html", ".hall-title h1", 0.10),
     },
     // The champion panel: a glow of the deck's colour, whichever it is. Text
     // on it takes a glow ink.
@@ -486,7 +476,9 @@ const COMPOSITES: &[Composite] = &[
                 .iter()
                 .filter(|r| r.selector.starts_with(".ac-zoom ") && r.get("color").is_some())
                 .collect();
-            assert!(inks.len() >= 4, "the zoom's text rules were not found");
+            // The preview's two text rules (name and keyword names; meta and
+            // keyword rows). A5.2 removed the old zoom classes, never used.
+            assert!(inks.len() >= 2, "the zoom's text rules were not found");
             for r in inks {
                 let ink = r.get("color").unwrap();
                 hold(&mut fails, t, &format!("the zoom scrim ({})", r.selector), ink, t.color(ink), bg, 4.5);
@@ -494,35 +486,14 @@ const COMPOSITES: &[Composite] = &[
             fails
         },
     },
-    Composite {
-        file: "theme.css", selector: ".ac-zoom .zoom-chip:hover", property: "background",
-        value: "rgba(243, 239, 230, .14)",
-        check: |t, s| {
-            let ink = s.own_color("theme.css", ".ac-zoom .zoom-chip");
-            let bg = mix([243.0, 239.0, 230.0], mix(ZOOM_SCRIM.0, WHITE, ZOOM_SCRIM.1), 0.14);
-            let mut fails = Vec::new();
-            hold(&mut fails, t, "a hovered zoom chip", ink, t.color(ink), bg, 4.5);
-            fails
-        },
-    },
     // Backdrops behind modals, and a decoration: no text is drawn on them.
+    // The shared modal (A5.2): every modal's backdrop (My Decks' inspector,
+    // the deckbuilder's import, the cockpit's zone viewer and search, the
+    // dialog). Its card draws on a flat surface.
     Composite {
-        file: "index.html", selector: ".zoneviewer", property: "background", value: "rgba(8, 7, 6, .5)",
-        check: |_, s| backdrop(s, "index.html", ".zv-box"),
-    },
-    Composite {
-        file: "index.html", selector: "#search-modal", property: "background",
-        value: "color-mix(in srgb, var(--bg) 82%, transparent)",
-        check: |_, s| backdrop(s, "index.html", ".search-card"),
-    },
-    Composite {
-        file: "decks.html", selector: ".modal", property: "background",
-        value: "color-mix(in srgb, var(--bg) 78%, transparent)",
-        check: |_, s| backdrop(s, "decks.html", ".modal-card"),
-    },
-    Composite {
-        file: "deck.html", selector: "#io", property: "background", value: "rgba(8,7,6,.8)",
-        check: |_, s| backdrop(s, "deck.html", "#io .iobox"),
+        file: "theme.css", selector: ".modal", property: "background",
+        value: "color-mix(in srgb, var(--bg) 80%, transparent)",
+        check: |_, s| backdrop(s, "theme.css", ".modal-card"),
     },
     Composite {
         file: "theme.css", selector: ".ac-card.foil .ac-frame::after", property: "background",

@@ -8,22 +8,19 @@
 <link rel="stylesheet" href="/theme.css" />
 <link rel="stylesheet" href="/assets/mana.css" />
 <style>
-  /* .topbar / .wordmark / .sub are shared (theme.css); keep the deckbuilder
-     header sticky as the page scrolls. */
+  /* The top bar is shared (theme.css, built by app.js); keep it sticky as the
+     page scrolls. */
   header.topbar { position: sticky; top: 0; z-index: 20; }
 
   main { display: flex; gap: 16px; padding: 16px var(--page-padding); align-items: flex-start; }
   #browse { flex: 1; min-width: 0; }
-  #preview {
+  #preview.panel {
     width: 264px; flex-shrink: 0; position: sticky; top: 64px;
-    max-height: calc(100vh - 80px); overflow-y: auto;
-    border: 1px solid var(--border); border-radius: var(--radius-panel);
-    padding: 12px; background: var(--bg-offset);
+    max-height: calc(100vh - 80px); overflow-y: auto; padding: 12px;
   }
   #pv { display: flex; flex-direction: column; gap: 10px; }
-  #deckpanel {
-    width: 330px; flex-shrink: 0; border: 1px solid var(--border); border-radius: var(--radius-panel);
-    padding: 12px; background: var(--bg-offset); position: sticky; top: 64px;
+  #deckpanel.panel {
+    width: 330px; flex-shrink: 0; padding: 12px; position: sticky; top: 64px;
     max-height: calc(100vh - 80px); overflow-y: auto;
   }
 
@@ -49,7 +46,6 @@
   .grid { display: flex; gap: 10px; flex-wrap: wrap; --card-w: 122px; }
 
   .muted { color: var(--text-muted); font-size: 12px; }
-  .empty-note { color: var(--text-faint); font-style: italic; font-family: var(--font-serif); font-size: 13px; }
 
   #deckstats { font-size: 13px; margin-bottom: 10px; }
   #deckstats .summary { font-family: var(--font-serif); margin-bottom: 2px; }
@@ -59,7 +55,6 @@
   /* a labelled stats section: small-caps header + body */
   #deckstats .statsec { margin-top: 13px; }
   #deckstats .statsec > .meta-label { display: block; margin-bottom: 6px; }
-  #deckstats .empty-stat { color: var(--text-faint); font-style: italic; font-family: var(--font-serif); font-size: 12px; }
 
   /* mana curve — count above the bar, mana value below */
   #deckstats .curve { display: flex; gap: 4px; align-items: flex-end; height: 52px; margin: 18px 0 20px; }
@@ -73,9 +68,7 @@
   /* labelled mini-bar rows (type breakdown + draw odds) */
   #deckstats .srow { display: flex; align-items: center; gap: 8px; padding: 2px 0; font-size: 12px; }
   #deckstats .srow .lbl { width: 82px; flex-shrink: 0; color: var(--text-muted); }
-  #deckstats .srow .track { flex: 1; height: 7px; background: var(--bg); border: 1px solid var(--border);
-    border-radius: 999px; overflow: hidden; }
-  #deckstats .srow .fill { height: 100%; background: var(--text-muted); border-radius: 999px; }
+  #deckstats .srow .meter { flex: 1; height: 7px; }
   #deckstats .srow .val { min-width: 36px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
 
   /* colors: colored-pip requirement tiles */
@@ -94,37 +87,27 @@
   #legality.ok { color: var(--text); font-weight: 500; }
   #legality.bad { color: var(--text); font-weight: 500; text-decoration: underline; text-decoration-color: var(--border-muted); }
 
-  /* import/export overlay */
-  #io { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(8,7,6,.8);
-    align-items: center; justify-content: center; padding: var(--page-padding); }
-  #io.show { display: flex; }
-  #io .iobox { width: min(560px, 92vw); background: var(--bg); border: 1px solid var(--border-muted);
-    border-radius: var(--radius-panel); padding: 14px; box-shadow: var(--shadow-float); }
-  #io .iohdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-  #io .iohdr b { font-family: var(--font-serif); font-size: 16px; }
+  /* import/export: the shared modal */
+  #io .modal-card { width: min(560px, 92vw); }
   #io textarea { width: 100%; height: 48vh; resize: vertical; font-family: var(--font-mono); font-size: 12px; }
-  #io .iobtns { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+  #io .modal-foot { justify-content: space-between; }
 </style>
 </head>
 <body>
-  <header class="topbar">
-    <span class="wordmark">Arc<b>ana</b></span><span class="sub">deckbuilder</span>
-    <a class="ghost" href="/decks">My Decks</a>
-    <a class="ghost" href="/">Stage →</a>
+  <header class="topbar" data-label="deckbuilder">
     <span class="spacer"></span>
     <input id="deckname" placeholder="deck name" size="14" />
     <button id="save">Save</button>
     <select id="loadsel"><option value="">load…</option></select>
     <button id="import">Import</button>
     <button id="export">Export</button>
-    <button id="clear" class="ghost">Clear</button>
+    <button id="clear" class="danger">Clear</button>
     <select id="format"></select>
     <span id="legality" class="muted"></span>
     <span class="spacer"></span>
     <span id="total" class="muted"></span>
     <select id="opponent" title="opponent's deck"></select>
     <button id="play" class="primary">Play this deck</button>
-    <span id="themeslot"></span>
   </header>
 
   <main>
@@ -154,22 +137,22 @@
         <button type="button" id="cacheall" class="ghost" title="Download + cache the entire catalog's art via Scryfall bulk data (~20k cards / ~2 GB, one-time; fast parallel download; persists + works offline)">Download all art</button>
         <span id="cacheart-msg" class="muted"></span>
       </div>
-      <div id="results" class="grid"><span class="empty-note">Search the catalog to add cards.</span></div>
+      <div id="results" class="grid"><span class="empty">Search the catalog to add cards.</span></div>
     </section>
 
-    <aside id="preview"><div id="pv" class="pv-empty">Hover a card to preview it.</div></aside>
+    <aside id="preview" class="panel"><div id="pv" class="pv-empty">Hover a card to preview it.</div></aside>
 
-    <aside id="deckpanel">
+    <aside id="deckpanel" class="panel">
       <div id="deckstats"></div>
       <div id="decklist"></div>
     </aside>
   </main>
 
-  <div id="io">
-    <div class="iobox">
-      <div class="iohdr"><b id="iotitle">Import deck</b><button id="ioclose" class="ghost">✕</button></div>
-      <textarea id="iotext" spellcheck="false" placeholder="Paste an Arena/MTGO deck list…&#10;&#10;Deck&#10;4 Lightning Bolt&#10;20 Mountain"></textarea>
-      <div class="iobtns"><button id="iodo" class="primary">Import</button><span id="iomsg" class="muted"></span></div>
+  <div class="modal" id="io" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="iotitle">
+      <div class="modal-head"><b id="iotitle">Import deck</b><span class="spacer"></span><button id="ioclose" class="ghost sm" aria-label="Close">✕</button></div>
+      <div class="modal-body"><textarea id="iotext" spellcheck="false" placeholder="Paste an Arena/MTGO deck list…&#10;&#10;Deck&#10;4 Lightning Bolt&#10;20 Mountain"></textarea></div>
+      <div class="modal-foot"><span id="iomsg" class="muted"></span><button id="iodo" class="primary">Import</button></div>
     </div>
   </div>
 
@@ -278,13 +261,13 @@ function pAtLeastK(total, successes, draws, k) {
 function statRow(label, fillPct, valText, title) {
   return '<div class="srow"' + (title ? ' title="' + title + '"' : "") + ">" +
     '<span class="lbl">' + label + "</span>" +
-    '<span class="track"><span class="fill" style="width:' + fillPct + '%"></span></span>' +
+    '<span class="meter"><span class="meter-fill" style="width:' + fillPct + '%"></span></span>' +
     '<span class="val">' + valText + "</span></div>";
 }
 
 function sectionRows(container, m, isSide) {
   if (!m.size) {
-    const e = document.createElement("div"); e.className = "empty-note";
+    const e = document.createElement("div"); e.className = "empty";
     e.textContent = isSide ? "(empty)" : "empty — click cards to add";
     container.appendChild(e); return;
   }
@@ -359,11 +342,11 @@ function renderDeck() {
       '</span> lands · <span class="tnum">' + nonland + "</span> nonland</div>" +
     '<div class="substat">' + (total ? landPct + "% lands · avg nonland MV " + avgMv : "empty deck") + "</div>" +
     '<div class="statsec"><span class="meta-label">Mana curve</span><div class="curve">' + curve + "</div></div>" +
-    '<div class="statsec"><span class="meta-label">Types</span>' + (typeRows || '<div class="empty-stat">—</div>') + "</div>" +
+    '<div class="statsec"><span class="meta-label">Types</span>' + (typeRows || '<div class="empty">—</div>') + "</div>" +
     '<div class="statsec"><span class="meta-label">Color pips</span><div class="colors">' +
-      (colorTiles || '<span class="empty-stat">colorless</span>') + "</div></div>" +
+      (colorTiles || '<span class="empty">colorless</span>') + "</div></div>" +
     '<div class="statsec"><span class="meta-label">Opening hand</span>' +
-      (oddsRows || '<div class="empty-stat">—</div>') + "</div>";
+      (oddsRows || '<div class="empty">—</div>') + "</div>";
 
   const list = document.getElementById("decklist");
   list.innerHTML = "";
@@ -419,7 +402,7 @@ async function search() {
 function renderResults(results) {
   const box = document.getElementById("results");
   box.innerHTML = "";
-  if (!results.length) { box.innerHTML = '<span class="empty-note">No matches.</span>'; return; }
+  if (!results.length) { box.innerHTML = '<span class="empty">No matches.</span>'; return; }
   for (const info of results) box.appendChild(tile(info));
 }
 
@@ -448,9 +431,9 @@ function deckContent() {
   };
 }
 function loadEntries(m, arr) { m.clear(); for (const { info, count } of (arr || [])) m.set(info.id, { info, count }); }
-function saveDeck() {
+async function saveDeck() {
   const name = document.getElementById("deckname").value.trim();
-  if (!name) { alert("Name the deck first."); return; }
+  if (!name) { await Arcana.Dialog.alert("Name the deck first."); document.getElementById("deckname").focus(); return; }
   const c = deckContent();
   if (editingId) {
     Arcana.Decks.rename(editingId, name);     // a save commits a new version
@@ -485,10 +468,10 @@ function openIo(mode) {
   ta.value = mode === "export" ? exportText() : "";
   ta.readOnly = false;
   io.dataset.mode = mode;
-  io.classList.add("show");
+  io.hidden = false;
   ta.focus();
 }
-function closeIo() { document.getElementById("io").classList.remove("show"); }
+function closeIo() { document.getElementById("io").hidden = true; }
 function exportText() {
   const name = document.getElementById("deckname").value.trim() || "Untitled";
   let s = "About\nName " + name + "\n\nDeck\n";
@@ -521,7 +504,7 @@ async function ioAction() {
 async function playDeck() {
   const ids = [];
   for (const { info, count } of main.values()) for (let i = 0; i < count; i++) ids.push(info.id);
-  if (ids.length < 7) { alert("Need at least 7 maindeck cards (40–60 recommended)."); return; }
+  if (ids.length < 7) { await Arcana.Dialog.alert("Need at least 7 maindeck cards (40–60 recommended)."); return; }
   const body = { deck: ids };
   const sel = document.getElementById("opponent").value;
   if (sel === "sample") body.opponent = sampleDeck;
@@ -530,10 +513,10 @@ async function playDeck() {
     if (opp.length) body.opponent = opp;
   } // "mirror" -> omit opponent (server mirrors)
   if (body.opponent && body.opponent.length < 7) {
-    alert("Opponent deck has fewer than 7 cards; it will fall back to the sample deck.");
+    await Arcana.Dialog.alert("Opponent deck has fewer than 7 cards; it will fall back to the sample deck.");
   }
   try { await Arcana.Api.newGame(body); window.location = "/"; }
-  catch (e) { alert("Could not start a game with this deck."); }
+  catch (e) { await Arcana.Dialog.alert("Could not start a game with this deck."); }
 }
 
 // ---- pre-download art for the current results + deck (no trickle) ----
@@ -620,7 +603,9 @@ document.getElementById("cacheart").onclick = cacheArt;
 document.getElementById("cacheall").onclick = downloadAllArt;
 pollWarmAll(); // resume the progress display if a download is already running
 document.getElementById("save").onclick = saveDeck;
-document.getElementById("clear").onclick = () => { if (confirm("Clear the deck?")) clearDeck(); };
+document.getElementById("clear").onclick = async () => {
+  if (await Arcana.Dialog.confirm("Clear the deck?", { ok: "Clear", danger: true })) clearDeck();
+};
 document.getElementById("loadsel").onchange = (e) => { if (e.target.value) loadDeck(e.target.value); };
 document.getElementById("play").onclick = playDeck;
 document.getElementById("import").onclick = () => openIo("import");
@@ -631,7 +616,6 @@ document.getElementById("format").onchange = (e) => { curFormat = formats[+e.tar
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeIo(); });
 
 async function init() {
-  Arcana.mountThemeSwitcher(document.getElementById("themeslot"));
   await Arcana.loadGlossary();
   const kwsel = document.getElementById("q-kw");
   for (const k of Object.keys(Arcana.glossary).sort()) { const o = document.createElement("option"); o.textContent = k; kwsel.appendChild(o); }

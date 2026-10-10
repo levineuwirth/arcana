@@ -668,5 +668,174 @@
       deck lists await this so a newer server copy lands before first paint. */
   Decks.ready = pullStore();
 
+  /* ---- Top bar ----------------------------------------------------------- */
+  // One bar on every page, built here: the wordmark and the page's label
+  // (`data-label` on its <header class="topbar">), the one link set, then the
+  // page's own tools (whatever the header held, in order), then the theme
+  // switcher. A page writes only its tools.
+  const NAV = [["/", "Stage"], ["/decks", "My Decks"], ["/deck", "Deckbuilder"]];
+  Arcana.NAV = NAV.map((link) => link.slice());
+
+  Arcana.mountTopbar = function (header) {
+    header = header || document.querySelector("header.topbar");
+    if (!header || header.dataset.mounted) return header;
+    header.dataset.mounted = "1";
+    const tools = Array.from(header.childNodes);
+    const wordmark = document.createElement("span");
+    wordmark.className = "wordmark";
+    wordmark.innerHTML = "Arc<b>ana</b>";
+    const lead = [wordmark];
+    if (header.dataset.label) {
+      const sub = document.createElement("span");
+      sub.className = "sub";
+      sub.textContent = header.dataset.label;
+      lead.push(sub);
+    }
+    const nav = document.createElement("nav");
+    nav.className = "topnav";
+    nav.setAttribute("aria-label", "Pages");
+    const here = location.pathname.replace(/\/+$/, "") || "/";
+    for (const [href, text] of NAV) {
+      const a = document.createElement("a");
+      a.href = href;
+      a.textContent = text;
+      if (href === here) a.setAttribute("aria-current", "page");
+      nav.appendChild(a);
+    }
+    const slot = document.createElement("span");
+    slot.className = "theme-slot";
+    header.replaceChildren(...lead, nav, ...tools, slot);
+    Arcana.mountThemeSwitcher(slot);
+    return header;
+  };
+  // app.js loads at the end of each page's <body>, after its header: build the
+  // bar now, before the page's own script runs.
+  if (document.querySelector("header.topbar")) Arcana.mountTopbar();
+  else document.addEventListener("DOMContentLoaded", () => Arcana.mountTopbar());
+
+  /* ---- Dialog ------------------------------------------------------------ */
+  // In place of window.confirm, prompt and alert: a modal on the shared .modal
+  // shell with role="alertdialog". Focus moves to its field or its accept
+  // button and stays inside (Tab cycles); Escape or a click on the backdrop
+  // cancels; Enter in the field accepts, and Enter or Space on a button
+  // presses it; focus returns where it was. While one is open no other key
+  // handler sees a keystroke (the cockpit's hotkeys listen on document).
+  // Each call returns a Promise; requests made together are shown one at a
+  // time, in order.
+  let dialogs = 0;  // numbers each dialog's element ids
+  // One dialog at a time: a request made while another is open waits its turn
+  // and is shown, with focus, once the one before it has its answer.
+  let dialogQueue = Promise.resolve();
+  function openDialog(options) {
+    const shown = dialogQueue.then(() => showDialog(options));
+    dialogQueue = shown.then(() => undefined, () => undefined);
+    return shown;
+  }
+  function showDialog({ title, message, value, okText, cancelText, danger }) {
+    return new Promise((resolve) => {
+      const before = document.activeElement;
+      const backdrop = document.createElement("div");
+      backdrop.className = "modal dialog-backdrop";
+      const card = document.createElement("div");
+      card.className = "modal-card dialog";
+      card.setAttribute("role", "alertdialog");
+      card.setAttribute("aria-modal", "true");
+      const id = "dialog-" + (++dialogs) + "-" + Date.now().toString(36);
+      if (title) {
+        const h = document.createElement("h2");
+        h.className = "dialog-title";
+        h.id = id + "-title";
+        h.textContent = title;
+        card.appendChild(h);
+        card.setAttribute("aria-labelledby", h.id);
+      }
+      const text = document.createElement("p");
+      text.className = "dialog-message";
+      text.id = id + "-message";
+      text.textContent = message;
+      card.appendChild(text);
+      card.setAttribute("aria-describedby", text.id);
+      if (!title) card.setAttribute("aria-labelledby", text.id);
+      let field = null;
+      if (value !== undefined) {
+        field = document.createElement("input");
+        field.type = "text";
+        field.className = "dialog-input";
+        field.value = value;
+        field.setAttribute("aria-labelledby", text.id);
+        card.appendChild(field);
+      }
+      const foot = document.createElement("div");
+      foot.className = "modal-foot";
+      let cancel = null;
+      if (cancelText) {
+        cancel = document.createElement("button");
+        cancel.type = "button";
+        cancel.className = "ghost";
+        cancel.textContent = cancelText;
+        foot.appendChild(cancel);
+      }
+      const ok = document.createElement("button");
+      ok.type = "button";
+      ok.className = danger ? "danger" : "primary";
+      ok.textContent = okText;
+      foot.appendChild(ok);
+      card.appendChild(foot);
+      backdrop.appendChild(card);
+
+      let settled = false;
+      const finish = (result) => {
+        if (settled) return;
+        settled = true;
+        document.removeEventListener("keydown", onKey, true);
+        backdrop.remove();
+        if (before && typeof before.focus === "function" && document.contains(before)) before.focus();
+        resolve(result);
+      };
+      const accept = () => finish(field ? field.value : true);
+      const decline = () => finish(field ? null : false);
+      ok.onclick = accept;
+      if (cancel) cancel.onclick = decline;
+      backdrop.addEventListener("mousedown", (e) => { if (e.target === backdrop) decline(); });
+      function onKey(e) {
+        e.stopPropagation();
+        if (e.key === "Escape") {
+          e.preventDefault();
+          decline();
+        } else if (e.key === "Enter" && e.target === field) {
+          e.preventDefault();
+          accept();
+        } else if (e.key === "Tab") {
+          const stops = Array.from(card.querySelectorAll("input, button"));
+          const at = stops.indexOf(document.activeElement);
+          const next = at < 0 ? 0 : (at + (e.shiftKey ? -1 : 1) + stops.length) % stops.length;
+          e.preventDefault();
+          stops[next].focus();
+        }
+      }
+      document.addEventListener("keydown", onKey, true);
+      document.body.appendChild(backdrop);
+      if (field) { field.focus(); field.select(); } else ok.focus();
+    });
+  }
+  Arcana.Dialog = {
+    /** Resolves true on accept, false on cancel. `o`: { title, ok, cancel, danger }. */
+    confirm(message, o = {}) {
+      return openDialog({ title: o.title, message, okText: o.ok || "OK",
+                          cancelText: o.cancel || "Cancel", danger: !!o.danger });
+    },
+    /** Resolves the entered text on accept, null on cancel. */
+    prompt(message, value = "", o = {}) {
+      return openDialog({ title: o.title, message, value: String(value), okText: o.ok || "OK",
+                          cancelText: o.cancel || "Cancel" });
+    },
+    /** Resolves once dismissed. */
+    alert(message, o = {}) {
+      return openDialog({ title: o.title, message, okText: o.ok || "OK" }).then(() => undefined);
+    },
+    /** Whether a dialog is open. */
+    isOpen() { return document.querySelector(".dialog-backdrop") !== null; },
+  };
+
   window.Arcana = Arcana;
 })();

@@ -22,6 +22,8 @@ pub mod deckstore;
 pub mod matchmaking;
 #[cfg(test)]
 mod theme_contrast;
+#[cfg(test)]
+mod components_check;
 
 use arcana_ai::information_set::{project, DeckList};
 use arcana_ai::search::{MaterialValue, Playstyle, ValueMcPolicy};

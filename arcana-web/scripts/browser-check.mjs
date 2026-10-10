@@ -35,10 +35,28 @@
 //     holds there: --text, --text-on-glow, --link or --link-hover;
 //   - in the cockpit, lethal poison drawn opaque through its whole pulse,
 //     with the pulse on its ring;
+//   - one top bar built by app.js (A5.2): one wordmark, one theme switcher,
+//     and the one link set (Stage, My Decks, Deckbuilder, in that order) with
+//     aria-current on the page's own link and on no other;
+//   - on each page, once (dark, 1000 px), Arcana.Dialog: a confirm opens as an
+//     alertdialog with focus on its accept button, Tab keeps focus inside,
+//     Escape resolves false, removes it and returns focus where it was; a
+//     prompt resolves its default on Enter and typed text in its place; an
+//     alert closes on Enter; two requests at once show one dialog at a time,
+//     and dismissing the first leaves the second pending until its own
+//     answer; and a keydown listener on document (where the cockpit's hotkeys
+//     listen) sees none of those keystrokes;
+//   - in the cockpit, once (dark, 1000 px): accepting Concede after the legal
+//     list changed under the open confirmation sends the current Concede's
+//     index, and sends nothing once Concede is no longer legal;
+//   - in the deckbuilder, once (dark, 1000 px), with a seeded deck open: every
+//     stat meter's fill is drawn, with a height and a width in proportion to
+//     the share it was given;
 //   - no sideways scroll at 1000 px and wider. At 390 px it reports the
 //     overflow and fails only with --require-narrow (A5.3 makes it a
 //     requirement).
-// --shots DIR writes a PNG per case as <page>-<theme>-<width>.png. For
+// --shots DIR writes a PNG per case as <page>-<theme>-<width>.png, and one
+// with a dialog open as <page>-<theme>-<width>-dialog.png. For
 // screenshots with card art, --online lets the server reach Scryfall and
 // --art-cache DIR gives it a cache to fill and reuse across runs.
 // Exit status 1 on any failure, with the failures listed.
@@ -379,6 +397,170 @@ const SEED_DECKS = `(async () => {
   return Arcana.Decks.list().length;
 })()`;
 
+const LINKS = [["Stage", "/"], ["My Decks", "/decks"], ["Deckbuilder", "/deck"]];
+
+// The shared top bar, as the page renders it.
+async function topBar(cdp, path, fail) {
+  const b = await cdp.eval(`(() => {
+    const bars = document.querySelectorAll("header.topbar");
+    const bar = bars[0];
+    return { bars: bars.length,
+      marks: bar ? bar.querySelectorAll(".wordmark").length : 0,
+      switches: bar ? bar.querySelectorAll(".theme-switch").length : 0,
+      links: bar ? [...bar.querySelectorAll("nav.topnav a")].map((a) =>
+        [a.textContent, a.getAttribute("href"), a.getAttribute("aria-current")]) : [] };
+  })()`);
+  if (b.bars !== 1) fail(`${b.bars} top bars`);
+  if (b.marks !== 1) fail(`${b.marks} wordmarks in the top bar`);
+  if (b.switches !== 1) fail(`${b.switches} theme switchers in the top bar`);
+  const want = LINKS.map(([text, href]) => [text, href, href === path ? "page" : null]);
+  if (JSON.stringify(b.links) !== JSON.stringify(want)) {
+    fail(`top bar links ${JSON.stringify(b.links)}, want ${JSON.stringify(want)}`);
+  }
+}
+
+async function press(cdp, key) {
+  const k = { Escape: ["Escape", 27, ""], Enter: ["Enter", 13, "\r"], Tab: ["Tab", 9, ""] }[key];
+  await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key, code: k[0], windowsVirtualKeyCode: k[1], text: k[2] });
+  await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key, code: k[0], windowsVirtualKeyCode: k[1] });
+  await sleep(50);
+}
+
+// Arcana.Dialog in place of confirm, prompt and alert (A5.2).
+async function dialogCheck(cdp, fail) {
+  await cdp.eval(`(() => {
+    window.__leaks = 0;
+    window.__leak = () => { window.__leaks++; };
+    document.addEventListener("keydown", window.__leak);
+    const first = document.querySelector("nav.topnav a");
+    first.focus();
+    window.__r = "pending";
+    Arcana.Dialog.confirm("Probe the dialog?").then((v) => { window.__r = v; });
+  })()`);
+  await sleep(50);
+  const open = await cdp.eval(`(() => {
+    const d = document.querySelector('[role="alertdialog"]');
+    return { n: document.querySelectorAll('[role="alertdialog"]').length, modal: d && d.getAttribute("aria-modal"),
+             focusOk: !!d && document.activeElement === d.querySelector("button.primary") };
+  })()`);
+  if (open.n !== 1 || open.modal !== "true") fail(`a confirm opened ${open.n} alertdialog(s), aria-modal ${open.modal}`);
+  if (!open.focusOk) fail("a confirm did not focus its accept button");
+  for (let i = 0; i < 3; i++) {
+    await press(cdp, "Tab");
+    if (!(await cdp.eval(`!!document.activeElement.closest('[role="alertdialog"]')`))) fail("Tab left the dialog");
+  }
+  await press(cdp, "Escape");
+  const closed = await cdp.eval(`({ r: window.__r, n: document.querySelectorAll('[role="alertdialog"]').length,
+    back: document.activeElement === document.querySelector("nav.topnav a") })`);
+  if (closed.r !== false || closed.n !== 0) fail(`Escape on a confirm: resolved ${closed.r}, ${closed.n} dialog(s) left`);
+  if (!closed.back) fail("closing the dialog did not return focus");
+  // Each opener returns nothing: an evaluated promise would wait on the answer.
+  await cdp.eval(`(() => { Arcana.Dialog.prompt("Name it:", "abc").then((v) => { window.__r = v; }); })()`);
+  await sleep(50);
+  if (!(await cdp.eval(`document.activeElement && document.activeElement.classList.contains("dialog-input")`))) {
+    fail("a prompt did not focus its field");
+  }
+  // The default is offered selected, as the browser's prompt does: Enter
+  // accepts it, and typing replaces it.
+  await press(cdp, "Enter");
+  const kept = await cdp.eval(`window.__r`);
+  if (kept !== "abc") fail(`Enter on a prompt resolved ${JSON.stringify(kept)}, not its default "abc"`);
+  await cdp.eval(`(() => { Arcana.Dialog.prompt("Name it:", "abc").then((v) => { window.__r = v; }); })()`);
+  await sleep(50);
+  await cdp.send("Input.insertText", { text: "Zed" });
+  await press(cdp, "Enter");
+  const typed = await cdp.eval(`window.__r`);
+  if (typed !== "Zed") fail(`a typed prompt resolved ${JSON.stringify(typed)}, not "Zed"`);
+  await cdp.eval(`(() => { Arcana.Dialog.alert("Noted.").then(() => { window.__r = "dismissed"; }); })()`);
+  await sleep(50);
+  await press(cdp, "Enter");
+  const alerted = await cdp.eval(`({ r: window.__r, n: document.querySelectorAll('[role="alertdialog"]').length })`);
+  if (alerted.r !== "dismissed" || alerted.n !== 0) fail(`Enter on an alert: ${alerted.r}, ${alerted.n} dialog(s) left`);
+  // Two requests at once: one dialog at a time, in order of asking.
+  await cdp.eval(`(() => { window.__q = [];
+    Arcana.Dialog.confirm("First?").then((v) => { window.__q.push(["first", v]); });
+    Arcana.Dialog.confirm("Second?").then((v) => { window.__q.push(["second", v]); }); })()`);
+  await sleep(50);
+  const both = await cdp.eval(`document.querySelectorAll('[role="alertdialog"]').length`);
+  if (both !== 1) fail(`two requests showed ${both} dialogs at once`);
+  await press(cdp, "Escape");
+  const first = await cdp.eval(`({ q: window.__q, n: document.querySelectorAll('[role="alertdialog"]').length,
+    text: (document.querySelector('[role="alertdialog"] .dialog-message') || {}).textContent })`);
+  if (JSON.stringify(first.q) !== '[["first",false]]' || first.n !== 1 || first.text !== "Second?") {
+    fail(`Escape on the first of two dialogs: answers ${JSON.stringify(first.q)}, ${first.n} open, showing ${JSON.stringify(first.text)}`);
+  }
+  await press(cdp, "Enter");
+  const second = await cdp.eval(`window.__q`);
+  if (JSON.stringify(second) !== '[["first",false],["second",true]]') {
+    fail(`the second dialog's own answer: ${JSON.stringify(second)}`);
+  }
+  const leaks = await cdp.eval(`(() => { document.removeEventListener("keydown", window.__leak);
+    if (document.activeElement) document.activeElement.blur(); return window.__leaks; })()`);
+  if (leaks !== 0) fail(`${leaks} keystroke(s) reached a document listener while a dialog was open`);
+}
+
+// The cockpit's Concede confirms first; the legal list may change while it is
+// open, so the index sent is the current Concede's (A5.2 review, P1).
+async function staleConcede(cdp, fail) {
+  const button = `[...document.querySelectorAll("#actions button")].find((b) => b.textContent === "Concede")`;
+  // At the opening mulligan Concede is not among the choices: give the legal
+  // list one and let the page's own renderActions draw its button.
+  await cdp.eval(`(() => { const legal = G.resp.view.legal;
+    if (!legal.some((a) => a.label === "Concede")) {
+      legal.push({ index: Math.max(...legal.map((a) => a.index)) + 1, label: "Concede" });
+      renderActions(G.resp.view);
+    } })()`);
+  if (!(await cdp.eval(`!!${button}`))) { fail("no Concede button to check"); return; }
+  await cdp.eval(`(() => { window.__sent = [];
+    Arcana.Api.action = (i) => { window.__sent.push(i); return Promise.reject("stub"); };
+    ${button}.click(); })()`);
+  await sleep(50);
+  const moved = await cdp.eval(`(() => {
+    const legal = G.resp.view.legal, c = legal.find((a) => a.label === "Concede");
+    const other = legal.find((a) => a !== c), old = c.index;
+    G.resp.view.legal = legal.map((a) => a === c ? { ...a, index: old + 1000 } : a === other ? { ...a, index: old } : a);
+    return { old, now: old + 1000 };
+  })()`);
+  await press(cdp, "Enter");
+  await sleep(50);
+  const sent = await cdp.eval(`window.__sent`);
+  if (JSON.stringify(sent) !== JSON.stringify([moved.now])) {
+    fail(`Concede accepted after the legal list changed sent ${JSON.stringify(sent)}, not the current Concede ${moved.now}`);
+  }
+  await cdp.eval(`${button}.click()`);
+  await sleep(50);
+  await cdp.eval(`G.resp.view.legal = G.resp.view.legal.filter((a) => a.label !== "Concede")`);
+  await press(cdp, "Enter");
+  await sleep(50);
+  const after = await cdp.eval(`window.__sent.length`);
+  if (after !== 1) fail(`Concede accepted after it stopped being legal sent ${after - 1} action(s)`);
+}
+
+// The deckbuilder's stat meters, on a seeded deck (A5.2 review, P2): each
+// fill is drawn, in proportion to the share it was given.
+async function deckMeters(cdp, base, fail) {
+  const id = await cdp.eval(`Arcana.Decks.list()[0].id`);
+  const loaded = cdp.once("Page.loadEventFired", 60000);
+  await cdp.send("Page.navigate", { url: base + "/deck?deck=" + encodeURIComponent(id) });
+  await loaded;
+  await cdp.eval("document.fonts.ready.then(() => new Promise((r) => setTimeout(r, 800)))");
+  const fills = await cdp.eval(`[...document.querySelectorAll("#deckstats .meter-fill")].map((f) => {
+    const r = f.getBoundingClientRect();
+    return { w: r.width, h: r.height, track: f.parentElement.clientWidth, share: parseFloat(f.style.width) };
+  })`);
+  if (shots) {
+    const { data } = await cdp.send("Page.captureScreenshot", { format: "png" });
+    writeFileSync(join(shots, "deckbuilder-dark-1000-deck.png"), Buffer.from(data, "base64"));
+  }
+  if (fills.length < 3) { fail(`only ${fills.length} deck stat meters drawn`); return; }
+  for (const f of fills) {
+    const want = f.track * f.share / 100;
+    if (f.h <= 0 || Math.abs(f.w - want) > 1.5) {
+      fail(`a deck stat meter's fill is ${f.w.toFixed(1)}x${f.h.toFixed(1)} px for ${f.share}% of ${f.track} px`);
+    }
+  }
+}
+
 async function seed(cdp, base) {
   const loaded = cdp.once("Page.loadEventFired", 60000);
   await cdp.send("Page.navigate", { url: base + "/decks" });
@@ -448,12 +630,26 @@ async function checkCase(cdp, base, [pageName, path], theme, [w, h], failures, n
     tally.boxes += measured;
     if (measured < 5) fail(`only ${measured} text boxes measured`);
     if (pageName === "cockpit") await lethalState(cdp, fail);
+    await topBar(cdp, path, fail);
+    // A behavior check that throws (a page left broken) fails its case, not the run.
+    const guard = async (what, run) => { try { await run(); } catch (e) { fail(`${what}: ${e.message.split("\n")[0]}`); } };
+    if (theme === "dark" && w === 1000) await guard("dialog check", () => dialogCheck(cdp, fail));
     for (const e of exceptions) fail("exception: " + e.split("\n")[0]);
     for (const a of failedAssets) fail("request failed: " + a);
     if (shots) {
       const { data } = await cdp.send("Page.captureScreenshot", { format: "png" });
       writeFileSync(join(shots, `${pageName}-${theme}-${w}.png`), Buffer.from(data, "base64"));
+      // The same page with a dialog open, for review (A5.2).
+      await cdp.eval(`(() => { Arcana.Dialog.confirm("Delete this deck? Its forks and variations are kept.",
+        { title: "Delete deck", ok: "Delete", danger: true }); })()`);
+      await sleep(100);
+      const shot = await cdp.send("Page.captureScreenshot", { format: "png" });
+      writeFileSync(join(shots, `${pageName}-${theme}-${w}-dialog.png`), Buffer.from(shot.data, "base64"));
+      await press(cdp, "Escape");
     }
+    // These two change the page (a stubbed action, another URL): last.
+    if (pageName === "cockpit" && theme === "dark" && w === 1000) await guard("Concede check", () => staleConcede(cdp, fail));
+    if (pageName === "deckbuilder" && theme === "dark" && w === 1000) await guard("deck meters", () => deckMeters(cdp, base, fail));
   } finally {
     cdp.listeners.splice(cdp.listeners.indexOf(listener), 1);
     await cdp.send("Page.removeScriptToEvaluateOnNewDocument", { identifier });

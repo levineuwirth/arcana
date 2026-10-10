@@ -8,31 +8,17 @@
 <link rel="stylesheet" href="/theme.css" />
 <link rel="stylesheet" href="/assets/mana.css" />
 <style>
+  /* My Decks is a working page (D15): the cockpit's register on a flat page.
+     The top bar, buttons, badges, modal, identity dots and empty state are
+     shared (theme.css); this keeps the page's layout and its own variants. */
   html, body { height: 100%; }
-  body {
-    margin: 0; min-height: 100dvh; display: flex; flex-direction: column;
-    background:
-      radial-gradient(1100px 520px at 50% -10%, color-mix(in srgb, var(--link) 10%, transparent), transparent 70%),
-      var(--bg);
-    color: var(--text); font-family: var(--font-sans);
-  }
-  .hall { flex: 1; width: min(1180px, 94vw); margin: 0 auto; padding: 26px 0 48px; }
-  .hall-title { text-align: center; margin: 6px 0 22px; }
-  .hall-title h1 {
-    font-family: var(--font-serif); font-weight: 600; letter-spacing: .42em;
-    text-transform: uppercase; font-size: 24px; margin: 0;
-    text-shadow: 0 0 24px color-mix(in srgb, var(--link) var(--glow-title), transparent);
-  }
-  /* The hall glows, so its quieter text takes --text-on-glow (theme.css). */
-  .hall-title p { color: var(--text-on-glow); margin: 6px 0 0; font-size: 13px; letter-spacing: .05em; }
+  body { min-height: 100dvh; display: flex; flex-direction: column; }
+  .hall { flex: 1; width: min(1180px, 94vw); margin: 0 auto; padding: 22px 0 48px; }
+  .hall-title { margin: 4px 0 16px; }
+  .hall-title h1 { font-size: 24px; margin: 0; }
+  .hall-title p { color: var(--text-muted); margin: 4px 0 0; font-size: 13px; }
 
-  .toolbar { display: flex; justify-content: center; gap: 12px; margin-bottom: 22px; }
-  .btn {
-    font: inherit; cursor: pointer; color: var(--text); background: var(--bg-offset);
-    border: 1px solid var(--border); border-radius: var(--radius-control); padding: 9px 16px;
-  }
-  .btn.primary { background: var(--link); color: var(--bg); border-color: var(--link); font-weight: 600; }
-  .btn:hover { border-color: var(--border-muted); }
+  .toolbar { display: flex; gap: 12px; margin-bottom: 22px; }
 
   /* a family: a root deck + its forks/variations */
   .family { margin: 0 0 26px; }
@@ -40,11 +26,7 @@
   .children { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
   .children:empty::before { content: "No forks or variations yet."; color: var(--text-faint); font-size: 12px; font-style: italic; }
 
-  .deck {
-    background: var(--bg-offset); border: 1px solid var(--border); border-radius: var(--radius-panel);
-    overflow: hidden; display: flex; flex-direction: column; --faction: var(--link);
-  }
-  .deck.root { box-shadow: var(--shadow-float); }
+  .deck.panel { overflow: hidden; display: flex; flex-direction: column; --faction: var(--link); }
   .deck .banner { height: 4px; background: var(--faction); }
   .deck .art { aspect-ratio: 1.5; background: var(--bg-nav); overflow: hidden; }
   .deck .art img { width: 100%; height: 100%; object-fit: cover; }
@@ -53,16 +35,6 @@
   .deck .nm { font-family: var(--font-serif); font-size: 17px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .deck.child .nm { font-size: 15px; }
   .meta { display: flex; align-items: center; gap: 10px; color: var(--text-muted); font-size: 12px; flex-wrap: wrap; }
-  .pips { display: inline-flex; gap: 5px; }
-  .pip { width: 13px; height: 13px; border-radius: 50%; border: 1px solid rgba(0,0,0,.35);
-         box-shadow: inset 0 1px 2px rgba(255,255,255,.25), 0 0 6px currentColor; }
-  .pip.W{background:var(--mana-w);color:var(--mana-w);} .pip.U{background:var(--mana-u);color:var(--mana-u);}
-  .pip.B{background:var(--mana-b);color:var(--mana-b);} .pip.R{background:var(--mana-r);color:var(--mana-r);}
-  .pip.G{background:var(--mana-g);color:var(--mana-g);} .pip.C{background:var(--mana-c);color:var(--mana-c);}
-  .badge { font-variant-caps: all-small-caps; letter-spacing: .1em; font-size: 11px; padding: 2px 7px; border-radius: var(--radius-pill);
-           border: 1px solid var(--border-muted); color: var(--text-faint); }
-  .badge.native { color: var(--link); border-color: color-mix(in srgb, var(--link) 50%, var(--border)); }
-  .badge.fork, .badge.variation { color: var(--text-muted); }
   .ddiff { font-size: 11px; color: var(--text-faint); }
   .ddiff .add { color: var(--added); } .ddiff .rem { color: var(--removed); }
 
@@ -72,26 +44,15 @@
   .actions a.primary { color: var(--link); font-weight: 600; }
   .actions a.danger:hover { color: var(--danger); }
 
-  .empty { text-align: center; color: var(--text-on-glow); padding: 60px 0; }
   .muted { color: var(--text-muted); }
 
   /* ---- inspector: version history + compare ---- */
-  .modal { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center;
-           background: color-mix(in srgb, var(--bg) 78%, transparent); padding: 24px; }
-  .modal[hidden] { display: none; }
-  .modal-card { width: min(960px, 96vw); max-height: 90vh; overflow: auto; background: var(--bg-offset);
-                border: 1px solid var(--border); border-radius: var(--radius-panel); box-shadow: var(--shadow-float); }
-  .modal-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--border-muted);
-                position: sticky; top: 0; background: var(--bg-offset); }
-  .modal-head b { font-family: var(--font-serif); font-size: 17px; }
-  .modal-head .spacer { flex: 1; }
-  .modal-body { display: grid; grid-template-columns: 1fr 300px; gap: 20px; padding: 18px; }
-  @media (max-width: 740px) { .modal-body { grid-template-columns: 1fr; } }
-  .section-label { font-family: var(--font-serif); text-transform: uppercase; letter-spacing: .22em; font-size: 12px;
-                   color: var(--text-muted); margin: 0 0 10px; }
+  #inspect .modal-card { width: min(960px, 96vw); }
+  #inspect .modal-body { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
+  @media (max-width: 740px) { #inspect .modal-body { grid-template-columns: 1fr; } }
+  #inspect .meta-label { display: block; margin: 0 0 10px; }
   .cmp-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
-  .cmp-controls select { background: var(--bg-nav); color: var(--text); border: 1px solid var(--border);
-                         border-radius: var(--radius-control); padding: 7px 9px; max-width: 240px; }
+  .cmp-controls select { max-width: 240px; }
   .diffblock { margin-bottom: 16px; }
   .diffgrid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
   @media (max-width: 620px) { .diffgrid { grid-template-columns: 1fr; } }
@@ -101,17 +62,12 @@
   .diffcol .none { color: var(--text-faint); font-size: 12px; font-style: italic; }
   .ver { display: flex; align-items: baseline; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--border-muted); flex-wrap: wrap; }
   .ver .vlabel { font-size: 13px; } .ver .spacer { flex: 1; }
-  .btn.sm { padding: 4px 9px; font-size: 12px; }
 </style>
 </head>
 <body>
-  <div class="topbar">
-    <span class="wordmark">Arc<b>ana</b></span><span class="sub">my decks</span>
+  <header class="topbar" data-label="my decks">
     <span class="spacer"></span>
-    <a class="ghost" href="/">Stage →</a>
-    <a class="ghost" href="/deck">Deckbuilder →</a>
-    <span id="themeslot"></span>
-  </div>
+  </header>
 
   <main class="hall">
     <div class="hall-title">
@@ -119,7 +75,7 @@
       <p>Your collection — fork a list, spin variations, and track the lineage.</p>
     </div>
     <div class="toolbar">
-      <button class="btn primary" id="new">+ New deck</button>
+      <button class="primary" id="new">+ New deck</button>
       <a class="btn" href="/deck">Open the deckbuilder</a>
     </div>
     <div id="families"></div>
@@ -130,11 +86,11 @@
       <div class="modal-head">
         <b id="ins-title">Deck</b>
         <span class="spacer"></span>
-        <button class="btn ghost sm" id="ins-close">✕ Close</button>
+        <button class="ghost sm" id="ins-close">✕ Close</button>
       </div>
       <div class="modal-body">
         <div>
-          <div class="section-label">Compare</div>
+          <div class="meta-label">Compare</div>
           <div class="cmp-controls">
             <label>Base <select id="cmp-a"></select></label>
             <span class="muted">→</span>
@@ -143,7 +99,7 @@
           <div id="cmp-result"></div>
         </div>
         <div>
-          <div class="section-label">Version history</div>
+          <div class="meta-label">Version history</div>
           <div id="ins-versions"></div>
         </div>
       </div>
@@ -153,7 +109,6 @@
   <script src="/app.js"></script>
   <script>
   const A = window.Arcana;
-  A.mountThemeSwitcher && A.mountThemeSwitcher(document.getElementById("themeslot"));
 
   const MANA_VAR = { W:"--mana-w", U:"--mana-u", B:"--mana-b", R:"--mana-r", G:"--mana-g", C:"--mana-c" };
   const identityCache = new Map(); // deckId -> view
@@ -193,7 +148,7 @@
   function deckCard(deck, isRoot) {
     const view = identityCache.get(deck.id) || { identity: { name: deck.name }, colors: [] };
     const el = document.createElement("div");
-    el.className = "deck " + (isRoot ? "root" : "child");
+    el.className = "deck panel " + (isRoot ? "root" : "child");
     const f = (view.colors && view.colors[0]) ? "var(" + MANA_VAR[view.colors[0]] + ")" : "var(--link)";
     el.style.setProperty("--faction", f);
 
@@ -210,7 +165,9 @@
     const body = document.createElement("div"); body.className = "body";
     const nm = document.createElement("div"); nm.className = "nm";
     nm.appendChild(document.createTextNode(view.identity.name || deck.name));
-    const badge = document.createElement("span"); badge.className = "badge " + deck.relation; badge.textContent = deck.relation;
+    const badge = document.createElement("span");
+    badge.className = "badge " + deck.relation + (deck.relation === "native" ? " accent" : "");
+    badge.textContent = deck.relation;
     nm.appendChild(badge);
     body.appendChild(nm);
 
@@ -251,26 +208,27 @@
     return el;
   }
 
-  function doFork(deck, relation) {
+  async function doFork(deck, relation) {
     const def = deck.name + (relation === "variation" ? " (variation)" : " (fork)");
-    const name = prompt(relation === "variation" ? "Name this variation:" : "Name this fork:", def);
+    const name = await A.Dialog.prompt(relation === "variation" ? "Name this variation:" : "Name this fork:", def,
+                                       { ok: relation === "variation" ? "Create variation" : "Fork" });
     if (name == null) return;
     A.Decks.fork(deck.id, name.trim() || def, relation);
     refresh();
   }
-  function doRename(deck) {
-    const name = prompt("Rename deck:", deck.name);
+  async function doRename(deck) {
+    const name = await A.Dialog.prompt("Rename deck:", deck.name, { ok: "Rename" });
     if (name == null) return;
     A.Decks.rename(deck.id, name.trim() || deck.name);
     identityCache.delete(deck.id);
     refresh();
   }
-  function doDelete(deck) {
+  async function doDelete(deck) {
     const kids = A.Decks.family(deck.id).length - 1;
     const msg = kids > 0
       ? "Delete \"" + deck.name + "\"? Its " + kids + " fork(s)/variation(s) will be kept and re-parented."
       : "Delete \"" + deck.name + "\"?";
-    if (!confirm(msg)) return;
+    if (!(await A.Dialog.confirm(msg, { ok: "Delete", danger: true }))) return;
     A.Decks.remove(deck.id); identityCache.delete(deck.id); refresh();
   }
   function doExport(deck) {
@@ -283,8 +241,8 @@
     a.href = URL.createObjectURL(blob); a.download = deck.name.replace(/[^\w.-]+/g, "_") + ".txt";
     a.click(); URL.revokeObjectURL(a.href);
   }
-  function doNew() {
-    const name = prompt("Name your new deck:", "New deck");
+  async function doNew() {
+    const name = await A.Dialog.prompt("Name your new deck:", "New deck", { ok: "Create" });
     if (name == null) return;
     const id = A.Decks.create(name.trim() || "New deck", [], []);
     location.href = "/deck?deck=" + id; // open the empty deck to build it
@@ -294,7 +252,7 @@
     const wrap = document.getElementById("families");
     const decks = A.Decks.list();
     if (!decks.length) {
-      wrap.innerHTML = '<div class="empty">No decks yet.<br>Create one, or build a list in the deckbuilder.</div>';
+      wrap.innerHTML = '<div class="empty block">No decks yet.<br>Create one, or build a list in the deckbuilder.</div>';
       return;
     }
     // Warm identities (parallel) so cards paint with colors/portrait at once.
@@ -364,7 +322,7 @@
   function diffBlock(label, aC, bC) {
     const d = A.Decks.diff(aC, bC); // B relative to A
     const wrap = document.createElement("div"); wrap.className = "diffblock";
-    const h = document.createElement("div"); h.className = "section-label"; h.textContent = label; wrap.appendChild(h);
+    const h = document.createElement("div"); h.className = "meta-label"; h.textContent = label; wrap.appendChild(h);
     if (!d.added.length && !d.removed.length && !d.changed.length) {
       const e = document.createElement("div"); e.className = "muted"; e.textContent = "No differences."; wrap.appendChild(e); return wrap;
     }
@@ -399,7 +357,7 @@
       const sp = document.createElement("span"); sp.className = "spacer";
       row.append(lab, meta, sp);
       if (!isHead) {
-        const b = document.createElement("button"); b.className = "btn ghost sm"; b.textContent = "Restore";
+        const b = document.createElement("button"); b.className = "ghost sm"; b.textContent = "Restore";
         b.onclick = () => {
           A.Decks.restore(deck.id, v.vid); identityCache.delete(deck.id);
           const d2 = A.Decks.get(deck.id);

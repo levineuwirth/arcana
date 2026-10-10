@@ -83,22 +83,15 @@
   .faction-name input::placeholder { color: var(--text-on-glow); opacity: 1; }
   .faction-name input:focus { border-color: var(--border) !important; background: var(--bg-nav) !important; padding-left: 11px !important; }
 
-  .pips { display: inline-flex; gap: 6px; align-items: center; }
-  .pip { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(0,0,0,.35);
-         box-shadow: inset 0 1px 2px rgba(255,255,255,.25), 0 0 8px currentColor; }
-  .pip.W { background: var(--mana-w); color: var(--mana-w); }
-  .pip.U { background: var(--mana-u); color: var(--mana-u); }
-  .pip.B { background: var(--mana-b); color: var(--mana-b); }
-  .pip.R { background: var(--mana-r); color: var(--mana-r); }
-  .pip.G { background: var(--mana-g); color: var(--mana-g); }
-  .pip.C { background: var(--mana-c); color: var(--mana-c); }
+  /* Identity dots are shared (theme.css); on the Stage they are larger and
+     keep their glow, part of the hall's atmosphere (D15). */
+  .throne .pips > .pip, .foe .pips > .pip {
+    --pip: 16px; box-shadow: inset 0 1px 2px rgba(255,255,255,.25), 0 0 8px currentColor;
+  }
 
   .meta-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; color: var(--text-muted); font-size: 13px; }
-  .tag { font-variant-caps: all-small-caps; letter-spacing: .12em; font-size: 13px; color: var(--text-muted);
-         border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 3px 9px; }
+  /* Tags are shared badges; a rival's play style is the accent one. */
   .foe .ftr .tags { display: flex; gap: 6px; }
-  /* Play-style tag: tinted so a rival's temperament reads at a glance. */
-  .tag.style { color: var(--link); border-color: color-mix(in srgb, var(--link) 45%, var(--border)); }
 
   /* ---- Foe gallery -------------------------------------------------------- */
   .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(186px, 1fr)); gap: 14px; }
@@ -125,16 +118,8 @@
     justify-content: center; padding: 6px 0;
   }
   .begin-wrap { text-align: center; padding: 8px 0 4px; }
-  .begin {
-    font-family: var(--font-serif); text-transform: uppercase; letter-spacing: .3em;
-    font-size: 18px; color: var(--bg); background: var(--link);
-    border: none; border-radius: var(--radius-pill); padding: 16px 46px; cursor: pointer;
-    box-shadow: 0 0 30px color-mix(in srgb, var(--link) 50%, transparent);
-    transition: transform var(--transition-fast), box-shadow var(--transition-fast), filter var(--transition-fast);
-  }
-  .begin:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.08);
-    box-shadow: 0 0 44px color-mix(in srgb, var(--link) 65%, transparent); }
-  .begin:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+  /* The Begin button is the shared primary at its large size. */
+  .begin-wrap .begin { min-width: 220px; }
   .begin-hint { margin-top: 10px; color: var(--text-on-glow); font-size: 12px; min-height: 1.2em; }
   /* Duel-a-friend band */
   .friend-band { gap: 18px; }
@@ -147,7 +132,7 @@
   }
 
   .muted { color: var(--text-muted); }
-  .throne .meta-row, .throne .muted, .throne .tag:not(.style) { color: var(--text-on-glow); }
+  .throne .meta-row, .throne .muted, .throne .badge:not(.accent) { color: var(--text-on-glow); }
   /* curtain transition into the duel */
   .curtain { position: fixed; inset: 0; background: var(--bg); opacity: 0; pointer-events: none;
              transition: opacity .5s ease; z-index: 50; display: flex; align-items: center; justify-content: center; }
@@ -157,13 +142,9 @@
 </style>
 </head>
 <body>
-  <div class="topbar">
-    <span class="wordmark">Arc<b>ana</b></span>
+  <header class="topbar">
     <span class="spacer"></span>
-    <a class="ghost" href="/decks">My Decks →</a>
-    <a class="ghost" href="/deck">Deckbuilder →</a>
-    <span id="themeslot"></span>
-  </div>
+  </header>
 
   <main class="hall">
     <div class="hall-title">
@@ -184,7 +165,7 @@
           </div>
           <div class="meta-row">
             <span class="pips" id="your-pips"></span>
-            <span class="tag" id="your-arch-tag" style="display:none"></span>
+            <span class="badge" id="your-arch-tag" style="display:none"></span>
             <span class="muted" id="your-count"></span>
           </div>
           <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px;">
@@ -236,7 +217,7 @@
         </div>
       </div>
       <div class="begin-wrap">
-        <button class="begin" id="begin" disabled>Enter the Duel</button>
+        <button class="primary lg begin" id="begin" disabled>Enter the Duel</button>
         <div class="begin-hint" id="hint">Pick your deck and a rival to begin.</div>
       </div>
     </section>
@@ -265,7 +246,6 @@
   <script src="/app.js"></script>
   <script>
   const A = window.Arcana;
-  A.mountThemeSwitcher && A.mountThemeSwitcher(document.getElementById("themeslot"));
 
   // ---- state ----
   const G = {
@@ -396,11 +376,11 @@
     const ftr = document.createElement("div"); ftr.className = "ftr";
     const pips = document.createElement("span"); pips.className = "pips"; renderPips(pips, p.colors);
     const tags = document.createElement("span"); tags.className = "tags";
-    const diff = document.createElement("span"); diff.className = "tag"; diff.textContent = p.difficulty;
+    const diff = document.createElement("span"); diff.className = "badge"; diff.textContent = p.difficulty;
     tags.append(diff);
     if (p.playstyle) {
       const style = document.createElement("span");
-      style.className = "tag style"; style.textContent = p.playstyle;
+      style.className = "badge accent"; style.textContent = p.playstyle;
       tags.append(style);
     }
     ftr.append(pips, tags);
