@@ -23,7 +23,7 @@ pub mod matchmaking;
 #[cfg(test)]
 mod theme_contrast;
 
-use arcana_ai::information_set::project;
+use arcana_ai::information_set::{project, DeckList};
 use arcana_ai::search::{MaterialValue, Playstyle, ValueMcPolicy};
 use arcana_ai::session::{Seat, Session, Turn};
 use arcana_core::actions::Action;
@@ -250,8 +250,9 @@ fn library_stats(state: &GameState, reg: &CardRegistry, seat: PlayerId) -> Libra
 /// One ranked legal action for the cockpit's "suggested lines" panel: the human
 /// action `index` (the same index `/action` consumes), its readable `label`, the
 /// mean value-MC rollout `value` (~[-1, 1] from the human's seat) and its
-/// calibrated `win_pct`. Sorted by value descending; the top row is the bot's
-/// own pick (shared scoring kernel — see `arcana_ai::search::rank_actions`).
+/// calibrated `win_pct`. Sorted by value descending. The search is the bot's,
+/// on sampled worlds (`arcana_ai::search::ValueMcPolicy::rank_actions`), at
+/// the panel's own budget and seed.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Suggestion {
     pub index: usize,
@@ -933,30 +934,37 @@ impl GameCore {
 
 impl GameCore {
     /// Build the snappy bot policy recommended for interactive play (Normal).
-    fn make_bot(seed: u64) -> Seat {
-        Self::make_bot_with_difficulty(seed, Difficulty::Normal)
+    fn make_bot(seed: u64, decks: Vec<DeckList>) -> Seat {
+        Self::make_bot_with_difficulty(seed, Difficulty::Normal, decks)
     }
 
     /// Bot policy at a chosen [`Difficulty`] (balanced play-style) — the dial
     /// scales the Monte-Carlo search budget. See [`make_bot_styled`](Self::make_bot_styled).
-    fn make_bot_with_difficulty(seed: u64, difficulty: Difficulty) -> Seat {
-        Self::make_bot_styled(seed, difficulty, Playstyle::Balanced)
+    fn make_bot_with_difficulty(seed: u64, difficulty: Difficulty, decks: Vec<DeckList>) -> Seat {
+        Self::make_bot_styled(seed, difficulty, Playstyle::Balanced, decks)
     }
 
-    /// Bot policy at a chosen difficulty AND play-style. Difficulty scales the
-    /// Monte-Carlo search budget (rollouts / depth cap / breadth); the
-    /// [`Playstyle`] picks the value leaf the search maximizes, so rivals whose
-    /// decks want to race / stabilize / grind actually play that way. Even "Hard"
-    /// stays light enough to answer an HTTP request promptly.
-    fn make_bot_styled(seed: u64, difficulty: Difficulty, style: Playstyle) -> Seat {
+    /// Bot policy at a chosen difficulty AND play-style. See [`bot_policy`](Self::bot_policy).
+    fn make_bot_styled(seed: u64, difficulty: Difficulty, style: Playstyle, decks: Vec<DeckList>) -> Seat {
+        Seat::Bot(Box::new(Self::bot_policy(seed, difficulty, style, decks)))
+    }
+
+    /// The bot's search. Difficulty scales the Monte-Carlo search budget
+    /// (rollouts / depth cap / breadth); the [`Playstyle`] picks the value leaf
+    /// the search maximizes, so rivals whose decks want to race / stabilize /
+    /// grind actually play that way. Even "Hard" stays light enough to answer an
+    /// HTTP request promptly. It rolls out from worlds sampled from what its
+    /// seat can see, never from the true state: `decks` are the seats' starting
+    /// decklists in seat order, which it is given, as at an open-decklist event,
+    /// but not the opponent's hand or either library's order.
+    fn bot_policy(seed: u64, difficulty: Difficulty, style: Playstyle, decks: Vec<DeckList>) -> ValueMcPolicy {
         let (rollouts, cap, candidates) = match difficulty {
             Difficulty::Easy => (2, 15, 6),
             Difficulty::Normal => (6, 25, 10),
             Difficulty::Hard => (20, 40, 16),
         };
-        let policy = ValueMcPolicy::with_budget(
-            style.leaf(), seed ^ 0xA5EED, rollouts, cap, candidates);
-        Seat::Bot(Box::new(policy))
+        ValueMcPolicy::sampled_with_budget(
+            style.leaf(), seed ^ 0xA5EED, rollouts, cap, candidates, decks)
     }
 
     /// Build a game from a [`MatchConfig`] (the World Stage's output). The
@@ -1001,9 +1009,9 @@ impl GameCore {
         // The rival plays a style suited to its deck (race / stabilize / grind),
         // derived server-side so no config/frontend change is needed.
         let style = derive_playstyle(reg, &opp_deck);
-        let seats = vec![Seat::Human, Self::make_bot_styled(seed, difficulty, style)];
-        let session =
-            Session::new_first_player(vec![human_deck, opp_deck], reg, seats, seed, first);
+        let decks = vec![human_deck, opp_deck];
+        let seats = vec![Seat::Human, Self::make_bot_styled(seed, difficulty, style, decks.clone())];
+        let session = Session::new_first_player(decks, reg, seats, seed, first);
         Ok(Self { reg, events_seen: Self::fresh_event_cursor(&session), session, legal: Vec::new(), awaiting: None })
     }
 
@@ -1024,8 +1032,9 @@ impl GameCore {
     pub fn new_with_decks(
         reg: &'static CardRegistry, seed: u64, human: Vec<CardId>, opponent: Vec<CardId>,
     ) -> Self {
-        let seats = vec![Seat::Human, Self::make_bot(seed)];
-        let session = Session::new(vec![human, opponent], reg, seats, seed);
+        let decks = vec![human, opponent];
+        let seats = vec![Seat::Human, Self::make_bot(seed, decks.clone())];
+        let session = Session::new(decks, reg, seats, seed);
         Self { reg, events_seen: Self::fresh_event_cursor(&session), session, legal: Vec::new(), awaiting: None }
     }
 
@@ -1190,14 +1199,17 @@ impl GameCore {
     }
 
     /// Rank the human's current legal actions by value-MC lookahead for the
-    /// cockpit's "suggested lines" panel (see `arcana_ai::search::rank_actions`).
-    /// Returns `[]` unless the human faces a real (≥2-way) choice. `deep` trades
-    /// a bigger rollout budget for a closer look (the panel's "deepen" control).
+    /// cockpit's "suggested lines" panel (see
+    /// `arcana_ai::search::ValueMcPolicy::rank_actions`). Returns `[]` unless
+    /// the human faces a real (≥2-way) choice. `deep` trades a bigger rollout
+    /// budget for a closer look (the panel's "deepen" control).
     ///
     /// Reads the cached `legal` from the last [`snapshot`](Self::snapshot) (same
-    /// invariant `/action` relies on) and the true [`session`](Session) state, so
-    /// rollouts are perfect-information from the human's seat — a documented
-    /// simplification (the rollout engine sees the opponent's hidden cards).
+    /// invariant `/action` relies on). Rollouts start from worlds sampled from
+    /// what the seat can see, as the bot's do: both starting decklists are
+    /// treated as public, the opponent's hand and either library's order are
+    /// not, so in a networked duel neither player's panel reads the other's
+    /// hand.
     pub fn suggest(&self, deep: bool) -> Vec<Suggestion> {
         self.suggest_for(HUMAN, deep)
     }
@@ -1212,10 +1224,11 @@ impl GameCore {
         let state = self.session.state();
         // Snappy auto budget vs a heavier "deepen" budget.
         let (rollouts, cap, candidates) = if deep { (20, 40, 16) } else { (8, 30, 12) };
-        arcana_ai::search::rank_actions(
-            state, self.reg, seat, &self.legal, &MaterialValue,
-            rollouts, cap, candidates, SUGGEST_SEED,
+        ValueMcPolicy::sampled_with_budget(
+            Box::new(MaterialValue), SUGGEST_SEED, rollouts, cap, candidates,
+            self.session.record().decks.clone(),
         )
+        .rank_actions(state, self.reg, seat, &self.legal)
         .into_iter()
         .map(|s| Suggestion {
             index: s.index,
@@ -2092,6 +2105,62 @@ mod tests {
                 assert_eq!(sa.view.players[p].hand_count, sb.view.players[p].hand_count,
                     "same hand size for player {p}");
             }
+        }
+    }
+
+    /// The bot never rolls out from the true state: at every difficulty and
+    /// play-style its search samples worlds from what its seat can see.
+    #[test]
+    fn the_bot_searches_sampled_worlds() {
+        let reg = leaked_catalog();
+        let decks = vec![arcana_cards::sample_deck(reg, 3), arcana_cards::sample_deck(reg, 9)];
+        for difficulty in [Difficulty::Easy, Difficulty::Normal, Difficulty::Hard] {
+            for style in [Playstyle::Aggressive, Playstyle::Balanced, Playstyle::Controlling] {
+                assert!(GameCore::bot_policy(7, difficulty, style, decks.clone()).is_sampled(),
+                    "{difficulty:?} {style:?} rolls out from the true state");
+            }
+        }
+    }
+
+    /// The suggestions panel ranks from worlds sampled from the seat's view,
+    /// with the session's decklists in seat order: at a mid-game decision its
+    /// lines are exactly a sampled policy's ranking at the panel's seed and
+    /// budget, and not the true-state ranking, which sees the opponent's hand.
+    /// With the decklists misordered, `determinize`'s consistency check fails
+    /// at this decision (the visible cards are not in the wrong lists).
+    #[test]
+    fn suggestions_rank_from_sampled_worlds() {
+        let reg = leaked_catalog();
+        let (human, opponent) = (arcana_cards::sample_deck(reg, 3), arcana_cards::sample_deck(reg, 9));
+        let mut core = GameCore::new_with_decks(reg, 5, human.clone(), opponent.clone());
+        let mut cur = core.snapshot();
+        for _ in 0..200 {
+            if cur.view.game_over.is_some() || (cur.view.turn >= 3 && cur.view.legal.len() >= 3) {
+                break;
+            }
+            let idx = cur.view.legal.iter()
+                .position(|a| a.label != "Concede" && a.label != "Mulligan (draw a new hand)")
+                .unwrap_or(0);
+            cur = core.apply_index(idx).expect("a legal index always applies");
+        }
+        assert!(cur.view.game_over.is_none() && cur.view.turn >= 3 && core.legal.len() >= 3,
+            "the game reaches a mid-game decision");
+        let state = core.session.state().clone();
+        let legal = core.legal.clone();
+        let lines = |ranked: Vec<arcana_ai::search::ScoredAction>| -> Vec<(usize, u32)> {
+            ranked.iter().map(|s| (s.index, s.value.to_bits())).collect()
+        };
+        for (deep, (rollouts, cap, candidates)) in [(false, (8, 30, 12)), (true, (20, 40, 16))] {
+            let panel: Vec<(usize, u32)> = core.suggest(deep).iter()
+                .map(|s| (s.index, s.value.to_bits())).collect();
+            let sampled = |decks: Vec<DeckList>| lines(ValueMcPolicy::sampled_with_budget(
+                Box::new(MaterialValue), SUGGEST_SEED, rollouts, cap, candidates, decks)
+                .rank_actions(&state, reg, HUMAN, &legal));
+            assert_eq!(panel, sampled(vec![human.clone(), opponent.clone()]), "deep {deep}");
+            let truth = lines(ValueMcPolicy::with_budget(
+                Box::new(MaterialValue), SUGGEST_SEED, rollouts, cap, candidates)
+                .rank_actions(&state, reg, HUMAN, &legal));
+            assert_ne!(panel, truth, "deep {deep}: the panel matches the true-state ranking");
         }
     }
 }
