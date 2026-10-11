@@ -1,0 +1,10 @@
+
+vmc-material vs vmc-material-sampled: point-rate of vmc-material, 5 decks x 216 games
+  UW Spirit Aggro [23729_364730]   point-rate 0.542 [0.475, 0.608]  w/d/l 117/0/99  5.8 s/game, max 18.0
+  Golgari Scales [23743_364886]    point-rate 0.509 [0.442, 0.576]  w/d/l 110/0/106  3.5 s/game, max 9.2
+  Hardened Scales [23846_365831]   point-rate 0.500 [0.433, 0.567]  w/d/l 108/0/108  3.9 s/game, max 12.2
+  Rakdos Aggro [24126_368389]      point-rate 0.509 [0.442, 0.576]  w/d/l 110/0/106  3.8 s/game, max 25.7
+  Red Deck Wins [24148_368536]     point-rate 0.454 [0.387, 0.520]  w/d/l 98/0/118  4.0 s/game, max 17.1
+  ALL (seed blocks)                point-rate 0.503 [0.467, 0.539]  w/d/l 543/0/537  n=1080
+
+DECISIONS {"figures": {"budgets": {"sampled": {"decks": {"Golgari Scales [23743_364886]": {"hi": 0.5760832434203161, "lo": 0.44243527509820246, "max_s": 9.21, "mean_s": 3.5069444444444446, "rate": 0.5092592592592593, "rate_exact": "55/108", "wdl": [110, 0, 106]}, "Hardened Scales [23846_365831]": {"hi": 0.5668354452681064, "lo": 0.4331645547318936, "max_s": 12.22, "mean_s": 3.895462962962963, "rate": 0.5, "rate_exact": "1/2", "wdl": [108, 0, 108]}, "Rakdos Aggro [24126_368389]": {"hi": 0.5760832434203161, "lo": 0.44243527509820246, "max_s": 25.67, "mean_s": 3.793611111111111, "rate": 0.5092592592592593, "rate_exact": "55/108", "wdl": [110, 0, 106]}, "Red Deck Wins [24148_368536]": {"hi": 0.5202520291406694, "lo": 0.38715537826673807, "max_s": 17.1, "mean_s": 4.041018518518519, "rate": 0.4537037037037037, "rate_exact": "49/108", "wdl": [98, 0, 118]}, "UW Spirit Aggro [23729_364730]": {"hi": 0.6082696401164416, "lo": 0.47506369321689174, "max_s": 17.99, "mean_s": 5.782962962962962, "rate": 0.5416666666666666, "rate_exact": "13/24", "wdl": [117, 0, 99]}}, "games": 1080, "hi": 0.5389741216351617, "lo": 0.46658143392039386, "rate": 0.5027777777777778, "rate_exact": "181/360", "wdl": [543, 0, 537]}}, "differences": {}}, "flags": {"E3_direction": "unresolved", "I1": false, "I2": true}}
