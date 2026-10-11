@@ -79,7 +79,9 @@ class Base(unittest.TestCase):
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
                 code = field.main(argv + list(extra))
-            return code, out.getvalue()
+            # Diagnostics name files; mask the random directory, whose name
+            # can contain a word assert_no_outcome refuses ("rho").
+            return code, out.getvalue().replace(tmp, "<tmp>")
 
     def assert_no_outcome(self, text):
         for word in ("rho", "point-rate", "s_X", "DECISIONS", "ranking"):
