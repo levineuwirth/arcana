@@ -88,3 +88,25 @@ fn targeted_dies_trigger_survives_the_queue_drain() {
     assert_eq!(s.player(0).life, 21, "Blood Artist's controller should gain 1 life");
     assert!(s.lki_held.is_empty(), "held LKI should be released once the stack is empty");
 }
+
+/// A dies trigger that counts what was on its source reads the source's
+/// last-known information: Hangarback Walker with two +1/+1 counters makes
+/// two Thopters when it dies (A1.5m; the graveyard card has no counters).
+#[test]
+fn dies_trigger_counts_its_sources_last_known_counters() {
+    use arcana_core::types::CounterKind;
+    let mut registry = CardRegistry::new();
+    let walker = arcana_cards::ori::hangarback_walker::register(&mut registry);
+    let wrath = arcana_cards::cmm::wrath_of_god::register(&mut registry);
+    let mut s = GameState::new(2, 0);
+    add_object(&mut s, &registry, walker, Zone::Battlefield);
+    let id = s.objects.objects_in_zone(Zone::Battlefield).next().unwrap().id;
+    s.objects.get_mut(id).unwrap().add_counters(CounterKind::PlusOnePlusOne, 2);
+
+    let s = wrath_and_settle(s, &registry, wrath);
+    let thopter = registry.interner().lookup("Thopter").unwrap();
+    let thopters = s.objects.objects_in_zone(Zone::Battlefield)
+        .filter(|o| o.characteristics.subtypes.contains(thopter))
+        .count();
+    assert_eq!(thopters, 2, "Hangarback Walker's dies trigger should make one Thopter per counter");
+}

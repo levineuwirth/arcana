@@ -83,10 +83,11 @@ fn dies_make_thopters(
     trig: &PendingTrigger,
     reg: &CardRegistry,
 ) -> Vec<Effect> {
+    // The walker is in the graveyard under a new id by now, without its
+    // counters: count them on its last-known information (CR 603.10).
     let id = trig.dying_object().unwrap_or(trig.source);
     let n = state
-        .objects
-        .get(id)
+        .object_or_lki(id)
         .map_or(0, |o| o.count_counters(CounterKind::PlusOnePlusOne));
     if n == 0 {
         return Vec::new();
