@@ -1613,26 +1613,36 @@ mod tests {
 
     /// A2.2 true-state parity: `vmc-material` at A2.1's budget (6/25/10),
     /// rolling out from the true state, plays a whole game exactly as it did
-    /// before the sampled-state mode existed. The fingerprint (FNV-1a) covers
-    /// every scored candidate's index and value bits and every action, so a
-    /// change in true-state mode's draws or rollouts fails here even where the
-    /// actions would survive it (an extra draw per decision leaves the first
-    /// 80 decisions' scores bit-identical, then shows by the 150th). Recorded
-    /// at `2be0ed11` from the pre-change `choose` run step by step: its
-    /// candidates, then `score_candidate` per candidate on the policy's stream.
-    /// The game is played by production `choose`; a second policy pair at the
-    /// same seeds scores each decision in lockstep, and every production
-    /// choice must be the first strict maximum of those scores.
+    /// before the sampled-state mode existed. Two fingerprints (FNV-1a) hold it.
+    /// The portable one covers every scored candidate's index, every action and
+    /// how far the deciding policy's stream has advanced after it, so a change
+    /// in true-state mode's draws fails at the first decision it touches. The
+    /// scores' one covers every candidate's index and value bits and every
+    /// action, so a change in its rollouts or values fails even where the
+    /// actions and draws would survive it. Value bits rest on the platform's
+    /// `tanhf`, which glibc 2.39 and 2.44 disagree on by up to 2 ulp, so the
+    /// scores' fingerprint is checked only where `tanh` matches the libm it was
+    /// recorded on (this laptop's glibc 2.44 reproduces it); the portable one is
+    /// checked everywhere. The scores' fingerprint was recorded at `2be0ed11`
+    /// from the pre-change `choose` run step by step: its candidates, then
+    /// `score_candidate` per candidate on the policy's stream. The game is
+    /// played by production `choose`; a second policy pair at the same seeds
+    /// scores each decision in lockstep, and every production choice must be the
+    /// first strict maximum of those scores.
     #[test]
     fn vmc_true_state_game_matches_the_recorded_fixture() {
+        fn eat(h: &mut u64, b: &[u8]) { for &x in b { *h ^= x as u64; *h = h.wrapping_mul(0x0100_0000_01b3); } }
+        const FNV: u64 = 0xcbf2_9ce4_8422_2325;
+        // `tanh` at a quarter-point grid of material differences over 30.
+        let mut libm = FNV;
+        for i in -360..=360 { eat(&mut libm, &((i as f64 / 4.0 / 30.0) as f32).tanh().to_bits().to_le_bytes()); }
         let reg = arcana_cards::build_catalog();
         let decks = vec![arcana_cards::sample_deck(&reg, 4), arcana_cards::sample_deck(&reg, 9)];
         let pair = || [ValueMcPolicy::with_budget(Box::new(MaterialValue), 11, 6, 25, 10),
                        ValueMcPolicy::with_budget(Box::new(MaterialValue), 12, 6, 25, 10)];
         let (mut players, mut scorers) = (pair(), pair());
         let (mut state, mut yld) = new_game(decks, &reg, 2026);
-        let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-        let mut eat = |b: &[u8]| for &x in b { h ^= x as u64; h = h.wrapping_mul(0x0100_0000_01b3); };
+        let (mut h, mut p) = (FNV, FNV);
         let mut decisions = 0;
         let result = loop {
             let (player, legal) = match yld {
@@ -1647,17 +1657,24 @@ mod tests {
                 let sc = scorers[player as usize].score_actions(&state, &reg, player, &legal);
                 let (mut bi, mut bv) = (sc[0].0, f32::NEG_INFINITY);
                 for &(i, v) in &sc {
-                    eat(format!("{i}:{};", v.to_bits()).as_bytes());
+                    eat(&mut h, format!("{i}:{};", v.to_bits()).as_bytes());
+                    eat(&mut p, format!("{i};").as_bytes());
                     if v > bv { bv = v; bi = i; }
                 }
                 assert_eq!(a, legal[bi], "decision {decisions}: choose is not the scores' first maximum");
             }
-            eat(format!("{a:?};").as_bytes());
+            eat(&mut h, format!("{a:?};").as_bytes());
+            eat(&mut p, format!("{a:?}@{};", players[player as usize].rng.get_word_pos()).as_bytes());
             let (s, y) = step(state, a, &reg);
             state = s; yld = y; decisions += 1;
         };
         assert_eq!((decisions, result), (475, GameResult::Win(1)));
-        assert_eq!(h, 0xc8d5_ef2b_9ba3_55f5, "fingerprint {h:#018x}");
+        assert_eq!(p, 0x9f5b_e076_bc56_3332, "portable fingerprint {p:#018x}");
+        if libm == 0xebec_b016_a7df_739d {
+            assert_eq!(h, 0xc8d5_ef2b_9ba3_55f5, "fingerprint {h:#018x}");
+        } else {
+            println!("scores' fingerprint not checked: this libm's tanh ({libm:#018x}) is not the recording's");
+        }
     }
 
     /// Give objects `a` and `b` each other's printed identity, keeping their
