@@ -317,7 +317,7 @@ pub fn legal_block_declaration(
         let blk = state.objects.get(d.blocker)?;
         // Mirror can_block (legal_actions) + apply_declared_blockers' gate.
         if blk.controller != defender
-            || !blk.is_creature()
+            || !state.is_creature_now(d.blocker)
             || !blk.zone.is_battlefield()
             || blk.is_tapped()
             || blk.status.suspected
@@ -484,6 +484,19 @@ pub struct DamageAssignment {
 // =============================================================================
 
 impl GameState {
+    /// Remove `id` from combat, if it is attacking or blocking: it leaves
+    /// the attackers and blockers and every attacker's blocker list, and an
+    /// attacker it blocked stays blocked (CR 506.4, 701.25c).
+    pub fn remove_from_combat(&mut self, id: ObjectId) {
+        if let Some(combat) = self.combat.as_mut() {
+            combat.attackers.retain(|a| a.object_id != id);
+            combat.blockers.retain(|b| b.object_id != id);
+            for atk in combat.attackers.iter_mut() {
+                atk.blocked_by.retain(|b| *b != id);
+            }
+        }
+    }
+
     // --- Shared damage primitive ------------------------------------------
 
     /// Apply `amount` damage from `source` to `target`. Used by both
@@ -672,7 +685,7 @@ impl GameState {
                 d.attacker, &KeywordAbility::Defender);
             let restricted = self.cant_attack(d.attacker);
             let attacker_controller = obj.controller;
-            if !obj.is_creature()
+            if !self.is_creature_now(d.attacker)
                 || !obj.zone.is_battlefield()
                 || obj.is_tapped()
                 || sick_and_no_haste
@@ -949,7 +962,7 @@ impl GameState {
         let mut valid: Vec<BlockerDeclaration> = Vec::with_capacity(decls.len());
         for d in &decls {
             let Some(blk) = self.objects.get(d.blocker) else { continue; };
-            if !blk.is_creature()
+            if !self.is_creature_now(d.blocker)
                 || !blk.zone.is_battlefield()
                 || blk.is_tapped()
             { continue; }
@@ -976,8 +989,8 @@ impl GameState {
         for (b, a) in forced {
             let already = valid.iter().any(|v| v.blocker == b);
             if already { continue; }
-            let able = self.objects.get(b).is_some_and(|o|
-                o.is_creature() && o.zone.is_battlefield() && !o.is_tapped())
+            let able = self.is_creature_now(b)
+                && self.objects.get(b).is_some_and(|o| o.zone.is_battlefield() && !o.is_tapped())
                 && self.combat.as_ref().is_some_and(|c| c.is_attacker(a))
                 && self.blocker_eligible(b, a);
             if able {

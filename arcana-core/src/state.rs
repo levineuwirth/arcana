@@ -625,9 +625,11 @@ impl GameState {
             if replacements.enter_tapped {
                 obj.tap();
             }
-            if obj.is_creature() || obj.is_planeswalker() {
-                obj.status.summoning_sick = true;
-            }
+            // CR 302.6: every permanent that comes under its controller's
+            // control is marked; the checks read the mark only while the
+            // permanent is a creature, so a land animated or a Vehicle crewed
+            // the turn it entered can't attack or use {T} abilities (A1.5x).
+            obj.status.summoning_sick = true;
         }
     }
 

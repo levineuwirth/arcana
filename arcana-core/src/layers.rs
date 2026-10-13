@@ -1861,6 +1861,24 @@ impl GameState {
                 | Duration::WhileControllerTurn));
     }
 
+    /// Is `object_id` a creature right now, by its computed
+    /// characteristics (CR 613)? A permanent can become a creature (an
+    /// animated land, a crewed Vehicle) or stop being one through a
+    /// continuous effect, which its printed characteristics never show;
+    /// combat and the creature SBAs ask this, never the printed types
+    /// (A1.5x). With no copy or type-changing effect in play, the printed
+    /// types are the computed ones, so the layer pipeline is skipped.
+    pub fn is_creature_now(&self, object_id: ObjectId) -> bool {
+        let Some(obj) = self.objects.get(object_id) else { return false };
+        if !self.continuous_effects.iter()
+            .any(|e| matches!(e.layer, Layer::L1Copy | Layer::L4Type))
+        {
+            return obj.is_creature();
+        }
+        self.compute_characteristics(object_id)
+            .is_some_and(|c| c.types.is_creature())
+    }
+
     /// Run the CR 613 layer pipeline for `object_id` and return its
     /// current computed characteristics. Returns `None` if the object
     /// isn't in the arena.

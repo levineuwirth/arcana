@@ -1099,7 +1099,7 @@ fn can_block_attacker(state: &GameState, blocker: ObjectId, attacker: ObjectId) 
 /// was rejected (e.g. a must-attack creature that's able but omitted).
 pub fn can_attack(state: &GameState, obj: &crate::objects::GameObject) -> bool {
     use crate::effects::KeywordAbility;
-    if !obj.is_creature() || !obj.zone.is_battlefield() || obj.is_tapped() {
+    if !state.is_creature_now(obj.id) || !obj.zone.is_battlefield() || obj.is_tapped() {
         return false;
     }
     // CR 702.3b — Defender: can't attack.
@@ -1119,7 +1119,7 @@ pub fn can_attack(state: &GameState, obj: &crate::objects::GameObject) -> bool {
     true
 }
 
-fn can_block(_state: &GameState, obj: &crate::objects::GameObject) -> bool {
+fn can_block(state: &GameState, obj: &crate::objects::GameObject) -> bool {
     // Per-PAIRING evasion (Flying/Reach, Protection, Fear, Intimidate,
     // Shadow, Horsemanship, Skulk) is enforced in `can_block_attacker` /
     // `blocker_eligible`, and count constraints (Menace, unblockable) by the
@@ -1129,7 +1129,7 @@ fn can_block(_state: &GameState, obj: &crate::objects::GameObject) -> bool {
     // TODO(keywords): Landwalk (CR 702.14) is genuinely not enforced yet —
     // it needs a defending-player land-type check in `blocker_eligible`.
     // CR 702.176 — suspected creatures can't block.
-    obj.is_creature()
+    state.is_creature_now(obj.id)
         && obj.zone.is_battlefield()
         && !obj.is_tapped()
         && !obj.status.suspected
@@ -3298,8 +3298,9 @@ fn ability_is_activatable(
         // creatures are still blocked by summoning sickness — the
         // rule only exempts mana abilities from the stack, not from
         // sickness. But basic lands ignore summoning sickness for
-        // mana purposes (CR 305.4, they have no creature type).
-        if obj.is_creature() && obj.status.summoning_sick {
+        // mana purposes (CR 305.4, they have no creature type) — unless
+        // an effect has made one a creature (CR 302.6).
+        if state.is_creature_now(obj.id) && obj.status.summoning_sick {
             return false;
         }
     }

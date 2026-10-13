@@ -149,8 +149,7 @@ fn selfless_spirit_answers_a_wrath_on_the_opponents_turn() {
 }
 
 /// Mutavault becomes a creature in the opponent's declare-attackers step.
-/// (Whether it can then block is A1.5x: combat eligibility reads printed
-/// types, so a permanent animated by a continuous effect can't block yet.)
+/// (`animated_combat.rs` holds that it can then block, A1.5x.)
 #[test]
 fn mutavault_animates_in_the_opponents_declare_attackers_step() {
     let mut reg = CardRegistry::new();

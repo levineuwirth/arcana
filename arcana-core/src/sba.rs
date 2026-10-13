@@ -73,6 +73,7 @@ pub fn apply_state_based_actions(state: &mut GameState) -> u32 {
         let mut fired = false;
         // Order within a pass is canonical and deterministic; the
         // loop ensures simultaneity-of-outcome.
+        fired |= remove_noncreatures_from_combat(state); // CR 506.4
         fired |= annihilate_pt_counters(state);       // CR 704.5p
         fired |= check_creature_graveyard(state);     // CR 704.5f, 704.5g
         fired |= check_planeswalker_graveyard(state); // CR 704.5i
@@ -191,7 +192,7 @@ fn check_creature_graveyard(state: &mut GameState) -> bool {
     use crate::effects::KeywordAbility;
     let mut to_kill: Vec<ObjectId> = Vec::new();
     for obj in state.objects.objects_in_zone(Zone::Battlefield) {
-        if !obj.is_creature() { continue; }
+        if !state.is_creature_now(obj.id) { continue; }
         let Some(t) = state.computed_toughness(obj.id) else { continue; };
         let indestructible = state.has_keyword(obj.id, &KeywordAbility::Indestructible);
         let dies_by_toughness = t <= 0;
@@ -222,14 +223,7 @@ fn check_creature_graveyard(state: &mut GameState) -> bool {
                     obj.clear_damage();
                     obj.tap();
                 }
-                // Remove from active combat if present.
-                if let Some(combat) = state.combat.as_mut() {
-                    combat.attackers.retain(|a| a.object_id != id);
-                    combat.blockers.retain(|b| b.object_id != id);
-                    for atk in combat.attackers.iter_mut() {
-                        atk.blocked_by.retain(|b| *b != id);
-                    }
-                }
+                state.remove_from_combat(id);
             }
             crate::replacement::DieOutcome::StillDies => {
                 state.move_object_to_zone(
@@ -240,10 +234,33 @@ fn check_creature_graveyard(state: &mut GameState) -> bool {
     true
 }
 
+// =============================================================================
+// 506.4 — a permanent that stops being a creature leaves combat
+// =============================================================================
+
+/// CR 506.4: an attacking or blocking permanent that stops being a creature
+/// (its animation ends, say) is removed from combat. Checked with the SBAs,
+/// before any player next gets priority; an attacker it was blocking stays
+/// blocked (CR 506.4c).
+fn remove_noncreatures_from_combat(state: &mut GameState) -> bool {
+    let Some(combat) = state.combat.as_ref() else { return false };
+    let mut gone: Vec<ObjectId> = combat.attackers.iter().map(|a| a.object_id)
+        .chain(combat.blockers.iter().map(|b| b.object_id))
+        .filter(|&id| !state.is_creature_now(id))
+        .collect();
+    if gone.is_empty() { return false; }
+    gone.sort_unstable();
+    gone.dedup();
+    for id in gone {
+        state.remove_from_combat(id);
+    }
+    true
+}
+
 fn pending_creature_to_graveyard(state: &GameState) -> bool {
     use crate::effects::KeywordAbility;
     state.objects.objects_in_zone(Zone::Battlefield).any(|obj| {
-        if !obj.is_creature() { return false; }
+        if !state.is_creature_now(obj.id) { return false; }
         let indestructible = state.has_keyword(obj.id, &KeywordAbility::Indestructible);
         match state.computed_toughness(obj.id) {
             Some(t) if t <= 0 => true,
