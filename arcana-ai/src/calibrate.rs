@@ -71,7 +71,7 @@ pub fn win_probability(value: f32) -> f32 {
 
 #[inline]
 fn sigmoid(z: f32) -> f32 {
-    1.0 / (1.0 + (-z).exp())
+    1.0 / (1.0 + crate::portable::exp(-z))
 }
 
 // =============================================================================
@@ -204,7 +204,7 @@ pub fn log_loss(samples: &[Sample], scale: f32, bias: f32) -> f32 {
     let mut s = 0.0f32;
     for &(x, y) in samples {
         let p = sigmoid(scale * x + bias).clamp(1e-6, 1.0 - 1e-6);
-        s += -(y * p.ln() + (1.0 - y) * (1.0 - p).ln());
+        s += -(y * crate::portable::ln(p) + (1.0 - y) * crate::portable::ln(1.0 - p));
     }
     s / samples.len() as f32
 }

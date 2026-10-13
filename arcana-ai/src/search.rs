@@ -92,7 +92,7 @@ pub fn value(state: &GameState, player: PlayerId) -> f32 {
             let opp = if opp.is_finite() { opp } else { 0.0 };
             // tanh gives a smooth gradient that doesn't saturate as readily as a
             // hard clamp; 0.9 keeps it strictly inside the terminal ±1.
-            0.9 * ((me - opp) / 30.0).tanh()
+            0.9 * crate::portable::tanh((me - opp) / 30.0)
         }
     }
 }
@@ -119,7 +119,7 @@ pub fn card_marginal_values(state: &GameState, player: PlayerId) -> Vec<(ObjectI
     let opp = if opp.is_finite() { opp } else { 0.0 };
     // win% of a hypothetical own-material total (opp fixed), via value()'s squash.
     let win_pct = |me_total: f32| {
-        100.0 * crate::calibrate::win_probability(0.9 * ((me_total - opp) / 30.0).tanh())
+        100.0 * crate::calibrate::win_probability(0.9 * crate::portable::tanh((me_total - opp) / 30.0))
     };
     let full = win_pct(me);
     let mut out = Vec::new();
@@ -199,7 +199,7 @@ pub fn value_v2(state: &GameState, player: PlayerId) -> f32 {
                 .map(|o| material_v2(state, o))
                 .fold(f32::NEG_INFINITY, f32::max);
             let opp = if opp.is_finite() { opp } else { 0.0 };
-            0.9 * ((me - opp) / 30.0).tanh()
+            0.9 * crate::portable::tanh((me - opp) / 30.0)
         }
     }
 }
@@ -266,7 +266,7 @@ impl ValueFn for WeightedMaterialValue {
                     .map(|o| material_weighted(state, o, self))
                     .fold(f32::NEG_INFINITY, f32::max);
                 let opp = if opp.is_finite() { opp } else { 0.0 };
-                0.9 * ((me - opp) / 30.0).tanh()
+                0.9 * crate::portable::tanh((me - opp) / 30.0)
             }
         }
     }
@@ -794,7 +794,7 @@ impl IsmctsPolicy {
                 f32::INFINITY
             } else {
                 let mean = s.value_sum / s.visits as f32;
-                mean + c * ((s.avail.max(1) as f32).ln() / s.visits as f32).sqrt()
+                mean + c * (crate::portable::ln(s.avail.max(1) as f32) / s.visits as f32).sqrt()
             };
             if score > best_score { best_score = score; best = a.clone(); }
         }
@@ -1624,11 +1624,11 @@ mod tests {
     /// in true-state mode's draws fails at the first decision it touches. The
     /// scores' one covers every candidate's index and value bits and every
     /// action, so a change in its rollouts or values fails even where the
-    /// actions and draws would survive it. Value bits rest on the platform's
-    /// `tanhf`, which glibc 2.39 and 2.44 disagree on by up to 2 ulp, so the
-    /// scores' fingerprint is checked only where `tanh` matches the libm it was
-    /// recorded on (this laptop's glibc 2.44 reproduces it); the portable one is
-    /// checked everywhere. The game is
+    /// actions and draws would survive it. Both are checked on every machine:
+    /// the scores' bits used to rest on the platform's `tanhf`, which glibc
+    /// 2.39 and 2.44 disagree on by up to 2 ulp, and since A1.5u they come from
+    /// `crate::portable`, which makes no platform transcendental call. The
+    /// game is
     /// played by production `choose`; a second policy pair at the same seeds
     /// scores each decision in lockstep, and every production choice must be the
     /// first strict maximum of those scores.
@@ -1636,9 +1636,6 @@ mod tests {
     fn vmc_true_state_game_matches_the_recorded_fixture() {
         fn eat(h: &mut u64, b: &[u8]) { for &x in b { *h ^= x as u64; *h = h.wrapping_mul(0x0100_0000_01b3); } }
         const FNV: u64 = 0xcbf2_9ce4_8422_2325;
-        // `tanh` at a quarter-point grid of material differences over 30.
-        let mut libm = FNV;
-        for i in -360..=360 { eat(&mut libm, &((i as f64 / 4.0 / 30.0) as f32).tanh().to_bits().to_le_bytes()); }
         let reg = arcana_cards::build_catalog();
         let decks = vec![arcana_cards::sample_deck(&reg, 4), arcana_cards::sample_deck(&reg, 9)];
         let pair = || [ValueMcPolicy::with_budget(Box::new(MaterialValue), 11, 6, 25, 10),
@@ -1673,11 +1670,7 @@ mod tests {
         };
         assert_eq!((decisions, result), (477, GameResult::Win(1)));
         assert_eq!(p, 0x6ea1_44f3_84f7_164f, "portable fingerprint {p:#018x}");
-        if libm == 0xebec_b016_a7df_739d {
-            assert_eq!(h, 0xbacc_f072_61b3_aaf2, "fingerprint {h:#018x}");
-        } else {
-            println!("scores' fingerprint not checked: this libm's tanh ({libm:#018x}) is not the recording's");
-        }
+        assert_eq!(h, 0xbacc_f072_61b3_aaf2, "fingerprint {h:#018x}");
     }
 
     /// Give objects `a` and `b` each other's printed identity, keeping their
