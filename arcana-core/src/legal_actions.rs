@@ -93,7 +93,7 @@ pub fn legal_actions(state: &GameState, registry: &CardRegistry) -> Vec<Action> 
     // Only `SubmitResolutionChoice` (with the matching id) and
     // `Concede` are legal.
     if state.pending_choice.is_some() {
-        return legal_resolution_choice_actions(state);
+        return legal_resolution_choice_actions(state, registry);
     }
     let player = state.priority_player();
 
@@ -254,12 +254,108 @@ fn enumerate_pick_subsets(
     Some(out)
 }
 
+/// The casts of `object` its owner `player` may make "without paying its
+/// mana cost" (CR 118.9) during the resolution that grants it (Spell
+/// Queller, D18), as any face the card has as a spell (CR 709.3): its main
+/// face, a split card's right half, an Adventure, a modal double-faced
+/// card's back. For each face: every mode combination with a legal target
+/// selection, X fixed at 0 (CR 107.3b), unkicked and kicked (kicker is an
+/// additional cost, still paid), each with a payment plan for what is owed.
+/// What is owed follows CR 601.2f: nothing for the mana cost, plus the
+/// kicker, plus cost increases, less cost reductions, so a reduction
+/// applies to the kicker. Card-type timing doesn't apply (CR 608.2g); the
+/// casting restrictions the engine models do. No cost-reduction track:
+/// delve and convoke reduce a mana cost, and none is paid. Empty when
+/// `object` isn't an exiled card `player` owns, or has no legal cast.
+/// Mandatory additional casting costs aren't modeled for any cast.
+pub fn casts_without_paying(
+    state: &GameState,
+    registry: &CardRegistry,
+    player: PlayerId,
+    object: ObjectId,
+) -> Vec<Action> {
+    use crate::actions::CastFace;
+    let Some(obj) = state.objects.get(object) else { return Vec::new() };
+    if !obj.zone.is_exile() || obj.owner != player { return Vec::new(); }
+    if state.spell_cast_limit_reached(obj, player) { return Vec::new(); }
+    let def = registry.get(obj.card_id);
+    let alt = def.and_then(|d| d.alternate_face.as_ref());
+    // The card's spell faces, each with its characteristics and spell
+    // ability. CR 711.4 — a split card's main face is its left half.
+    let mut faces: Vec<(CastFace, &crate::objects::Characteristics,
+                        Option<&crate::registry::SpellAbilityDef>)> = Vec::new();
+    let main_chars = match (def, alt.and_then(|af| af.as_split())) {
+        (Some(d), Some(_)) => &d.base_characteristics,
+        _ => &obj.characteristics,
+    };
+    if !main_chars.types.is_land() {
+        faces.push((CastFace::Main, main_chars, def.and_then(|d| d.spell_ability.as_ref())));
+    }
+    if let Some(f) = alt.and_then(|af| af.as_split()) {
+        faces.push((CastFace::SplitRight, &f.characteristics, f.spell_ability.as_ref()));
+    }
+    if let Some(f) = alt.and_then(|af| af.as_adventure()) {
+        faces.push((CastFace::Adventure, &f.characteristics, f.spell_ability.as_ref()));
+    }
+    if let Some(f) = alt.and_then(|af| af.as_mdfc()) {
+        if !f.characteristics.types.is_land() {
+            faces.push((CastFace::MdfcBack, &f.characteristics, f.spell_ability.as_ref()));
+        }
+    }
+    let kicker = crate::engine::kicker_cost_for(state, object);
+    let mut out = Vec::new();
+    for (face, chars, spell_ability) in faces {
+        if cast_restricted(state, player, registry, chars.types) { continue; }
+        let delta = state.spell_cost_delta(chars, player);
+        let ctx = SpendContext::for_spell(chars.types, chars.colors);
+        let x_value = chars.mana_cost.as_ref().filter(|c| c.x_count() > 0).map(|_| 0);
+        let mut variants = vec![(crate::mana::ManaCost::default().with_generic_delta(delta), Vec::new())];
+        if let Some(kicker) = &kicker {
+            variants.push((kicker.with_generic_delta(delta),
+                vec![crate::actions::AdditionalCostPayment::Kicker]));
+        }
+        let mode_combos: Vec<Vec<crate::stack::ModeChoice>> =
+            match spell_ability.and_then(|sa| sa.modal.as_ref()) {
+                None => vec![Vec::new()],
+                Some(modal) => enumerate_mode_combinations(modal)
+                    .into_iter().map(|c| vec![c]).collect(),
+            };
+        for modes in &mode_combos {
+            let reqs: Vec<TargetRequirement> = match spell_ability {
+                Some(sa) => crate::registry::effective_target_requirements(sa, modes),
+                None => Vec::new(),
+            };
+            let selections = enumerate_target_selections(&reqs, state, object, player);
+            if selections.is_empty() { continue; }
+            for (cost, additional_costs) in &variants {
+                let plans = enumerate_payment_plans(
+                    cost, &state.player(player).mana_pool, None, &ctx);
+                for plan in &plans {
+                    for targets in &selections {
+                        out.push(Action::CastSpell {
+                            object_id: object,
+                            targets: targets.clone(),
+                            modes: modes.clone(),
+                            mana_payment: plan.clone(),
+                            additional_costs: additional_costs.clone(),
+                            x_value,
+                            cast_modifier: crate::actions::CastModifier::WithoutPayingManaCost { face },
+                            cost_reductions: crate::actions::CostReductions::default(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
 /// Enumerate legal responses to `state.pending_choice`. Most kinds are fully
 /// enumerated so a HUMAN sees the real options (and [`crate::session`] no longer
 /// auto-resolves them); genuinely combinatorial fan-outs (large `OrderCards`,
 /// multi-target divides) are pruned to the obvious canonical default beyond a
 /// small cap. Always includes `Concede`.
-fn legal_resolution_choice_actions(state: &GameState) -> Vec<Action> {
+fn legal_resolution_choice_actions(state: &GameState, registry: &CardRegistry) -> Vec<Action> {
     use crate::actions::{ChoiceResponse, ChoiceKind, CardDestination};
     let pending = state.pending_choice.as_ref().unwrap();
     let id = pending.id;
@@ -487,6 +583,18 @@ fn legal_resolution_choice_actions(state: &GameState) -> Vec<Action> {
                 out.push(Action::SubmitResolutionChoice {
                     id,
                     response: ChoiceResponse::ChooseColor { color },
+                });
+            }
+        }
+        ChoiceKind::CastWithoutPaying { object } => {
+            out.push(Action::SubmitResolutionChoice {
+                id,
+                response: ChoiceResponse::CastWithoutPaying { cast: None },
+            });
+            for cast in casts_without_paying(state, registry, pending.choosing_player, *object) {
+                out.push(Action::SubmitResolutionChoice {
+                    id,
+                    response: ChoiceResponse::CastWithoutPaying { cast: Some(Box::new(cast)) },
                 });
             }
         }
@@ -1233,9 +1341,11 @@ fn legal_priority_actions(
         // spells"). The spell simply isn't enumerated as castable.
         if cast_restricted(state, player, registry, cast_chars.types) { continue; }
         // CR 601.2f — cost modifiers (Chill / Sphere of Resistance /
-        // Arcane Melee class) adjust the generic component.
-        let printed_cost = printed_cost.with_generic_delta(
-            state.spell_cost_delta(cast_chars, player));
+        // Arcane Melee class) adjust the generic component of the total
+        // cost: the mana cost with X's value, plus additional costs
+        // (kicker). Applied below, after X and kicker, so a reduction
+        // reaches their generic too.
+        let cost_delta = state.spell_cost_delta(cast_chars, player);
 
         let ctx = SpendContext::for_spell(
             cast_chars.types, cast_chars.colors);
@@ -1334,12 +1444,12 @@ fn legal_priority_actions(
             let mut kicker_variants: Vec<(
                 crate::mana::ManaCost,
                 Vec<crate::actions::AdditionalCostPayment>,
-            )> = vec![(base_cost.clone(), Vec::new())];
+            )> = vec![(base_cost.with_generic_delta(cost_delta), Vec::new())];
             if let Some(ref kc) = kicker_cost_opt {
                 let mut kicked_cost = base_cost.clone();
                 kicked_cost.components.extend(kc.components.iter().copied());
                 kicker_variants.push((
-                    kicked_cost,
+                    kicked_cost.with_generic_delta(cost_delta),
                     vec![crate::actions::AdditionalCostPayment::Kicker],
                 ));
             }

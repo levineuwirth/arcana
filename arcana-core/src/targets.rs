@@ -1073,7 +1073,8 @@ impl ObjectFilter {
 
         // --- CMC ---
         if let Some(cond) = &self.cmc_condition {
-            if !cond.matches(obj.characteristics.mana_value()) {
+            // CR 202.3e: a spell's chosen X counts (A1.5q).
+            if !cond.matches(state.mana_value_of(obj)) {
                 return false;
             }
         }

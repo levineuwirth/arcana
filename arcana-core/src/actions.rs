@@ -116,6 +116,51 @@ pub enum CastModifier {
     /// card when it's a LAND goes through `Action::PlayLand`, not this
     /// modifier (Oracle of Mul Daya's land half).
     TopOfLibrary,
+    /// CR 118.9 — cast "without paying its mana cost" (Spell Queller,
+    /// D18). Offered only through [`ChoiceKind::CastWithoutPaying`],
+    /// during the resolution of the effect that grants it, for the one
+    /// exiled card it names: the engine refuses this modifier on an
+    /// ordinary priority-window cast. The mana cost is replaced by
+    /// nothing, so `{X}` is 0 (CR 107.3b) and no other alternative cost
+    /// can apply; additional costs (kicker) and cost increases are still
+    /// paid, from `mana_payment`. Card-type timing is ignored (CR 608.2g)
+    /// but casting restrictions still apply. The spell leaves the stack to
+    /// its normal destination, by `face`: an Adventure cast this way goes on
+    /// an adventure like any other (CR 715.4).
+    WithoutPayingManaCost {
+        /// Which face is cast: the owner may cast any face a card has
+        /// (CR 709.3, 711.3, 712.11, 715.3).
+        face: CastFace,
+    },
+}
+
+/// Which face of a card a cast casts (CR 709): the main face, the right
+/// half of a split card (CR 711), an Adventure (CR 715), or the back face
+/// of a modal double-faced card (CR 712).
+#[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CastFace {
+    #[default]
+    Main,
+    SplitRight,
+    Adventure,
+    MdfcBack,
+}
+
+impl CastModifier {
+    /// The face this cast casts, whether paid for or free: the alternate
+    /// face for an Adventure, a modal double-faced back or a split right
+    /// half; the main face for every other modifier.
+    pub fn face(self) -> CastFace {
+        match self {
+            CastModifier::Adventure => CastFace::Adventure,
+            CastModifier::MdfcBack => CastFace::MdfcBack,
+            CastModifier::SplitRight => CastFace::SplitRight,
+            CastModifier::WithoutPayingManaCost { face } => face,
+            CastModifier::None | CastModifier::Flashback | CastModifier::Madness
+            | CastModifier::AdventureCreature | CastModifier::ImpulsePlay
+            | CastModifier::TopOfLibrary => CastFace::Main,
+        }
+    }
 }
 
 /// Bundle of *cost-reduction* choices (CR 601.2f category: "cost
@@ -564,6 +609,14 @@ pub enum ChoiceKind {
     /// consumes the chosen color lives on
     /// [`crate::state::GameState::pending_choice_follow_up`].
     ChooseColor,
+    /// "You may cast `object` without paying its mana cost" (CR 118.9,
+    /// 608.2g), asked of the card's owner during the resolution of the
+    /// effect that grants it. Answer:
+    /// [`ChoiceResponse::CastWithoutPaying`] — decline, or one fully
+    /// specified cast with [`CastModifier::WithoutPayingManaCost`].
+    CastWithoutPaying {
+        object: ObjectId,
+    },
 }
 
 /// Destinations a card can be placed during an `OrderCards` choice.
@@ -701,6 +754,10 @@ pub enum ChoiceResponse {
     ChooseTargets { selection: crate::targets::TargetSelection },
     /// Reply to [`ChoiceKind::ChooseColor`].
     ChooseColor { color: crate::types::Color },
+    /// Reply to [`ChoiceKind::CastWithoutPaying`]: `None` declines; `Some`
+    /// carries the chosen [`Action::CastSpell`], with its targets, modes,
+    /// X (0), additional costs and the payment for any of them.
+    CastWithoutPaying { cast: Option<Box<Action>> },
 }
 
 /// A spell/ability resolution that yielded mid-way to push a

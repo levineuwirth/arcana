@@ -182,8 +182,9 @@ pub(crate) fn apply_action(state: &mut GameState, action: Action, registry: &Car
             object_id, targets, modes, mana_payment, additional_costs, x_value,
             cast_modifier, cost_reductions,
         } => {
+            let caster = state.priority_player();
             apply_cast_spell(
-                state, registry, object_id, targets, modes,
+                state, registry, caster, false, object_id, targets, modes,
                 mana_payment, additional_costs, x_value, cast_modifier,
                 cost_reductions,
             );
@@ -277,10 +278,17 @@ fn apply_pass_priority(state: &mut GameState, registry: &CardRegistry) {
 // pushes the arg count past clippy's default 7. Refactor to a grouped
 // `CastInputs` struct is planned when a second cost-modifier (convoke
 // or improvise) lands — see the Shape B-full note on `CastSubStep`.
+/// Cast `object_id` for `controller`: the priority holder in a priority
+/// window, or the owner answering a [`crate::actions::ChoiceKind::CastWithoutPaying`]
+/// mid-resolution. `without_paying_permitted` is true only on that choice's
+/// path; [`crate::actions::CastModifier::WithoutPayingManaCost`] is refused
+/// anywhere else.
 #[allow(clippy::too_many_arguments)]
-fn apply_cast_spell(
+pub(crate) fn apply_cast_spell(
     state: &mut GameState,
     registry: &CardRegistry,
+    controller: PlayerId,
+    without_paying_permitted: bool,
     object_id: ObjectId,
     targets: crate::targets::TargetSelection,
     modes: Vec<crate::stack::ModeChoice>,
@@ -290,8 +298,6 @@ fn apply_cast_spell(
     cast_modifier: crate::actions::CastModifier,
     cost_reductions: crate::actions::CostReductions,
 ) {
-    let controller = state.priority_player();
-
     // Alt-cost / zone validation. Belt-and-suspenders — legal_actions
     // is expected to filter invalid combinations, but bogus agent
     // input shouldn't corrupt state. Each branch rejects silently
@@ -392,6 +398,27 @@ fn apply_cast_spell(
                 return;
             }
         }
+        crate::actions::CastModifier::WithoutPayingManaCost { face } => {
+            // CR 118.9 — only through the CastWithoutPaying choice, for an
+            // exiled card its owner casts during the granting effect's
+            // resolution, as one of the card's spell faces.
+            let owned_in_exile = state.objects.get(object_id)
+                .is_some_and(|o| o.zone == crate::zones::Zone::Exile
+                    && o.owner == controller);
+            if !(without_paying_permitted && owned_in_exile) { return; }
+            let face_is_a_spell = match face {
+                crate::actions::CastFace::Main => state.objects.get(object_id)
+                    .is_some_and(|o| !o.is_land()),
+                crate::actions::CastFace::SplitRight =>
+                    split_right_face_of(state, registry, object_id).is_some(),
+                crate::actions::CastFace::Adventure =>
+                    adventure_face_of(state, registry, object_id).is_some(),
+                crate::actions::CastFace::MdfcBack =>
+                    mdfc_back_face_of(state, registry, object_id)
+                        .is_some_and(|f| !f.characteristics.types.is_land()),
+            };
+            if !face_is_a_spell { return; }
+        }
     }
 
     // Modal validation (CR 700.2). A modal spell requires the caster to
@@ -470,6 +497,8 @@ fn apply_cast_spell(
             crate::actions::CastModifier::SplitRight =>
                 split_right_face_of(state, registry, object_id)
                     .and_then(|f| f.characteristics.mana_cost.clone()),
+            // No mana cost is paid, so no generic to reduce.
+            crate::actions::CastModifier::WithoutPayingManaCost { .. } => None,
         };
         let cost_opt = cost_opt.map(|c| {
             let chars = state.objects.get(object_id)
@@ -592,6 +621,8 @@ fn apply_cast_spell(
             crate::actions::CastModifier::SplitRight =>
                 split_right_face_of(state, registry, object_id)
                     .and_then(|f| f.characteristics.mana_cost.clone()),
+            // No mana cost is paid, so no generic to reduce.
+            crate::actions::CastModifier::WithoutPayingManaCost { .. } => None,
         };
         let generic_total: u32 = cost_opt.as_ref()
             .map(|c| c.components.iter().filter_map(|comp|
@@ -676,18 +707,19 @@ fn apply_cast_spell(
     //    leave-the-stack path can restore them on the exile object.
     let card_def = state.objects.get(object_id)
         .and_then(|o| registry.get(o.card_id));
-    let is_adventure_cast = matches!(cast_modifier,
-        crate::actions::CastModifier::Adventure);
-    let is_mdfc_back_cast = matches!(cast_modifier,
-        crate::actions::CastModifier::MdfcBack);
-    let is_split_right_cast = matches!(cast_modifier,
-        crate::actions::CastModifier::SplitRight);
+    // By face, so a free cast (Spell Queller) of an alternate face swaps
+    // characteristics exactly as a paid cast of that face does.
+    use crate::actions::CastFace;
+    let is_adventure_cast = cast_modifier.face() == CastFace::Adventure;
+    let is_mdfc_back_cast = cast_modifier.face() == CastFace::MdfcBack;
+    let is_split_right_cast = cast_modifier.face() == CastFace::SplitRight;
     // A Normal cast of a Split card resolves as the left half; it
     // still needs the combined→left swap so the stack entry carries
     // left-half chars and `pre_split_characteristics` on the entry
     // restores the combined view on leave-stack (CR 711.4).
     let is_split_left_cast = matches!(cast_modifier,
-            crate::actions::CastModifier::None)
+            crate::actions::CastModifier::None
+            | crate::actions::CastModifier::WithoutPayingManaCost { face: CastFace::Main })
         && card_def.and_then(|d| d.alternate_face.as_ref())
             .and_then(|af| af.as_split()).is_some();
     let adventure_face = if is_adventure_cast {
@@ -1350,6 +1382,35 @@ pub(crate) fn apply_resolution_choice(
                             must be EffectForChosenPlayer");
                 };
             effect.for_player(*picked).execute(state);
+        }
+
+        // --- CastWithoutPaying mid-resolution (Spell Queller, D18) --
+        // CR 608.2g — the owner casts the card as part of the
+        // resolution, or declines. The cast is an ordinary one from
+        // here, applied for the owner, not the priority holder.
+        (
+            ChoiceKind::CastWithoutPaying { object },
+            ChoiceContext::ResolvingStack(_),
+            ChoiceResponse::CastWithoutPaying { cast },
+        ) => {
+            if let Some(cast) = cast {
+                let Action::CastSpell {
+                    object_id, targets, modes, mana_payment, additional_costs,
+                    x_value, cast_modifier, cost_reductions,
+                } = cast.as_ref().clone() else {
+                    panic!("apply_resolution_choice: CastWithoutPaying answer must be a CastSpell");
+                };
+                assert_eq!(object_id, *object,
+                    "apply_resolution_choice: CastWithoutPaying answer casts another card");
+                assert!(matches!(cast_modifier,
+                    crate::actions::CastModifier::WithoutPayingManaCost { .. }),
+                    "apply_resolution_choice: CastWithoutPaying answer must cast without paying");
+                apply_cast_spell(
+                    state, registry, pending.choosing_player, true, object_id, targets,
+                    modes, mana_payment, additional_costs, x_value, cast_modifier,
+                    cost_reductions,
+                );
+            }
         }
 
         // --- ChooseColor mid-resolution ("choose a color; …") --------
@@ -3588,20 +3649,20 @@ fn resolution_target_requirements(
             // adventures aren't printed today, but routing through
             // `effective_target_requirements` still degrades correctly.
             let def = registry.get(*card_id);
-            let sa = match entry.cast_modifier {
-                crate::actions::CastModifier::Adventure =>
+            let sa = match entry.cast_modifier.face() {
+                crate::actions::CastFace::Adventure =>
                     def.and_then(|d| d.alternate_face.as_ref())
                         .and_then(|af| af.as_adventure())
                         .and_then(|f| f.spell_ability.as_ref()),
-                crate::actions::CastModifier::MdfcBack =>
+                crate::actions::CastFace::MdfcBack =>
                     def.and_then(|d| d.alternate_face.as_ref())
                         .and_then(|af| af.as_mdfc())
                         .and_then(|f| f.spell_ability.as_ref()),
-                crate::actions::CastModifier::SplitRight =>
+                crate::actions::CastFace::SplitRight =>
                     def.and_then(|d| d.alternate_face.as_ref())
                         .and_then(|af| af.as_split())
                         .and_then(|f| f.spell_ability.as_ref()),
-                _ => def.and_then(|d| d.spell_ability.as_ref()),
+                crate::actions::CastFace::Main => def.and_then(|d| d.spell_ability.as_ref()),
             };
             sa.map(|sa| crate::registry::effective_target_requirements(sa, &entry.modes))
                 .unwrap_or_default()
@@ -3649,20 +3710,20 @@ fn resolution_effects(
             // Adventure and MDFC back casts resolve via the
             // alternate face's spell ability (CR 715.2, CR 712.4).
             // Everything else uses the main face.
-            let sa = match entry.cast_modifier {
-                crate::actions::CastModifier::Adventure =>
+            let sa = match entry.cast_modifier.face() {
+                crate::actions::CastFace::Adventure =>
                     def.alternate_face.as_ref()
                         .and_then(|af| af.as_adventure())
                         .and_then(|f| f.spell_ability.as_ref()),
-                crate::actions::CastModifier::MdfcBack =>
+                crate::actions::CastFace::MdfcBack =>
                     def.alternate_face.as_ref()
                         .and_then(|af| af.as_mdfc())
                         .and_then(|f| f.spell_ability.as_ref()),
-                crate::actions::CastModifier::SplitRight =>
+                crate::actions::CastFace::SplitRight =>
                     def.alternate_face.as_ref()
                         .and_then(|af| af.as_split())
                         .and_then(|f| f.spell_ability.as_ref()),
-                _ => def.spell_ability.as_ref(),
+                crate::actions::CastFace::Main => def.spell_ability.as_ref(),
             };
             let Some(sa) = sa else { return Vec::new(); };
             (sa.effect)(state, entry, registry)

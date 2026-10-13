@@ -670,6 +670,26 @@ impl GameState {
         let from = self.objects.get(id)?.zone;
         if from == destination { return None; }
 
+        // A1.5p: an effect that moves a spell off the stack (Venser's
+        // bounce, Subtlety's tuck) takes its stack entry with it, so no
+        // stranded entry is left to resolve, and the card leaves as the
+        // whole card. Resolution and countering pop the entry before they
+        // move the card, so they never reach this.
+        if from == Zone::Stack {
+            let pos = self.stack.iter().position(|e| e.id == id && e.is_spell());
+            if let Some(entry) = pos.map(|p| self.stack.remove(p)) {
+                if let Some(obj) = self.objects.get_mut(id) {
+                    if let Some(pre) = entry.pre_adventure_characteristics {
+                        obj.characteristics = pre;
+                    }
+                    if let Some(pre_split) = entry.pre_split_characteristics {
+                        obj.characteristics = pre_split;
+                        obj.visible_face = 0;
+                    }
+                }
+            }
+        }
+
         let was_creature_or_pw = self.objects.get(id).map_or(false,
             |o| o.is_creature() || o.is_planeswalker());
         let from_battlefield = from.is_battlefield();
@@ -972,6 +992,20 @@ impl GameState {
 
     /// Push a new pending choice. Panics if one is already pending —
     /// the single-slot invariant must be upheld by the effect code.
+    /// Mana value of `obj` (CR 202.3): its mana cost's, except that a
+    /// spell on the stack counts each `{X}` as the value chosen for it
+    /// (CR 202.3e), so a Disintegrate cast for five has mana value six.
+    pub fn mana_value_of(&self, obj: &crate::objects::GameObject) -> u32 {
+        let Some(cost) = obj.characteristics.mana_cost.as_ref() else { return 0 };
+        if obj.zone == Zone::Stack {
+            let x = self.stack.iter().find(|e| e.id == obj.id).and_then(|e| e.x_value);
+            if let Some(x) = x {
+                return cost.mana_value_with_x(x);
+            }
+        }
+        cost.mana_value()
+    }
+
     pub fn push_pending_choice(
         &mut self,
         choosing_player: PlayerId,

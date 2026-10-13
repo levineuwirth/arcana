@@ -260,6 +260,21 @@ fn render_choice_response(r: &ChoiceResponse, state: &GameState, registry: &Card
         }
         ChoiceResponse::PickPlayer { picked } => format!("Choose P{picked}"),
         ChoiceResponse::ChooseColor { color } => format!("Choose {color:?}"),
+        ChoiceResponse::CastWithoutPaying { cast: None } => "Don't cast it".to_string(),
+        ChoiceResponse::CastWithoutPaying { cast: Some(cast) } => {
+            let mut s = render_action(cast, state, registry);
+            if let Action::CastSpell { modes, additional_costs, .. } = cast.as_ref() {
+                let picked: Vec<String> = modes.iter()
+                    .flat_map(|m| m.mode_indices.iter().map(|i| (i + 1).to_string()))
+                    .collect();
+                if !picked.is_empty() { let _ = write!(s, " (mode {})", picked.join(", ")); }
+                if additional_costs.iter().any(|c| matches!(c, crate::actions::AdditionalCostPayment::Kicker)) {
+                    s.push_str(" (kicked)");
+                }
+            }
+            s.push_str(" without paying its mana cost");
+            s
+        }
         ChoiceResponse::OrderCards { placements } if placements.is_empty() =>
             "Order (no cards)".to_string(),
         ChoiceResponse::OrderCards { placements } => {

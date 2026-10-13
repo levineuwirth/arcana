@@ -348,6 +348,10 @@ fn build_decision_prompt(
         }
         ChoiceKind::PickPlayer { .. } => Some("Choose a player".to_string()),
         ChoiceKind::ChooseColor => Some("Choose a color".to_string()),
+        ChoiceKind::CastWithoutPaying { object } => Some(match name_of(*object) {
+            Some(n) => format!("Cast {n} without paying its mana cost?"),
+            None => "Cast it without paying its mana cost?".to_string(),
+        }),
         // Scry / surveil / fateseal — name the effect so the ordering buttons
         // ("Top: … | Bottom: …") read in context.
         ChoiceKind::OrderCards { cards, allowed } => {

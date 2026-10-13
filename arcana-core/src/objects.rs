@@ -160,6 +160,12 @@ pub struct GameObject {
     /// battlefield under its owner's control (CR 610.3 — no stack).
     /// Zone-local: cleared by [`Self::reset_on_zone_change`], so a
     /// card that leaves exile by any other route sheds the link.
+    /// The source whose linked ability exiled this card (CR 607): Spell
+    /// Queller's exile, which its leave ability reads back. Unlike
+    /// [`Self::exiled_with`], it never returns the card on its own when the
+    /// source leaves. Zone-local: any later move clears it.
+    #[serde(default)]
+    pub linked_exile_source: Option<ObjectId>,
     pub exiled_with: Option<ObjectId>,
     /// CR 903.3 — the commander DESIGNATION. Never set by the 2-player
     /// engine paths today (commander games are future work); exists so
@@ -306,6 +312,7 @@ impl GameObject {
             status: PermanentStatus::default(),
             madness_pending: false,
             exiled_with: None,
+            linked_exile_source: None,
             is_commander: false,
             adventure_exile_pending: false,
             impulse_play_pending: false,
@@ -490,6 +497,7 @@ impl GameObject {
         // on the freshly-exiled object AFTER the move, and any later
         // zone change (return, recursion, cast-from-exile) sheds it.
         self.exiled_with = None;
+        self.linked_exile_source = None;
         // Adventure-exile marker is similarly zone-local (CR 715):
         // set when an Adventure spell leaves the stack to exile,
         // cleared the moment the card moves anywhere (creature

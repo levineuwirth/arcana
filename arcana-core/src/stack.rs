@@ -751,8 +751,7 @@ impl GameState {
         // are instant/sorcery, so `chars.is_permanent()` is false
         // above and the normal graveyard route would fire — the
         // Adventure branch overrides that).
-        let is_adventure = matches!(entry.cast_modifier,
-            crate::actions::CastModifier::Adventure);
+        let is_adventure = entry.cast_modifier.face() == crate::actions::CastFace::Adventure;
         let destination = if matches!(entry.cast_modifier,
             crate::actions::CastModifier::Flashback)
             || is_adventure
@@ -1014,8 +1013,7 @@ impl GameState {
         // creature-face characteristics restored. Countered /
         // fizzled Adventure spells stay castable as the creature
         // half, matching the printed rules.
-        let is_adventure = matches!(entry.cast_modifier,
-            crate::actions::CastModifier::Adventure);
+        let is_adventure = entry.cast_modifier.face() == crate::actions::CastFace::Adventure;
         let destination = if matches!(entry.cast_modifier,
             crate::actions::CastModifier::Flashback)
             || is_adventure
@@ -1024,24 +1022,43 @@ impl GameState {
         } else {
             Zone::Graveyard(owner)
         };
-
-        let (new_id, from) = self.swap_to_zone_reid(id, destination)
-            .expect("counter_resolved_spell: swap_to_zone_reid returned None");
-
+        let new_id = self.relocate_spell(&entry, destination);
         if is_adventure {
             if let Some(obj) = self.objects.get_mut(new_id) {
                 obj.adventure_exile_pending = true;
-                if let Some(pre) = entry.pre_adventure_characteristics.as_ref() {
-                    obj.characteristics = pre.clone();
-                }
             }
         }
+        self.emit(GameEvent::SpellCountered { object_id: id });
+    }
 
-        // CR 711.4 — mirror finalize_resolved_spell: a countered or
-        // fizzled split spell returns to the graveyard with combined
-        // characteristics, not the cast-face-only view.
-        if let Some(pre_split) = entry.pre_split_characteristics.as_ref() {
-            if let Some(obj) = self.objects.get_mut(new_id) {
+    /// Move a spell `entry`, already removed from the stack, to
+    /// `destination` without resolving or countering it (Spell Queller's
+    /// exile; a bounce through [`Self::move_object_to_zone`]). Returns the
+    /// card's new id. Not a counter: no `SpellCountered` event, and no
+    /// flashback or Adventure routing.
+    pub fn move_spell_off_stack(&mut self, entry: StackEntry, destination: Zone) -> ObjectId {
+        assert!(entry.is_spell(), "move_spell_off_stack requires a spell entry");
+        self.relocate_spell(&entry, destination)
+    }
+
+    /// The move shared by countering and moving a spell off the stack:
+    /// the CR 400.7 re-id (LKI is snapshotted under the old stack id, a
+    /// fresh id is allocated, and the events carry ids accordingly; see
+    /// [`Self::finalize_resolved_spell`] for the pattern), the card's full
+    /// characteristics restored, and the zone events.
+    fn relocate_spell(&mut self, entry: &StackEntry, destination: Zone) -> ObjectId {
+        let id = entry.id;
+        let (new_id, from) = self.swap_to_zone_reid(id, destination)
+            .expect("relocate_spell: swap_to_zone_reid returned None");
+
+        // CR 715 / 711.4 — an Adventure or split spell leaves the stack as
+        // the whole card (mirroring finalize_resolved_spell), not the
+        // face it was cast as.
+        if let Some(obj) = self.objects.get_mut(new_id) {
+            if let Some(pre) = entry.pre_adventure_characteristics.as_ref() {
+                obj.characteristics = pre.clone();
+            }
+            if let Some(pre_split) = entry.pre_split_characteristics.as_ref() {
                 obj.characteristics = pre_split.clone();
                 obj.visible_face = 0;
             }
@@ -1057,10 +1074,10 @@ impl GameState {
         // Only emit PutIntoGraveyard if that's actually where it went.
         if matches!(destination, Zone::Graveyard(_)) {
             self.emit(GameEvent::PutIntoGraveyard { object_id: new_id, from });
-        } else {
+        } else if destination.is_exile() {
             self.emit(GameEvent::Exiled { object_id: new_id, from });
         }
-        self.emit(GameEvent::SpellCountered { object_id: id });
+        new_id
     }
 
     /// Counter an ability — remove it from the stack, emit

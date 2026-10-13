@@ -405,6 +405,26 @@ pub enum Effect {
         player: PlayerId,
         target: ObjectId,
     },
+    /// Exile `target`, a spell on the stack (Spell Queller, D18). Moving a
+    /// spell is not countering it: a spell that can't be countered is
+    /// exiled all the same, and no "countered" event fires. `link_to`
+    /// stamps [`crate::objects::GameObject::linked_exile_source`] on the
+    /// exiled card (CR 607), so the source's later ability can find it.
+    /// No-op if `target` is no longer a spell on the stack.
+    ExileSpell {
+        target: ObjectId,
+        link_to: Option<ObjectId>,
+    },
+    /// "The card's owner may cast `object` without paying its mana cost"
+    /// (CR 118.9, 608.2g): asks the owner, mid-resolution, through
+    /// [`crate::actions::ChoiceKind::CastWithoutPaying`]. The effect that
+    /// emits this checks first that a cast exists
+    /// ([`crate::legal_actions::casts_without_paying`]), so the owner is
+    /// never asked about a spell with no legal target. No-op if `object`
+    /// has left exile.
+    OfferCastWithoutPaying {
+        object: ObjectId,
+    },
 
     // --- state flip --------------------------------------------------------
     ChangeControl { target: ObjectId, new_controller: PlayerId },
@@ -1111,6 +1131,7 @@ impl Effect {
             | Effect::CastFromHandFree { target, .. }
             | Effect::CastFromGraveyard { target, .. }
             | Effect::CastFromExileFree { target, .. }
+            | Effect::ExileSpell { target, .. }
             | Effect::GrantFlashback { target, .. }
             | Effect::ChangeControl { target, .. }
             | Effect::ChangeControlEot { target, .. }
@@ -1229,6 +1250,7 @@ impl Effect {
             | Effect::SetDayNight { .. }
             | Effect::DelayedAction { .. }
             | Effect::NextCastThisTurn { .. }
+            | Effect::OfferCastWithoutPaying { .. }
             | Effect::EachCastThisTurn { .. } => {}
         }
         e
@@ -1383,6 +1405,8 @@ impl Effect {
             | Effect::SetDayNight { .. }
             | Effect::DelayedAction { .. }
             | Effect::NextCastThisTurn { .. }
+            | Effect::ExileSpell { .. }
+            | Effect::OfferCastWithoutPaying { .. }
             | Effect::EachCastThisTurn { .. } => {}
         }
         e
@@ -1842,6 +1866,27 @@ impl Effect {
                 cast_from_zone_free(
                     state, *player, *target,
                     |z| matches!(z, Zone::Graveyard(_)));
+            }
+            Effect::ExileSpell { target, link_to } => {
+                let is_spell = state.stack.iter().any(|e| e.id == *target && e.is_spell());
+                if !is_spell { return; }
+                let Some(entry) = state.remove_stack_entry_by_id(*target) else { return; };
+                let new_id = state.move_spell_off_stack(entry, crate::zones::Zone::Exile);
+                if let Some(obj) = state.objects.get_mut(new_id) {
+                    obj.linked_exile_source = *link_to;
+                }
+            }
+            Effect::OfferCastWithoutPaying { object } => {
+                let Some(owner) = state.objects.get(*object)
+                    .filter(|o| o.zone.is_exile())
+                    .map(|o| o.owner) else { return; };
+                let resolving = state.currently_resolving
+                    .expect("Effect::OfferCastWithoutPaying: must execute mid-resolution");
+                state.push_pending_choice(
+                    owner,
+                    crate::actions::ChoiceContext::ResolvingStack(resolving),
+                    crate::actions::ChoiceKind::CastWithoutPaying { object: *object },
+                );
             }
             Effect::CastFromExileFree { player, target } => {
                 cast_from_zone_free(
