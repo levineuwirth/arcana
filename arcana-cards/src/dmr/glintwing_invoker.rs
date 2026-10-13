@@ -19,7 +19,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     subtypes.0.insert(wizard);
     subtypes.0.insert(mutant);
     let chars = Characteristics { name, mana_cost: Some(ManaCost::parse("{4}{U}").expect("valid cost")), colors: ColorSet::blue(), types: TypeLine::CREATURE.into(), subtypes, power: Some(PtValue::Fixed(3)), toughness: Some(PtValue::Fixed(3)), ..Default::default() };
-    reg.register(CardDefinition::new(name, chars).with_activated_ability(ActivatedAbilityDef { text: "{7}{U}: This creature gets +3/+3 and gains flying until end of turn.".into(), cost: ActivationCost { mana_cost: ManaCost::parse("{7}{U}").unwrap(), ..ActivationCost::default() }, target_requirements: Vec::new(), is_mana_ability: false, is_loyalty_ability: false, activation_zone: ActivationZone::Battlefield, is_instant_speed: false, face_gate: None, effect: pump_and_fly }))
+    reg.register(CardDefinition::new(name, chars).with_activated_ability(ActivatedAbilityDef { text: "{7}{U}: This creature gets +3/+3 and gains flying until end of turn.".into(), cost: ActivationCost { mana_cost: ManaCost::parse("{7}{U}").unwrap(), ..ActivationCost::default() }, target_requirements: Vec::new(), is_mana_ability: false, is_loyalty_ability: false, activation_zone: ActivationZone::Battlefield, is_instant_speed: true, face_gate: None, effect: pump_and_fly }))
 }
 
 fn pump_and_fly(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {

@@ -38,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{W}, {T}, Sacrifice an artifact: Search your library for an artifact with mana value = 1 + sacrificed's mana value.".into(),
+                text: "{W}, {T}, Sacrifice an artifact: Search your library for an artifact with mana value = 1 + sacrificed's mana value. Activate only as a sorcery.".into(),
                 // GAP: "sacrifice an artifact" (non-self) not expressible.
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{W}").unwrap(),

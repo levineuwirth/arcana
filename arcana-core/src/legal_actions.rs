@@ -3336,26 +3336,25 @@ fn ability_is_activatable(
     {
         return false;
     }
-    // Mana abilities can be activated at any time a player has
-    // priority. Non-mana activated abilities default to sorcery
-    // speed; `is_instant_speed` lifts that gate (CR 702.29a
-    // Cycling). Loyalty abilities ignore `is_instant_speed` — the
-    // CR 606.3 sorcery-speed rule for loyalty takes precedence and
-    // is checked below.
+    // CR 602.2: an activated ability can be activated whenever its
+    // controller has priority, unless it says otherwise. An ability
+    // restricted to sorcery timing ("Activate only as a sorcery", and
+    // keywords such as equip) carries `is_instant_speed: false`; mana
+    // abilities are never restricted.
     if !ability.is_mana_ability
         && !ability.is_instant_speed
         && !sorcery_speed_ok
     {
         return false;
     }
-    // CR 606 — loyalty abilities: only the PW's controller may
-    // activate, only at sorcery speed (already enforced above via
-    // !is_mana_ability && sorcery_speed_ok), only with stack empty,
-    // and only once per turn per PW. Summoning-sickness does NOT
-    // block loyalty activations (CR 114.3 — PW sickness only
-    // restricts attacking).
+    // CR 606.3 — loyalty abilities: only the PW's controller may
+    // activate, only at sorcery speed (checked here whatever the
+    // ability's `is_instant_speed` says), and only once per turn per
+    // PW. Summoning-sickness does NOT block loyalty activations
+    // (CR 114.3 — PW sickness only restricts attacking).
     if ability.is_loyalty_ability {
         if obj.controller != activator { return false; }
+        if !sorcery_speed_ok { return false; }
         if !state.stack_is_empty() { return false; }
         if state.loyalty_activated_this_turn.contains(&obj.id) {
             return false;

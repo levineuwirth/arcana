@@ -44,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_loyalty_ability: false,
                 // GAP: ActivationZone::Graveyard not in catalog
                 activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
+                is_instant_speed: true,
                 face_gate: None,
                 effect: tutor_scout,
             }),

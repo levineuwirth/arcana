@@ -33,7 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{B}, {T}: Surveil 1. Create a token that's a copy of this creature, then sacrifice an artifact or creature.".into(),
+                text: "{B}, {T}: Surveil 1. Create a token that's a copy of this creature, then sacrifice an artifact or creature. Activate only as a sorcery.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{B}").unwrap(),
                     tap: true,

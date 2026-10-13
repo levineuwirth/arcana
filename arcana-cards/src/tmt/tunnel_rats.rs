@@ -43,7 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 // GAP: ActivationZone::Graveyard does not exist; using Hand as
                 // closest proxy — engine will not actually expose this in GY.
                 activation_zone: ActivationZone::Hand,
-                is_instant_speed: false,
+                is_instant_speed: true,
                 face_gate: None,
                 effect: return_self_tapped,
             }),

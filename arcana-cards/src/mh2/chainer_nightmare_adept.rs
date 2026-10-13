@@ -51,7 +51,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
+                is_instant_speed: true,
                 face_gate: None,
                 // GAP: "you may cast a creature spell from your graveyard this turn" grants a
                 // cast-from-graveyard permission — no Effect grants that permission window.

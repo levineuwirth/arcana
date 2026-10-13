@@ -34,7 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{1}, Sacrifice another creature: Put a +1/+1 counter on this creature. It gains menace until end of turn.".into(),
+                text: "{1}, Sacrifice another creature: Put a +1/+1 counter on this creature. It gains menace until end of turn. Activate only as a sorcery.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}").unwrap(),
                     // GAP: no "sacrifice another creature" cost; only sacrifice self

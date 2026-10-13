@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{2}, {T}: Copy target enchantment you control.".into(),
+                text: "{2}, {T}: Copy target enchantment you control. Activate only as a sorcery.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{2}").unwrap(),
                     tap: true,

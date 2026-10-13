@@ -33,7 +33,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "Sacrifice a Food: Put a +1/+1 counter on this creature. It gains vigilance until end of turn.".into(),
+                text: "Sacrifice a Food: Put a +1/+1 counter on this creature. It gains vigilance until end of turn. Activate only as a sorcery.".into(),
                 // GAP: "sacrifice a Food" (non-self) not expressible.
                 cost: ActivationCost {
                     sacrifice: true,

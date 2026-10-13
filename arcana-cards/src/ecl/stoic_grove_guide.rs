@@ -32,7 +32,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{1}{B/G}, Exile this card from your graveyard: Create a 2/2 black and green Elf creature token.".into(),
+                text: "{1}{B/G}, Exile this card from your graveyard: Create a 2/2 black and green Elf creature token. Activate only as a sorcery.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}{B}").unwrap(), // {B/G} treated as {B}
                     exile_self: true,

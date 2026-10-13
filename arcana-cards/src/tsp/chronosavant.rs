@@ -42,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 activation_zone: ActivationZone::Battlefield,
                 // Ideally Graveyard zone but not available as enum variant;
                 // using Battlefield as fallback.
-                is_instant_speed: false,
+                is_instant_speed: true,
                 face_gate: None,
                 effect: graveyard_return,
             }),

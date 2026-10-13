@@ -1611,8 +1611,14 @@ mod tests {
     }
 
     /// A2.2 true-state parity: `vmc-material` at A2.1's budget (6/25/10),
-    /// rolling out from the true state, plays a whole game exactly as it did
-    /// before the sampled-state mode existed. Two fingerprints (FNV-1a) hold it.
+    /// rolling out from the true state, plays a whole recorded game exactly.
+    /// The recording first pinned the game as it was played before the
+    /// sampled-state mode existed (`2be0ed11`), and held on every engine to
+    /// `767499b8`. A1.5s's timing repair changed the engine's game: the two
+    /// agree to decision 410, where player 1's rollouts, now offered
+    /// instant-speed activations, score the same five legal actions
+    /// differently. The fixture is re-recorded on the repaired engine, so
+    /// it now pins true-state play there. Two fingerprints (FNV-1a) hold it.
     /// The portable one covers every scored candidate's index, every action and
     /// how far the deciding policy's stream has advanced after it, so a change
     /// in true-state mode's draws fails at the first decision it touches. The
@@ -1622,9 +1628,7 @@ mod tests {
     /// `tanhf`, which glibc 2.39 and 2.44 disagree on by up to 2 ulp, so the
     /// scores' fingerprint is checked only where `tanh` matches the libm it was
     /// recorded on (this laptop's glibc 2.44 reproduces it); the portable one is
-    /// checked everywhere. The scores' fingerprint was recorded at `2be0ed11`
-    /// from the pre-change `choose` run step by step: its candidates, then
-    /// `score_candidate` per candidate on the policy's stream. The game is
+    /// checked everywhere. The game is
     /// played by production `choose`; a second policy pair at the same seeds
     /// scores each decision in lockstep, and every production choice must be the
     /// first strict maximum of those scores.
@@ -1667,10 +1671,10 @@ mod tests {
             let (s, y) = step(state, a, &reg);
             state = s; yld = y; decisions += 1;
         };
-        assert_eq!((decisions, result), (475, GameResult::Win(1)));
-        assert_eq!(p, 0x9f5b_e076_bc56_3332, "portable fingerprint {p:#018x}");
+        assert_eq!((decisions, result), (477, GameResult::Win(1)));
+        assert_eq!(p, 0x6ea1_44f3_84f7_164f, "portable fingerprint {p:#018x}");
         if libm == 0xebec_b016_a7df_739d {
-            assert_eq!(h, 0xc8d5_ef2b_9ba3_55f5, "fingerprint {h:#018x}");
+            assert_eq!(h, 0xbacc_f072_61b3_aaf2, "fingerprint {h:#018x}");
         } else {
             println!("scores' fingerprint not checked: this libm's tanh ({libm:#018x}) is not the recording's");
         }

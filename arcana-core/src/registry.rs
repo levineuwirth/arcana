@@ -1101,13 +1101,17 @@ pub struct ActivatedAbilityDef {
     /// dredge/flashback-style activations from Graveyard. Defaults
     /// to Battlefield via [`ActivationZone::default`].
     pub activation_zone: ActivationZone,
-    /// CR 702.29a (Cycling) / CR 113.3c (activated abilities with
-    /// "you may activate ... any time you could cast an instant"):
-    /// when true, the sorcery-speed gate in
-    /// [`crate::legal_actions`] is bypassed. Mana abilities are
-    /// implicitly instant-speed via [`Self::is_mana_ability`]; this
-    /// flag is for non-mana abilities that nonetheless may be
-    /// activated at instant speed.
+    /// CR 602.2: true for an ability its controller may activate
+    /// whenever they have priority, which is every activated ability
+    /// whose text sets no timing restriction. False only for an
+    /// ability restricted to sorcery timing ("Activate only as a
+    /// sorcery", or a keyword such as equip, level up or
+    /// reconfigure), which the gate in [`crate::legal_actions`] then
+    /// holds to its controller's main phase with an empty stack.
+    /// Mana abilities are never gated, whatever this says, and
+    /// loyalty abilities always are (CR 606.3). Other timing
+    /// restrictions ("only during your upkeep") are not modeled by
+    /// this flag; such abilities keep `false` (A1.5v).
     pub is_instant_speed: bool,
     /// CR 712 — multi-face gating. When `Some(n)`, the ability is
     /// only activatable while the object's `visible_face == n` (see

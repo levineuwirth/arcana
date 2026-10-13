@@ -34,7 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{3}{B}, Sacrifice this creature: Return target creature card from your graveyard to the battlefield.".into(),
+                text: "{3}{B}, Sacrifice this creature: Return target creature card from your graveyard to the battlefield. Activate only as a sorcery.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{3}{B}").unwrap(),
                     sacrifice: true,

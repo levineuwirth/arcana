@@ -39,7 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{2}{U}: Tap another target creature and put a stun counter on it. This creature becomes a copy while it remains tapped.".into(),
+                text: "{2}{U}: Tap another target creature and put a stun counter on it. This creature becomes a copy while it remains tapped. Activate only as a sorcery.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{2}{U}").unwrap(),
                     ..ActivationCost::default()

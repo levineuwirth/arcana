@@ -33,7 +33,7 @@ fn secret_word_ability(
         is_mana_ability: false,
         is_loyalty_ability: false,
         activation_zone: ActivationZone::Battlefield,
-        is_instant_speed: false,
+        is_instant_speed: true,
         face_gate: None,
         effect,
     }

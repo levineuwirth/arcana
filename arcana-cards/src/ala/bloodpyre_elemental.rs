@@ -31,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "Sacrifice this creature: It deals 4 damage to target creature.".into(),
+                text: "Sacrifice this creature: It deals 4 damage to target creature. Activate only as a sorcery.".into(),
                 cost: ActivationCost {
                     sacrifice: true,
                     ..ActivationCost::default()

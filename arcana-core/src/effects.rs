@@ -3568,7 +3568,7 @@ fn commodity_token_spec(
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
+                is_instant_speed: true,
                 face_gate: None,
                 effect: clue_draw_a_card,
             };
@@ -3597,7 +3597,7 @@ fn commodity_token_spec(
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
+                is_instant_speed: true,
                 face_gate: None,
                 effect: food_gain_three_life,
             };
@@ -3668,7 +3668,7 @@ fn commodity_token_spec(
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
+                is_instant_speed: true,
                 face_gate: None,
                 effect: clue_draw_a_card, // discard is the cost; effect draws one
             };
@@ -3686,7 +3686,8 @@ fn commodity_token_spec(
                 abilities: Vec::new(),
             };
             let activation = ActivatedAbilityDef {
-                text: "{1}, {T}, Sacrifice this artifact: Target creature you control explores."
+                text: "{1}, {T}, Sacrifice this artifact: Target creature you control explores. \
+                       Activate only as a sorcery."
                     .into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}").unwrap(),
