@@ -228,6 +228,8 @@ pub struct CardDefinition {
     pub cant_cast: Option<CastRestriction>,
 }
 
+pub use crate::objects::CastTimingRestriction;
+
 /// A static "you can't cast …" restriction a permanent imposes on its
 /// controller (CR 601.3e). Checked against the would-be spell's type line when
 /// enumerating casts; see [`CardDefinition::cant_cast`].
@@ -276,6 +278,18 @@ impl CardDefinition {
     /// permanent is on the battlefield (e.g. Codie: `CastRestriction::Permanents`).
     pub fn with_cant_cast(mut self, restriction: CastRestriction) -> Self {
         self.cant_cast = Some(restriction);
+        self
+    }
+
+    /// Restrict when other players may cast spells while this permanent is
+    /// on the battlefield (Teferi, Time Raveler:
+    /// `CastTimingRestriction::OpponentsSorceryTiming`). Written into the
+    /// card's characteristics, so every object made from it carries it.
+    pub fn with_cast_timing(mut self, restriction: CastTimingRestriction) -> Self {
+        self.base_characteristics.cast_timing = Some(restriction);
+        if let Some(combined) = self.combined_characteristics.as_mut() {
+            combined.cast_timing = Some(restriction);
+        }
         self
     }
 
@@ -1594,6 +1608,7 @@ fn combine_split_characteristics(
         every_creature_type: left.every_creature_type
             || right.every_creature_type,
         cant_be_countered: left.cant_be_countered || right.cant_be_countered,
+        cast_timing: left.cast_timing.or(right.cast_timing),
     }
 }
 

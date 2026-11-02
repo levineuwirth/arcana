@@ -2954,6 +2954,7 @@ impl TokenDefinition {
                 &KeywordAbility::Changeling),
             // Tokens aren't cast, so "can't be countered" never applies.
             cant_be_countered: false,
+            cast_timing: None,
         }
     }
 }
@@ -4651,6 +4652,11 @@ fn cast_from_zone_free<F: Fn(Zone) -> bool>(
     zone_ok: F,
 ) {
     if !valid_player(state, player) { return; }
+    // These casts happen during a resolution, which is never a time a
+    // player restricted to sorcery timing could cast a sorcery (CR 307.5,
+    // 608.2g): with an opposing Teferi, Time Raveler out, nothing is cast
+    // and the card stays where it is (A1.5aa).
+    if state.casts_restricted_to_sorcery_timing(player) { return; }
     let Some(obj) = state.objects.get(target) else { return; };
     if !zone_ok(obj.zone) { return; }
     if obj.is_land() { return; } // Lands aren't cast (CR 305.1).

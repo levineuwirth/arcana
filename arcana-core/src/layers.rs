@@ -866,7 +866,24 @@ impl ContinuousEffect {
             timestamp: 0,
             duration,
             dependency: None,
-            kind: ContinuousEffectKind::CastAsThoughFlash { spell_filter },
+            kind: ContinuousEffectKind::CastAsThoughFlash { spell_filter, player: None },
+        }
+    }
+
+    /// The same permission granted to `player` by a resolved ability, so it
+    /// lasts for its duration whether or not the source stays (Teferi,
+    /// Time Raveler's +1: sorceries, until `player`'s next turn).
+    pub fn cast_as_though_flash_for(source: ObjectId,
+                                    player: crate::types::PlayerId,
+                                    spell_filter: crate::targets::ObjectFilter,
+                                    duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None,
+            kind: ContinuousEffectKind::CastAsThoughFlash { spell_filter, player: Some(player) },
         }
     }
 
@@ -1428,10 +1445,15 @@ pub enum ContinuousEffectKind {
     /// they had flash" (CR 702.8 timing permission: Vedalken Orrery /
     /// Leyline of Anticipation with an all-matching filter, "cast
     /// creature spells as though they had flash" with a type filter).
-    /// The permission applies to the SOURCE's current controller.
+    /// The permission applies to `player` when set (a resolved ability's
+    /// grant, which outlasts its source: Teferi, Time Raveler's +1), and
+    /// otherwise to the SOURCE's current controller (a static).
     /// Consumed by `legal_actions` (folds into the instant-speed check),
     /// not by the layer-apply loop.
-    CastAsThoughFlash { spell_filter: crate::targets::ObjectFilter },
+    CastAsThoughFlash {
+        spell_filter: crate::targets::ObjectFilter,
+        player: Option<crate::types::PlayerId>,
+    },
     /// Marker — "Each [player] can't cast more than `max` [spell_filter]
     /// spell(s) each turn" (Rule of Law / Eidolon of Rhetoric / Arcane
     /// Laboratory = any spell, max 1; Deafening Silence = noncreature;
@@ -2102,11 +2124,14 @@ impl GameState {
         &self, spell: &crate::objects::GameObject, player: PlayerId,
     ) -> bool {
         self.continuous_effects.iter().any(|e| match &e.kind {
-            ContinuousEffectKind::CastAsThoughFlash { spell_filter }
+            ContinuousEffectKind::CastAsThoughFlash { spell_filter, player: granted }
                 if e.is_live(self) =>
             {
-                self.objects.get(e.source).is_some_and(|s| s.controller == player)
-                    && spell_filter.matches_base(spell, self, player)
+                let holder = match granted {
+                    Some(p) => Some(*p),
+                    None => self.objects.get(e.source).map(|s| s.controller),
+                };
+                holder == Some(player) && spell_filter.matches_base(spell, self, player)
             }
             _ => false,
         })
@@ -2118,6 +2143,18 @@ impl GameState {
     /// spell is subject to its filter, and `caster` has already cast
     /// `max` matching spells this turn. Folded into the cast gate in
     /// `legal_actions`.
+    /// CR 601.3e — may `player` cast spells only any time they could cast
+    /// a sorcery, because a permanent another player controls says so
+    /// (Teferi, Time Raveler)? See
+    /// [`crate::objects::CastTimingRestriction`].
+    pub fn casts_restricted_to_sorcery_timing(&self, player: crate::types::PlayerId) -> bool {
+        use crate::objects::CastTimingRestriction;
+        self.objects.objects_in_zone(crate::zones::Zone::Battlefield).any(|obj|
+            obj.controller != player
+                && obj.characteristics.cast_timing
+                    == Some(CastTimingRestriction::OpponentsSorceryTiming))
+    }
+
     pub fn spell_cast_limit_reached(
         &self, spell: &crate::objects::GameObject, caster: PlayerId,
     ) -> bool {

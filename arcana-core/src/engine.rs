@@ -1588,8 +1588,7 @@ pub(crate) fn apply_resolution_choice(
             ChoiceResponse::YesNo { answer },
         ) if state.pending_discover.is_some() => {
             let pd = state.pending_discover.take().unwrap();
-            if *answer {
-                cast_cascade_hit(state, registry, pd.controller, pd.hit);
+            if *answer && cast_cascade_hit(state, registry, pd.controller, pd.hit) {
                 crate::effects::cascade_shuffle_to_bottom(
                     state, pd.controller, pd.other_exiled);
             } else {
@@ -1609,14 +1608,14 @@ pub(crate) fn apply_resolution_choice(
             ChoiceResponse::YesNo { answer },
         ) if state.pending_cascade.is_some() => {
             let pc = state.pending_cascade.take().unwrap();
-            if *answer {
-                // Yes: cast the hit for free; other_exiled goes to
+            if *answer && cast_cascade_hit(state, registry, pc.controller, pc.hit) {
+                // Yes: the hit is cast for free; other_exiled goes to
                 // the bottom in random order.
-                cast_cascade_hit(state, registry, pc.controller, pc.hit);
                 crate::effects::cascade_shuffle_to_bottom(
                     state, pc.controller, pc.other_exiled);
             } else {
-                // No: hit joins the rest on the bottom.
+                // No, or the cast was refused: the hit joins the rest
+                // on the bottom.
                 let mut all = pc.other_exiled;
                 all.push(pc.hit);
                 crate::effects::cascade_shuffle_to_bottom(
@@ -1812,15 +1811,21 @@ fn apply_order_cards(
 /// the counters at CR 121.6a time — fixed-count clauses land; X-keyed
 /// clauses read `x_value = None` (cascade pays no mana) and stay at
 /// zero. Delve-count clauses likewise read zero.
+///
+/// Returns whether the hit was cast. It isn't when `player` is restricted
+/// to sorcery timing (an opposing Teferi, Time Raveler: a cast during a
+/// resolution is never at sorcery timing, CR 307.5), and then the caller
+/// does with the hit what it does when the player declines (A1.5aa).
 fn cast_cascade_hit(
     state: &mut GameState,
     registry: &CardRegistry,
     player: PlayerId,
     hit: ObjectId,
-) {
-    let Some(obj) = state.objects.get(hit) else { return; };
-    if obj.zone != crate::zones::Zone::Exile { return; }
-    if obj.is_land() { return; }
+) -> bool {
+    if state.casts_restricted_to_sorcery_timing(player) { return false; }
+    let Some(obj) = state.objects.get(hit) else { return false; };
+    if obj.zone != crate::zones::Zone::Exile { return false; }
+    if obj.is_land() { return false; }
     let card_id = obj.card_id;
     let entry_id = state.announce_spell_on_stack(
         hit, player, crate::targets::TargetSelection::new(),
@@ -1832,6 +1837,7 @@ fn cast_cascade_hit(
         entry.enters_with = enters_with;
     }
     state.emit_spell_cast(entry_id);
+    true
 }
 
 /// Greedily deduct `cost` from `player`'s mana pool. Called when an
@@ -10046,6 +10052,78 @@ mod tests {
             "only the original cascade spell remains on the stack");
         // Library now has both exiled cards back at the bottom.
         assert_eq!(s.player(0).library_top_to_bottom.len(), 2);
+    }
+
+    /// A permanent of `controller`'s restricting the other player to
+    /// sorcery timing, as Teferi, Time Raveler's static does (an
+    /// enchantment here, so no loyalty rule removes it).
+    fn put_sorcery_timing_restriction(s: &mut GameState, controller: PlayerId) {
+        let id = s.allocate_object_id();
+        let chars = Characteristics {
+            types: TypeLine::ENCHANTMENT.into(),
+            cast_timing: Some(crate::objects::CastTimingRestriction::OpponentsSorceryTiming),
+            ..Default::default()
+        };
+        let mut obj = crate::objects::GameObject::new(id, controller, crate::zones::Zone::Battlefield, 0, chars);
+        obj.controller = controller;
+        s.objects.insert(obj);
+    }
+
+    /// A1.5aa — cascade casts during its trigger's resolution, which is
+    /// never sorcery timing: under an opponent's Teferi, Time Raveler a
+    /// "yes" casts nothing and the hit joins the rest on the bottom, as a
+    /// "no" does. The cascading player's own Teferi doesn't restrict them.
+    #[test]
+    fn cascade_under_an_opposing_teferi_casts_nothing() {
+        use crate::targets::{TargetChoice, TargetSelection};
+        for restricted in [true, false] {
+            let mut registry = CardRegistry::new();
+            let card = register_cascade_card(&mut registry);
+            let mut s = GameState::new(2, 0);
+            put_sorcery_timing_restriction(&mut s, if restricted { 1 } else { 0 });
+            seed_library(&mut s, 0,
+                vec![basic_land_chars(), cmc1_instant_chars()]);
+            let mut targets = TargetSelection::new();
+            targets.targets.push(TargetChoice::Player(1));
+            let cast_id = announce_as_nth_spell(
+                &mut s, &registry, 0, card, targets, 0);
+            s.emit_spell_cast(cast_id);
+            run_sba_and_triggers(&mut s, &registry);
+            resolve_top_of_stack(&mut s, &registry);
+            let pid = s.pending_choice.as_ref().unwrap().id;
+            apply_resolution_choice(&mut s, &CardRegistry::new(), pid,
+                crate::actions::ChoiceResponse::YesNo { answer: true });
+            let cascaded = s.stack.iter().any(|e| matches!(e.kind,
+                crate::stack::StackEntryKind::Spell { .. }) && e.id != cast_id);
+            assert_eq!(cascaded, !restricted, "restricted={restricted}: the hit was cast");
+            assert_eq!(s.player(0).library_top_to_bottom.len(), if restricted { 2 } else { 1 },
+                "restricted={restricted}: cards back on the bottom");
+        }
+    }
+
+    /// A1.5aa — the same for discover: under an opponent's Teferi a "yes"
+    /// can't cast the hit, so it goes to its owner's hand, as a "no" does.
+    #[test]
+    fn discover_under_an_opposing_teferi_puts_the_hit_into_hand() {
+        for restricted in [true, false] {
+            let mut s = GameState::new(2, 0);
+            put_sorcery_timing_restriction(&mut s, if restricted { 1 } else { 0 });
+            let resolving = s.allocate_object_id();
+            s.currently_resolving = Some(resolving);
+            let card_id = s.allocate_object_id();
+            s.objects.insert(crate::objects::GameObject::new(
+                card_id, 0, crate::zones::Zone::Library(0), 9, cmc1_instant_chars()));
+            s.player_mut(0).library_top_to_bottom.push(card_id);
+            crate::effects::Effect::Discover { player: 0, mana_value: 3 }.execute(&mut s);
+            let pid = s.pending_choice.as_ref().expect("discover asks").id;
+            apply_resolution_choice(&mut s, &CardRegistry::new(), pid,
+                crate::actions::ChoiceResponse::YesNo { answer: true });
+            let cast = s.stack.iter().any(|e| matches!(e.kind,
+                crate::stack::StackEntryKind::Spell { .. }));
+            assert_eq!(cast, !restricted, "restricted={restricted}: the hit was cast");
+            assert_eq!(s.objects.objects_in_zone(crate::zones::Zone::Hand(0)).count(),
+                usize::from(restricted), "restricted={restricted}: the hit in hand");
+        }
     }
 
     #[test]

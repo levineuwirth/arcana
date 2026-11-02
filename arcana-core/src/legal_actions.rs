@@ -85,6 +85,14 @@ fn cast_restricted(
     })
 }
 
+/// The timing check every cast path shares: a spell may be cast at sorcery
+/// timing, or at instant speed when it has instant speed (an instant,
+/// flash, or a flash permission) and its caster isn't restricted to
+/// sorcery timing.
+fn cast_timing_ok(instant_speed: bool, sorcery_speed_ok: bool, sorcery_only: bool) -> bool {
+    sorcery_speed_ok || (instant_speed && !sorcery_only)
+}
+
 pub fn legal_actions(state: &GameState, registry: &CardRegistry) -> Vec<Action> {
     if state.is_game_over() {
         return Vec::new();
@@ -278,6 +286,12 @@ pub fn casts_without_paying(
     let Some(obj) = state.objects.get(object) else { return Vec::new() };
     if !obj.zone.is_exile() || obj.owner != player { return Vec::new(); }
     if state.spell_cast_limit_reached(obj, player) { return Vec::new(); }
+    // A player restricted to sorcery timing (Teferi, Time Raveler) can't
+    // cast during a resolution: the resolving object is still on the
+    // stack, so it is never a time they could cast a sorcery (CR 307.5,
+    // 608.2g).
+    // The card stays where it is (A1.5aa).
+    if state.casts_restricted_to_sorcery_timing(player) { return Vec::new(); }
     let def = registry.get(obj.card_id);
     let alt = def.and_then(|d| d.alternate_face.as_ref());
     // The card's spell faces, each with its characteristics and spell
@@ -1307,6 +1321,9 @@ fn legal_priority_actions(
     let sorcery_speed_ok = player == state.active_player()
         && state.turn.is_main_phase()
         && state.stack_is_empty();
+    // Teferi, Time Raveler: an opponent's instant speed is gone, for this
+    // loop and every alternative-zone loop below (A1.5aa).
+    let sorcery_only = state.casts_restricted_to_sorcery_timing(player);
 
     let mut cast_ids = sorted_ids_in_zone(state, Zone::Hand(player));
     cast_ids.extend(top_lib_cast);
@@ -1322,7 +1339,7 @@ fn legal_priority_actions(
         let is_instant_speed = obj.is_instant()
             || state.has_keyword(id, &crate::effects::KeywordAbility::Flash)
             || state.can_cast_as_though_flash(obj, player);
-        if !is_instant_speed && !sorcery_speed_ok { continue; }
+        if !cast_timing_ok(is_instant_speed, sorcery_speed_ok, sorcery_only) { continue; }
 
         // CR 711.4 — for a Split card the object's off-stack chars are
         // the combined view; a Normal cast dispatches the left half,
@@ -1603,7 +1620,7 @@ fn legal_priority_actions(
         let is_instant_speed = obj.is_instant()
             || state.has_keyword(id, &crate::effects::KeywordAbility::Flash)
             || state.can_cast_as_though_flash(obj, player);
-        if !is_instant_speed && !sorcery_speed_ok { continue; }
+        if !cast_timing_ok(is_instant_speed, sorcery_speed_ok, sorcery_only) { continue; }
 
         // Layer-aware lookup: honors Snapcaster-style granted flashback.
         // If a card ever has multiple flashback keywords (grants stack,
@@ -1683,7 +1700,7 @@ fn legal_priority_actions(
         // time, a sorcery's madness is still sorcery-speed.
         let is_instant_speed = obj.is_instant()
             || state.has_keyword(id, &crate::effects::KeywordAbility::Flash);
-        if !is_instant_speed && !sorcery_speed_ok { continue; }
+        if !cast_timing_ok(is_instant_speed, sorcery_speed_ok, sorcery_only) { continue; }
 
         let Some(madness_cost) = crate::engine::madness_cost_for(state, id)
             else { continue; };
@@ -1755,7 +1772,7 @@ fn legal_priority_actions(
             state.spell_cost_delta(&back.characteristics, player));
 
         let back_is_instant_speed = back.characteristics.types.is_instant();
-        if !back_is_instant_speed && !sorcery_speed_ok { continue; }
+        if !cast_timing_ok(back_is_instant_speed, sorcery_speed_ok, sorcery_only) { continue; }
 
         let reqs: Vec<TargetRequirement> = back.spell_ability.as_ref()
             .map(|sa| sa.target_requirements.clone())
@@ -1818,7 +1835,7 @@ fn legal_priority_actions(
             state.spell_cost_delta(&right.characteristics, player));
 
         let right_is_instant_speed = right.characteristics.types.is_instant();
-        if !right_is_instant_speed && !sorcery_speed_ok { continue; }
+        if !cast_timing_ok(right_is_instant_speed, sorcery_speed_ok, sorcery_only) { continue; }
 
         let reqs: Vec<TargetRequirement> = right.spell_ability.as_ref()
             .map(|sa| sa.target_requirements.clone())
@@ -1887,7 +1904,7 @@ fn legal_priority_actions(
         let face_cost = face_cost.with_generic_delta(
             state.spell_cost_delta(&face.characteristics, player));
         let face_is_instant_speed = face.characteristics.types.is_instant();
-        if !face_is_instant_speed && !sorcery_speed_ok { continue; }
+        if !cast_timing_ok(face_is_instant_speed, sorcery_speed_ok, sorcery_only) { continue; }
 
         let reqs: Vec<TargetRequirement> = face.spell_ability.as_ref()
             .map(|sa| sa.target_requirements.clone())
@@ -1946,7 +1963,7 @@ fn legal_priority_actions(
 
         let is_instant_speed = obj.is_instant()
             || state.has_keyword(id, &crate::effects::KeywordAbility::Flash);
-        if !is_instant_speed && !sorcery_speed_ok { continue; }
+        if !cast_timing_ok(is_instant_speed, sorcery_speed_ok, sorcery_only) { continue; }
 
         let Some(printed_cost) = obj.characteristics.mana_cost.clone()
             else { continue; };
@@ -2012,7 +2029,7 @@ fn legal_priority_actions(
 
         let is_instant_speed = obj.is_instant()
             || state.has_keyword(id, &crate::effects::KeywordAbility::Flash);
-        if !is_instant_speed && !sorcery_speed_ok { continue; }
+        if !cast_timing_ok(is_instant_speed, sorcery_speed_ok, sorcery_only) { continue; }
 
         let Some(printed_cost) = obj.characteristics.mana_cost.clone()
             else { continue; };

@@ -527,6 +527,17 @@ impl GameObject {
 /// the card registry's `base_characteristics` and then modified by the layer
 /// system. For tokens, this is assembled from the `TokenDefinition` when the
 /// token is created.
+/// A static restriction on when players may cast spells, imposed by a
+/// permanent while it is on the battlefield. See
+/// [`Characteristics::cast_timing`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CastTimingRestriction {
+    /// "Each opponent can cast spells only any time they could cast a
+    /// sorcery." (Teferi, Time Raveler.) Opponents of the permanent's
+    /// current controller.
+    OpponentsSorceryTiming,
+}
+
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Characteristics {
     pub name: SmallString,
@@ -583,6 +594,13 @@ pub struct Characteristics {
     /// Forest" still type-fails before the subtype check).
     #[serde(default)]
     pub every_creature_type: bool,
+    /// A static restriction on when other players may cast spells while
+    /// this permanent is on the battlefield (CR 601.3e) — Teferi, Time
+    /// Raveler. Read from game state by every cast path, so the effects
+    /// that cast a card mid-resolution observe it too. `None` for the
+    /// vast majority. Set through `CardDefinition::with_cast_timing`.
+    #[serde(default)]
+    pub cast_timing: Option<CastTimingRestriction>,
     /// CR 701.5f — "This spell can't be countered." A static ability of
     /// the spell that functions on the stack; the spell's characteristics
     /// carry the flag onto its [`crate::stack::StackEntry`], where the
@@ -646,6 +664,7 @@ mod tests {
             saga_final_chapter: None,
             every_creature_type: false,
             cant_be_countered: false,
+            cast_timing: None,
         }
     }
 
