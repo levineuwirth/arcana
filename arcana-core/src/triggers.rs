@@ -509,15 +509,22 @@ impl TriggerCondition {
             SelfAttacksUnblocked => matches!(event,
                 GameEvent::CreatureNotBlocked { attacker } if *attacker == source),
 
-            ZoneChange { filter, from, to } => {
-                let GameEvent::ZoneChange { object_id, from: evf, to: evt, .. } = event
-                    else { return false; };
-                if !evt.same_kind(*to) { return false; }
-                if let Some(f) = from {
-                    if !evf.same_kind(*f) { return false; }
+            ZoneChange { filter, from, to } => match event {
+                GameEvent::ZoneChange { object_id, from: evf, to: evt, .. } => {
+                    if !evt.same_kind(*to) { return false; }
+                    if let Some(f) = from {
+                        if !evf.same_kind(*f) { return false; }
+                    }
+                    match_filter_on(state, *object_id, filter, source_controller)
                 }
-                match_filter_on(state, *object_id, filter, source_controller)
-            }
+                // CR 603.6a — a created token enters the battlefield. It
+                // came from no zone, so only a condition that names none
+                // sees it; tokens emit no zone change (A1.5bf).
+                GameEvent::TokenCreated { object_id, .. }
+                    if from.is_none() && to.same_kind(Zone::Battlefield) =>
+                    match_filter_on(state, *object_id, filter, source_controller),
+                _ => false,
+            },
 
             SpellCast { filter, caster } => {
                 let GameEvent::SpellCast { object_id, controller, .. } = event
@@ -828,6 +835,8 @@ impl PendingTrigger {
             // counters, tap…) must use that, NOT the stale pre-move `object_id`.
             GameEvent::ZoneChange { new_id, to: Zone::Battlefield, .. } =>
                 Some(*new_id),
+            // A created token enters under its own id (A1.5bf).
+            GameEvent::TokenCreated { object_id, .. } => Some(*object_id),
             _ => None,
         }
     }
@@ -1618,6 +1627,43 @@ mod tests {
             to: Zone::Exile,
         };
         assert!(!cond.matches(&event, 999, 0, &s));
+    }
+
+    /// A created token enters the battlefield: a condition that names no
+    /// `from` zone sees it, one that names a zone doesn't, and the
+    /// trigger's entering object is the token (A1.5bf).
+    #[test]
+    fn zone_change_to_battlefield_sees_a_created_token() {
+        let mut s = GameState::new(2, 0);
+        let t = put_creature(&mut s, 0, Zone::Battlefield);
+        let event = GameEvent::TokenCreated { object_id: t, controller: 0 };
+        let enters = TriggerCondition::ZoneChange {
+            filter: ObjectFilter::creature(),
+            from: None,
+            to: Zone::Battlefield,
+        };
+        assert!(enters.matches(&event, 999, 0, &s));
+        let from_graveyard = TriggerCondition::ZoneChange {
+            filter: ObjectFilter::creature(),
+            from: Some(Zone::Graveyard(0)),
+            to: Zone::Battlefield,
+        };
+        assert!(!from_graveyard.matches(&event, 999, 0, &s));
+        let dies = TriggerCondition::ZoneChange {
+            filter: ObjectFilter::creature(),
+            from: None,
+            to: Zone::Graveyard(0),
+        };
+        assert!(!dies.matches(&event, 999, 0, &s));
+        let pending = PendingTrigger {
+            source: 999,
+            trigger_id: 1,
+            controller: 0,
+            trigger_event: event,
+            targets: Default::default(),
+            effect_override: None,
+        };
+        assert_eq!(pending.entering_object(), Some(t));
     }
 
     #[test]
