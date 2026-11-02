@@ -66,6 +66,13 @@ pub struct GameState {
     pub continuous_effects: Vec<ContinuousEffect>,
     /// Replacement effects waiting to intercept would-be events (CR 614).
     pub replacement_effects: Vec<crate::replacement::ReplacementEffect>,
+    /// The player who installed each replacement effect, keyed by the
+    /// effect's id: its source's controller when
+    /// [`Self::add_replacement_effect`] ran. "You" in a replacement's
+    /// filters is the source's current controller while the source is
+    /// in the arena, and this player once it has gone, so an effect a
+    /// resolved spell installed never falls back to player 0 (A1.5ab).
+    pub replacement_controllers: HashMap<u64, PlayerId>,
     /// Delayed triggers waiting to fire.
     pub delayed_triggers: Vec<DelayedTrigger>,
     /// Fires-per-turn ledger for `TriggerFrequency::OncePerTurn`
@@ -301,6 +308,7 @@ impl GameState {
             combat: None,
             continuous_effects: Vec::new(),
             replacement_effects: Vec::new(),
+            replacement_controllers: HashMap::default(),
             delayed_triggers: Vec::new(),
             triggers_fired_this_turn: TriggerLedger::default(),
             triggers_fired_this_game: TriggerLedger::default(),
@@ -711,6 +719,9 @@ impl GameState {
             // test when the enchantment was sent to the graveyard
             // but its +1/+1 stayed on the board.
             self.expire_effects_from_source(id);
+            // The same for its replacement effects (A1.5ab): a Hardened
+            // Scales that has left stops adding counters.
+            self.expire_replacements_from_source(id);
         }
 
         let (new_id, from) = self.swap_to_zone_reid(id, destination)?;

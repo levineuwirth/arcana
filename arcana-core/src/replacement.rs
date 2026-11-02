@@ -511,8 +511,23 @@ pub struct EtbReplacements {
 impl GameState {
     /// Register a replacement effect. Assigns a fresh id so the
     /// pipeline can track "already used this event" per CR 614.5.
+    ///
+    /// A [`ReplacementDuration::WhileSourceOnBattlefield`] effect whose
+    /// source is not on the battlefield is not installed (A1.5ab): an
+    /// enters trigger that resolves after its source has left would
+    /// otherwise start an effect that nothing ever ends. The source's
+    /// controller (or its last-known controller) is recorded as the
+    /// effect's installer for [`source_controller_of`].
     pub fn add_replacement_effect(&mut self, mut effect: ReplacementEffect) {
+        if matches!(effect.duration, ReplacementDuration::WhileSourceOnBattlefield)
+            && !self.objects.get(effect.source).is_some_and(|o| o.zone.is_battlefield())
+        {
+            return;
+        }
         effect.id = self.next_timestamp();
+        if let Some(installer) = self.object_or_lki(effect.source).map(|o| o.controller) {
+            self.replacement_controllers.insert(effect.id, installer);
+        }
         self.replacement_effects.push(effect);
     }
 
@@ -522,9 +537,9 @@ impl GameState {
     {
         let before = self.replacement_effects.len();
         let mut keep = Vec::with_capacity(before);
-        for e in self.replacement_effects.drain(..) {
+        for e in std::mem::take(&mut self.replacement_effects) {
             if pred(&e) {
-                // discard
+                self.replacement_controllers.remove(&e.id);
             } else {
                 keep.push(e);
             }
@@ -903,7 +918,7 @@ impl GameState {
                 }
                 Some(ReplacementKind::RegenerateShield) => {
                     // Shield fires and is consumed.
-                    self.replacement_effects.retain(|e| e.id != id);
+                    self.remove_replacement_effects(|e| e.id == id);
                     return DieOutcome::Regenerated;
                 }
                 _ => {}
@@ -1026,10 +1041,14 @@ fn apply_kind_to_event(
 
 /// The controller of the replacement effect's source object. Used to
 /// resolve `ControllerConstraint::You` inside the replacement's own
-/// filters (e.g. "creature **you** control" on Hardened Scales). If
-/// the source object is gone from the arena, falls back to 0.
+/// filters (e.g. "creature **you** control" on Hardened Scales). Once
+/// the source has gone from the arena (a resolved spell, say), it is
+/// the player who installed the effect (A1.5ab). Player 0 only for an
+/// effect installed with no source to read, which tests do.
 pub(crate) fn source_controller_of(effect: &ReplacementEffect, state: &GameState) -> PlayerId {
-    state.objects.get(effect.source).map(|o| o.controller).unwrap_or(0)
+    state.objects.get(effect.source).map(|o| o.controller)
+        .or_else(|| state.replacement_controllers.get(&effect.id).copied())
+        .unwrap_or(0)
 }
 
 // NOTE: the "affected player" of a replacement event — the one who
@@ -1476,8 +1495,10 @@ mod tests {
     #[test]
     fn expire_from_source_drops_while_on_bf_effects() {
         let mut s = GameState::new(2, 0);
-        let src_a = 10;
-        let src_b = 20;
+        // Sources on the battlefield: a source-bound effect whose source
+        // isn't there is not installed at all (A1.5ab).
+        let src_a = put_creature(&mut s, 0, 1, 1);
+        let src_b = put_creature(&mut s, 0, 1, 1);
         s.add_replacement_effect(ReplacementEffect {
             source: src_a,
             duration: ReplacementDuration::WhileSourceOnBattlefield,
@@ -1728,6 +1749,44 @@ mod tests {
     // Winding Constrictor). Every production counter-placement routes
     // through `GameState::place_counters`.
     // =====================================================================
+
+    /// A1.5ab: "you" stays with the installer once the source has gone
+    /// from the arena. An end-of-turn effect a spell installed still adds
+    /// to its caster's counters after the spell has left the stack and its
+    /// last-known information is released, from either seat.
+    #[test]
+    fn a_gone_sources_effect_keeps_its_installer_as_you() {
+        for seat in [0, 1] {
+            let mut s = GameState::new(2, 0);
+            let mine = put_creature(&mut s, seat, 2, 2);
+            let theirs = put_creature(&mut s, 1 - seat, 2, 2);
+            let spell = s.allocate_object_id();
+            let chars = Characteristics { types: TypeLine::INSTANT.into(), ..Default::default() };
+            let mut obj = GameObject::new(spell, seat, Zone::Stack, 1, chars);
+            obj.controller = seat;
+            s.objects.insert(obj);
+            s.add_replacement_effect(ReplacementEffect {
+                duration: ReplacementDuration::EndOfTurn,
+                ..base_effect(
+                    spell,
+                    ReplacementCondition::WouldPlaceCounters {
+                        object_filter: ObjectFilter::creature()
+                            .controlled_by(ControllerConstraint::You),
+                        kinds: CounterKindFilter::Only(CounterKind::PlusOnePlusOne),
+                    },
+                    ReplacementKind::AddAdditionalCounters(1),
+                )
+            });
+            s.move_object_to_zone(spell, Zone::Graveyard(seat),
+                crate::events::MoveCause::SpellResolution);
+            s.clear_lki();
+            assert!(s.objects.get(spell).is_none(), "the spell is gone from the arena");
+            let placed = |s: &mut GameState, c| s.place_counters(
+                CounterTarget::Object(c), CounterKind::PlusOnePlusOne, 1).map(|(_, n)| n);
+            assert_eq!(placed(&mut s, mine), Some(2), "seat {seat}: the caster's creature");
+            assert_eq!(placed(&mut s, theirs), Some(1), "seat {seat}: the opponent's creature");
+        }
+    }
 
     fn install_hardened_scales(s: &mut GameState) {
         // "If one or more +1/+1 counters would be placed on a creature
