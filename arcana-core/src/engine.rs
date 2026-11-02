@@ -1070,7 +1070,7 @@ fn apply_activate_ability(
     // source-object re-id'ing that happens when a cost like
     // sacrifice-self or discard-self moves the card before the
     // ability resolves (CR 400.7).
-    let (card_id, is_mana_ability, is_loyalty_ability, tap, sacrifice, life,
+    let (card_id, is_mana_ability, is_loyalty_ability, tap, sacrifice,
          discard_random, once_per_turn, effect_fn) = {
         let Some(obj) = state.objects.get(source) else { return; };
         // Flat index covers registry-backed abilities first, then the
@@ -1087,7 +1087,6 @@ fn apply_activate_ability(
             ability.is_loyalty_ability,
             ability.cost.tap,
             ability.cost.sacrifice,
-            ability.cost.life,
             ability.cost.discard_random,
             ability.cost.once_per_turn,
             ability.effect,
@@ -1114,10 +1113,10 @@ fn apply_activate_ability(
             }
         }
     }
-    if life > 0 {
-        state.player_mut(controller).life -= life as i32;
-        state.emit(GameEvent::LifeLost { player: controller, amount: life });
-    }
+    // A life cost is paid once, by the action's declared
+    // `AdditionalCostPayment::PayLife` in `apply_additional_costs` below
+    // (`legal_actions::build_additional_costs` always declares it).
+    // Paying it here as well charged every life cost twice (A1.5bd).
     if sacrifice {
         state.move_object_to_zone(
             source, Zone::Graveyard(controller), MoveCause::Cost);
