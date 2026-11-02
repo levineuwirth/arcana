@@ -3,9 +3,9 @@
 //! Oracle:
 //! * Trample — keyword, base characteristic. (Scryfall also parses "Fight",
 //!   which is not a `KeywordAbility` variant — it's part of the modal text.)
-//! * "This creature enters with X +1/+1 counters on it." — GAP: an "enters with
-//!   X counters" replacement where X is the spell's chosen value has no primitive
-//!   (a triggered ETB body cannot read X).
+//! * "This creature enters with X +1/+1 counters on it." —
+//!   `EntersWithSpec::CountersFromX`, which reads the cast's X (A1.5as: this
+//!   was GAP'd, so the Hydra entered a 0/1).
 //! * "When this creature enters, choose one —
 //!     • Double the number of +1/+1 counters on this creature.
 //!     • This creature fights target creature you don't control." — GAP: modal
@@ -17,7 +17,7 @@
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
-use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
 use arcana_core::state::GameState;
 use arcana_core::targets::{
     ControllerConstraint, ObjectFilter, TargetCount, TargetFilter, TargetRequirement,
@@ -25,7 +25,7 @@ use arcana_core::targets::{
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -47,21 +47,23 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
 
     reg.register(
-        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
-            id: 1,
-            trigger_condition: TriggerCondition::SelfEntersBattlefield,
-            intervening_if: None,
-            effect: etb_modal,
-            trigger_zones: vec![Zone::Battlefield],
-            frequency: TriggerFrequency::EachTime,
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Permanent(
-                    ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
-                ),
-                count: TargetCount::UpTo(1),
-                controller: None,
-            }],
-        }),
+        CardDefinition::new(name, chars)
+            .with_enters_with(EntersWithSpec::CountersFromX { kind: CounterKind::PlusOnePlusOne })
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: etb_modal,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(
+                        ObjectFilter::creature().controlled_by(ControllerConstraint::Opponent),
+                    ),
+                    count: TargetCount::UpTo(1),
+                    controller: None,
+                }],
+            }),
     )
 }
 

@@ -4,19 +4,15 @@
 //!
 //! Reach and Trample are evergreen keywords; protection from multicolored
 //! is NOT an expressible KeywordAbility variant (GAP'd). The "enters with X
-//! +1/+1 counters" rider is the X-cost enters-with mechanic — there is no
-//! Effect for enters-with-X-counters keyed to the spell's X, so it is GAP'd.
+//! +1/+1 counters" rider is `EntersWithSpec::CountersFromX`, which reads the
+//! cast's X as Hangarback Walker's does (A1.5ar: an empty enters trigger
+//! stood in for it, so the 0/0 died on entering).
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::KeywordAbility;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
-use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::state::GameState;
-use arcana_core::triggers::{
-    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
-};
-use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
-use arcana_core::zones::Zone;
+use arcana_core::registry::{CardDefinition, CardRegistry, EntersWithSpec};
+use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Stonecoil Serpent");
@@ -39,26 +35,8 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
 
     reg.register(
-        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
-            id: 1,
-            trigger_condition: TriggerCondition::SelfEntersBattlefield,
-            intervening_if: None,
-            effect: enters_with_x_counters,
-            trigger_zones: vec![Zone::Battlefield],
-            frequency: TriggerFrequency::EachTime,
-            target_requirements: Vec::new(),
+        CardDefinition::new(name, chars).with_enters_with(EntersWithSpec::CountersFromX {
+            kind: CounterKind::PlusOnePlusOne,
         }),
     )
-}
-
-fn enters_with_x_counters(
-    _state: &GameState,
-    _trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: "enters with X +1/+1 counters" — the count is the spell's
-    // cast X value, which is not available to an ETB trigger resolver
-    // (no x_value accessor on PendingTrigger); emitting a literal would
-    // be materially wrong, so the whole effect is omitted.
-    Vec::new()
 }
