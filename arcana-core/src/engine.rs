@@ -2535,11 +2535,32 @@ fn ability_needs_targets(
     registry: &CardRegistry,
     pt: &crate::triggers::PendingTrigger,
 ) -> bool {
-    let Some(obj) = state.object_or_lki(pt.source) else { return false; };
-    let Some(def) = registry.get(obj.card_id) else { return false; };
-    def.triggered_abilities.iter()
+    triggered_ability_requirements(state, registry, pt)
+        .is_some_and(|reqs| !reqs.is_empty())
+}
+
+/// The target requirements of a pending trigger's ability, from the
+/// registry for a card's printed ability, or from the source object's
+/// runtime list for an ability in the granted range: a token's printed
+/// triggers and granted triggers live there (A1.5bg). `None` if the
+/// source or the ability is gone. The source is read through
+/// last-known information so leaves-the-battlefield triggers still
+/// find their text.
+fn triggered_ability_requirements(
+    state: &GameState,
+    registry: &CardRegistry,
+    pt: &crate::triggers::PendingTrigger,
+) -> Option<Vec<crate::targets::TargetRequirement>> {
+    let obj = state.object_or_lki(pt.source)?;
+    if pt.trigger_id >= crate::triggers::GRANTED_TRIGGER_ID_BASE {
+        return obj.granted_triggered_abilities.iter()
+            .find(|g| g.def.id == pt.trigger_id)
+            .map(|g| g.def.target_requirements.clone());
+    }
+    registry.get(obj.card_id)?
+        .triggered_abilities.iter()
         .find(|a| a.id == pt.trigger_id)
-        .is_some_and(|a| !a.target_requirements.is_empty())
+        .map(|a| a.target_requirements.clone())
 }
 
 /// Push a plain triggered-ability stack entry and record its frequency
@@ -2606,17 +2627,9 @@ fn drain_one_queued_targeted_trigger(
     // have changed zones (and so been re-id'd) between enqueue and
     // drain — we use object_or_lki so leaves-the-battlefield triggers
     // still find their printed text.
-    let requirements = {
-        let Some(obj) = state.object_or_lki(pt.source) else {
-            // Source vanished entirely; trigger drops silently.
-            return false;
-        };
-        let Some(def) = registry.get(obj.card_id) else { return false; };
-        let Some(ability) = def.triggered_abilities.iter()
-            .find(|a| a.id == pt.trigger_id)
+    // A vanished source or ability drops the trigger silently.
+    let Some(requirements) = triggered_ability_requirements(state, registry, &pt)
         else { return false; };
-        ability.target_requirements.clone()
-    };
     if requirements.is_empty() {
         // Defensive: caller mis-queued a non-targeted trigger. Push
         // it like any other untargeted trigger.
@@ -2671,26 +2684,34 @@ fn collect_pending_triggers(
 
     for event in events {
         for &(source, card_id, controller, visible_face) in &trigger_sources {
-            let Some(def) = registry.get(card_id) else { continue; };
-            for ability in &def.triggered_abilities {
-                // CR 712 — face gate: a back-face-only (or front-only)
-                // trigger on a transforming DFC fires only while the
-                // object shows that face. Sidecar lookup; absent = any
-                // face. Checked before should_fire so a wrong-face
-                // trigger never even consults its condition.
-                if let Some(face) = def.trigger_face_gate(ability.id) {
-                    if visible_face != face { continue; }
-                }
-                if let Some(pt) = ability.should_fire(
-                    event, source, controller, state, registry)
-                {
-                    pending.push(pt);
+            // A token has no registry definition (card_id 0); its
+            // printed triggers are granted abilities, scanned below. A
+            // `continue` here skipped that scan, so no token's trigger
+            // ever fired (A1.5bg).
+            if let Some(def) = registry.get(card_id) {
+                for ability in &def.triggered_abilities {
+                    // CR 712 — face gate: a back-face-only (or front-only)
+                    // trigger on a transforming DFC fires only while the
+                    // object shows that face. Sidecar lookup; absent = any
+                    // face. Checked before should_fire so a wrong-face
+                    // trigger never even consults its condition.
+                    if let Some(face) = def.trigger_face_gate(ability.id) {
+                        if visible_face != face { continue; }
+                    }
+                    if let Some(pt) = ability.should_fire(
+                        event, source, controller, state, registry)
+                    {
+                        pending.push(pt);
+                    }
                 }
             }
-            // Granted triggered abilities (Effect::GrantTriggeredAbility)
-            // live on the object, not the registry def. Scan them for
-            // this source alongside the printed ones.
-            if let Some(obj) = state.objects.get(source) {
+            // Granted triggered abilities (Effect::GrantTriggeredAbility,
+            // and a token's printed triggers) live on the object, not the
+            // registry def. Scan them for this source alongside the
+            // printed ones, through last-known information so a departed
+            // source's leave triggers fire: a token's own "when this
+            // dies" read only live objects and never fired (A1.5bg).
+            if let Some(obj) = state.object_or_lki(source) {
                 for granted in &obj.granted_triggered_abilities {
                     if let Some(pt) = granted.def.should_fire(
                         event, source, controller, state, registry)
