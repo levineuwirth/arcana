@@ -771,6 +771,12 @@ pub enum Effect {
         then: Box<Effect>,
     },
     Sacrifice { player: PlayerId, filter: ObjectFilter, count: u32 },
+    /// Its controller sacrifices this one permanent: a delayed "sacrifice
+    /// it at the next end step", fading, vanishing. A sacrifice is not
+    /// destruction, so indestructible and regeneration don't stop it, but
+    /// an exile-instead replacement applies (A1.5bk). Nothing happens if
+    /// the permanent has left the battlefield.
+    SacrificePermanent { target: ObjectId },
     /// Pass 4.1 — Enlist (CR 702.151a). Posts the optional "tap a
     /// nonattacking creature you control without summoning sickness"
     /// choice for `enlister`; the follow-up taps it and adds its
@@ -1107,6 +1113,7 @@ impl Effect {
             // fixed target the author chose ("put a counter on ~ for each …"),
             // which the old unconditional stamp clobbered.
             Effect::DestroyPermanent { target }
+            | Effect::SacrificePermanent { target }
             | Effect::ExilePermanent { target }
             | Effect::ReturnToHand { target }
             | Effect::ReturnFromGraveyardToHand { target }
@@ -1334,6 +1341,7 @@ impl Effect {
             | Effect::PreventDamageFrom { .. }
             | Effect::Regenerate { .. }
             | Effect::DestroyPermanent { .. }
+            | Effect::SacrificePermanent { .. }
             | Effect::ExilePermanent { .. }
             | Effect::ReturnToHand { .. }
             | Effect::PutOnTopOfLibrary { .. }
@@ -1552,10 +1560,25 @@ impl Effect {
                 if state.has_keyword(*target, &KeywordAbility::Indestructible) {
                     return;
                 }
-                if let Some(owner) = owner_of(state, *target) {
+                // Destruction, through the death replacements, so a
+                // regeneration shield or an exile-instead applies
+                // (A1.5bk).
+                if state.objects.get(*target).is_some_and(|o| o.zone.is_battlefield()) {
+                    state.put_into_graveyard_dying(*target,
+                        crate::replacement::DeathKind::Destruction,
+                        MoveCause::SpellResolution);
+                } else if let Some(owner) = owner_of(state, *target) {
                     state.move_object_to_zone(*target, Zone::Graveyard(owner),
                         MoveCause::SpellResolution);
                 }
+            }
+            Effect::SacrificePermanent { target } => {
+                let Some(controller) = state.objects.get(*target)
+                    .filter(|o| o.zone.is_battlefield())
+                    .map(|o| o.controller) else { return; };
+                state.emit(GameEvent::Sacrifice { player: controller, object_id: *target });
+                state.put_into_graveyard_dying(*target,
+                    crate::replacement::DeathKind::Other, MoveCause::SpellResolution);
             }
             Effect::ExilePermanent { target } => {
                 state.move_object_to_zone(*target, Zone::Exile, MoveCause::SpellResolution);
@@ -2608,7 +2631,7 @@ fn delayed_sacrifice(
     _s: &GameState, pt: &crate::triggers::PendingTrigger,
     _r: &crate::registry::CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::DestroyPermanent { target: pt.source }]
+    vec![Effect::SacrificePermanent { target: pt.source }]
 }
 fn delayed_exile(
     _s: &GameState, pt: &crate::triggers::PendingTrigger,
@@ -7868,7 +7891,8 @@ mod tests {
         assert!(matches!(t.condition,
             TriggerCondition::StepBegins { step: crate::turn::Step::End, .. }));
         assert!(t.fire_once);
-        // The callback destroys the token via DestroyPermanent.
+        // The callback sacrifices the token (A1.5bk: a sacrifice, not a
+        // destroy, so regeneration and indestructible don't stop it).
         let pt = crate::triggers::PendingTrigger {
             source: token_id, trigger_id: 0, controller: 0,
             trigger_event: GameEvent::StepBegins { step: crate::turn::Step::End },
@@ -7877,7 +7901,7 @@ mod tests {
         };
         let eff = (t.effect)(&s, &pt, &reg);
         assert!(matches!(eff.as_slice(),
-            [Effect::DestroyPermanent { target }] if *target == token_id));
+            [Effect::SacrificePermanent { target }] if *target == token_id));
     }
 
     #[test]

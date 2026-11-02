@@ -1462,13 +1462,12 @@ pub(crate) fn apply_resolution_choice(
                 .filter(|id| !picked.contains(id))
                 .collect();
             for id in sacrificed {
-                let Some(owner) = state.objects.get(id).map(|o| o.owner)
-                    else { continue; };
-                state.move_object_to_zone(
-                    id,
-                    crate::zones::Zone::Graveyard(owner),
-                    crate::events::MoveCause::StateBasedAction,
-                );
+                // Put into the graveyard by the rule, not sacrificed or
+                // destroyed: a death, so an exile-instead applies and no
+                // regeneration does (A1.5bk).
+                state.put_into_graveyard_dying(id,
+                    crate::replacement::DeathKind::Other,
+                    crate::events::MoveCause::StateBasedAction);
             }
             // Re-enter the SBA loop: more legend groups may still be
             // conflicting, and the just-sacrificed moves may have
@@ -2009,10 +2008,8 @@ fn apply_choice_follow_up(
         ChoiceFollowUp::Sacrifice { player } => {
             for id in chosen {
                 state.emit(GameEvent::Sacrifice { player, object_id: *id });
-                let owner = state.objects.get(*id)
-                    .map(|o| o.owner).unwrap_or(player);
-                state.move_object_to_zone(
-                    *id, Zone::Graveyard(owner), MoveCause::SpellResolution);
+                state.put_into_graveyard_dying(*id,
+                    crate::replacement::DeathKind::Other, MoveCause::SpellResolution);
             }
         }
         ChoiceFollowUp::Provoke { provoker } => {
@@ -2053,8 +2050,8 @@ fn apply_choice_follow_up(
                     .map(|o| o.owner).unwrap_or(0);
                 state.emit(GameEvent::Sacrifice {
                     player: owner, object_id: *id });
-                state.move_object_to_zone(
-                    *id, Zone::Graveyard(owner), MoveCause::SpellResolution);
+                state.put_into_graveyard_dying(*id,
+                    crate::replacement::DeathKind::Other, MoveCause::SpellResolution);
             }
             let total = per as u32 * eaten;
             if total > 0 {
@@ -4210,16 +4207,21 @@ fn misc_trigger_resolve(
     let Some(kind) = kind else { return Vec::new(); };
     let Some(obj) = state.objects.get(source) else { return Vec::new(); };
     let have = obj.count_counters(kind);
-    if have == 0 {
-        return vec![Effect::DestroyPermanent { target: source }];
+    // Sacrifices, not destroys (A1.5bk), at the rules' own moments:
+    // - Fading (CR 702.32a): remove a fade counter; sacrifice only if
+    //   none can be removed, so it survives removing its last one.
+    // - Vanishing (CR 702.63a): with a time counter, remove one; when the
+    //   last is removed, sacrifice it. That is a separate trigger in the
+    //   rules, approximated here inside the same resolution. With none, the
+    //   upkeep ability does nothing.
+    let remove = Effect::RemoveCounters { target: source, kind, count: 1 };
+    match (kind, have) {
+        (CounterKind::Fade, 0) => vec![Effect::SacrificePermanent { target: source }],
+        (CounterKind::Fade, _) => vec![remove],
+        (_, 0) => Vec::new(),
+        (_, 1) => vec![remove, Effect::SacrificePermanent { target: source }],
+        (_, _) => vec![remove],
     }
-    let mut out = vec![Effect::RemoveCounters {
-        target: source, kind, count: 1 }];
-    if have == 1 {
-        // That was the last — sacrifice it now.
-        out.push(Effect::DestroyPermanent { target: source });
-    }
-    out
 }
 
 // =============================================================================
@@ -4299,11 +4301,11 @@ fn spend_mana_plan(
 /// no longer on the battlefield is skipped: an ability's own sacrifice is
 /// paid by its fixed cost before the action's declared payment repeats it.
 fn sacrifice_as_cost(state: &mut GameState, player: PlayerId, id: ObjectId) {
-    let Some(owner) = state.objects.get(id)
-        .filter(|o| o.zone.is_battlefield())
-        .map(|o| o.owner) else { return; };
+    if !state.objects.get(id).is_some_and(|o| o.zone.is_battlefield()) { return; }
     state.emit(GameEvent::Sacrifice { player, object_id: id });
-    state.move_object_to_zone(id, Zone::Graveyard(owner), MoveCause::Cost);
+    // A sacrifice isn't destruction: no regeneration, but an
+    // exile-instead replacement applies (A1.5bk).
+    state.put_into_graveyard_dying(id, crate::replacement::DeathKind::Other, MoveCause::Cost);
 }
 
 fn apply_additional_costs(
@@ -6364,6 +6366,39 @@ mod prowess_tests {
     use crate::zones::Zone;
     use crate::types::*;
 
+    /// Fading and vanishing at their own moments (CR 702.32a, 702.63a;
+    /// A1.5bk), sacrificing rather than destroying: fading removes a
+    /// counter while it has one and sacrifices only with none left;
+    /// vanishing removes a counter while it has one, sacrifices on removing
+    /// the last, and does nothing with none.
+    #[test]
+    fn fading_and_vanishing_sacrifice_at_their_own_moments() {
+        use crate::effects::Effect;
+        let run = |kw: KeywordAbility, kind: CounterKind, have: u32| {
+            let mut s = GameState::new(2, 0);
+            let c = put_creature(&mut s, 0, 2, 2);
+            s.objects.get_mut(c).unwrap().characteristics.keywords.push(kw);
+            if have > 0 { s.objects.get_mut(c).unwrap().add_counters(kind, have); }
+            (c, misc_trigger_resolve(&s, c, FADEVANISH_TRIGGER_ID))
+        };
+        let sac = |out: &[Effect], c| matches!(out.last(), Some(Effect::SacrificePermanent { target }) if *target == c);
+        let removes = |out: &[Effect]| matches!(out.first(), Some(Effect::RemoveCounters { count: 1, .. }));
+        // Fading.
+        let (c, out) = run(KeywordAbility::Fading(1), CounterKind::Fade, 0);
+        assert!(sac(&out, c) && out.len() == 1, "fading with none: {out:?}");
+        for have in [1, 2] {
+            let (c, out) = run(KeywordAbility::Fading(1), CounterKind::Fade, have);
+            assert!(removes(&out) && !sac(&out, c), "fading with {have}: {out:?}");
+        }
+        // Vanishing.
+        let (_, out) = run(KeywordAbility::Vanishing(1), CounterKind::Time, 0);
+        assert!(out.is_empty(), "vanishing with none: {out:?}");
+        let (c, out) = run(KeywordAbility::Vanishing(1), CounterKind::Time, 1);
+        assert!(removes(&out) && sac(&out, c), "vanishing with one: {out:?}");
+        let (c, out) = run(KeywordAbility::Vanishing(1), CounterKind::Time, 2);
+        assert!(removes(&out) && !sac(&out, c), "vanishing with two: {out:?}");
+    }
+
     fn put_creature(s: &mut GameState, owner: PlayerId, p: i32, t: i32) -> ObjectId {
         let id = s.allocate_object_id();
         let chars = Characteristics {
@@ -7502,10 +7537,17 @@ mod tests {
             state.objects.get(id).unwrap().count_counters(CounterKind::Fade),
             1);
         assert!(state.objects.get(id).is_some());
-        tick(&mut state, &registry); // 1 -> 0, sacrificed
+        // CR 702.32a: it survives removing its last fade counter and is
+        // sacrificed at the next upkeep, when none can be removed. This
+        // test sacrificed it on the second tick, which encoded the old
+        // timing (A1.5bk).
+        tick(&mut state, &registry); // 1 -> 0, still here
+        assert!(state.objects.get(id).is_some_and(|o| o.zone.is_battlefield()
+            && o.count_counters(CounterKind::Fade) == 0));
+        tick(&mut state, &registry); // none to remove: sacrificed
         let alive = state.objects.get(id)
             .is_some_and(|o| o.zone.is_battlefield());
-        assert!(!alive, "Fading creature sacrificed when counters run out");
+        assert!(!alive, "Fading creature sacrificed when no counter can be removed");
     }
 
     #[test]

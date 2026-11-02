@@ -890,7 +890,7 @@ impl GameState {
     /// what variants may do. For Phase 1, only
     /// [`ReplacementKind::ExileInsteadOfDying`] is wired, and it
     /// returns `None` (caller routes the object to exile).
-    pub fn replace_die(&mut self, object_id: ObjectId) -> DieOutcome {
+    pub fn replace_die(&mut self, object_id: ObjectId, death: DeathKind) -> DieOutcome {
         let event = ReplacementEvent::Die { object_id };
 
         let mut applicable_ids: Vec<u64> = self.replacement_effects.iter()
@@ -916,7 +916,11 @@ impl GameState {
                 Some(ReplacementKind::ExileInsteadOfDying) => {
                     return DieOutcome::ExileInstead;
                 }
-                Some(ReplacementKind::RegenerateShield) => {
+                // A shield replaces destruction only (A1.5bk); a
+                // sacrifice or zero toughness passes it by, unspent.
+                Some(ReplacementKind::RegenerateShield)
+                    if death == DeathKind::Destruction =>
+                {
                     // Shield fires and is consumed.
                     self.remove_replacement_effects(|e| e.id == id);
                     return DieOutcome::Regenerated;
@@ -926,6 +930,60 @@ impl GameState {
         }
         DieOutcome::StillDies
     }
+
+    /// Put permanent `id` from the battlefield into its owner's
+    /// graveyard as a death of `kind`, through the death replacements
+    /// (A1.5bk). Every such move goes through here: destroy effects,
+    /// the lethal-damage, deathtouch and zero-toughness checks, and every
+    /// sacrifice. Before, only the state-based check consulted
+    /// [`Self::replace_die`], so regeneration and "exile it instead" did
+    /// nothing against a destroy effect or a sacrifice. Returns what
+    /// happened; an object no longer present is left alone.
+    pub fn put_into_graveyard_dying(
+        &mut self,
+        id: ObjectId,
+        kind: DeathKind,
+        cause: crate::events::MoveCause,
+    ) -> DieOutcome {
+        let Some(owner) = self.objects.get(id).map(|o| o.owner) else {
+            return DieOutcome::StillDies;
+        };
+        let outcome = self.replace_die(id, kind);
+        match outcome {
+            DieOutcome::ExileInstead => {
+                self.move_object_to_zone(id, crate::zones::Zone::Exile, cause);
+            }
+            DieOutcome::Regenerated => {
+                // Regeneration: remove damage, tap, remove from combat.
+                // Tapping is an event when it changes the permanent, so
+                // "whenever this becomes tapped" sees it.
+                let tapped = self.objects.get_mut(id).is_some_and(|obj| {
+                    obj.clear_damage();
+                    obj.tap()
+                });
+                if tapped {
+                    self.emit(GameEvent::Tapped { object_id: id });
+                }
+                self.remove_from_combat(id);
+            }
+            DieOutcome::StillDies => {
+                self.move_object_to_zone(id, crate::zones::Zone::Graveyard(owner), cause);
+            }
+        }
+        outcome
+    }
+}
+
+/// What kind of move to the graveyard a death replacement is asked
+/// about (A1.5bk). Regeneration replaces destruction only: a destroy
+/// effect, or lethal or deathtouch damage (CR 701.8, 704.5g-h). A
+/// sacrifice, or a creature at zero toughness, is put into the graveyard
+/// without being destroyed (CR 704.5f), so no shield applies; an
+/// exile-instead replacement covers any death.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DeathKind {
+    Destruction,
+    Other,
 }
 
 /// Outcome of a death-replacement pipeline.
@@ -1586,14 +1644,14 @@ mod tests {
             },
             ReplacementKind::ExileInsteadOfDying,
         ));
-        assert_eq!(s.replace_die(c), DieOutcome::ExileInstead);
+        assert_eq!(s.replace_die(c, DeathKind::Destruction), DieOutcome::ExileInstead);
     }
 
     #[test]
     fn die_without_matching_replacement_still_dies() {
         let mut s = GameState::new(2, 0);
         let c = put_creature(&mut s, 0, 2, 2);
-        assert_eq!(s.replace_die(c), DieOutcome::StillDies);
+        assert_eq!(s.replace_die(c, DeathKind::Destruction), DieOutcome::StillDies);
     }
 
     // --- DrawCard skip ----------------------------------------------------
@@ -2189,7 +2247,7 @@ mod tests {
         ));
         let enemy = put_creature(&mut s, 1, 2, 2);
         assert_eq!(
-            s.replace_die(enemy),
+            s.replace_die(enemy, DeathKind::Destruction),
             DieOutcome::StillDies,
             "opponent's creature dying is not 'you control' — no exile swap");
     }
