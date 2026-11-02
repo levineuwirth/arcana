@@ -276,6 +276,7 @@ pub fn probe_triggered(reg: &CardRegistry, card_id: CardId) -> Vec<ProbeResult> 
             });
         let pt = crate::triggers::PendingTrigger {
             effect_override: None,
+            affected: None,
             source: src, trigger_id: ability.id, controller: 0,
             trigger_event: event, targets,
         };
@@ -552,6 +553,7 @@ pub fn noop_mechanisms(reg: &CardRegistry, card_id: CardId) -> Vec<(&'static str
             object_id: src, from_zone: Zone::Stack, was_cast: true });
         let pt = crate::triggers::PendingTrigger {
             effect_override: None, source: src, trigger_id: ability.id,
+            affected: None,
             controller: 0, trigger_event: event, targets,
         };
         let before = Snapshot::capture(&state);

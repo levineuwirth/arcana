@@ -218,6 +218,7 @@ impl TriggeredAbilityDef {
             trigger_event: event.clone(),
             targets: crate::targets::TargetSelection::new(),
             effect_override: None,
+            affected: None,
         })
     }
 }
@@ -744,6 +745,12 @@ pub struct PendingTrigger {
     /// turn" / control-revert / next-cast rider no-op'd at
     /// resolution. `None` for registry-backed triggers.
     pub effect_override: Option<EffectFn>,
+    /// For a DELAYED trigger scheduled by an ability that found a moved
+    /// card (CR 400.7e): the object it acts on, carried apart from
+    /// [`Self::source`], which stays the creating ability's source
+    /// (CR 603.7e; A1.5bh, A1.5az). `None` otherwise: the delayed
+    /// action acts on its source.
+    pub affected: Option<crate::objects::ObjectId>,
 }
 
 impl PendingTrigger {
@@ -981,6 +988,11 @@ pub struct DelayedTrigger {
     /// turn-start hook). Pair with `fire_once: false` for the
     /// repeating form (Don't Move, Tamiyo Meets the Story Circle).
     pub expires_at_turn_of: Option<PlayerId>,
+    /// The object the delayed action acts on when it is not its source:
+    /// a card the creating ability found after it moved (CR 400.7e),
+    /// while [`Self::source`] stays that ability's source (CR 603.7e;
+    /// A1.5bh, A1.5az). Copied to [`PendingTrigger::affected`] when it fires.
+    pub affected: Option<ObjectId>,
 }
 
 impl DelayedTrigger {
@@ -997,6 +1009,7 @@ impl DelayedTrigger {
             fire_once: true,
             expires_end_of_turn: false,
             expires_at_turn_of: None,
+            affected: None,
         }
     }
 
@@ -1101,6 +1114,7 @@ impl GameState {
                 // Delayed triggers have no registry def to dispatch
                 // from at resolution — the fn rides the trigger.
                 effect_override: Some(t.effect),
+                affected: t.affected,
             }
         }).collect();
         sort_by_apnap(&mut out, self.active_player(), self.num_players());
@@ -1412,6 +1426,7 @@ mod tests {
             },
             targets: crate::targets::TargetSelection::new(),
             effect_override: None,
+            affected: None,
         };
         assert_eq!(trig.other_combatant(), Some(7));
 
@@ -1423,6 +1438,7 @@ mod tests {
             },
             targets: crate::targets::TargetSelection::new(),
             effect_override: None,
+            affected: None,
         };
         assert_eq!(trig.other_combatant(), Some(8));
 
@@ -1432,6 +1448,7 @@ mod tests {
             trigger_event: GameEvent::Dies { object_id: 1 },
             targets: crate::targets::TargetSelection::new(),
             effect_override: None,
+            affected: None,
         };
         assert_eq!(trig.other_combatant(), None);
     }
@@ -1446,6 +1463,7 @@ mod tests {
             },
             targets: crate::targets::TargetSelection::new(),
             effect_override: None,
+            affected: None,
         };
         assert_eq!(trig.attacking_creature(), Some(7));
 
@@ -1455,6 +1473,7 @@ mod tests {
             trigger_event: GameEvent::Dies { object_id: 7 },
             targets: crate::targets::TargetSelection::new(),
             effect_override: None,
+            affected: None,
         };
         assert_eq!(trig.attacking_creature(), None);
     }
@@ -1504,6 +1523,7 @@ mod tests {
             source: 99, trigger_id: 0, controller: 0,
             trigger_event: ev, targets: crate::targets::TargetSelection::new(),
             effect_override: None,
+            affected: None,
         };
         assert_eq!(trig.lone_attacker(), Some(mine));
         // Opponent's creature attacking alone: filter rejects.
@@ -1662,6 +1682,7 @@ mod tests {
             trigger_event: event,
             targets: Default::default(),
             effect_override: None,
+            affected: None,
         };
         assert_eq!(pending.entering_object(), Some(t));
     }
@@ -1977,13 +1998,13 @@ mod tests {
         let mut triggers = vec![
             PendingTrigger { source: 1, trigger_id: 1, controller: 1,
                 trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone(),
-                effect_override: None },
+                effect_override: None, affected: None },
             PendingTrigger { source: 2, trigger_id: 2, controller: 0,
                 trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone(),
-                effect_override: None },
+                effect_override: None, affected: None },
             PendingTrigger { source: 3, trigger_id: 3, controller: 1,
                 trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone(),
-                effect_override: None },
+                effect_override: None, affected: None },
         ];
         sort_by_apnap(&mut triggers, /*active=*/ 0, /*N=*/ 2);
         let controllers: Vec<_> = triggers.iter().map(|t| t.controller).collect();
@@ -1999,13 +2020,13 @@ mod tests {
         let mut triggers = vec![
             PendingTrigger { source: 1, trigger_id: 1, controller: 0,
                 trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone(),
-                effect_override: None },
+                effect_override: None, affected: None },
             PendingTrigger { source: 2, trigger_id: 2, controller: 2,
                 trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone(),
-                effect_override: None },
+                effect_override: None, affected: None },
             PendingTrigger { source: 3, trigger_id: 3, controller: 1,
                 trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone(),
-                effect_override: None },
+                effect_override: None, affected: None },
         ];
         // Active = 1, so APNAP order is 1, 2, 0.
         sort_by_apnap(&mut triggers, 1, 3);
@@ -2151,6 +2172,7 @@ mod tests {
             trigger_event: event,
             targets: crate::targets::TargetSelection::new(),
             effect_override: None,
+            affected: None,
         }
     }
 
@@ -2292,6 +2314,7 @@ mod tests {
             trigger_event: ev,
             targets: Default::default(),
             effect_override: None,
+            affected: None,
         };
         assert_eq!(t.entering_object(), Some(new_id),
             "entering_object must be the on-battlefield id, not the stale pre-move id");

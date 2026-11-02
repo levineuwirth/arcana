@@ -2108,6 +2108,7 @@ mod tests {
             },
             targets: crate::targets::TargetSelection::new(),
             effect_override: None,
+            affected: None,
         };
         assert_eq!(found.unwrap()(&pt), 5);
 

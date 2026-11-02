@@ -914,6 +914,17 @@ pub enum Effect {
         when: DelayedWhen,
         action: DelayedAction,
     },
+    /// Engine-produced only: a [`Self::DelayedAction`] whose action falls
+    /// on `affected`, the object a resolving ability found its moved card
+    /// became (CR 400.7e), while `source` stays that ability's source
+    /// (CR 603.7e; A1.5bh, A1.5az). Card code writes `DelayedAction`.
+    DelayedActionOn {
+        source: ObjectId,
+        affected: ObjectId,
+        controller: PlayerId,
+        when: DelayedWhen,
+        action: DelayedAction,
+    },
 
     /// "When you next cast a [kind] spell this turn, [rider]" — the
     /// Saga-chapter family (Summon: Brynhildr / Fenrir / G.F. Cerberus,
@@ -1256,6 +1267,7 @@ impl Effect {
             | Effect::RollDie { .. }
             | Effect::SetDayNight { .. }
             | Effect::DelayedAction { .. }
+            | Effect::DelayedActionOn { .. }
             | Effect::NextCastThisTurn { .. }
             | Effect::OfferCastWithoutPaying { .. }
             | Effect::EachCastThisTurn { .. } => {}
@@ -1412,6 +1424,7 @@ impl Effect {
             | Effect::ForEach { .. }
             | Effect::SetDayNight { .. }
             | Effect::DelayedAction { .. }
+            | Effect::DelayedActionOn { .. }
             | Effect::NextCastThisTurn { .. }
             | Effect::ExileSpell { .. }
             | Effect::OfferCastWithoutPaying { .. }
@@ -2430,46 +2443,10 @@ impl Effect {
                     outcome.effect.execute(state);
                 }
             }
-            Effect::DelayedAction { source, controller, when, action } => {
-                use crate::triggers::{DelayedTrigger, TriggerCondition};
-                let condition = match when {
-                    DelayedWhen::NextEndStep => TriggerCondition::StepBegins {
-                        step: crate::turn::Step::End,
-                        whose: crate::targets::ControllerConstraint::Any,
-                    },
-                    DelayedWhen::NextUpkeep => TriggerCondition::StepBegins {
-                        step: crate::turn::Step::Upkeep,
-                        whose: crate::targets::ControllerConstraint::Any,
-                    },
-                    DelayedWhen::ThisDies => TriggerCondition::SelfDies,
-                    DelayedWhen::SelfResolvesToPermanent =>
-                        TriggerCondition::Custom(cond_self_zone_to_battlefield),
-                };
-                let effect_fn: crate::triggers::EffectFn = match action {
-                    DelayedAction::Sacrifice => delayed_sacrifice,
-                    DelayedAction::Exile => delayed_exile,
-                    DelayedAction::ReturnToHand => delayed_return_hand,
-                    DelayedAction::ReturnFromExileToBattlefield =>
-                        delayed_return_exile_bf,
-                    DelayedAction::GrantHasteUntilEndOfTurn =>
-                        delayed_grant_haste_eot,
-                    DelayedAction::EnterWithPlusOneCounter =>
-                        delayed_enter_plus_one_counter,
-                    DelayedAction::ControllerDrawsCard =>
-                        delayed_controller_draws,
-                };
-                // A resolves-to-permanent watcher must lapse with the
-                // turn — a countered spell never resolves, and the
-                // rider it carries says "this turn".
-                let trig = if matches!(when, DelayedWhen::SelfResolvesToPermanent) {
-                    DelayedTrigger::one_shot_this_turn(
-                        *source, *controller, condition, effect_fn)
-                } else {
-                    DelayedTrigger::one_shot(
-                        *source, *controller, condition, effect_fn)
-                };
-                state.register_delayed_trigger(trig);
-            }
+            Effect::DelayedAction { source, controller, when, action } =>
+                install_delayed_action(state, *source, None, *controller, *when, *action),
+            Effect::DelayedActionOn { source, affected, controller, when, action } =>
+                install_delayed_action(state, *source, Some(*affected), *controller, *when, *action),
 
             Effect::NextCastThisTurn { controller, kind, rider } => {
                 use crate::triggers::{DelayedTrigger, TriggerCondition};
@@ -2624,6 +2601,58 @@ fn each_cast_copy_your_token(
     }
 }
 
+/// Install a delayed action (`Effect::DelayedAction` and, with the object
+/// it falls on, `Effect::DelayedActionOn`).
+fn install_delayed_action(
+    state: &mut GameState,
+    source: ObjectId,
+    affected: Option<ObjectId>,
+    controller: PlayerId,
+    when: DelayedWhen,
+    action: DelayedAction,
+) {
+    use crate::triggers::{DelayedTrigger, TriggerCondition};
+    let condition = match when {
+        DelayedWhen::NextEndStep => TriggerCondition::StepBegins {
+            step: crate::turn::Step::End,
+            whose: crate::targets::ControllerConstraint::Any,
+        },
+        DelayedWhen::NextUpkeep => TriggerCondition::StepBegins {
+            step: crate::turn::Step::Upkeep,
+            whose: crate::targets::ControllerConstraint::Any,
+        },
+        DelayedWhen::ThisDies => TriggerCondition::SelfDies,
+        DelayedWhen::SelfResolvesToPermanent =>
+            TriggerCondition::Custom(cond_self_zone_to_battlefield),
+    };
+    let effect_fn: crate::triggers::EffectFn = match action {
+        DelayedAction::Sacrifice => delayed_sacrifice,
+        DelayedAction::Exile => delayed_exile,
+        DelayedAction::ReturnToHand => delayed_return_hand,
+        DelayedAction::ReturnFromExileToBattlefield =>
+            delayed_return_exile_bf,
+        DelayedAction::GrantHasteUntilEndOfTurn =>
+            delayed_grant_haste_eot,
+        DelayedAction::EnterWithPlusOneCounter =>
+            delayed_enter_plus_one_counter,
+        DelayedAction::ControllerDrawsCard =>
+            delayed_controller_draws,
+    };
+    // A resolves-to-permanent watcher must lapse with the
+    // turn — a countered spell never resolves, and the
+    // rider it carries says "this turn".
+    let trig = if matches!(when, DelayedWhen::SelfResolvesToPermanent) {
+        DelayedTrigger::one_shot_this_turn(
+            source, controller, condition, effect_fn)
+    } else {
+        DelayedTrigger::one_shot(
+            source, controller, condition, effect_fn)
+    };
+    let mut trig = trig;
+    trig.affected = affected;
+    state.register_delayed_trigger(trig);
+}
+
 // Fixed delayed-action callbacks for [`Effect::DelayedAction`]. Each
 // acts on the firing trigger's `source` (set to the scheduled object
 // id). Bare fns so they fit [`crate::triggers::EffectFn`].
@@ -2631,19 +2660,19 @@ fn delayed_sacrifice(
     _s: &GameState, pt: &crate::triggers::PendingTrigger,
     _r: &crate::registry::CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::SacrificePermanent { target: pt.source }]
+    vec![Effect::SacrificePermanent { target: pt.affected.unwrap_or(pt.source) }]
 }
 fn delayed_exile(
     _s: &GameState, pt: &crate::triggers::PendingTrigger,
     _r: &crate::registry::CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::ExilePermanent { target: pt.source }]
+    vec![Effect::ExilePermanent { target: pt.affected.unwrap_or(pt.source) }]
 }
 fn delayed_return_hand(
     _s: &GameState, pt: &crate::triggers::PendingTrigger,
     _r: &crate::registry::CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::ReturnToHand { target: pt.source }]
+    vec![Effect::ReturnToHand { target: pt.affected.unwrap_or(pt.source) }]
 }
 /// Delayed-trigger callback for `Effect::ChangeControlEot` — restores
 /// the target's controller. The trigger's `source` carries the target
@@ -2666,7 +2695,7 @@ fn delayed_return_exile_bf(
     _s: &GameState, pt: &crate::triggers::PendingTrigger,
     _r: &crate::registry::CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::ReturnFromExileToBattlefield { target: pt.source }]
+    vec![Effect::ReturnFromExileToBattlefield { target: pt.affected.unwrap_or(pt.source) }]
 }
 fn delayed_controller_draws(
     _s: &GameState, pt: &crate::triggers::PendingTrigger,
@@ -7850,6 +7879,7 @@ mod tests {
             trigger_event: GameEvent::StepBegins { step: crate::turn::Step::End },
             targets: crate::targets::TargetSelection::new(),
             effect_override: None,
+            affected: None,
         };
         let eff = (t.effect)(&s, &pt, &crate::registry::CardRegistry::new());
         assert!(matches!(eff.as_slice(),
@@ -7898,6 +7928,7 @@ mod tests {
             trigger_event: GameEvent::StepBegins { step: crate::turn::Step::End },
             targets: crate::targets::TargetSelection::new(),
             effect_override: None,
+            affected: None,
         };
         let eff = (t.effect)(&s, &pt, &reg);
         assert!(matches!(eff.as_slice(),

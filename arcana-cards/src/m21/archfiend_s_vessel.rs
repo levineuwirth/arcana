@@ -106,6 +106,7 @@ mod tests {
             },
             targets: Default::default(),
             effect_override: None,
+            affected: None,
         }
     }
 

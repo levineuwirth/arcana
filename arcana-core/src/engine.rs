@@ -2586,6 +2586,7 @@ fn push_trigger_stack_entry(
         Vec::new(),
     );
     entry.target_requirements = requirements;
+    entry.affected = pt.affected;
     // Delayed triggers carry their effect fn (no registry def exists
     // for trigger_id 0) — snapshot it onto the entry for resolution.
     if let Some(f) = pt.effect_override {
@@ -2789,6 +2790,7 @@ fn collect_pending_triggers(
                             trigger_event: event.clone(),
                             targets: crate::targets::TargetSelection::new(),
                             effect_override: None,
+                            affected: None,
                         });
                     }
                 }
@@ -2832,6 +2834,7 @@ fn collect_pending_triggers(
                         trigger_event: zc.clone(),
                         targets: crate::targets::TargetSelection::new(),
                         effect_override: None,
+                        affected: None,
                     });
                 };
                 if kws.contains(&KA::Undying) && no_plus {
@@ -2873,6 +2876,7 @@ fn collect_pending_triggers(
                     trigger_event: event.clone(),
                     targets: crate::targets::TargetSelection::new(),
                     effect_override: None,
+                    affected: None,
                 });
             };
             // Exalted (CR 702.83a): a creature attacking alone. One
@@ -2946,6 +2950,7 @@ fn collect_pending_triggers(
                     trigger_event: event.clone(),
                     targets: crate::targets::TargetSelection::new(),
                     effect_override: None,
+                    affected: None,
                 });
             }
         }
@@ -2965,6 +2970,7 @@ fn collect_pending_triggers(
                     trigger_event: event.clone(),
                     targets: crate::targets::TargetSelection::new(),
                     effect_override: None,
+                    affected: None,
                 });
             };
             match event {
@@ -3025,6 +3031,7 @@ fn collect_pending_triggers(
                             controller: c, trigger_event: event.clone(),
                             targets: crate::targets::TargetSelection::new(),
                             effect_override: None,
+                            affected: None,
                         });
                     }
                 }
@@ -3046,6 +3053,7 @@ fn collect_pending_triggers(
                         controller: c, trigger_event: event.clone(),
                         targets: crate::targets::TargetSelection::new(),
                         effect_override: None,
+                        affected: None,
                     });
                 };
                 if kws.iter().any(|k| matches!(k, KA::Devour(_))) {
@@ -3081,6 +3089,7 @@ fn collect_pending_triggers(
                     controller: ap, trigger_event: event.clone(),
                     targets: crate::targets::TargetSelection::new(),
                     effect_override: None,
+                    affected: None,
                 });
             }
         }
@@ -3531,9 +3540,117 @@ fn resolve_top_of_stack(state: &mut GameState, registry: &CardRegistry) {
         }
         ResolutionOutcome::Resolve { target_legality: _ } => {
             let effects = resolution_effects(state, &entry, registry);
+            let effects = follow_moved_source(state, &entry, effects);
             let is_spell = entry.is_spell();
             execute_effects_or_park(state, entry, effects, is_spell);
         }
+    }
+}
+
+/// CR 400.7e: an ability that triggers on its own source moving to a
+/// public zone can find the object the card became there. While that
+/// ability resolves, its effects that move or return the card act on that
+/// object, including those inside optional, conditional and random
+/// containers. A delayed action it schedules for the next end step or
+/// upkeep carries that object apart from its source, which stays the
+/// ability's source (CR 603.7e; A1.5bh, A1.5az). Murderous Rider reaches
+/// the library, and The Scarab God's end-step return finds it in the
+/// graveyard.
+/// Nothing else follows the card. Source attribution, last-known
+/// information and general lookup keep the old id. Once the card has left
+/// that zone it is a new object again, its id gone, and the link finds
+/// nothing. The effect list is computed once per resolution, so a parked
+/// resolution keeps the link.
+fn follow_moved_source(
+    state: &GameState,
+    entry: &crate::stack::StackEntry,
+    effects: Vec<crate::effects::Effect>,
+) -> Vec<crate::effects::Effect> {
+    let crate::stack::StackEntryKind::TriggeredAbility { trigger_event, .. } = &entry.kind
+        else { return effects; };
+    let Some(moved) = first_public_destination(state, entry.source, trigger_event)
+        else { return effects; };
+    effects.into_iter().map(|e| relink_moved_card(e, entry.source, moved)).collect()
+}
+
+/// The object `source` became when the triggering event moved it to a
+/// graveyard or exile, if that object is still there. A dies or
+/// leaves-the-battlefield event carries only the old id; the zone change
+/// in the event log carries the new one (ids are never reused, so there is
+/// one such change).
+fn first_public_destination(
+    state: &GameState,
+    source: ObjectId,
+    event: &GameEvent,
+) -> Option<ObjectId> {
+    let public = |z: &crate::zones::Zone| matches!(z,
+        crate::zones::Zone::Graveyard(_) | crate::zones::Zone::Exile);
+    let new_id = match event {
+        GameEvent::ZoneChange { object_id, new_id, to, .. }
+            if *object_id == source && public(to) => *new_id,
+        GameEvent::Dies { object_id } | GameEvent::LeavesBattlefield { object_id, .. }
+            if *object_id == source =>
+            state.event_log.iter().rev().find_map(|e| match e {
+                GameEvent::ZoneChange { object_id, new_id, to, .. }
+                    if *object_id == source && public(to) => Some(*new_id),
+                _ => None,
+            })?,
+        _ => return None,
+    };
+    state.objects.get(new_id).map(|_| new_id)
+}
+
+/// Point the effects that move or return the card from `old` to `new`;
+/// every other effect, and every other id, is left alone.
+fn relink_moved_card(
+    e: crate::effects::Effect,
+    old: ObjectId,
+    new: ObjectId,
+) -> crate::effects::Effect {
+    use crate::effects::{DelayedWhen, Effect as E};
+    let to = |t: ObjectId| if t == old { new } else { t };
+    let deep = |b: Box<E>| Box::new(relink_moved_card(*b, old, new));
+    match e {
+        E::ReturnToHand { target } => E::ReturnToHand { target: to(target) },
+        E::PutOnTopOfLibrary { target } => E::PutOnTopOfLibrary { target: to(target) },
+        E::PutOnBottomOfLibrary { target } => E::PutOnBottomOfLibrary { target: to(target) },
+        E::ReturnFromGraveyardToHand { target } =>
+            E::ReturnFromGraveyardToHand { target: to(target) },
+        E::ReturnFromGraveyardToBattlefield { target } =>
+            E::ReturnFromGraveyardToBattlefield { target: to(target) },
+        E::ReturnFromGraveyardWithCounters { target, kind, count } =>
+            E::ReturnFromGraveyardWithCounters { target: to(target), kind, count },
+        E::ReturnFromExileToBattlefield { target } =>
+            E::ReturnFromExileToBattlefield { target: to(target) },
+        E::ExileFromGraveyard { target } => E::ExileFromGraveyard { target: to(target) },
+        // A delayed action the ability schedules on its card falls on
+        // the object the card became, while its source stays the
+        // creating ability's source (CR 603.7e).
+        E::DelayedAction { source, controller, when, action }
+            if source == old
+                && matches!(when, DelayedWhen::NextEndStep | DelayedWhen::NextUpkeep) =>
+            E::DelayedActionOn { source, affected: new, controller, when, action },
+        // Containers: the link reaches the effects they hold, so an
+        // optional or conditional return follows the card too.
+        E::Sequence(v) => E::Sequence(
+            v.into_iter().map(|x| relink_moved_card(x, old, new)).collect()),
+        E::Conditional { condition, then, otherwise } =>
+            E::Conditional { condition, then: deep(then), otherwise: otherwise.map(deep) },
+        E::OptionalPayment { chooser, cost, then, else_effect } =>
+            E::OptionalPayment { chooser, cost, then: deep(then), else_effect: else_effect.map(deep) },
+        E::ChoosePlayerThen { chooser, opponents_only, then } =>
+            E::ChoosePlayerThen { chooser, opponents_only, then: deep(then) },
+        E::FlipCoin { player, win, lose } =>
+            E::FlipCoin { player, win: deep(win), lose: lose.map(deep) },
+        E::RollDie { player, sides, outcomes } => E::RollDie { player, sides,
+            outcomes: outcomes.into_iter().map(|mut o| { o.effect = deep(o.effect); o }).collect() },
+        // Specialize each iteration to its id first, as execution and
+        // flattening do, then link: a loop over the moved card's old id
+        // otherwise reached it only after this pass, by placeholder.
+        E::ForEach { targets, effect } => E::Sequence(targets.into_iter()
+            .map(|id| relink_moved_card(effect.retargeted(id), old, new))
+            .collect()),
+        other => other,
     }
 }
 
@@ -3800,6 +3917,7 @@ fn resolution_effects(
                     trigger_event: trigger_event.clone(),
                     targets: entry.targets.clone(),
                     effect_override: None,
+                    affected: entry.affected,
                 };
                 return (f)(state, &pt, registry);
             }
@@ -3843,6 +3961,7 @@ fn resolution_effects(
                 trigger_event: trigger_event.clone(),
                 targets: entry.targets.clone(),
                 effect_override: None,
+                affected: entry.affected,
             };
             // Granted abilities (id in the granted range) dispatch from
             // the object's runtime list; otherwise the registry def.
@@ -6366,6 +6485,55 @@ mod prowess_tests {
     use crate::zones::Zone;
     use crate::types::*;
 
+    /// The moved-card link (A1.5bh, A1.5az) reaches every container and
+    /// return kind, keeps every other id, and moves a delayed action's
+    /// object apart from its source (CR 603.7e).
+    #[test]
+    fn the_moved_card_link_reaches_containers_and_keeps_sources() {
+        use crate::effects::{DelayedAction, DelayedWhen, Effect as E, RollOutcome};
+        use crate::combat::DamageTarget;
+        let (old, new, other) = (10, 20, 30);
+        let r = |e| relink_moved_card(e, old, new);
+        assert!(matches!(r(E::ReturnFromExileToBattlefield { target: old }),
+            E::ReturnFromExileToBattlefield { target } if target == new));
+        assert!(matches!(r(E::ReturnFromGraveyardWithCounters { target: old, kind: CounterKind::PlusOnePlusOne, count: 1 }),
+            E::ReturnFromGraveyardWithCounters { target, .. } if target == new));
+        let E::FlipCoin { win, lose, .. } = r(E::FlipCoin { player: 0,
+            win: Box::new(E::ReturnToHand { target: old }),
+            lose: Some(Box::new(E::ReturnToHand { target: other })) }) else { panic!() };
+        assert!(matches!(*win, E::ReturnToHand { target } if target == new));
+        assert!(matches!(lose.as_deref(), Some(E::ReturnToHand { target }) if *target == other));
+        let E::RollDie { outcomes, .. } = r(E::RollDie { player: 0, sides: 6, outcomes: vec![RollOutcome {
+            min: 1, max: 6, effect: Box::new(E::PutOnBottomOfLibrary { target: old }) }] }) else { panic!() };
+        assert!(matches!(*outcomes[0].effect, E::PutOnBottomOfLibrary { target } if target == new));
+        let E::ChoosePlayerThen { then, .. } = r(E::ChoosePlayerThen { chooser: 0, opponents_only: false,
+            then: Box::new(E::ReturnFromGraveyardToHand { target: old }) }) else { panic!() };
+        assert!(matches!(*then, E::ReturnFromGraveyardToHand { target } if target == new));
+        // A loop over the old id with a placeholder body: each iteration is
+        // specialized, then linked; a nonmoving body keeps its old id.
+        use crate::objects::NULL_OBJECT_ID;
+        let E::Sequence(iters) = r(E::ForEach { targets: vec![old, other],
+            effect: Box::new(E::ReturnFromGraveyardToHand { target: NULL_OBJECT_ID }) }) else { panic!() };
+        assert!(matches!(iters.as_slice(), [E::ReturnFromGraveyardToHand { target: a }, E::ReturnFromGraveyardToHand { target: b }]
+            if *a == new && *b == other), "{iters:?}");
+        let E::Sequence(iters) = r(E::ForEach { targets: vec![old],
+            effect: Box::new(E::Tap { target: NULL_OBJECT_ID }) }) else { panic!() };
+        assert!(matches!(iters.as_slice(), [E::Tap { target }] if *target == old), "{iters:?}");
+        let E::OptionalPayment { then, .. } = r(E::OptionalPayment { chooser: 0,
+            cost: crate::actions::OptionalPaymentKind::Life(1),
+            then: Box::new(E::ForEach { targets: vec![old], effect: Box::new(E::ReturnFromGraveyardToBattlefield { target: NULL_OBJECT_ID }) }),
+            else_effect: None }) else { panic!() };
+        assert!(matches!(&*then, E::Sequence(v) if matches!(v.as_slice(), [E::ReturnFromGraveyardToBattlefield { target }] if *target == new)));
+        // Not a move or return: the source keeps its old id.
+        assert!(matches!(r(E::DealDamage { source: old, target: DamageTarget::Object(other), amount: 1 }),
+            E::DealDamage { source, .. } if source == old));
+        // A delayed action on the card: its object moves, its source stays.
+        assert!(matches!(r(E::DelayedAction { source: old, controller: 0, when: DelayedWhen::NextEndStep, action: DelayedAction::ReturnToHand }),
+            E::DelayedActionOn { source, affected, .. } if source == old && affected == new));
+        assert!(matches!(r(E::DelayedAction { source: other, controller: 0, when: DelayedWhen::NextEndStep, action: DelayedAction::ReturnToHand }),
+            E::DelayedAction { source, .. } if source == other));
+    }
+
     /// Fading and vanishing at their own moments (CR 702.32a, 702.63a;
     /// A1.5bk), sacrificing rather than destroying: fading removes a
     /// counter while it has one and sacrifices only with none left;
@@ -6587,6 +6755,7 @@ mod tests {
             trigger_event: GameEvent::TurnBegins { player: 0, turn_number: 1 },
             targets: Default::default(),
             effect_override: None,
+            affected: None,
         });
 
         // Must not panic (it would, pre-fix, when the drain pushed a 2nd

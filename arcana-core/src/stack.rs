@@ -209,6 +209,11 @@ pub struct StackEntry {
     /// Defaults to Stack (the sentinel "not a cast-from-zone").
     #[serde(default = "default_cast_from_zone")]
     pub cast_from_zone: crate::zones::Zone,
+    /// For a delayed trigger that acts on a moved card: the object it
+    /// acts on, apart from its source (CR 603.7e; A1.5bh, A1.5az).
+    /// Carried to [`crate::triggers::PendingTrigger::affected`].
+    #[serde(default)]
+    pub affected: Option<ObjectId>,
 }
 
 fn default_cast_from_zone() -> crate::zones::Zone { crate::zones::Zone::Stack }
@@ -252,6 +257,7 @@ impl StackEntry {
             colors_spent: crate::types::ColorSet::new(),
             mana_spent: 0,
             cast_from_zone: crate::zones::Zone::Stack,
+            affected: None,
         }
     }
 
@@ -292,6 +298,7 @@ impl StackEntry {
             colors_spent: crate::types::ColorSet::new(),
             mana_spent: 0,
             cast_from_zone: crate::zones::Zone::Stack,
+            affected: None,
         }
     }
 
@@ -361,6 +368,7 @@ impl StackEntry {
             colors_spent: crate::types::ColorSet::new(),
             mana_spent: 0,
             cast_from_zone: crate::zones::Zone::Stack,
+            affected: None,
         }
     }
 

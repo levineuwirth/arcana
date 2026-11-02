@@ -1570,6 +1570,7 @@ mod tests {
             },
             targets: crate::targets::TargetSelection::default(),
             effect_override: None,
+            affected: None,
         });
         assert!(!pending_saga_sacrifice(&s));
         apply_state_based_actions(&mut s);

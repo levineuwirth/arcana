@@ -115,6 +115,7 @@ mod tests {
             },
             targets: Default::default(),
             effect_override: None,
+            affected: None,
         };
         match pump_entering(&s, &trig, &reg).as_slice() {
             [Effect::Pump { target, power: 2, toughness: 0, .. }] =>
