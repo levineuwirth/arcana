@@ -1826,6 +1826,18 @@ impl GameState {
     /// Register a continuous effect. Overwrites `effect.timestamp`
     /// with a fresh value so callers don't need to manage it.
     pub fn add_continuous_effect(&mut self, mut effect: ContinuousEffect) {
+        // A1.5ax: an effect bound to its source is never installed once
+        // the source has left the battlefield, as `add_replacement_effect`
+        // already holds (A1.5ab). Statics are installed by entry
+        // triggers, so a permanent removed in response to its own
+        // trigger would otherwise leave a source-blind kind (an anthem,
+        // a keyword grant) applying for the rest of the game. Durations
+        // that outlive the source are untouched.
+        if matches!(effect.duration, Duration::WhileSourceOnBattlefield)
+            && !self.objects.get(effect.source).is_some_and(|o| o.zone.is_battlefield())
+        {
+            return;
+        }
         effect.timestamp = self.next_timestamp();
         self.continuous_effects.push(effect);
     }
@@ -2695,9 +2707,12 @@ mod tests {
         let mine1 = put_creature(&mut s, 0, 1, 1);
         let mine2 = put_creature(&mut s, 0, 2, 2);
         let theirs = put_creature(&mut s, 1, 3, 3);
+        // A real source on the battlefield: a source-bound effect from a
+        // phantom id is refused at installation (A1.5ax).
+        let source = put_creature(&mut s, 0, 0, 1);
 
         s.add_continuous_effect(ContinuousEffect::keyword_anthem(
-            999, /*ctrl=*/ 0, KeywordAbility::Menace, Duration::WhileSourceOnBattlefield));
+            source, /*ctrl=*/ 0, KeywordAbility::Menace, Duration::WhileSourceOnBattlefield));
 
         assert!(s.has_keyword(mine1, &KeywordAbility::Menace));
         assert!(s.has_keyword(mine2, &KeywordAbility::Menace));
