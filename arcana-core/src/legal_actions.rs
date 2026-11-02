@@ -3427,7 +3427,11 @@ fn ability_is_activatable(
         // sickness. But basic lands ignore summoning sickness for
         // mana purposes (CR 305.4, they have no creature type) — unless
         // an effect has made one a creature (CR 302.6).
-        if state.is_creature_now(obj.id) && obj.status.summoning_sick {
+        // Haste lifts it for `{T}` abilities too (CR 302.6, 702.10b;
+        // A1.5bi).
+        if state.is_creature_now(obj.id) && obj.status.summoning_sick
+            && !state.has_keyword(obj.id, &crate::effects::KeywordAbility::Haste)
+        {
             return false;
         }
     }
