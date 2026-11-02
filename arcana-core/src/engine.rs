@@ -1118,8 +1118,7 @@ fn apply_activate_ability(
     // (`legal_actions::build_additional_costs` always declares it).
     // Paying it here as well charged every life cost twice (A1.5bd).
     if sacrifice {
-        state.move_object_to_zone(
-            source, Zone::Graveyard(controller), MoveCause::Cost);
+        sacrifice_as_cost(state, controller, source);
     }
     // Any additional costs beyond the fixed cost (tap/sacrifice-self/
     // life) — sacrifice-a-different-permanent, discard, exile from
@@ -4272,6 +4271,20 @@ fn spend_mana_plan(
 /// Pay the non-mana additional costs on a cast / activation. Ordering
 /// within the batch matches action-submission order so replays are
 /// deterministic.
+/// Sacrifice `id` to pay a cost (A1.5be). A sacrifice is a sacrifice
+/// however it is made, so the event goes out before the move, as the
+/// effect and state-based paths emit it, for "whenever you sacrifice"
+/// watchers. The permanent goes to its owner's graveyard (CR 400.3). One
+/// no longer on the battlefield is skipped: an ability's own sacrifice is
+/// paid by its fixed cost before the action's declared payment repeats it.
+fn sacrifice_as_cost(state: &mut GameState, player: PlayerId, id: ObjectId) {
+    let Some(owner) = state.objects.get(id)
+        .filter(|o| o.zone.is_battlefield())
+        .map(|o| o.owner) else { return; };
+    state.emit(GameEvent::Sacrifice { player, object_id: id });
+    state.move_object_to_zone(id, Zone::Graveyard(owner), MoveCause::Cost);
+}
+
 fn apply_additional_costs(
     state: &mut GameState,
     player: PlayerId,
@@ -4280,10 +4293,7 @@ fn apply_additional_costs(
     use crate::actions::AdditionalCostPayment as A;
     for cost in costs {
         match cost {
-            A::Sacrifice(id) => {
-                state.move_object_to_zone(
-                    *id, Zone::Graveyard(player), MoveCause::Cost);
-            }
+            A::Sacrifice(id) => sacrifice_as_cost(state, player, *id),
             A::Discard(id) => {
                 // Route through the Madness-aware helper (CR 702.34a):
                 // a card with Madness on its characteristics goes to
