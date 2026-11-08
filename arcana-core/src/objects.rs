@@ -33,6 +33,17 @@ pub type ObjectId = u32;
 /// and as a placeholder for the pre-game state. Real object ids start at 1.
 pub const NULL_OBJECT_ID: ObjectId = 0;
 
+/// Stands in, at resolution, for a target occurrence that has become
+/// illegal (A1.5aw; CR 608.2b), preserving the other target positions.
+/// No object has this id. Operations that accept absent objects, notably
+/// damage sources, must reject it explicitly. Total information helpers
+/// can still turn a missing lookup into a value (the A1.5bo limitation).
+/// Distinct from [`NULL_OBJECT_ID`], the for-each placeholder that
+/// iteration fills in.
+pub const ILLEGAL_TARGET_ID: ObjectId = ObjectId::MAX - 1;
+/// The player counterpart of [`ILLEGAL_TARGET_ID`]: no seat has it.
+pub const ILLEGAL_TARGET_PLAYER: crate::types::PlayerId = crate::types::PlayerId::MAX;
+
 // =============================================================================
 // ObjectArena
 // =============================================================================

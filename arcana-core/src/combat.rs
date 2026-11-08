@@ -513,7 +513,10 @@ impl GameState {
         amount: u32,
         is_combat: bool,
     ) {
-        if amount == 0 { return; }
+        // An illegal target cannot perform damage (CR 608.2b). Check
+        // the resolution sentinel, not arena membership: ordinary damage
+        // sources may have left play and still deal damage using LKI.
+        if source == crate::objects::ILLEGAL_TARGET_ID || amount == 0 { return; }
         // CR 702.16d — Protection: all damage from a qualifying source
         // is prevented. Check before the replacement pipeline so the
         // DamageDealt event never fires for fully-protected targets.

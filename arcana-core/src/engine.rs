@@ -3538,13 +3538,48 @@ fn resolve_top_of_stack(state: &mut GameState, registry: &CardRegistry) {
                 state.counter_resolved_ability(entry);
             }
         }
-        ResolutionOutcome::Resolve { target_legality: _ } => {
-            let effects = resolution_effects(state, &entry, registry);
+        ResolutionOutcome::Resolve { target_legality } => {
+            let masked = mask_illegal_targets(&entry, &target_legality);
+            let effects = resolution_effects(state, &masked, registry);
             let effects = follow_moved_source(state, &entry, effects);
             let is_spell = entry.is_spell();
             execute_effects_or_park(state, entry, effects, is_spell);
         }
     }
+}
+
+/// CR 608.2b: a spell or ability that still has a legal target resolves,
+/// but an illegal target occurrence must not be affected, perform actions,
+/// or supply information (A1.5aw). Its effects are computed from a
+/// copy of the entry whose illegal occurrences are replaced by ids that
+/// name nothing, [`crate::objects::ILLEGAL_TARGET_ID`] and
+/// [`crate::objects::ILLEGAL_TARGET_PLAYER`]. Card code reads targets by
+/// position, so every other target keeps its place. Object lookups fail;
+/// damage sources and player-consuming primitives explicitly reject the
+/// sentinels. A divided damage share falls on no one while the others keep
+/// theirs. This does not propagate failed information queries through
+/// total card helpers and arithmetic (A1.5bo). Legality is
+/// per occurrence (CR 115.3): an object legal for another clause keeps its
+/// real id there. Before, the legality was computed and discarded.
+fn mask_illegal_targets(
+    entry: &crate::stack::StackEntry,
+    legality: &[crate::targets::TargetLegality],
+) -> crate::stack::StackEntry {
+    use crate::objects::{ILLEGAL_TARGET_ID, ILLEGAL_TARGET_PLAYER};
+    use crate::targets::{ObjectOrPlayer, TargetChoice, TargetLegality};
+    let mut masked = entry.clone();
+    for (choice, l) in masked.targets.targets.iter_mut().zip(legality) {
+        if *l != TargetLegality::Illegal { continue; }
+        *choice = match choice {
+            TargetChoice::Object(_) => TargetChoice::Object(ILLEGAL_TARGET_ID),
+            TargetChoice::Player(_) => TargetChoice::Player(ILLEGAL_TARGET_PLAYER),
+            TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Object(_)) =>
+                TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Object(ILLEGAL_TARGET_ID)),
+            TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Player(_)) =>
+                TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Player(ILLEGAL_TARGET_PLAYER)),
+        };
+    }
+    masked
 }
 
 /// CR 400.7e: an ability that triggers on its own source moving to a
@@ -8411,7 +8446,7 @@ mod tests {
         apply_resolution_choice(&mut state, &registry, choice_id,
             ChoiceResponse::ChooseTargets {
                 selection: TargetSelection {
-                    targets: vec![TargetChoice::Object(bear_id)],
+                    targets: vec![TargetChoice::Object(bear_id)], clause_lengths: Vec::new(),
                 },
             });
 

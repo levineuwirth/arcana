@@ -98,7 +98,7 @@ fn bolt_kills_grizzly_bears() {
         targets: arcana_core::targets::TargetSelection {
             targets: vec![arcana_core::targets::TargetChoice::ObjectOrPlayer(
                 arcana_core::targets::ObjectOrPlayer::Object(bears),
-            )],
+            )], clause_lengths: Vec::new(),
         },
         modes: vec![],
         mana_payment: arcana_core::actions::ManaPaymentPlan {
@@ -136,7 +136,7 @@ fn bolt_deals_3_to_player() {
         targets: arcana_core::targets::TargetSelection {
             targets: vec![arcana_core::targets::TargetChoice::ObjectOrPlayer(
                 arcana_core::targets::ObjectOrPlayer::Player(1),
-            )],
+            )], clause_lengths: Vec::new(),
         },
         modes: vec![],
         mana_payment: arcana_core::actions::ManaPaymentPlan {
@@ -171,7 +171,7 @@ fn murder_destroys_target_creature() {
     let cast = Action::CastSpell {
         object_id: murder,
         targets: arcana_core::targets::TargetSelection {
-            targets: vec![arcana_core::targets::TargetChoice::Object(victim)],
+            targets: vec![arcana_core::targets::TargetChoice::Object(victim)], clause_lengths: Vec::new(),
         },
         modes: vec![],
         mana_payment: arcana_core::actions::ManaPaymentPlan {
@@ -211,7 +211,7 @@ fn elvish_visionary_draws_a_card_on_etb() {
 
     let cast = Action::CastSpell {
         object_id: vis,
-        targets: arcana_core::targets::TargetSelection { targets: vec![] },
+        targets: arcana_core::targets::TargetSelection { targets: vec![], clause_lengths: Vec::new() },
         modes: vec![],
         mana_payment: arcana_core::actions::ManaPaymentPlan {
             assignments: vec![
@@ -316,7 +316,7 @@ fn counterspell_counters_target_spell() {
         targets: arcana_core::targets::TargetSelection {
             targets: vec![arcana_core::targets::TargetChoice::ObjectOrPlayer(
                 arcana_core::targets::ObjectOrPlayer::Player(1),
-            )],
+            )], clause_lengths: Vec::new(),
         },
         modes: vec![],
         mana_payment: arcana_core::actions::ManaPaymentPlan {
@@ -339,7 +339,7 @@ fn counterspell_counters_target_spell() {
     let cast_cs = Action::CastSpell {
         object_id: cs,
         targets: arcana_core::targets::TargetSelection {
-            targets: vec![arcana_core::targets::TargetChoice::Object(bolt_stack_id)],
+            targets: vec![arcana_core::targets::TargetChoice::Object(bolt_stack_id)], clause_lengths: Vec::new(),
         },
         modes: vec![],
         mana_payment: arcana_core::actions::ManaPaymentPlan {
@@ -542,7 +542,7 @@ fn disintegrate_x_equals_5_deals_5_damage() {
         targets: arcana_core::targets::TargetSelection {
             targets: vec![arcana_core::targets::TargetChoice::ObjectOrPlayer(
                 arcana_core::targets::ObjectOrPlayer::Player(1),
-            )],
+            )], clause_lengths: Vec::new(),
         },
         modes: vec![],
         // Expanded cost is Generic(5) + Colored(R). Mana plan fills
@@ -622,7 +622,7 @@ fn disintegrate_x_zero_is_legal_and_deals_no_damage() {
         targets: arcana_core::targets::TargetSelection {
             targets: vec![arcana_core::targets::TargetChoice::ObjectOrPlayer(
                 arcana_core::targets::ObjectOrPlayer::Player(1),
-            )],
+            )], clause_lengths: Vec::new(),
         },
         modes: vec![],
         mana_payment: arcana_core::actions::ManaPaymentPlan {
@@ -880,7 +880,7 @@ fn walking_ballista_ping_removes_counter_and_deals_1_damage() {
             targets: arcana_core::targets::TargetSelection {
                 targets: vec![arcana_core::targets::TargetChoice::ObjectOrPlayer(
                     arcana_core::targets::ObjectOrPlayer::Player(1),
-                )],
+                )], clause_lengths: Vec::new(),
             },
             mana_payment,
             additional_costs,
@@ -1125,7 +1125,7 @@ fn snapcaster_grant_does_not_transfer_to_reentered_object() {
         targets: arcana_core::targets::TargetSelection {
             targets: vec![arcana_core::targets::TargetChoice::ObjectOrPlayer(
                 arcana_core::targets::ObjectOrPlayer::Player(1),
-            )],
+            )], clause_lengths: Vec::new(),
         },
         modes: vec![],
         mana_payment: arcana_core::actions::ManaPaymentPlan {
@@ -1710,7 +1710,7 @@ fn abrade_mode_0_deals_3_damage_to_target_creature() {
     let cast = Action::CastSpell {
         object_id: abrade,
         targets: arcana_core::targets::TargetSelection {
-            targets: vec![arcana_core::targets::TargetChoice::Object(bears)],
+            targets: vec![arcana_core::targets::TargetChoice::Object(bears)], clause_lengths: Vec::new(),
         },
         modes: vec![arcana_core::stack::ModeChoice::new(vec![0])],
         mana_payment: arcana_core::actions::ManaPaymentPlan {
@@ -1744,7 +1744,7 @@ fn abrade_mode_1_destroys_target_artifact() {
     let cast = Action::CastSpell {
         object_id: abrade,
         targets: arcana_core::targets::TargetSelection {
-            targets: vec![arcana_core::targets::TargetChoice::Object(artifact)],
+            targets: vec![arcana_core::targets::TargetChoice::Object(artifact)], clause_lengths: Vec::new(),
         },
         modes: vec![arcana_core::stack::ModeChoice::new(vec![1])],
         mana_payment: arcana_core::actions::ManaPaymentPlan {
@@ -1785,7 +1785,7 @@ fn abrade_mode_validation_rejects_empty_mode_choice() {
     let cast = Action::CastSpell {
         object_id: abrade,
         targets: arcana_core::targets::TargetSelection {
-            targets: vec![arcana_core::targets::TargetChoice::Object(bears)],
+            targets: vec![arcana_core::targets::TargetChoice::Object(bears)], clause_lengths: Vec::new(),
         },
         modes: vec![], // invalid for a modal spell
         mana_payment: arcana_core::actions::ManaPaymentPlan {
@@ -1931,7 +1931,7 @@ fn modal_spell_with_no_target_clause_resolves() {
 
     let cast = Action::CastSpell {
         object_id: card,
-        targets: arcana_core::targets::TargetSelection { targets: vec![] },
+        targets: arcana_core::targets::TargetSelection { targets: vec![], clause_lengths: Vec::new() },
         modes: vec![arcana_core::stack::ModeChoice::new(vec![0])],
         mana_payment: arcana_core::actions::ManaPaymentPlan {
             assignments: vec![arcana_core::actions::ManaAssignment {
@@ -2010,7 +2010,7 @@ fn chandra_plus_one_adds_loyalty_and_deals_1_damage() {
         source: pw_id,
         ability_index: 0,
         targets: arcana_core::targets::TargetSelection {
-            targets: vec![arcana_core::targets::TargetChoice::Player(1)],
+            targets: vec![arcana_core::targets::TargetChoice::Player(1)], clause_lengths: Vec::new(),
         },
         mana_payment: arcana_core::actions::ManaPaymentPlan::empty(),
         additional_costs: vec![
@@ -2049,7 +2049,7 @@ fn chandra_plus_one_twice_rejected_by_legal_actions() {
         source: pw_id,
         ability_index: 0,
         targets: arcana_core::targets::TargetSelection {
-            targets: vec![arcana_core::targets::TargetChoice::Player(1)],
+            targets: vec![arcana_core::targets::TargetChoice::Player(1)], clause_lengths: Vec::new(),
         },
         mana_payment: arcana_core::actions::ManaPaymentPlan::empty(),
         additional_costs: vec![
@@ -2184,7 +2184,7 @@ fn pw_minus_ability_removes_loyalty_counters() {
         source: pw_id,
         ability_index: 0,
         targets: arcana_core::targets::TargetSelection {
-            targets: vec![arcana_core::targets::TargetChoice::Object(bears)],
+            targets: vec![arcana_core::targets::TargetChoice::Object(bears)], clause_lengths: Vec::new(),
         },
         mana_payment: arcana_core::actions::ManaPaymentPlan::empty(),
         additional_costs: vec![
@@ -2290,7 +2290,7 @@ fn burst_lightning_kicked_deals_4_damage_to_player() {
                 targets: vec![
                     arcana_core::targets::TargetChoice::ObjectOrPlayer(
                         arcana_core::targets::ObjectOrPlayer::Player(1)),
-                ],
+                ], clause_lengths: Vec::new(),
             },
             modes, mana_payment, additional_costs, x_value,
             cast_modifier, cost_reductions,
@@ -2362,7 +2362,7 @@ fn burst_lightning_apply_rejects_kicker_flag_without_keyword() {
         targets: arcana_core::targets::TargetSelection {
             targets: vec![arcana_core::targets::TargetChoice::ObjectOrPlayer(
                 arcana_core::targets::ObjectOrPlayer::Object(bears),
-            )],
+            )], clause_lengths: Vec::new(),
         },
         modes: vec![],
         mana_payment: arcana_core::actions::ManaPaymentPlan {
@@ -2640,7 +2640,7 @@ fn madness_cast_end_to_end_deals_3_damage_then_graveyard() {
                 targets: vec![
                     arcana_core::targets::TargetChoice::ObjectOrPlayer(
                         arcana_core::targets::ObjectOrPlayer::Object(bears)),
-                ],
+                ], clause_lengths: Vec::new(),
             },
             modes, mana_payment, additional_costs, x_value,
             cast_modifier, cost_reductions,
@@ -2764,7 +2764,7 @@ fn bonecrusher_adventure_cast_deals_2_damage_and_exiles() {
                 targets: vec![
                     arcana_core::targets::TargetChoice::ObjectOrPlayer(
                         arcana_core::targets::ObjectOrPlayer::Object(bears)),
-                ],
+                ], clause_lengths: Vec::new(),
             },
             modes, mana_payment, additional_costs, x_value,
             cast_modifier, cost_reductions,
@@ -2819,7 +2819,7 @@ fn bonecrusher_creature_cast_from_adventure_exile_enters_battlefield() {
                 targets: vec![
                     arcana_core::targets::TargetChoice::ObjectOrPlayer(
                         arcana_core::targets::ObjectOrPlayer::Object(bears)),
-                ],
+                ], clause_lengths: Vec::new(),
             },
             modes, mana_payment, additional_costs, x_value,
             cast_modifier, cost_reductions,
@@ -3163,7 +3163,7 @@ fn bolt_fizzles_when_target_gains_hexproof_before_resolution() {
             targets: vec![
                 arcana_core::targets::TargetChoice::ObjectOrPlayer(
                     arcana_core::targets::ObjectOrPlayer::Object(bears)),
-            ],
+            ], clause_lengths: Vec::new(),
         },
         modes: vec![],
         mana_payment: arcana_core::actions::ManaPaymentPlan {
@@ -3186,7 +3186,7 @@ fn bolt_fizzles_when_target_gains_hexproof_before_resolution() {
         targets: arcana_core::targets::TargetSelection {
             targets: vec![
                 arcana_core::targets::TargetChoice::Object(bears),
-            ],
+            ], clause_lengths: Vec::new(),
         },
         modes: vec![],
         mana_payment: arcana_core::actions::ManaPaymentPlan {
@@ -3538,7 +3538,7 @@ fn swiftspear_prowess_pumps_on_controller_noncreature_cast() {
             targets: vec![
                 arcana_core::targets::TargetChoice::ObjectOrPlayer(
                     arcana_core::targets::ObjectOrPlayer::Player(1)),
-            ],
+            ], clause_lengths: Vec::new(),
         },
         modes: vec![],
         mana_payment: arcana_core::actions::ManaPaymentPlan {
@@ -3583,7 +3583,7 @@ fn swiftspear_prowess_does_not_fire_on_opponent_cast() {
             targets: vec![
                 arcana_core::targets::TargetChoice::ObjectOrPlayer(
                     arcana_core::targets::ObjectOrPlayer::Player(0)),
-            ],
+            ], clause_lengths: Vec::new(),
         },
         modes: vec![],
         mana_payment: arcana_core::actions::ManaPaymentPlan {
@@ -3620,7 +3620,7 @@ fn swiftspear_prowess_pump_expires_at_end_of_turn() {
             targets: vec![
                 arcana_core::targets::TargetChoice::ObjectOrPlayer(
                     arcana_core::targets::ObjectOrPlayer::Player(1)),
-            ],
+            ], clause_lengths: Vec::new(),
         },
         modes: vec![],
         mana_payment: arcana_core::actions::ManaPaymentPlan {
@@ -3665,7 +3665,7 @@ fn swiftspear_deals_2_combat_damage_after_prowess_pump() {
             targets: vec![
                 arcana_core::targets::TargetChoice::ObjectOrPlayer(
                     arcana_core::targets::ObjectOrPlayer::Player(1)),
-            ],
+            ], clause_lengths: Vec::new(),
         },
         modes: vec![],
         mana_payment: arcana_core::actions::ManaPaymentPlan {
@@ -3761,7 +3761,7 @@ fn fire_left_half_cast_deals_2_damage_to_graveyard() {
                 targets: vec![
                     arcana_core::targets::TargetChoice::ObjectOrPlayer(
                         arcana_core::targets::ObjectOrPlayer::Object(bears)),
-                ],
+                ], clause_lengths: Vec::new(),
             },
             modes, mana_payment, additional_costs, x_value,
             cast_modifier, cost_reductions,
@@ -3802,7 +3802,7 @@ fn ice_right_half_cast_taps_target_permanent_and_draws() {
                             cost_reductions, .. } => Action::CastSpell {
             object_id,
             targets: arcana_core::targets::TargetSelection {
-                targets: vec![arcana_core::targets::TargetChoice::Object(bears)],
+                targets: vec![arcana_core::targets::TargetChoice::Object(bears)], clause_lengths: Vec::new(),
             },
             modes, mana_payment, additional_costs, x_value,
             cast_modifier, cost_reductions,
@@ -3909,7 +3909,7 @@ fn split_card_returns_to_graveyard_with_combined_characteristics() {
                             cost_reductions, .. } => Action::CastSpell {
             object_id,
             targets: arcana_core::targets::TargetSelection {
-                targets: vec![arcana_core::targets::TargetChoice::Object(bears)],
+                targets: vec![arcana_core::targets::TargetChoice::Object(bears)], clause_lengths: Vec::new(),
             },
             modes, mana_payment, additional_costs, x_value,
             cast_modifier, cost_reductions,
@@ -4435,7 +4435,7 @@ fn bonecrusher_adventure_cast_fizzles_to_exile_when_target_leaves() {
                 targets: vec![
                     arcana_core::targets::TargetChoice::ObjectOrPlayer(
                         arcana_core::targets::ObjectOrPlayer::Object(bears)),
-                ],
+                ], clause_lengths: Vec::new(),
             },
             modes, mana_payment, additional_costs, x_value,
             cast_modifier, cost_reductions,
@@ -4591,7 +4591,7 @@ fn bolt_to_servo_token_removes_it_from_arena() {
         targets: arcana_core::targets::TargetSelection {
             targets: vec![arcana_core::targets::TargetChoice::ObjectOrPlayer(
                 arcana_core::targets::ObjectOrPlayer::Object(token_id),
-            )],
+            )], clause_lengths: Vec::new(),
         },
         modes: vec![],
         mana_payment: arcana_core::actions::ManaPaymentPlan {
@@ -4674,7 +4674,7 @@ fn young_pyromancer_triggers_on_instant_cast() {
         targets: arcana_core::targets::TargetSelection {
             targets: vec![arcana_core::targets::TargetChoice::ObjectOrPlayer(
                 arcana_core::targets::ObjectOrPlayer::Player(1),
-            )],
+            )], clause_lengths: Vec::new(),
         },
         modes: vec![],
         mana_payment: arcana_core::actions::ManaPaymentPlan {
@@ -4783,7 +4783,7 @@ fn young_pyromancer_ignores_opponents_instant() {
         targets: arcana_core::targets::TargetSelection {
             targets: vec![arcana_core::targets::TargetChoice::ObjectOrPlayer(
                 arcana_core::targets::ObjectOrPlayer::Player(0),
-            )],
+            )], clause_lengths: Vec::new(),
         },
         modes: vec![],
         mana_payment: arcana_core::actions::ManaPaymentPlan {
@@ -4821,7 +4821,7 @@ fn activate_equip(
         source,
         ability_index: 0,
         targets: arcana_core::targets::TargetSelection {
-            targets: vec![arcana_core::targets::TargetChoice::Object(target)],
+            targets: vec![arcana_core::targets::TargetChoice::Object(target)], clause_lengths: Vec::new(),
         },
         mana_payment: arcana_core::actions::ManaPaymentPlan {
             assignments: vec![arcana_core::actions::ManaAssignment {
@@ -4999,7 +4999,7 @@ fn cast_preordain(
     priority_to_main(&mut s, caster);
     let cast = Action::CastSpell {
         object_id: preordain,
-        targets: arcana_core::targets::TargetSelection { targets: vec![] },
+        targets: arcana_core::targets::TargetSelection { targets: vec![], clause_lengths: Vec::new() },
         modes: vec![],
         mana_payment: arcana_core::actions::ManaPaymentPlan {
             assignments: vec![arcana_core::actions::ManaAssignment {

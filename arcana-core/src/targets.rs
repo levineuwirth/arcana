@@ -46,11 +46,29 @@ use crate::zones::Zone;
 // TargetSelection / TargetChoice — the chosen targets
 // =============================================================================
 
-/// A complete targeting selection for a spell or ability.
-/// One entry per targeting clause in the oracle text.
-#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, Serialize, Deserialize)]
+/// A complete targeting selection for a spell or ability, its chosen
+/// targets in clause order.
+#[derive(Clone, Default, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TargetSelection {
     pub targets: Vec<TargetChoice>,
+    /// How many of [`Self::targets`] belong to each targeting clause, in
+    /// order (A1.5aw), so a clause with several targets, or an optional
+    /// clause left empty, is rechecked against its own requirement.
+    /// Empty means one target per clause, the shape every selection had
+    /// before. Empty lengths are neither serialized nor printed, so saved
+    /// actions, transcripts and debug-formatted fingerprints of
+    /// single-target selections are unchanged.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub clause_lengths: Vec<u32>,
+}
+
+impl std::fmt::Debug for TargetSelection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut d = f.debug_struct("TargetSelection");
+        d.field("targets", &self.targets);
+        if !self.clause_lengths.is_empty() { d.field("clause_lengths", &self.clause_lengths); }
+        d.finish()
+    }
 }
 
 impl TargetSelection {
@@ -1373,6 +1391,21 @@ impl TargetChoice {
 
 #[cfg(test)]
 mod tests {
+    /// A1.5aw: a single-target selection prints and serializes exactly as
+    /// before clause lengths existed, so transcripts, saved actions and the
+    /// debug-formatted fingerprint of A2.2's recorded game are unchanged.
+    #[test]
+    fn single_target_selections_keep_their_printed_and_serialized_shape() {
+        let legacy = TargetSelection { targets: vec![TargetChoice::Object(7)], clause_lengths: Vec::new() };
+        assert_eq!(format!("{legacy:?}"), "TargetSelection { targets: [Object(7)] }");
+        assert_eq!(serde_json::to_string(&legacy).unwrap(), r#"{"targets":[{"Object":7}]}"#);
+        let back: TargetSelection = serde_json::from_str(r#"{"targets":[{"Object":7}]}"#).unwrap();
+        assert_eq!(back, legacy, "an older saved selection loads");
+        let multi = TargetSelection { targets: vec![TargetChoice::Object(7), TargetChoice::Object(8)], clause_lengths: vec![2] };
+        assert_eq!(format!("{multi:?}"), "TargetSelection { targets: [Object(7), Object(8)], clause_lengths: [2] }");
+        assert_eq!(serde_json::from_str::<TargetSelection>(&serde_json::to_string(&multi).unwrap()).unwrap(), multi);
+    }
+
     use super::*;
     use crate::mana::ManaCost;
     use crate::objects::{Characteristics, GameObject};
@@ -2267,9 +2300,9 @@ mod tests {
         let b = put_creature(&mut s, 0, 0, Zone::Battlefield, 2, 2);
 
         let req = TargetRequirement::target_creature();
-        let ok = TargetSelection { targets: vec![TargetChoice::Object(a)] };
+        let ok = TargetSelection { targets: vec![TargetChoice::Object(a)], clause_lengths: Vec::new() };
         let wrong_count = TargetSelection {
-            targets: vec![TargetChoice::Object(a), TargetChoice::Object(b)],
+            targets: vec![TargetChoice::Object(a), TargetChoice::Object(b)], clause_lengths: Vec::new(),
         };
 
         assert!(req.is_satisfied(&ok, &s, crate::objects::NULL_OBJECT_ID, 0, None));
@@ -2289,7 +2322,7 @@ mod tests {
             controller: None,
         };
         let sel = TargetSelection {
-            targets: vec![TargetChoice::Object(a), TargetChoice::Object(b)],
+            targets: vec![TargetChoice::Object(a), TargetChoice::Object(b)], clause_lengths: Vec::new(),
         };
         assert!(req.is_satisfied(&sel, &s, crate::objects::NULL_OBJECT_ID, 0, Some(2)));
         assert!(!req.is_satisfied(&sel, &s, crate::objects::NULL_OBJECT_ID, 0, Some(1)));
@@ -2302,7 +2335,7 @@ mod tests {
         let mut s = GameState::new(2, 0);
         let c = put_creature(&mut s, 0, 0, Zone::Battlefield, 2, 2);
         let req = TargetRequirement::target_creature();
-        let sel = TargetSelection { targets: vec![TargetChoice::Object(c)] };
+        let sel = TargetSelection { targets: vec![TargetChoice::Object(c)], clause_lengths: Vec::new() };
 
         let legals = validate_targets_on_resolution(&req, &sel, &s, crate::objects::NULL_OBJECT_ID, 0);
         assert_eq!(legals, vec![TargetLegality::Legal]);
@@ -2318,7 +2351,7 @@ mod tests {
         let mut s = GameState::new(2, 0);
         let c = put_creature(&mut s, 0, 0, Zone::Battlefield, 2, 2);
         let req = TargetRequirement::target_creature();
-        let sel = TargetSelection { targets: vec![TargetChoice::Object(c)] };
+        let sel = TargetSelection { targets: vec![TargetChoice::Object(c)], clause_lengths: Vec::new() };
 
         // Move it to exile mid-resolution.
         s.objects.get_mut(c).unwrap().zone = Zone::Exile;
@@ -2341,7 +2374,7 @@ mod tests {
             controller: None,
         };
         let sel = TargetSelection {
-            targets: vec![TargetChoice::Object(a), TargetChoice::Object(b)],
+            targets: vec![TargetChoice::Object(a), TargetChoice::Object(b)], clause_lengths: Vec::new(),
         };
 
         // Only `b` becomes illegal.
@@ -2397,7 +2430,7 @@ mod tests {
                 TargetChoice::Player(0),
                 TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Object(3)),
                 TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Player(1)),
-            ],
+            ], clause_lengths: Vec::new(),
         };
         let json = serde_json::to_string(&sel).unwrap();
         let back: TargetSelection = serde_json::from_str(&json).unwrap();

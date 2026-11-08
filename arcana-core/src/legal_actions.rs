@@ -2107,8 +2107,40 @@ pub(crate) fn enumerate_target_selections(
     source: crate::objects::ObjectId,
     source_controller: PlayerId,
 ) -> Vec<TargetSelection> {
+    enumerate_target_selections_x(requirements, state, source, source_controller, None)
+}
+
+/// [`enumerate_target_selections`] with the spell's X, for clauses of X
+/// targets (A1.5aw). Every clause of exactly zero or one target keeps the
+/// older enumeration below unchanged, its order included, so existing
+/// action lists and recorded games are unaffected. Otherwise each clause's
+/// options are the subsets of its legal choices at its allowed sizes: up
+/// to N includes the empty choice, any number includes every size, and a
+/// clause of exactly N with fewer than N choices makes the whole spell or
+/// ability unavailable rather than offering it untargeted. Within a clause,
+/// sizes are interleaved so each is represented early; across clauses,
+/// selections run by increasing index sum, a deterministic coverage of
+/// every clause, up to [`MAX_TARGET_SELECTIONS`] in all. Each selection
+/// records its clause lengths. A clause of X targets with X unknown keeps
+/// the older single empty selection.
+pub(crate) fn enumerate_target_selections_x(
+    requirements: &[TargetRequirement],
+    state: &GameState,
+    source: crate::objects::ObjectId,
+    source_controller: PlayerId,
+    x_value: Option<u32>,
+) -> Vec<TargetSelection> {
+    use crate::targets::TargetCount;
     if requirements.is_empty() {
         return vec![TargetSelection::new()];
+    }
+    let single = requirements.iter()
+        .all(|r| matches!(r.count, TargetCount::Exactly(0) | TargetCount::Exactly(1)));
+    if !single {
+        if requirements.iter().any(|r| matches!(r.count, TargetCount::X)) && x_value.is_none() {
+            return vec![TargetSelection::new()];
+        }
+        return enumerate_multi_target_selections(requirements, state, source, source_controller, x_value);
     }
 
     let mut partials: Vec<Vec<crate::targets::TargetChoice>> = vec![Vec::new()];
@@ -2155,8 +2187,107 @@ pub(crate) fn enumerate_target_selections(
     }
 
     partials.into_iter()
-        .map(|targets| TargetSelection { targets })
+        .map(|targets| TargetSelection { targets, clause_lengths: Vec::new() })
         .collect()
+}
+
+/// The multi-target enumeration of [`enumerate_target_selections_x`].
+fn enumerate_multi_target_selections(
+    requirements: &[TargetRequirement],
+    state: &GameState,
+    source: crate::objects::ObjectId,
+    source_controller: PlayerId,
+    x_value: Option<u32>,
+) -> Vec<TargetSelection> {
+    use crate::targets::{TargetChoice, TargetCount};
+    let mut per_clause: Vec<Vec<Vec<TargetChoice>>> = Vec::with_capacity(requirements.len());
+    for req in requirements {
+        let choices: Vec<TargetChoice> = req.filter.enumerate_legal(state, source, source_controller)
+            .into_iter()
+            .filter(|c| req.matches_choice(c, state, source, source_controller))
+            .collect();
+        let n = choices.len();
+        let sizes: Vec<usize> = match req.count {
+            TargetCount::Exactly(k) => vec![k as usize],
+            TargetCount::UpTo(k) => (0..=k as usize).collect(),
+            TargetCount::Any => (0..=n).collect(),
+            TargetCount::X => vec![x_value.unwrap_or(0) as usize],
+        };
+        let sizes: Vec<usize> = sizes.into_iter().filter(|&k| k <= n).collect();
+        // A mandatory count the board can't meet: not available at all.
+        if sizes.is_empty() { return Vec::new(); }
+        per_clause.push(clause_options(&choices, &sizes, MAX_TARGET_SELECTIONS));
+    }
+    let counts: Vec<usize> = per_clause.iter().map(|o| o.len()).collect();
+    let mut out = Vec::new();
+    let max_sum: usize = counts.iter().map(|c| c - 1).sum();
+    let mut index = vec![0usize; counts.len()];
+    'sums: for total in 0..=max_sum {
+        tuples_with_sum(&counts, 0, total, &mut index, &mut |idx| {
+            let mut targets = Vec::new();
+            let mut clause_lengths = Vec::with_capacity(idx.len());
+            for (k, &i) in idx.iter().enumerate() {
+                targets.extend(per_clause[k][i].iter().cloned());
+                clause_lengths.push(per_clause[k][i].len() as u32);
+            }
+            out.push(TargetSelection { targets, clause_lengths });
+            out.len() < MAX_TARGET_SELECTIONS
+        });
+        if out.len() >= MAX_TARGET_SELECTIONS { break 'sums; }
+    }
+    out
+}
+
+/// One clause's options: the combinations of `choices` at each of
+/// `sizes`, in increasing index order within a size, the sizes taken in
+/// turn so each is represented early. At most `max`.
+fn clause_options<T: Clone>(choices: &[T], sizes: &[usize], max: usize) -> Vec<Vec<T>> {
+    let mut iters: Vec<Option<Vec<usize>>> = sizes.iter().map(|&k| Some((0..k).collect())).collect();
+    let n = choices.len();
+    let mut out = Vec::new();
+    while out.len() < max && iters.iter().any(|i| i.is_some()) {
+        for slot in iters.iter_mut() {
+            let Some(comb) = slot.as_mut() else { continue };
+            out.push(comb.iter().map(|&i| choices[i].clone()).collect());
+            // Advance to the next combination of the same size.
+            let k = comb.len();
+            let mut i = k;
+            let mut advanced = false;
+            while i > 0 {
+                i -= 1;
+                if comb[i] < n - k + i {
+                    comb[i] += 1;
+                    for j in i + 1..k { comb[j] = comb[j - 1] + 1; }
+                    advanced = true;
+                    break;
+                }
+            }
+            if !advanced { *slot = None; }
+            if out.len() >= max { break; }
+        }
+    }
+    out
+}
+
+/// Call `f` with every index tuple below `counts` whose indices sum to
+/// `total`, in lexicographic order, until `f` returns false.
+fn tuples_with_sum(
+    counts: &[usize],
+    k: usize,
+    total: usize,
+    index: &mut Vec<usize>,
+    f: &mut dyn FnMut(&[usize]) -> bool,
+) -> bool {
+    if k == counts.len() {
+        return if total == 0 { f(index) } else { true };
+    }
+    let rest_max: usize = counts[k + 1..].iter().map(|c| c - 1).sum();
+    for i in 0..counts[k].min(total + 1) {
+        if total - i > rest_max { continue; }
+        index[k] = i;
+        if !tuples_with_sum(counts, k + 1, total - i, index, f) { return false; }
+    }
+    true
 }
 
 /// Enumerate every sorted mode subset for a modal spell whose size
@@ -3920,6 +4051,64 @@ mod tests {
         assert_eq!(perms[0], items, "identity ordering must be emitted first");
         // Small inputs stay fully exhaustive (3! = 6).
         assert_eq!(permutations(&[1, 2, 3]).len(), 6);
+    }
+
+    /// A1.5aw: clauses of several targets are enumerated as subsets of
+    /// their legal choices, with clause lengths recorded.
+    #[test]
+    fn up_to_and_exact_multi_target_clauses_enumerate_subsets() {
+        use crate::targets::{TargetCount, TargetChoice};
+        let mut s = GameState::new(2, 0);
+        let ids: Vec<ObjectId> = (0..3).map(|_| put(&mut s, 0, Zone::Battlefield, creature_chars(1, 1))).collect();
+        let req = |count| TargetRequirement { count, ..TargetRequirement::target_creature() };
+        // Up to two of three: the empty choice, three singles, three pairs.
+        let sels = enumerate_target_selections(&[req(TargetCount::UpTo(2))], &s, crate::objects::NULL_OBJECT_ID, 0);
+        assert_eq!(sels.len(), 7);
+        assert!(sels.iter().any(|x| x.targets.is_empty() && x.clause_lengths == vec![0]), "the empty choice");
+        assert_eq!(sels.iter().filter(|x| x.clause_lengths == vec![2]).count(), 3);
+        // Sizes interleave: the empty choice, then a single, then a pair.
+        assert_eq!(sels.iter().take(3).map(|x| x.targets.len()).collect::<Vec<_>>(), vec![0, 1, 2]);
+        // Exactly two of three: three pairs; of one creature: none at all.
+        assert_eq!(enumerate_target_selections(&[req(TargetCount::Exactly(2))], &s, crate::objects::NULL_OBJECT_ID, 0).len(), 3);
+        let mut lone = GameState::new(2, 0);
+        put(&mut lone, 0, Zone::Battlefield, creature_chars(1, 1));
+        assert!(enumerate_target_selections(&[req(TargetCount::Exactly(2))], &lone, crate::objects::NULL_OBJECT_ID, 0).is_empty(),
+            "a mandatory clause the board can't meet is not offered untargeted");
+        // A single clause before an optional one: lengths keep them apart.
+        let sels = enumerate_target_selections(&[req(TargetCount::Exactly(1)), req(TargetCount::UpTo(1))],
+            &s, crate::objects::NULL_OBJECT_ID, 0);
+        assert_eq!(sels.len(), 3 * 4);
+        assert!(sels.iter().all(|x| x.clause_lengths[0] == 1 && x.targets.len() == 1 + x.clause_lengths[1] as usize));
+        assert!(sels.iter().any(|x| x.targets == vec![TargetChoice::Object(ids[0])] && x.clause_lengths == vec![1, 0]));
+    }
+
+    /// A1.5aw: "any number" over a large board is bounded, every size
+    /// still represented, and the order is deterministic.
+    #[test]
+    fn any_number_of_targets_is_bounded_with_every_size_represented() {
+        use crate::targets::TargetCount;
+        let mut s = GameState::new(2, 0);
+        for _ in 0..12 { put(&mut s, 0, Zone::Battlefield, creature_chars(1, 1)); }
+        let req = TargetRequirement { count: TargetCount::Any, ..TargetRequirement::target_creature() };
+        let a = enumerate_target_selections(std::slice::from_ref(&req), &s, crate::objects::NULL_OBJECT_ID, 0);
+        let b = enumerate_target_selections(&[req], &s, crate::objects::NULL_OBJECT_ID, 0);
+        assert_eq!(a.len(), MAX_TARGET_SELECTIONS, "2^12 subsets are bounded");
+        assert_eq!(a, b, "deterministic");
+        for size in 0..=12 {
+            assert!(a.iter().any(|x| x.targets.len() == size), "size {size} represented");
+        }
+    }
+
+    /// Clauses of one target each keep the older enumeration exactly,
+    /// with no clause lengths, so existing action lists don't change.
+    #[test]
+    fn single_target_clauses_keep_the_older_shape() {
+        let mut s = GameState::new(2, 0);
+        for _ in 0..3 { put(&mut s, 0, Zone::Battlefield, creature_chars(1, 1)); }
+        let tc = || TargetRequirement::target_creature();
+        let sels = enumerate_target_selections(&[tc(), tc()], &s, crate::objects::NULL_OBJECT_ID, 0);
+        assert_eq!(sels.len(), 9);
+        assert!(sels.iter().all(|x| x.clause_lengths.is_empty()));
     }
 
     #[test]

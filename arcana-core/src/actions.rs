@@ -1071,7 +1071,7 @@ mod tests {
     fn cast(object_id: ObjectId) -> Action {
         Action::CastSpell {
             object_id,
-            targets: TargetSelection { targets: vec![] },
+            targets: TargetSelection { targets: vec![], clause_lengths: Vec::new() },
             modes: vec![],
             mana_payment: pay_nothing(),
             additional_costs: vec![],
@@ -1235,7 +1235,7 @@ mod tests {
         let a = Action::CastSpell {
             object_id: 7,
             targets: TargetSelection {
-                targets: vec![TargetChoice::Player(1)],
+                targets: vec![TargetChoice::Player(1)], clause_lengths: Vec::new(),
             },
             modes: vec![],
             mana_payment: pay_nothing(),

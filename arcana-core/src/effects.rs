@@ -1753,6 +1753,7 @@ impl Effect {
                 }
             }
             Effect::PutOntoBattlefieldTappedAttacking { target, controller } => {
+                if !can_receive_control(state, *controller) { return; }
                 if state.objects.get(*target).is_none() { return; }
                 if let Some(new_id) = state.move_object_to_zone(
                     *target, Zone::Battlefield, MoveCause::AbilityResolution)
@@ -1859,6 +1860,7 @@ impl Effect {
                 }
             }
             Effect::Anthem { controller, power, toughness, duration } => {
+                if !valid_player(state, *controller) { return; }
                 state.add_continuous_effect(
                     crate::layers::ContinuousEffect::anthem(
                         /*source=*/ crate::objects::NULL_OBJECT_ID,
@@ -1938,6 +1940,7 @@ impl Effect {
 
             // --- state flips --------------------------------------------
             Effect::ChangeControl { target, new_controller } => {
+                if !can_receive_control(state, *new_controller) { return; }
                 let Some(obj) = state.objects.get_mut(*target) else { return; };
                 let old = obj.controller;
                 if old == *new_controller { return; }
@@ -1947,6 +1950,7 @@ impl Effect {
                 });
             }
             Effect::ChangeControlEot { target, new_controller } => {
+                if !can_receive_control(state, *new_controller) { return; }
                 use crate::triggers::{DelayedTrigger, TriggerCondition};
                 let Some(obj) = state.objects.get_mut(*target) else { return; };
                 let original = obj.controller;
@@ -2033,6 +2037,7 @@ impl Effect {
                 }
             }
             Effect::WardPrompt { caster, cost, counter_target } => {
+                if !valid_player(state, *caster) { return; }
                 // Resolution of a Ward trigger. Push a PayOrDecline on
                 // the targeting spell's controller; a decline routes
                 // to CounterStackEntry on the original source.
@@ -2188,6 +2193,7 @@ impl Effect {
                 }
             }
             Effect::NameCardAndExile { chooser, target } => {
+                if !valid_player(state, *chooser) { return; }
                 name_card_and_exile(state, *chooser, *target);
             }
             Effect::GrantTriggeredAbility { target, ability, duration } => {
@@ -2265,6 +2271,7 @@ impl Effect {
             Effect::ScheduleFloatingTrigger {
                 source, controller, condition, effect, until,
             } => {
+                if !valid_player(state, *controller) { return; }
                 use crate::triggers::DelayedTrigger;
                 let trig = match until {
                     FloatingUntil::EndOfTurn =>
@@ -2278,6 +2285,7 @@ impl Effect {
                 state.register_delayed_trigger(trig);
             }
             Effect::ScheduleDelayedEffect { source, controller, when, effect } => {
+                if !valid_player(state, *controller) { return; }
                 use crate::triggers::{DelayedTrigger, TriggerCondition};
                 let condition = match when {
                     DelayedWhen::NextEndStep => TriggerCondition::StepBegins {
@@ -2369,6 +2377,7 @@ impl Effect {
                 fight(state, *a, *b);
             }
             Effect::Goad { target, goader, duration } => {
+                if !valid_player(state, *goader) { return; }
                 state.add_continuous_effect(
                     crate::layers::ContinuousEffect::goad(
                         /*source=*/ *target, *target, *goader, *duration));
@@ -2449,6 +2458,7 @@ impl Effect {
                 install_delayed_action(state, *source, Some(*affected), *controller, *when, *action),
 
             Effect::NextCastThisTurn { controller, kind, rider } => {
+                if !valid_player(state, *controller) { return; }
                 use crate::triggers::{DelayedTrigger, TriggerCondition};
                 let condition = TriggerCondition::SpellCast {
                     filter: Some(kind.to_filter()),
@@ -2468,6 +2478,7 @@ impl Effect {
             }
 
             Effect::EachCastThisTurn { controller, kind, rider } => {
+                if !valid_player(state, *controller) { return; }
                 use crate::triggers::{DelayedTrigger, TriggerCondition};
                 let filter = kind.to_filter();
                 let condition = TriggerCondition::SpellCast {
@@ -2611,6 +2622,7 @@ fn install_delayed_action(
     when: DelayedWhen,
     action: DelayedAction,
 ) {
+    if !valid_player(state, controller) { return; }
     use crate::triggers::{DelayedTrigger, TriggerCondition};
     let condition = match when {
         DelayedWhen::NextEndStep => TriggerCondition::StepBegins {
@@ -3334,6 +3346,13 @@ fn valid_player(state: &GameState, p: PlayerId) -> bool {
     (p as usize) < state.players.len()
 }
 
+/// CR 800.4b: an object cannot enter or change to a departed player's
+/// control. Also rejects the illegal-target player sentinel (A1.5aw)
+/// before any zone move, controller assignment, event, or delayed revert.
+fn can_receive_control(state: &GameState, p: PlayerId) -> bool {
+    valid_player(state, p) && state.player(p).is_alive()
+}
+
 /// CR 701.25 — greedy proliferate. Choose every permanent and player
 /// that has a counter and add one of each kind already present.
 /// Object counters emit `CounterAdded`; player counters currently
@@ -4053,6 +4072,7 @@ fn snapcaster_grant_flashback(
     duration: crate::layers::Duration,
 ) {
     use crate::types::TypeLine;
+    if !valid_player(state, controller) { return; }
     // Enumerate instants/sorceries across *every* player's graveyard
     // — Snapcaster's printed text says "a graveyard" without a
     // controller restriction.

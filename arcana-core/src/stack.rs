@@ -690,17 +690,27 @@ impl GameState {
             return ResolutionOutcome::Resolve { target_legality: Vec::new() };
         }
 
-        // Recheck each chosen target against its corresponding
-        // requirement by position. Extra chosen targets (more than the
-        // requirement count) are treated as illegal.
+        // Recheck each chosen target against the requirement of the
+        // clause it belongs to (A1.5aw): the selection's clause lengths
+        // say how many targets each clause took, and none means one each,
+        // the older shape. Targets beyond the clauses are illegal.
+        let lengths: Vec<usize> = if entry.targets.clause_lengths.is_empty() {
+            vec![1; chosen.len()]
+        } else {
+            entry.targets.clause_lengths.iter().map(|&n| n as usize).collect()
+        };
         let mut legality = Vec::with_capacity(chosen.len());
-        for (i, choice) in chosen.iter().enumerate() {
-            let legal = match requirements.get(i) {
-                Some(req) => req.matches_choice(choice, self, entry.source, entry.controller),
-                None => false,
-            };
-            legality.push(if legal { TargetLegality::Legal } else { TargetLegality::Illegal });
+        let mut i = 0;
+        for (k, &n) in lengths.iter().enumerate() {
+            for _ in 0..n {
+                let Some(choice) = chosen.get(i) else { break };
+                let legal = requirements.get(k).is_some_and(|req|
+                    req.matches_choice(choice, self, entry.source, entry.controller));
+                legality.push(if legal { TargetLegality::Legal } else { TargetLegality::Illegal });
+                i += 1;
+            }
         }
+        while legality.len() < chosen.len() { legality.push(TargetLegality::Illegal); }
 
         if legality.iter().all(|l| *l == TargetLegality::Illegal) {
             ResolutionOutcome::CounteredIllegalTargets
@@ -1132,7 +1142,7 @@ pub fn recheck_stack_entry_targets(
             Some(r) => r,
             None => return TargetLegality::Illegal,
         };
-        let single = TargetSelection { targets: vec![choice.clone()] };
+        let single = TargetSelection { targets: vec![choice.clone()], clause_lengths: Vec::new() };
         let legalities = validate_targets_on_resolution(
             req, &single, state, entry.source, entry.controller);
         legalities.into_iter().next().unwrap_or(TargetLegality::Illegal)
@@ -1225,7 +1235,7 @@ mod tests {
     }
 
     fn one_creature_target(c: ObjectId) -> TargetSelection {
-        TargetSelection { targets: vec![TargetChoice::Object(c)] }
+        TargetSelection { targets: vec![TargetChoice::Object(c)], clause_lengths: Vec::new() }
     }
 
     fn target_creature() -> TargetRequirement { TargetRequirement::target_creature() }
@@ -1288,7 +1298,7 @@ mod tests {
 
         let with = StackEntry::new_spell(
             1, 0, 1, instant_chars(),
-            TargetSelection { targets: vec![TargetChoice::Player(0)] },
+            TargetSelection { targets: vec![TargetChoice::Player(0)], clause_lengths: Vec::new() },
             vec![], None);
         assert!(with.has_targets());
     }
@@ -1466,7 +1476,7 @@ mod tests {
         let b = put_object(&mut s, 0, Zone::Battlefield, creature_chars(2, 2));
         s.push_stack_entry(StackEntry::new_spell(
             99, 0, 1, instant_chars(),
-            TargetSelection { targets: vec![TargetChoice::Object(a), TargetChoice::Object(b)] },
+            TargetSelection { targets: vec![TargetChoice::Object(a), TargetChoice::Object(b)], clause_lengths: Vec::new() },
             vec![], None,
         ));
         // Only b leaves.
@@ -1491,7 +1501,7 @@ mod tests {
         let c = put_object(&mut s, 0, Zone::Battlefield, creature_chars(2, 2));
         s.push_stack_entry(StackEntry::new_spell(
             99, 0, 1, instant_chars(),
-            TargetSelection { targets: vec![TargetChoice::Object(c), TargetChoice::Object(c)] },
+            TargetSelection { targets: vec![TargetChoice::Object(c), TargetChoice::Object(c)], clause_lengths: Vec::new() },
             vec![], None,
         ));
         let entry = s.top_of_stack().unwrap().clone();
@@ -1777,7 +1787,7 @@ mod tests {
     fn stack_entry_spell_roundtrip() {
         let entry = StackEntry::new_spell(
             1, 0, 42, instant_chars(),
-            TargetSelection { targets: vec![TargetChoice::Player(1)] },
+            TargetSelection { targets: vec![TargetChoice::Player(1)], clause_lengths: Vec::new() },
             vec![ModeChoice::new(vec![0, 1])], Some(3),
         );
         let json = serde_json::to_string(&entry).unwrap();
