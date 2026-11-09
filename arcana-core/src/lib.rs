@@ -25,6 +25,7 @@ pub mod format;
 pub mod legal_actions;
 pub mod registry;
 pub mod engine;
+pub mod entry;
 pub mod record;
 pub mod render;
 pub mod view;

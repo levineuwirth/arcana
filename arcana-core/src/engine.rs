@@ -120,6 +120,7 @@ pub fn step(
         return (state, EngineYield::GameOver(result));
     }
 
+    state.cache_entry_specs(registry);
     apply_action(&mut state, action, registry);
     settle(&mut state, registry);
     detect_and_mark_loop_draw(&mut state);
@@ -1264,39 +1265,13 @@ fn apply_play_land(
 
     state.player_mut(controller).land_plays_remaining =
         state.player(controller).land_plays_remaining.saturating_sub(1);
-    // Land play is NOT a spell — no stack entry, so it never goes through
-    // finalize_resolved_spell (where a cast permanent's printed `enters_with`
-    // clauses are applied). Do the battlefield-entry sequence here, mirroring
-    // that path so the land's enters-tapped clause (tap-land / check-land /
-    // fast-land / …) is honored — and applied BEFORE the EntersBattlefield
-    // event, so an "enters untapped" ETB trigger sees the correct state.
-    // (Previously a PLAYED land skipped enters_with entirely — the Clifftop
-    // Retreat "didn't enter tapped" bug.)
-    let Some((new_id, from)) = state.swap_to_zone_reid(object_id, Zone::Battlefield) else {
-        state.priority.record_action();
-        return;
-    };
-    // CR 305.2 — playing a land gives its controller to the player who played
-    // it; set this BEFORE the enters_with check (a "unless you control …"
-    // condition is evaluated from the controller's board).
-    if let Some(obj) = state.objects.get_mut(new_id) {
-        obj.controller = controller;
-    }
-    state.emit(GameEvent::ZoneChange {
-        object_id, from, to: Zone::Battlefield, new_id, cause: MoveCause::PlayLand,
-    });
-    let enters_with = state.objects.get(new_id)
+    // Use the same pre-entry choice and lifecycle as fetched/returned
+    // cards and resolving permanent spells.
+    let mut entry = crate::entry::BattlefieldEntry::new(object_id, controller, MoveCause::PlayLand);
+    entry.clauses = Some(state.objects.get(object_id)
         .and_then(|o| registry.get(o.card_id))
-        .map(|d| d.enters_with.clone())
-        .unwrap_or_default();
-    if !enters_with.is_empty() {
-        crate::stack::apply_enters_with_clauses(
-            state, new_id, &enters_with, /*x_value=*/ None, /*delve_count=*/ 0);
-    }
-    state.after_enter_battlefield(new_id);
-    state.emit(GameEvent::EntersBattlefield {
-        object_id: new_id, from_zone: from, was_cast: false,
-    });
+        .map(|d| d.enters_with.clone()).unwrap_or_default());
+    state.enter_battlefield(entry);
     state.priority.record_action();
 }
 
@@ -1321,6 +1296,11 @@ pub(crate) fn apply_resolution_choice(
     use crate::actions::{ChoiceKind, ChoiceContext, ChoiceResponse};
 
     match (&pending.kind, &pending.context, &response) {
+        (
+            ChoiceKind::OptionalCost { .. },
+            ChoiceContext::EnteringBattlefield { object_id },
+            ChoiceResponse::OptionalCost { pay },
+        ) => state.answer_entry_payment(*object_id, *pay),
         // --- OrderCards (Scry, Surveil, Fateseal) --------------------
         (
             ChoiceKind::OrderCards { cards, allowed },
@@ -1674,6 +1654,8 @@ pub(crate) fn apply_resolution_choice(
         }
     }
 
+    state.drain_entry_continuations();
+
     // Resume any parked resolution now that the choice is cleared.
     // A handler may have pushed a *new* pending_choice itself (e.g. a
     // second Scry in one resolution); in that case resume_* parks
@@ -1731,6 +1713,7 @@ fn apply_order_cards(
     // we rebuild library ordering.
     //
     // First: move any non-library destinations.
+    let mut entries = Vec::new();
     for (pid, dest) in placements {
         match dest {
             CardDestination::Graveyard => {
@@ -1753,12 +1736,8 @@ fn apply_order_cards(
             CardDestination::Battlefield => {
                 // Direct-to-battlefield via OrderCards (Collected
                 // Company-style). Controller is the choosing player.
-                if let Some(obj) = state.objects.get_mut(*pid) {
-                    obj.controller = choosing_player;
-                }
-                state.move_object_to_zone(
-                    *pid, crate::zones::Zone::Battlefield,
-                    crate::events::MoveCause::SpellResolution);
+                entries.push(crate::entry::BattlefieldEntry::new(
+                    *pid, choosing_player, MoveCause::SpellResolution));
             }
             CardDestination::TopOfLibrary | CardDestination::BottomOfLibrary => {
                 // handled below via library ordering
@@ -1766,6 +1745,21 @@ fn apply_order_cards(
         }
     }
 
+    state.enter_battlefield_batch(entries);
+    if state.pending_choice.is_some() {
+        state.entry_continuations.push_back(crate::entry::EntryContinuation::LibraryOrder {
+            player: choosing_player, cards: cards.to_vec(), placements: placements.to_vec(),
+        });
+    } else {
+        finish_library_order(state, choosing_player, cards, placements);
+    }
+}
+
+pub(crate) fn finish_library_order(
+    state: &mut GameState, choosing_player: PlayerId,
+    cards: &[ObjectId], placements: &[(ObjectId, crate::actions::CardDestination)],
+) {
+    use crate::actions::CardDestination;
     // Remove all prompt-cards that are still in the library from the
     // current library ordering, then re-insert per submitted order.
     let lib = &mut state.player_mut(choosing_player).library_top_to_bottom;
@@ -1939,7 +1933,16 @@ fn apply_choice_follow_up(
         ChoiceFollowUp::MoveToZone {
             destination, reveal, shuffle_library_owner,
         } => {
+            let mut entries = Vec::new();
             for id in chosen {
+                if destination == Zone::Battlefield {
+                    if let Some(obj) = state.objects.get(*id) {
+                        let mut entry = crate::entry::BattlefieldEntry::new(*id, obj.controller, MoveCause::SpellResolution);
+                        entry.reveal = reveal;
+                        entries.push(entry);
+                    }
+                    continue;
+                }
                 let new_id = state.move_object_to_zone(
                     *id, destination, MoveCause::SpellResolution);
                 if reveal {
@@ -1950,30 +1953,22 @@ fn apply_choice_follow_up(
                     }
                 }
             }
-            if let Some(p) = shuffle_library_owner {
-                state.shuffle_library(p);
+            state.enter_battlefield_batch(entries);
+            if let Some(player) = shuffle_library_owner {
+                crate::effects::Effect::Shuffle { player }.execute(state);
             }
         }
         ChoiceFollowUp::MoveToBattlefield {
             controller, tapped, shuffle_library_owner,
         } => {
-            for id in chosen {
-                // Set controller pre-move so the move preserves it on
-                // entry to the battlefield.
-                if let Some(obj) = state.objects.get_mut(*id) {
-                    obj.controller = controller;
-                }
-                let new_id = state.move_object_to_zone(
-                    *id, Zone::Battlefield, MoveCause::SpellResolution);
-                if let Some(bf_id) = new_id {
-                    if let Some(obj) = state.objects.get_mut(bf_id) {
-                        obj.controller = controller;
-                        if tapped { obj.tap(); }
-                    }
-                }
-            }
-            if let Some(p) = shuffle_library_owner {
-                state.shuffle_library(p);
+            let requests = chosen.iter().map(|id| {
+                let mut entry = crate::entry::BattlefieldEntry::new(*id, controller, MoveCause::SpellResolution);
+                entry.tapped = tapped;
+                entry
+            }).collect();
+            state.enter_battlefield_batch(requests);
+            if let Some(player) = shuffle_library_owner {
+                crate::effects::Effect::Shuffle { player }.execute(state);
             }
         }
         // Consumed by the PickPlayer dispatch arm directly (it pairs
@@ -1984,20 +1979,12 @@ fn apply_choice_follow_up(
                     with PickPlayer, not PickCards");
         }
         ChoiceFollowUp::MoveToBattlefieldAttacking { controller } => {
-            for id in chosen {
-                if let Some(obj) = state.objects.get_mut(*id) {
-                    obj.controller = controller;
-                }
-                let new_id = state.move_object_to_zone(
-                    *id, Zone::Battlefield, MoveCause::SpellResolution);
-                if let Some(bf_id) = new_id {
-                    if let Some(obj) = state.objects.get_mut(bf_id) {
-                        obj.controller = controller;
-                    }
-                    crate::effects::enter_tapped_attacking(
-                        state, bf_id, controller);
-                }
-            }
+            let requests = chosen.iter().map(|id| {
+                let mut entry = crate::entry::BattlefieldEntry::new(*id, controller, MoveCause::SpellResolution);
+                entry.attacking = true;
+                entry
+            }).collect();
+            state.enter_battlefield_batch(requests);
         }
         ChoiceFollowUp::Destroy => {
             for id in chosen {
@@ -2382,6 +2369,9 @@ fn apply_concede(state: &mut GameState) {
     state.emit(GameEvent::PlayerLoses {
         player, reason: LoseReason::Concession,
     });
+    // Concession is immediate, even when an entry or instruction is
+    // waiting. Determine the winner without running deferred SBAs.
+    crate::sba::update_game_result(state);
 }
 
 // =============================================================================
@@ -2391,6 +2381,7 @@ fn apply_concede(state: &mut GameState) {
 /// Advance the state through every transition that does not require
 /// agent input. Runs SBAs + triggers between each advance.
 fn settle(state: &mut GameState, registry: &CardRegistry) {
+    if state.is_game_over() { return; }
     // Cap iterations — if we ever advance for this many passes
     // without reaching a yield, there's a state machine bug. The
     // panic is a programmer bug per the design principle.
@@ -2436,6 +2427,9 @@ fn combat_decision_pending(state: &GameState) -> bool {
 /// when the loop iteration started, so each pass makes forward
 /// progress.
 fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
+    // Entry and its containing instruction must finish before SBAs,
+    // triggers, or priority can observe the permanent (CR 614.12).
+    if state.pending_entry.is_some() || !state.entry_continuations.is_empty() { return; }
     // Snapshots held for abilities that triggered in earlier sweeps
     // go once nothing is left to resolve them.
     state.release_held_lki();
@@ -3778,7 +3772,9 @@ fn execute_effects_or_park(
 /// straight-line execute — single-choice branches are safe there and the
 /// multi-choice case is not reachable from current call sites.
 fn execute_optional_branch(state: &mut GameState, branch: crate::effects::Effect) {
-    if let Some(parked) = state.pending_resolution.as_mut() {
+    if !state.entry_continuations.is_empty() {
+        state.entry_continuations.push_front(crate::entry::EntryContinuation::Effect(Box::new(branch)));
+    } else if let Some(parked) = state.pending_resolution.as_mut() {
         parked.remaining_effects.insert(0, branch);
     } else {
         branch.execute(state);

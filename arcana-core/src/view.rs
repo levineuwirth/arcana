@@ -335,6 +335,12 @@ fn build_decision_prompt(
         registry.interner().resolve(o.characteristics.name)
             .filter(|s| !s.is_empty()).map(|s| s.to_string())
     };
+    if let crate::actions::ChoiceContext::EnteringBattlefield { object_id } = pc.context {
+        if let ChoiceKind::OptionalCost { cost: crate::actions::OptionalPaymentKind::Life(life) } = &pc.kind {
+            let name = name_of(object_id).unwrap_or_else(|| "This permanent".to_string());
+            return Some(format!("Pay {life} life? If you decline, {name} enters tapped."));
+        }
+    }
     match &pc.kind {
         // "Target X" buttons are otherwise context-free — name the source whose
         // ability is asking (the stack entry's source permanent).

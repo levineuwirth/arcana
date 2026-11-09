@@ -137,6 +137,11 @@ pub struct GameState {
     /// of its effects pushed a [`Self::pending_choice`]. Resumed by the
     /// engine once the choice is answered.
     pub pending_resolution: Option<crate::actions::PendingResolution>,
+    /// Card-declared entry clauses needed by the synchronous zone mover.
+    /// Populated from the registry at the engine boundary (A1.5bj).
+    pub(crate) entry_specs: HashMap<crate::types::CardId, Vec<crate::registry::EntersWithSpec>>,
+    pub(crate) pending_entry: Option<crate::entry::PendingEntry>,
+    pub(crate) entry_continuations: std::collections::VecDeque<crate::entry::EntryContinuation>,
     /// Scratch slot set by the engine around effect execution so
     /// stack-resolution effects (Scry, Surveil, Tutor, Ward, …) can
     /// reach the resolving stack entry's id for [`crate::actions::ChoiceContext::ResolvingStack`].
@@ -326,6 +331,9 @@ impl GameState {
             pending_choice: None,
             next_choice_id: 1,
             pending_resolution: None,
+            entry_specs: HashMap::default(),
+            pending_entry: None,
+            entry_continuations: Default::default(),
             currently_resolving: None,
             pending_choice_follow_up: None,
             lki: HashMap::default(),
@@ -677,6 +685,14 @@ impl GameState {
     ) -> Option<ObjectId> {
         let from = self.objects.get(id)?.zone;
         if from == destination { return None; }
+        if self.pending_choice.is_some() {
+            self.entry_continuations.push_back(crate::entry::EntryContinuation::Move { id, destination, cause });
+            return None;
+        }
+        if destination == Zone::Battlefield {
+            let controller = self.objects.get(id)?.controller;
+            return self.enter_battlefield(crate::entry::BattlefieldEntry::new(id, controller, cause));
+        }
 
         // A1.5p: an effect that moves a spell off the stack (Venser's
         // bounce, Subtlety's tuck) takes its stack entry with it, so no
@@ -703,7 +719,6 @@ impl GameState {
         let from_battlefield = from.is_battlefield();
         let to_graveyard = matches!(destination, Zone::Graveyard(_));
         let to_exile = destination.is_exile();
-        let to_battlefield = destination.is_battlefield();
 
         if from_battlefield {
             self.emit(GameEvent::LeavesBattlefield {
@@ -736,14 +751,6 @@ impl GameState {
             self.emit(GameEvent::PutIntoGraveyard { object_id: new_id, from });
         } else if to_exile {
             self.emit(GameEvent::Exiled { object_id: new_id, from });
-        } else if to_battlefield {
-            // Fold ETB-event replacements and summoning sickness in
-            // BEFORE the event fires so trigger matchers see the
-            // final state of the entering permanent.
-            self.after_enter_battlefield(new_id);
-            self.emit(GameEvent::EntersBattlefield {
-                object_id: new_id, from_zone: from, was_cast: false,
-            });
         }
 
         // O-ring release (CR 610.3): a permanent that leaves the
@@ -751,28 +758,19 @@ impl GameState {
         // in exile via [`crate::effects::Effect::ExileUntilSourceLeaves`]
         // — no stack, owner's control. `id` is the jailer's
         // battlefield id, which is what the linked objects recorded.
-        // Recursive `move_object_to_zone` is safe here: the main move
-        // above is complete, and the re-id gives each released object
-        // a clean link-free body (`reset_on_zone_change`).
+        // Stage the released cards together: every entry choice precedes
+        // the batch, and each re-id clears the old exile link.
         if from_battlefield {
             let jailed: Vec<ObjectId> = self.objects.iter()
                 .filter(|o| o.zone.is_exile() && o.exiled_with == Some(id))
                 .map(|o| o.id)
                 .collect();
-            for jailed_id in jailed {
-                let owner = match self.objects.get(jailed_id) {
-                    Some(o) => o.owner,
-                    None => continue,
-                };
-                if let Some(back) = self.move_object_to_zone(
-                    jailed_id, Zone::Battlefield,
-                    crate::events::MoveCause::SpellResolution,
-                ) {
-                    if let Some(obj) = self.objects.get_mut(back) {
-                        obj.controller = owner;
-                    }
-                }
-            }
+            let requests = jailed.into_iter().filter_map(|jailed_id| {
+                let owner = self.objects.get(jailed_id)?.owner;
+                Some(crate::entry::BattlefieldEntry::new(
+                    jailed_id, owner, crate::events::MoveCause::SpellResolution))
+            }).collect();
+            self.enter_battlefield_batch(requests);
         }
 
         Some(new_id)

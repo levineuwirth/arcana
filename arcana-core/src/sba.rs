@@ -718,8 +718,9 @@ fn pending_battle_defeat(state: &GameState) -> bool {
 // =============================================================================
 
 /// Apply the "last player standing wins / universal draw" rule.
-/// Called once per SBA pass after the per-variant checks settle.
-fn update_game_result(state: &mut GameState) {
+/// Called after each SBA pass, and directly after a concession so a
+/// pending resolution choice cannot delay the end of the game.
+pub(crate) fn update_game_result(state: &mut GameState) {
     if state.result.is_some() { return; }
     let alive: Vec<PlayerId> = (0..state.num_players())
         .filter(|&p| !state.player(p).has_lost)

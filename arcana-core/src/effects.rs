@@ -1443,6 +1443,10 @@ impl Effect {
     /// needs to tolerate late-breaking state changes (e.g. another
     /// effect earlier in a Sequence removed this one's target).
     pub fn execute(&self, state: &mut GameState) {
+        if state.pending_choice.is_some() {
+            state.entry_continuations.push_back(crate::entry::EntryContinuation::Effect(Box::new(self.clone())));
+            return;
+        }
         match self {
             // --- damage / life -------------------------------------------
             Effect::DealDamage { source, target, amount } => {
@@ -1638,15 +1642,9 @@ impl Effect {
             Effect::ReturnFromGraveyardWithCounters { target, kind, count } => {
                 let Some(obj) = state.objects.get(*target) else { return; };
                 if !matches!(obj.zone, Zone::Graveyard(_)) { return; }
-                if let Some(new_id) = state.move_object_to_zone(
-                    *target, Zone::Battlefield, MoveCause::SpellResolution)
-                {
-                    if *count > 0 {
-                        state.place_counters(
-                            crate::replacement::CounterTarget::Object(new_id),
-                            *kind, *count);
-                    }
-                }
+                let mut entry = crate::entry::BattlefieldEntry::new(*target, obj.controller, MoveCause::SpellResolution);
+                entry.counters.push((*kind, *count));
+                state.enter_battlefield(entry);
             }
             Effect::ReturnFromGraveyardToHand { target } => {
                 let Some(obj) = state.objects.get(*target) else { return; };
@@ -1754,15 +1752,9 @@ impl Effect {
             }
             Effect::PutOntoBattlefieldTappedAttacking { target, controller } => {
                 if !can_receive_control(state, *controller) { return; }
-                if state.objects.get(*target).is_none() { return; }
-                if let Some(new_id) = state.move_object_to_zone(
-                    *target, Zone::Battlefield, MoveCause::AbilityResolution)
-                {
-                    if let Some(obj) = state.objects.get_mut(new_id) {
-                        obj.controller = *controller;
-                    }
-                    enter_tapped_attacking(state, new_id, *controller);
-                }
+                let mut entry = crate::entry::BattlefieldEntry::new(*target, *controller, MoveCause::AbilityResolution);
+                entry.attacking = true;
+                state.enter_battlefield(entry);
             }
             Effect::CreateTokenSacEot { controller, token } => {
                 use crate::triggers::{DelayedTrigger, TriggerCondition};
@@ -3897,21 +3889,9 @@ fn manifest_top_of_library(state: &mut GameState, p: PlayerId) {
     if !valid_player(state, p) { return; }
     let top = state.player(p).library_top_to_bottom.first().copied();
     let Some(id) = top else { return; };
-    // Re-id happens on the move; address the resulting battlefield
-    // object by the new id the mover returns.
-    let Some(new_id) = state.move_object_to_zone(
-        id, Zone::Battlefield, MoveCause::SpellResolution) else { return; };
-    let Some(obj) = state.objects.get_mut(new_id) else { return; };
-    obj.status.face_down = true;
-    obj.status.summoning_sick = true;
-    // Save the original characteristics for when the card flips back
-    // face-up; expose the face-down 2/2 vanilla profile for now.
-    obj.characteristics = Characteristics {
-        power: Some(PtValue::Fixed(2)),
-        toughness: Some(PtValue::Fixed(2)),
-        types: TypeLine::new().with(TypeLine::CREATURE),
-        ..Default::default()
-    };
+    let mut entry = crate::entry::BattlefieldEntry::new(id, p, MoveCause::SpellResolution);
+    entry.face_down = true;
+    state.enter_battlefield(entry);
 }
 
 fn install_regenerate_shield(state: &mut GameState, target: ObjectId) {
@@ -4275,6 +4255,12 @@ pub(crate) fn apply_dig_rest(
     rest: DigRest,
 ) {
     if rest_ids.is_empty() { return; }
+    if state.pending_choice.is_some() {
+        state.entry_continuations.push_back(crate::entry::EntryContinuation::DigRest {
+            player, ids: rest_ids.to_vec(), rest,
+        });
+        return;
+    }
     match rest {
         DigRest::BottomRandom => {
             use rand::seq::SliceRandom;
@@ -4364,16 +4350,8 @@ fn reveal_until(
                     hit, Zone::Hand(owner), crate::events::MoveCause::SpellResolution);
             }
             RevealDest::Battlefield => {
-                if let Some(obj) = state.objects.get_mut(hit) {
-                    obj.controller = player;
-                }
-                let new_id = state.move_object_to_zone(
-                    hit, Zone::Battlefield, crate::events::MoveCause::SpellResolution);
-                if let Some(bf) = new_id {
-                    if let Some(obj) = state.objects.get_mut(bf) {
-                        obj.controller = player;
-                    }
-                }
+                state.enter_battlefield(crate::entry::BattlefieldEntry::new(
+                    hit, player, MoveCause::SpellResolution));
             }
         }
     }

@@ -781,22 +781,22 @@ impl GameState {
             Zone::Graveyard(owner)
         };
 
+        if destination == Zone::Battlefield {
+            let mut request = crate::entry::BattlefieldEntry::new(id, controller, MoveCause::SpellResolution);
+            request.clauses = Some(entry.enters_with.clone());
+            request.x_value = x_value;
+            request.delve_count = entry.delve_count;
+            request.colors_spent = Some(colors_spent);
+            request.was_cast = true;
+            request.resolved_spell = Some(id);
+            if self.objects.get(id).is_some_and(|o| o.characteristics.is_aura) {
+                request.attached_to = entry.targets.targets.first().and_then(|t| t.object_id());
+            }
+            self.enter_battlefield(request);
+            return;
+        }
         let (new_id, from) = self.swap_to_zone_reid(id, destination)
             .expect("finalize_resolved_spell: swap_to_zone_reid returned None");
-
-        // For battlefield entries the caster becomes the controller
-        // (CR 110.2a). Set it before the ETB hook runs so replacement
-        // effects that key off "controlled by you" see the right
-        // player.
-        if destination == Zone::Battlefield {
-            if let Some(obj) = self.objects.get_mut(new_id) {
-                obj.controller = controller;
-                // CR 702.43a — carry the cast's spent-color set onto
-                // the permanent before the ETB hook so Sunburst's
-                // enters-with-counters branch reads the right count.
-                obj.colors_paid = colors_spent;
-            }
-        }
 
         // Adventure exile: restore the creature-face characteristics
         // (captured at cast time on the entry) and flag the exile so
@@ -829,48 +829,7 @@ impl GameState {
             cause: MoveCause::SpellResolution,
         });
 
-        if destination == Zone::Battlefield {
-            // Apply card-declared `enters_with` clauses (CR 121.6a)
-            // BEFORE the state-installed ETB replacement pass, so
-            // self-replacement precedence holds (CR 614.15) and the
-            // counters/tapped state are visible to the first SBA
-            // sweep after the event cascade.
-            if !entry.enters_with.is_empty() {
-                apply_enters_with_clauses(
-                    self, new_id, &entry.enters_with, x_value,
-                    entry.delve_count,
-                );
-            }
-            self.after_enter_battlefield(new_id);
-            // CR 303.4f — an Aura permanent enters the battlefield
-            // already attached to the object its spell was cast to
-            // enchant. That target was chosen at cast time (the Aura's
-            // sole target requirement, declared via
-            // `CardDefinition::with_enchant`) and survived the CR 608.2b
-            // recheck in `resolve_top_of_stack`, so it's still a legal
-            // attach target here. Attaching BEFORE the `EntersBattlefield`
-            // event means ETB triggers and the next SBA sweep both observe
-            // the Aura correctly attached — otherwise CR 704.5n would move
-            // the unattached Aura straight to the graveyard. Reuses the
-            // same `Effect::Attach` path Equipment's Equip ability drives.
-            if self.objects.get(new_id)
-                .is_some_and(|o| o.characteristics.is_aura)
-            {
-                if let Some(target) = entry.targets.targets.first()
-                    .and_then(|t| t.object_id())
-                {
-                    crate::effects::Effect::Attach {
-                        equipment_or_aura: new_id,
-                        target,
-                    }.execute(self);
-                }
-            }
-            self.emit(GameEvent::EntersBattlefield {
-                object_id: new_id,
-                from_zone: from,
-                was_cast: true,
-            });
-        } else if matches!(destination, Zone::Graveyard(_)) {
+        if matches!(destination, Zone::Graveyard(_)) {
             self.emit(GameEvent::PutIntoGraveyard {
                 object_id: new_id,
                 from,
@@ -972,20 +931,8 @@ pub(crate) fn apply_enters_with_clauses(
                     }
                 }
             }
-            EntersWithSpec::TappedUnlessPayLife { life } => {
-                // Shock land: pay `life` and enter untapped iff that keeps the
-                // controller above 0 life; otherwise enter tapped. Synchronous
-                // pipeline — see the variant's doc for why this is a fixed
-                // policy rather than an async "you may pay" choice.
-                let controller = state.objects.get(object_id).map(|o| o.controller);
-                if let Some(ctrl) = controller {
-                    if state.player(ctrl).life > *life as i32 {
-                        crate::effects::lose_life(state, ctrl, *life);
-                    } else if let Some(obj) = state.objects.get_mut(object_id) {
-                        obj.tap();
-                    }
-                }
-            }
+            // Already answered by the entry continuation, before the move.
+            EntersWithSpec::TappedUnlessPayLife { .. } => {}
         }
     }
 }
@@ -2080,7 +2027,7 @@ mod tests {
         let land_chars = || crate::objects::Characteristics {
             types: TypeLine::LAND.into(), ..Default::default() };
         // Returns (tapped?, controller life after).
-        let resolve = |life0: i32| -> (bool, i32) {
+        let resolve = |life0: i32, pay: bool| -> (bool, i32) {
             let mut s = GameState::new(2, 0);
             s.player_mut(0).life = life0;
             let obj = put_object(&mut s, 0, Zone::Stack, land_chars());
@@ -2088,14 +2035,18 @@ mod tests {
                 obj, 0, 1, land_chars(), TargetSelection::new(), vec![], None);
             entry.enters_with = vec![EntersWithSpec::TappedUnlessPayLife { life: 2 }];
             s.finalize_resolved_spell(entry);
+            assert_eq!(s.objects.get(obj).unwrap().zone, Zone::Stack);
+            assert!(s.pending_choice.take().is_some());
+            s.answer_entry_payment(obj, pay);
             let id = only_battlefield_permanent(&s);
             (s.objects.get(id).unwrap().is_tapped(), s.player(0).life)
         };
         // Comfortable life → pay 2, enter untapped.
-        assert_eq!(resolve(20), (false, 18));
-        // Paying would drop to 0 (lethal) → don't pay, enter tapped, life kept.
-        assert_eq!(resolve(2), (true, 2));
+        assert_eq!(resolve(20, true), (false, 18));
+        assert_eq!(resolve(20, false), (true, 20));
+        // Paying exactly the remaining life is legal; SBAs happen later.
+        assert_eq!(resolve(2, true), (false, 0));
         // Can't afford → tapped, life unchanged.
-        assert_eq!(resolve(1), (true, 1));
+        assert_eq!(resolve(1, false), (true, 1));
     }
 }
