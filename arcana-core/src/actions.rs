@@ -595,14 +595,15 @@ pub enum ChoiceKind {
     PickPlayer {
         candidates: Vec<PlayerId>,
     },
-    /// Pick targets at resolution time (storm copies, copy-spell
-    /// effects). The actual list of targeting clauses lives on
+    /// Pick targets for a triggered ability going on the stack or a
+    /// copied spell. The actual list of targeting clauses lives on
     /// [`crate::state::GameState::pending_target_requirements`] —
     /// stored there because [`crate::targets::TargetRequirement`]
     /// carries fn-pointer-bearing filters and isn't Hash/Eq/Serialize.
-    /// Answer: [`ChoiceResponse::ChooseTargets`] with selection length
-    /// equal to that requirement vector's length.
-    /// `source` is the stack object on whose behalf targets are chosen.
+    /// Answer: [`ChoiceResponse::ChooseTargets`] satisfying those clauses.
+    /// `source` is the stack entry's ID. Its `source` and `controller`
+    /// fields supply the targeting context; an ability entry has no
+    /// corresponding arena object.
     ChooseTargets {
         source: ObjectId,
     },

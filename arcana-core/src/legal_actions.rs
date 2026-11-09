@@ -580,10 +580,13 @@ fn legal_resolution_choice_actions(state: &GameState, registry: &CardRegistry) -
             // the ChoiceKind variant because TargetRequirement carries
             // fn-pointer filters and isn't Hash/Eq/Serialize).
             if let Some(reqs) = state.pending_target_requirements.as_ref() {
-                let source_controller = state.objects.get(*source)
-                    .map(|o| o.controller).unwrap_or(0);
+                // The prompt names a stack entry, not an arena object.
+                // Abilities have no arena object at that id; their source
+                // may also have left or changed controller since triggering.
+                let entry = state.find_stack_entry(*source)
+                    .expect("ChooseTargets requires its stack entry");
                 for selection in
-                    enumerate_target_selections(reqs, state, *source, source_controller)
+                    enumerate_target_selections(reqs, state, entry.source, entry.controller)
                 {
                     out.push(Action::SubmitResolutionChoice {
                         id,
