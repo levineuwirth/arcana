@@ -1,9 +1,6 @@
-//! Thraben Inspector — `{W}` 1/2 white creature. "When this creature enters,
-//! investigate." (Keyword `Investigate` is not in the supported keyword list;
-//! emitting `keywords: vec![]` and noting the gap. The ETB effect creates a
-//! Clue token.)
+//! Thraben Inspector investigates when it enters.
 
-use arcana_core::effects::{Effect, TokenDefinition};
+use arcana_core::effects::{CommodityToken, Effect};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
@@ -35,37 +32,22 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
     reg.register(
-        CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1,
-                trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                intervening_if: None,
-                effect: etb_investigate,
-                trigger_zones: vec![Zone::Battlefield],
-                frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
-            }),
+        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+            id: 1,
+            trigger_condition: TriggerCondition::SelfEntersBattlefield,
+            intervening_if: None,
+            effect: etb_investigate,
+            trigger_zones: vec![Zone::Battlefield],
+            frequency: TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        }),
     )
 }
 
-fn etb_investigate(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    reg: &CardRegistry,
-) -> Vec<Effect> {
-    let clue = reg.interner().lookup("Clue")
-        .expect("Clue interned during register()");
-    let mut subtypes = SubtypeSet::default();
-    subtypes.0.insert(clue);
-    let token = TokenDefinition {
-        name: clue,
-        colors: ColorSet::colorless(),
-        types: TypeLine::ARTIFACT.into(),
-        subtypes,
-        power: None,
-        toughness: None,
-        keywords: vec![],
-        abilities: vec![],
-    };
-    vec![Effect::CreateToken { controller: trig.controller, token }]
+fn etb_investigate(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::CreateCommodityToken {
+        controller: trig.controller,
+        kind: CommodityToken::Clue,
+        count: 1,
+    }]
 }

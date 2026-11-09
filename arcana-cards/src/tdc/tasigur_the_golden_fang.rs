@@ -4,21 +4,19 @@
 //!  {2}{G/U}{G/U}: Mill two cards, then return a nonland card of an
 //!  opponent's choice from your graveyard to your hand."
 //!
-//! GAP: Delve is a cast-time alternative-cost mechanic with no
-//! expressible primitive on this card class (keywords vec is empty —
-//! Delve is not a KeywordAbility variant).
+//! Delve uses the engine’s cast-time payment support.
 //!
 //! GAP (within the activated ability): "return a nonland card of an
 //! opponent's choice from your graveyard to your hand" has no
 //! opponent-chosen graveyard-return primitive; only the Mill 2 portion
 //! is emitted.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
-    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
-    CardDefinition, CardRegistry,
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone, CardDefinition,
+    CardRegistry,
 };
 use arcana_core::state::GameState;
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine};
@@ -37,6 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         types: TypeLine::CREATURE.into(),
         subtypes,
         supertypes: SupertypeSet(SupertypeSet::LEGENDARY),
+        keywords: vec![KeywordAbility::Delve],
         power: Some(PtValue::Fixed(4)),
         toughness: Some(PtValue::Fixed(5)),
         ..Default::default()

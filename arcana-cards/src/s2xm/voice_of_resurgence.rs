@@ -4,8 +4,6 @@
 //! 'This token's power and toughness are each equal to the number of
 //! creatures you control.'"
 //!
-//! GAP (trigger 1): SpellCast condition has no "during your turn" constraint;
-//! the trigger will fire on any opponent spell cast, not just during your turn.
 //! GAP (token static ability): The token's dynamic P/T ("equal to the number
 //! of creatures you control") is not expressible in TokenDefinition — the token
 //! is created as a fixed 1/1 placeholder.
@@ -41,12 +39,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         CardDefinition::new(name, chars)
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 1,
-                // GAP: no "during your turn" constraint on SpellCast; fires on all
-                // opponent spells regardless of whose turn it is.
-                trigger_condition: TriggerCondition::SpellCast {
-                    filter: None,
-                    caster: ControllerConstraint::Opponent,
-                },
+                trigger_condition: TriggerCondition::Custom(opponent_spell_on_your_turn),
                 intervening_if: None,
                 effect: create_elemental_token,
                 trigger_zones: vec![Zone::Battlefield],
@@ -93,4 +86,20 @@ fn create_elemental_token(
         controller: trig.controller,
         token,
     }]
+}
+
+fn opponent_spell_on_your_turn(
+    event: &arcana_core::events::GameEvent,
+    state: &GameState,
+    source: arcana_core::objects::ObjectId,
+) -> bool {
+    let Some(obj) = state.objects.get(source) else {
+        return false;
+    };
+    state.active_player() == obj.controller
+        && TriggerCondition::SpellCast {
+            filter: None,
+            caster: ControllerConstraint::Opponent,
+        }
+        .matches(event, source, obj.controller, state)
 }
