@@ -93,7 +93,7 @@ impl Referee {
 /// decklists in physical seat order (PIMC samples determinizations from them;
 /// the simpler referees ignore them). The returned closure builds a fresh
 /// policy seeded by its `u64` argument.
-fn maker_for(
+pub(crate) fn maker_for(
     referee: Referee,
     budgets: &RefereeBudgets,
     seat_decks: &[Vec<CardId>],
@@ -704,7 +704,7 @@ fn percentile(sorted: &[f32], p: f32) -> f32 {
 }
 
 /// SplitMix64-style deterministic mix of four `u64`s (gauntlet seed derivation).
-fn mix4(a: u64, b: u64, c: u64, d: u64) -> u64 {
+pub(crate) fn mix4(a: u64, b: u64, c: u64, d: u64) -> u64 {
     let mut x = a.wrapping_add(0x9E37_79B9_7F4A_7C15);
     for v in [b, c, d] {
         x ^= v.wrapping_add(0x9E37_79B9_7F4A_7C15);

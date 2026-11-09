@@ -1,0 +1,66 @@
+#!/bin/bash
+# observe.lsf — the stage-3 field observations, one pair shard per task.
+# Exploratory: not part of A2.2, A2.3 or any registered experiment.
+#
+#   cd ~/arcana-runs && bsub -J "arcana-obs-<tag>[1-K]%24" -env "all, ..." < ~/Repos/arcana/arcana-ai/scripts/dtu/observe.lsf
+#
+# Runs field_observe::tests::occurrence_shard (OBS_TEST=occurrence) or
+# field_observe::tests::fuzz_shard (OBS_TEST=fuzz) from the binary build.lsf
+# left in ~/arcana-runs/<commit>/, with CORPUS_SHARD=k/K, k the task index - 1
+# and K = OBS_K, and writes the shard's rows to <tag>-shard<k>of<K>.csv there.
+# DTU's LSF does not forward the submitting shell's environment: every
+# variable goes through bsub -env, and ARCANA_COMMIT pins the commit. Keep
+# RUST_TEST_THREADS=2 and RUST_MIN_STACK=67108864, as the A2.2 arms did.
+#
+# The decklists are checked against docs/a2-field/manifest-PI.csv before any
+# game, as field.lsf checks them, and the test refuses a directory whose
+# playable decks are not exactly the manifest's.
+#
+# The runs (K from the pilots):
+#   occurrence pilot: -env "all, OBS_TEST=occurrence, OBS_TAG=occ-pilot, OBS_K=8,
+#       OBS_PAIRS=pilot, CORPUS_POLICIES=capsule, CORPUS_BASE_SEED=20261109,
+#       RUST_TEST_THREADS=2, RUST_MIN_STACK=67108864"
+#   occurrence:       as the pilot with OBS_TAG=occ, OBS_K=<K>, OBS_PAIRS=all,
+#       CORPUS_BASE_SEED=20261110
+#   fuzz:             -env "all, OBS_TEST=fuzz, OBS_TAG=fuzz, OBS_K=<K>, OBS_PAIRS=all,
+#       CORPUS_BASE_SEED=20261111, FUZZ_SEEDS=<n>, FUZZ_MAX_ACTIONS=20000,
+#       RUST_TEST_THREADS=2, RUST_MIN_STACK=67108864"
+#
+# A shard's pairs are those with index k mod K, so a failed shard k/K splits
+# exactly into k/2K and (k+K)/2K; OBS_SHARD names a shard outright and
+# overrides the task index.
+#BSUB -q hpc
+#BSUB -J arcana-obs[1-8]%24
+#BSUB -n 1
+#BSUB -R "rusage[mem=1GB]"
+#BSUB -M 1GB
+#BSUB -W 2:00
+#BSUB -o obs_%J_%I.out
+#BSUB -e obs_%J_%I.err
+set -euo pipefail
+repo="${ARCANA_REPO:-$HOME/Repos/arcana}"
+commit="${ARCANA_COMMIT:-$(git -C "$repo" rev-parse HEAD)}"
+out="$HOME/arcana-runs/$commit"
+decks="${KAGGLE_DECKS:-$HOME/arcana-runs/decks}"
+case "${OBS_TEST:?set OBS_TEST to occurrence or fuzz}" in
+  occurrence) test=field_observe::tests::occurrence_shard ;;
+  fuzz) test=field_observe::tests::fuzz_shard ;;
+  *) echo "OBS_TEST must be occurrence or fuzz" >&2; exit 2 ;;
+esac
+if [ -n "${OBS_SHARD:-}" ]; then
+  shard="$OBS_SHARD"
+else
+  shard="$(( LSB_JOBINDEX - 1 ))/${OBS_K:?set OBS_K, the number of shards}"
+fi
+k="${shard%/*}"; K="${shard#*/}"
+
+tail -n +2 "$repo/docs/a2-field/manifest-PI.csv" | while IFS=, read -r _idx _name source sha; do
+  got="$(sha256sum "$decks/PI/$source.txt" | cut -c1-64)"
+  [ "$got" = "$sha" ] || { echo "decklist $source: sha256 $got, manifest $sha" >&2; exit 1; }
+done
+
+file="$out/${OBS_TAG:?set OBS_TAG}-shard${k}of${K}.csv"
+KAGGLE_DECKS="$decks" CORPUS_SHARD="$shard" CORPUS_MANIFEST="$repo/docs/a2-field/manifest-PI.csv" \
+  "$out/arcana_ai_tests" --ignored --exact "$test" --nocapture \
+  | grep -E '^(config|deck|game|occ|fuzz|fail),' > "$file"
+echo "shard $shard of $OBS_TAG on $(hostname): $(grep -cE '^(game|fuzz),' "$file") games, $(grep -c '^fail,' "$file" || true) failures"

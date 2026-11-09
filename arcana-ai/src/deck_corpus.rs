@@ -307,7 +307,7 @@ pub fn field_manifest_mismatch(decks: &[Deck], manifest_csv: &str) -> Option<Str
 
 /// The field shards' gate: with `CORPUS_MANIFEST` set, panic before any game
 /// unless `decks` are exactly the manifest's.
-fn require_manifest(decks: &[Deck]) {
+pub(crate) fn require_manifest(decks: &[Deck]) {
     if let Ok(path) = std::env::var("CORPUS_MANIFEST") {
         let text = std::fs::read_to_string(&path).expect("read CORPUS_MANIFEST");
         if let Some(why) = field_manifest_mismatch(decks, &text) {
