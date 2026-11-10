@@ -29,6 +29,12 @@
 # A shard's pairs are those with index k mod K, so a failed shard k/K splits
 # exactly into k/2K and (k+K)/2K; OBS_SHARD names a shard outright and
 # overrides the task index.
+#
+# OBS_MAX_PERMANENTS=<n> ends a game whose battlefield passes n as board_cap
+# (unset: no bound). The first full run lost nine shards to the 2-hour limit
+# on games whose board doubled every turn. The filter is line-buffered, so a
+# task killed at its limit keeps every row it printed, and it keeps the
+# card,index,name rows the occurrence test prints.
 #BSUB -q hpc
 #BSUB -J arcana-obs[1-8]%24
 #BSUB -n 1
@@ -62,5 +68,5 @@ done
 file="$out/${OBS_TAG:?set OBS_TAG}-shard${k}of${K}.csv"
 KAGGLE_DECKS="$decks" CORPUS_SHARD="$shard" CORPUS_MANIFEST="$repo/docs/a2-field/manifest-PI.csv" \
   "$out/arcana_ai_tests" --ignored --exact "$test" --nocapture \
-  | grep -E '^(config|deck|game|occ|fuzz|fail),' > "$file"
+  | grep --line-buffered -E '^(config|card|deck|game|occ|fuzz|fail),' > "$file"
 echo "shard $shard of $OBS_TAG on $(hostname): $(grep -cE '^(game|fuzz),' "$file") games, $(grep -c '^fail,' "$file" || true) failures"

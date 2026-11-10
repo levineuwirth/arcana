@@ -23,6 +23,13 @@
 //! Both read the decks as the gauntlet does (`KAGGLE_DECKS`, `CORPUS_FORMAT`,
 //! `CORPUS_MANIFEST`) and shard pairs by index modulo `K` (`CORPUS_SHARD=k/K`).
 //! `OBS_PAIRS=pilot` plays only the disjoint pairs (0, 1), (2, 3), ….
+//!
+//! `OBS_MAX_PERMANENTS` bounds a game's battlefield, checked after every
+//! step: past it the game ends as `board_cap`, its own ending with a `fail`
+//! row. Unset, the bound is off, as at `ebb52566`. The first full run lost
+//! nine shards to games whose board doubled every turn (Liliana, the Last
+//! Hope's emblem), because one step's cost grows with the board. Game and
+//! fuzz rows end with the game's peak battlefield size.
 
 use crate::deckeval_runner::gauntlet_pairs;
 use crate::search::StatePolicy;
@@ -60,6 +67,8 @@ pub enum Ending {
     Rule(GameResult),
     StepCap,
     EmptyActions,
+    /// The battlefield passed `OBS_MAX_PERMANENTS`; holds its size then.
+    BoardCap(usize),
     Panic(String),
 }
 
@@ -71,9 +80,23 @@ impl Ending {
             Ending::Rule(GameResult::Draw) => "draw".into(),
             Ending::StepCap => "step_cap".into(),
             Ending::EmptyActions => "empty_actions".into(),
+            Ending::BoardCap(_) => "board_cap".into(),
             Ending::Panic(_) => "panic".into(),
         }
     }
+}
+
+/// How many permanents are on the battlefield.
+pub fn battlefield_size(state: &GameState) -> usize {
+    state.objects.objects_in_zone(Zone::Battlefield).count()
+}
+
+/// One game's ending, its step count and its peak battlefield size.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Observed {
+    pub ending: Ending,
+    pub steps: u32,
+    pub peak_permanents: usize,
 }
 
 /// Opportunity counts for one outer game, keyed by (seat, card, kind).
@@ -238,7 +261,9 @@ impl Observer {
 
 /// One outer game under `mk`'s policies, observed. Mirrors
 /// `deckeval_runner::play_seated` and `search::play_match`, with the same
-/// step cap and empty-action rule, but reports which ending occurred.
+/// step cap and empty-action rule, but reports which ending occurred. The
+/// board bound is checked after every step, before a policy can search a
+/// board past it.
 #[allow(clippy::too_many_arguments)]
 pub fn observe_seated(
     seat_decks: Vec<Vec<CardId>>,
@@ -248,22 +273,25 @@ pub fn observe_seated(
     policy_seed_0: u64,
     policy_seed_1: u64,
     max_steps: u32,
+    max_permanents: usize,
     obs: &mut Observer,
-) -> (Ending, u32) {
+) -> Observed {
     let mut p0 = mk(policy_seed_0);
     let mut p1 = mk(policy_seed_1);
     let mut slots: Vec<&mut dyn StatePolicy> = vec![p0.as_mut(), p1.as_mut()];
     let (mut state, mut yld) = new_game(seat_decks, registry, engine_seed);
     let mut steps = 0u32;
+    let mut peak = battlefield_size(&state);
+    let done = |ending: Ending, steps: u32, peak: usize| Observed { ending, steps, peak_permanents: peak };
     loop {
         match yld {
-            EngineYield::GameOver(r) => return (Ending::Rule(r), steps),
+            EngineYield::GameOver(r) => return done(Ending::Rule(r), steps, peak),
             EngineYield::PendingDecision { player, legal_actions, .. } => {
                 if legal_actions.is_empty() {
-                    return (Ending::EmptyActions, steps);
+                    return done(Ending::EmptyActions, steps, peak);
                 }
                 if steps >= max_steps {
-                    return (Ending::StepCap, steps);
+                    return done(Ending::StepCap, steps, peak);
                 }
                 let action = slots[player as usize].choose(&state, registry, player, &legal_actions);
                 obs.before(&state, player, Some(&action));
@@ -271,7 +299,7 @@ pub fn observe_seated(
                 let before = state;
                 let (s, y) = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| step(before, action, registry))) {
                     Ok(x) => x,
-                    Err(e) => return (Ending::Panic(panic_text(&e)), steps),
+                    Err(e) => return done(Ending::Panic(panic_text(&e)), steps, peak),
                 };
                 state = s;
                 yld = y;
@@ -279,6 +307,11 @@ pub fn observe_seated(
                 let end = state.event_log.len();
                 let events = if start <= end { state.event_log[start..end].to_vec() } else { Vec::new() };
                 obs.after(&state, &events);
+                let size = battlefield_size(&state);
+                peak = peak.max(size);
+                if size > max_permanents && !matches!(yld, EngineYield::GameOver(_)) {
+                    return done(Ending::BoardCap(size), steps, peak);
+                }
             }
         }
     }
@@ -290,6 +323,7 @@ pub struct FuzzOutcome {
     pub ending: String,
     pub steps: u32,
     pub detail: String,
+    pub peak_permanents: usize,
 }
 
 fn invariant_problem(state: &GameState) -> Option<String> {
@@ -306,36 +340,42 @@ fn one_line(s: &str, cap: usize) -> String {
 
 /// One random-play game: uniformly random legal actions other than Concede,
 /// keeping every opening hand. Panics inside the engine are caught and
-/// reported with the step they happened at.
+/// reported with the step they happened at. A battlefield past
+/// `max_permanents` after a step ends the game as `board_cap`.
 pub fn fuzz_seated(
     seat_decks: Vec<Vec<CardId>>,
     registry: &CardRegistry,
     engine_seed: u64,
     policy_seed: u64,
     max_actions: u32,
+    max_permanents: usize,
 ) -> FuzzOutcome {
     let mut rng = ChaCha8Rng::seed_from_u64(policy_seed);
     let started = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| new_game(seat_decks, registry, engine_seed)));
     let (mut state, mut yld) = match started {
         Ok(x) => x,
-        Err(e) => return FuzzOutcome { ending: "panic".into(), steps: 0, detail: format!("new_game: {}", panic_text(&e)) },
+        Err(e) => {
+            return FuzzOutcome { ending: "panic".into(), steps: 0, detail: format!("new_game: {}", panic_text(&e)), peak_permanents: 0 }
+        }
     };
     let mut steps = 0u32;
+    let mut peak = battlefield_size(&state);
+    let out = |ending: &str, steps: u32, detail: String, peak: usize| FuzzOutcome { ending: ending.into(), steps, detail, peak_permanents: peak };
     loop {
         match &yld {
             EngineYield::GameOver(r) => {
-                return FuzzOutcome { ending: Ending::Rule(r.clone()).label(), steps, detail: String::new() };
+                return out(&Ending::Rule(r.clone()).label(), steps, String::new(), peak);
             }
             EngineYield::PendingDecision { legal_actions, .. } => {
                 if legal_actions.is_empty() {
-                    return FuzzOutcome { ending: "empty_actions".into(), steps, detail: pending_text(&state) };
+                    return out("empty_actions", steps, pending_text(&state), peak);
                 }
                 let choices: Vec<&Action> = legal_actions.iter().filter(|a| !a.is_concede()).collect();
                 if choices.is_empty() {
-                    return FuzzOutcome { ending: "only_concede".into(), steps, detail: pending_text(&state) };
+                    return out("only_concede", steps, pending_text(&state), peak);
                 }
                 if steps >= max_actions {
-                    return FuzzOutcome { ending: "action_cap".into(), steps, detail: String::new() };
+                    return out("action_cap", steps, String::new(), peak);
                 }
                 let action = if let Some(keep) = choices.iter().find(|a| matches!(a, Action::MulliganKeep)) {
                     (*keep).clone()
@@ -351,19 +391,17 @@ pub fn fuzz_seated(
                         steps += 1;
                     }
                     Err(e) => {
-                        return FuzzOutcome {
-                            ending: "panic".into(),
-                            steps,
-                            detail: format!("{} | action {}", panic_text(&e), one_line(&shown, 160)),
-                        };
+                        return out("panic", steps, format!("{} | action {}", panic_text(&e), one_line(&shown, 160)), peak);
                     }
                 }
                 if let Some(problem) = invariant_problem(&state) {
-                    return FuzzOutcome {
-                        ending: "invariant".into(),
-                        steps,
-                        detail: format!("{problem} | after {}", one_line(&shown, 160)),
-                    };
+                    return out("invariant", steps, format!("{problem} | after {}", one_line(&shown, 160)), peak);
+                }
+                let size = battlefield_size(&state);
+                peak = peak.max(size);
+                if size > max_permanents && !matches!(yld, EngineYield::GameOver(_)) {
+                    let detail = format!("{size} permanents at turn {}", state.turn.turn_number);
+                    return out("board_cap", steps, detail, peak);
                 }
             }
         }
@@ -421,6 +459,10 @@ mod tests {
         decks
     }
 
+    fn cap_text(cap: usize) -> String {
+        if cap == usize::MAX { "off".into() } else { cap.to_string() }
+    }
+
     fn env_u64(k: &str, default: u64) -> u64 {
         std::env::var(k).ok().and_then(|s| s.parse().ok()).unwrap_or(default)
     }
@@ -428,7 +470,7 @@ mod tests {
     /// Occurrence counts on the field: one seat-swapped duel per pair under
     /// `vmc-material` at `RefereeBudgets::from_env()` (`CORPUS_POLICIES=capsule`
     /// gives A2.2's 6/25/10), engine seeds as `play_duel` derives them.
-    /// Rows: `config`, `deck`, `game,i,j,ab,seat0_deck,seat1_deck,ending,steps,seconds`
+    /// Rows: `config`, `deck`, `game,i,j,ab,seat0_deck,seat1_deck,ending,steps,seconds,peak`
     /// and `occ,i,j,ab,seat,deck,card,kind,count`.
     #[test]
     #[ignore = "cluster shard: set KAGGLE_DECKS and CORPUS_SHARD"]
@@ -438,6 +480,7 @@ mod tests {
         let pilot = std::env::var("OBS_PAIRS").as_deref() == Ok("pilot");
         let base_seed = env_u64("CORPUS_BASE_SEED", 0);
         let max_steps = env_u64("OBS_MAX_STEPS", 4000) as u32;
+        let max_permanents = env_u64("OBS_MAX_PERMANENTS", u64::MAX) as usize;
         let budgets = RefereeBudgets::from_env();
         // libtest prints "test <name> ... " before the first row on a one-core
         // task; an empty line keeps that prefix off every row.
@@ -450,7 +493,7 @@ mod tests {
         for (i, d) in decks.iter().enumerate() {
             println!("deck,{i},{}", d.name);
         }
-        println!("config,occurrence,{budgets:?},{base_seed},{max_steps},{},{k}/{shards}", if pilot { "pilot" } else { "all" });
+        println!("config,occurrence,{budgets:?},{base_seed},{max_steps},{},{k}/{shards},max_permanents={}", if pilot { "pilot" } else { "all" }, cap_text(max_permanents));
         for (p, &(i, j)) in observed_pairs(decks.len(), pilot).iter().enumerate() {
             if p % shards != k {
                 continue;
@@ -463,10 +506,13 @@ mod tests {
                 let mk = maker_for(Referee::VmcMaterial, &budgets, &seats);
                 let mut obs = Observer::new(&reg);
                 let t = Instant::now();
-                let (ending, steps) = observe_seated(seats, &reg, engine_seed, &*mk, q0, q1, max_steps, &mut obs);
-                println!("game,{i},{j},{ab},{s0},{s1},{},{steps},{:.2}", ending.label(), t.elapsed().as_secs_f64());
-                if let Ending::Panic(why) = &ending {
-                    println!("fail,{base_seed},{i},{j},{ab},panic,{steps},{why}");
+                let o = observe_seated(seats, &reg, engine_seed, &*mk, q0, q1, max_steps, max_permanents, &mut obs);
+                let steps = o.steps;
+                println!("game,{i},{j},{ab},{s0},{s1},{},{steps},{:.2},{}", o.ending.label(), t.elapsed().as_secs_f64(), o.peak_permanents);
+                match &o.ending {
+                    Ending::Panic(why) => println!("fail,{base_seed},{i},{j},{ab},panic,{steps},{why}"),
+                    Ending::BoardCap(n) => println!("fail,{base_seed},{i},{j},{ab},board_cap,{steps},{n} permanents"),
+                    _ => {}
                 }
                 for ((seat, card, kind), n) in &obs.counts {
                     let deck = if *seat == 0 { s0 } else { s1 };
@@ -479,7 +525,7 @@ mod tests {
 
     /// Random-play robustness: both seatings of every pair (or the pilot's)
     /// for `FUZZ_SEEDS` consecutive base seeds from `CORPUS_BASE_SEED`.
-    /// Rows: `config`, `deck`, `fuzz,seed,i,j,ab,ending,steps,seconds` and,
+    /// Rows: `config`, `deck`, `fuzz,seed,i,j,ab,ending,steps,seconds,peak` and,
     /// for every non-rule ending, `fail,seed,i,j,ab,ending,steps,detail`.
     #[test]
     #[ignore = "cluster shard: set KAGGLE_DECKS and CORPUS_SHARD"]
@@ -490,13 +536,14 @@ mod tests {
         let base_seed = env_u64("CORPUS_BASE_SEED", 0);
         let seeds = env_u64("FUZZ_SEEDS", 1);
         let max_actions = env_u64("FUZZ_MAX_ACTIONS", 20_000) as u32;
+        let max_permanents = env_u64("OBS_MAX_PERMANENTS", u64::MAX) as usize;
         println!();
         let reg = arcana_cards::build_catalog();
         let decks = field_decks(&reg);
         for (i, d) in decks.iter().enumerate() {
             println!("deck,{i},{}", d.name);
         }
-        println!("config,fuzz,{base_seed},{seeds},{max_actions},{},{k}/{shards}", if pilot { "pilot" } else { "all" });
+        println!("config,fuzz,{base_seed},{seeds},{max_actions},{},{k}/{shards},max_permanents={}", if pilot { "pilot" } else { "all" }, cap_text(max_permanents));
         for seed in base_seed..base_seed + seeds {
             for (p, &(i, j)) in observed_pairs(decks.len(), pilot).iter().enumerate() {
                 if p % shards != k {
@@ -506,8 +553,8 @@ mod tests {
                 for (ab, (s0, s1), policy) in [("A", (i, j), engine_seed ^ 0xF00D), ("B", (j, i), engine_seed ^ 0xBEEF)] {
                     let seats = vec![decks[s0].cards.clone(), decks[s1].cards.clone()];
                     let t = Instant::now();
-                    let out = fuzz_seated(seats, &reg, engine_seed, policy, max_actions);
-                    println!("fuzz,{seed},{i},{j},{ab},{},{},{:.3}", out.ending, out.steps, t.elapsed().as_secs_f64());
+                    let out = fuzz_seated(seats, &reg, engine_seed, policy, max_actions, max_permanents);
+                    println!("fuzz,{seed},{i},{j},{ab},{},{},{:.3},{}", out.ending, out.steps, t.elapsed().as_secs_f64(), out.peak_permanents);
                     let rule = out.ending.starts_with("win") || out.ending.starts_with("eliminated") || out.ending == "draw";
                     if !rule {
                         println!("fail,{seed},{i},{j},{ab},{},{},{}", out.ending, out.steps, out.detail);
@@ -565,5 +612,34 @@ mod tests {
         assert_eq!(obs.counts.get(&(1, "Mausoleum Wanderer", "activates_0")).copied(), Some(1));
         assert_eq!(obs.counts.get(&(1, "Mausoleum Wanderer", "dies")).copied(), Some(1),
             "the pre-step snapshot names a source that has left");
+    }
+
+    /// The board bound ends a game as `board_cap` once the battlefield passes
+    /// it, in both loops, and an unbounded game is the one ebb52566 played.
+    #[test]
+    fn board_cap_ends_a_game_past_the_bound() {
+        let reg = arcana_cards::build_catalog();
+        let id = |n: &str| reg.card_id_by_name(n).unwrap();
+        let deck: Vec<CardId> = (0..60).map(|k| if k % 2 == 0 { id("Forest") } else { id("Grizzly Bears") }).collect();
+        let seats = || vec![deck.clone(), deck.clone()];
+
+        let free = fuzz_seated(seats(), &reg, 7, 11, 20_000, usize::MAX);
+        assert!(free.ending.starts_with("win") || free.ending == "draw", "unbounded: {free:?}");
+        assert!(free.peak_permanents > 6, "the free game grows past the bound: {free:?}");
+        let capped = fuzz_seated(seats(), &reg, 7, 11, 20_000, 6);
+        assert_eq!(capped.ending, "board_cap", "{capped:?}");
+        assert_eq!(capped.peak_permanents, 7, "stopped on the first step past six");
+        assert!(capped.steps < free.steps, "the same game, cut short");
+        assert!(capped.detail.starts_with("7 permanents at turn "), "{capped:?}");
+
+        let budgets = RefereeBudgets::from_env();
+        let mk = maker_for(Referee::Random, &budgets, &seats());
+        let free = observe_seated(seats(), &reg, 7, &*mk, 1, 2, 4000, usize::MAX, &mut Observer::new(&reg));
+        assert!(matches!(free.ending, Ending::Rule(_)), "{free:?}");
+        assert!(free.peak_permanents > 6, "{free:?}");
+        let capped = observe_seated(seats(), &reg, 7, &*mk, 1, 2, 4000, 6, &mut Observer::new(&reg));
+        assert_eq!(capped.ending, Ending::BoardCap(7), "{capped:?}");
+        assert_eq!(capped.ending.label(), "board_cap");
+        assert!(capped.steps < free.steps);
     }
 }
