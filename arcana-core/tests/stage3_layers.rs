@@ -105,7 +105,7 @@ fn applicability_reads_prior_types_and_same_layer_timestamp_updates() {
     let land = add(&mut s, &r, 0, "Forest", Zone::Battlefield);
     s.add_continuous_effect(ContinuousEffect {
         source, layer: Layer::L4Type, timestamp: 0, duration: Duration::EndOfTurn,
-        dependency: None, kind: ContinuousEffectKind::AddType { target: land, types: TypeLine::CREATURE.into() },
+        dependency: None, printed: None, kind: ContinuousEffectKind::AddType { target: land, types: TypeLine::CREATURE.into() },
     });
     s.add_continuous_effect(ContinuousEffect::set_pt(source, land, 2, 2, Duration::EndOfTurn));
     s.add_continuous_effect(ContinuousEffect::filtered_pump(source,
@@ -119,7 +119,7 @@ fn applicability_reads_prior_types_and_same_layer_timestamp_updates() {
         KeywordAbility::Flying, Duration::EndOfTurn));
     s.add_continuous_effect(ContinuousEffect {
         source, layer: Layer::L6Ability, timestamp: 0, duration: Duration::EndOfTurn,
-        dependency: None, kind: ContinuousEffectKind::FilteredGrantKeyword {
+        dependency: None, printed: None, kind: ContinuousEffectKind::FilteredGrantKeyword {
             filter: ObjectFilter::creature().with_keyword(KeywordAbility::Flying),
             keyword: KeywordAbility::Vigilance,
         },

@@ -145,6 +145,18 @@ pub struct TriggeredAbilityDef {
     pub target_requirements: Vec<crate::targets::TargetRequirement>,
 }
 
+/// An attachment granted this ability to `source` when the indexed event
+/// matched. Keep the recipient and its controller, not the attachment:
+/// either may change or leave before the next SBA/trigger sweep (A1.5br).
+/// Event indices preserve the collector's order without copying the log.
+#[derive(Clone, Debug)]
+pub(crate) struct CapturedAttachmentTrigger {
+    pub event_index: usize,
+    pub source: ObjectId,
+    pub controller: PlayerId,
+    pub ability: TriggeredAbilityDef,
+}
+
 impl TriggeredAbilityDef {
     /// Attach an optional dynamic-X resolver to this trigger.
     ///
@@ -187,20 +199,45 @@ impl TriggeredAbilityDef {
         state: &GameState,
         reg: &crate::registry::CardRegistry,
     ) -> Option<PendingTrigger> {
+        if !self.matches_event(event, source, source_controller, state) {
+            return None;
+        }
+        self.after_event_match(event, source, source_controller, state, reg)
+    }
+
+    /// The zone and event predicate, separated so attachment grants can
+    /// capture them at emission instead of re-reading a later host/state.
+    pub(crate) fn matches_event(
+        &self,
+        event: &GameEvent,
+        source: ObjectId,
+        source_controller: PlayerId,
+        state: &GameState,
+    ) -> bool {
         // Zone gate.
         if let Some(obj) = state.objects.get(source) {
             let in_valid_zone = self.trigger_zones.iter()
                 .any(|z| z.same_kind(obj.zone));
             if !in_valid_zone {
-                return None;
+                return false;
             }
         }
 
         // Condition predicate.
-        if !self.trigger_condition.matches(event, source, source_controller, state) {
-            return None;
-        }
+        self.trigger_condition.matches(event, source, source_controller, state)
+    }
 
+    /// Finish matching at collection, retaining the existing intervening-if
+    /// and frequency gates. The source's zone and event predicate have
+    /// already matched and must not be reconsidered after a later change.
+    pub(crate) fn after_event_match(
+        &self,
+        event: &GameEvent,
+        source: ObjectId,
+        source_controller: PlayerId,
+        state: &GameState,
+        reg: &crate::registry::CardRegistry,
+    ) -> Option<PendingTrigger> {
         // Intervening-if.
         if let Some(cond) = self.intervening_if {
             if !cond(state, source, source_controller, reg) { return None; }
@@ -395,6 +432,13 @@ pub enum TriggerCondition {
     Sacrificed { filter: ObjectFilter },
     /// Catch-all for complex triggers.
     Custom(fn(&GameEvent, &GameState, ObjectId) -> bool),
+    /// Not a trigger: the carrier of a token's printed STATIC ability
+    /// (A1.5br). `TokenDefinition` is written as a complete struct literal
+    /// in about 1,580 generated card files, so it cannot take a field; its
+    /// `abilities` list is the only place a static can ride. Built only by
+    /// `TokenDefinition::with_static`, read only where the token's
+    /// characteristics are made, and never matched by any event.
+    PrintedStatic(crate::layers::StaticAbilityDef),
 }
 
 impl TriggerCondition {
@@ -656,6 +700,8 @@ impl TriggerCondition {
             }
 
             Custom(f) => f(event, state, source),
+
+            PrintedStatic(_) => false,
         }
     }
 }

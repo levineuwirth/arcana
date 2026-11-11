@@ -293,6 +293,26 @@ impl CardDefinition {
         self
     }
 
+    /// Add a printed static ability (CR 604): the continuous effects it
+    /// generates while this permanent is on the battlefield, as one
+    /// [`crate::layers::StaticAbilityDef`]. Build each part with
+    /// [`crate::objects::NULL_OBJECT_ID`] as its source and
+    /// `Duration::WhileSourceOnBattlefield`; the engine points the parts
+    /// at the permanent as it enters, on every entry route, before
+    /// state-based actions and priority (A1.5br). Call once per ability:
+    /// the parts of one call are one ability, and stay one group across
+    /// layers. Written into the card's characteristics, as
+    /// [`Self::with_cast_timing`] is, so every object made from the card,
+    /// and every copy of it, carries the definition.
+    pub fn with_static(mut self, parts: Vec<crate::layers::ContinuousEffect>) -> Self {
+        let def = crate::layers::StaticAbilityDef::new(parts);
+        crate::layers::push_static_ability(&mut self.base_characteristics, def.clone());
+        if let Some(combined) = self.combined_characteristics.as_mut() {
+            crate::layers::push_static_ability(combined, def);
+        }
+        self
+    }
+
     /// Gate a triggered ability to a specific face (CR 712). `face` is
     /// 0 (front) or 1 (back); the trigger fires only while the object's
     /// `visible_face` matches. Use for a transforming DFC's back-face-
@@ -1606,6 +1626,9 @@ fn combine_split_characteristics(
             || right.every_creature_type,
         cant_be_countered: left.cant_be_countered || right.cant_be_countered,
         cast_timing: left.cast_timing.or(right.cast_timing),
+        // A split card's halves are instants and sorceries; statics added
+        // through `with_static` reach this block from the builder itself.
+        static_abilities: None,
     }
 }
 

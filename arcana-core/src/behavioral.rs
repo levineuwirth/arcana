@@ -406,6 +406,8 @@ fn synth_event(
             return synth_event(condition, source, controller, stack_spell, dummy),
         // Unreproducible — skip the verdict (still executed via ETB fallback).
         TC::Custom(_) => return None,
+        // A token's static carrier is not a trigger; no event fires it.
+        TC::PrintedStatic(_) => return None,
     })
 }
 

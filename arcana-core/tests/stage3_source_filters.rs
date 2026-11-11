@@ -86,7 +86,7 @@ fn restrictions_exclude_only_their_source() {
         for p in [0, 1] {
             let (mut s, source, ally, foe) = fixture(p);
             s.add_continuous_effect(ContinuousEffect { source, kind: kind.clone(),
-                layer: Layer::L6Ability, timestamp: 0, dependency: None,
+                layer: Layer::L6Ability, timestamp: 0, dependency: None, printed: None,
                 duration: Duration::WhileSourceOnBattlefield });
             assert!(!query(&s, source));
             assert!(query(&s, ally), "{kind:?}");

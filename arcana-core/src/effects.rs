@@ -2987,9 +2987,49 @@ pub struct EmblemDefinition {
 }
 
 impl TokenDefinition {
+    /// Add a printed static ability of the token (CR 604), such as a
+    /// characteristic-defining "this token's power and toughness are each
+    /// equal to …" (CR 604.3). Same contract as
+    /// `CardDefinition::with_static`: each part's source is
+    /// [`crate::objects::NULL_OBJECT_ID`] and the engine installs the
+    /// parts as the token enters. The struct cannot take a field (it is a
+    /// complete literal in the generated catalog), so the definition rides
+    /// in `abilities` behind [`crate::triggers::TriggerCondition::PrintedStatic`];
+    /// [`Self::to_characteristics`] moves it into the token's
+    /// characteristics, where a copy of the token finds it too.
+    pub fn with_static(mut self, parts: Vec<crate::layers::ContinuousEffect>) -> Self {
+        fn no_effect(_: &GameState, _: &crate::triggers::PendingTrigger,
+                     _: &crate::registry::CardRegistry) -> Vec<Effect> { Vec::new() }
+        self.abilities.push(crate::triggers::TriggeredAbilityDef {
+            id: 0,
+            trigger_condition: crate::triggers::TriggerCondition::PrintedStatic(
+                crate::layers::StaticAbilityDef::new(parts)),
+            intervening_if: None,
+            effect: no_effect,
+            trigger_zones: Vec::new(),
+            frequency: crate::triggers::TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        });
+        self
+    }
+
+    /// The token's printed triggered abilities: `abilities` without the
+    /// static carriers.
+    pub fn triggered_abilities(&self)
+        -> impl Iterator<Item = &crate::triggers::TriggeredAbilityDef>
+    {
+        self.abilities.iter().filter(|a| !matches!(a.trigger_condition,
+            crate::triggers::TriggerCondition::PrintedStatic(_)))
+    }
+
     /// Build the [`Characteristics`] block a token would have on the
     /// battlefield.
     pub fn to_characteristics(&self) -> Characteristics {
+        let statics: Vec<crate::layers::StaticAbilityDef> = self.abilities.iter()
+            .filter_map(|a| match &a.trigger_condition {
+                crate::triggers::TriggerCondition::PrintedStatic(def) => Some(def.clone()),
+                _ => None,
+            }).collect();
         Characteristics {
             name: self.name,
             mana_cost: None,
@@ -3011,6 +3051,7 @@ impl TokenDefinition {
             // Tokens aren't cast, so "can't be countered" never applies.
             cant_be_countered: false,
             cast_timing: None,
+            static_abilities: (!statics.is_empty()).then(|| statics.into()),
         }
     }
 }
@@ -3581,9 +3622,9 @@ fn mint_one_token(
     // and are shed when the token leaves. Attached BEFORE the ETB event
     // below so a token's own enters-the-battlefield trigger is present
     // when that event fires.
-    if !token.abilities.is_empty() {
+    if token.triggered_abilities().next().is_some() {
         if let Some(obj) = state.objects.get_mut(id) {
-            for (i, ability) in token.abilities.iter().enumerate() {
+            for (i, ability) in token.triggered_abilities().enumerate() {
                 let mut def = ability.clone();
                 def.id = crate::triggers::GRANTED_TRIGGER_ID_BASE
                     + 1 + i as crate::types::TriggerId;
@@ -3932,8 +3973,15 @@ fn attach(state: &mut GameState, attacher: ObjectId, target: ObjectId) {
         });
     }
     // Wire the new relationship.
+    let already = state.objects.get(attacher).and_then(|o| o.attached_to) == Some(target);
     state.objects.get_mut(attacher).unwrap().attached_to = Some(target);
     state.objects.get_mut(target).unwrap().attachments.push(attacher);
+    // CR 613.7e: an Aura or Equipment gets a new timestamp each time it
+    // becomes attached, and its printed statics' effects with it (A1.5br).
+    // Attaching it to the object it is already on does nothing (701.3b).
+    if !already {
+        state.stamp_object(attacher, None);
+    }
     state.emit(GameEvent::AttachedTo {
         equipment_or_aura: attacher, target,
     });

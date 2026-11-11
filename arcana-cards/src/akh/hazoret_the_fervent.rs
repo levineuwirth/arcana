@@ -1,15 +1,13 @@
 //! Hazoret the Fervent — `{3}{R}` 5/4 Legendary God.
 //! Indestructible, haste. "Hazoret can't attack or block unless you have one
-//! or fewer cards in hand." (A1.5bq; immediate installation awaits br.)
+//! or fewer cards in hand." (A1.5bq; a printed static since A1.5br.)
 //! "{2}{R}, Discard a card: Hazoret deals 2 damage to each opponent."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
 use arcana_core::layers::{ContinuousEffect, Duration, SourceCondition, SelfModification};
-use arcana_core::triggers::{PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef};
-use arcana_core::zones::Zone;
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
@@ -38,15 +36,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    // Live conditional restriction; A1.5br replaces the entry installer.
+    // Live conditional restriction, installed by the engine on entry.
     reg.register(
         CardDefinition::new(name, chars)
-            .with_triggered_ability(TriggeredAbilityDef {
-                id: 1, trigger_condition: TriggerCondition::SelfEntersBattlefield,
-                intervening_if: None, effect: install_condition,
-                trigger_zones: vec![Zone::Battlefield], frequency: TriggerFrequency::EachTime,
-                target_requirements: Vec::new(),
-            })
+            .with_static(vec![ContinuousEffect::conditional_self(
+                NULL_OBJECT_ID, SourceCondition::ControllerHandSizeAtLeast(2),
+                SelfModification::CantAttackOrBlock, Duration::WhileSourceOnBattlefield,
+            )])
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{2}{R}, Discard a card: Hazoret deals 2 damage to each opponent.".into(),
                 cost: ActivationCost {
@@ -79,13 +75,4 @@ fn damage_each_opponent(
         })
         .collect();
     vec![Effect::Sequence(effects)]
-}
-
-// A1.5bq: live, source-only applicability. A1.5br owns immediate static
-// installation and ability loss; until then this uses the existing ETB path.
-fn install_condition(_: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
-    vec![Effect::InstallContinuousEffect { effect: ContinuousEffect::conditional_self(
-        trig.source, SourceCondition::ControllerHandSizeAtLeast(2),
-        SelfModification::CantAttackOrBlock, Duration::WhileSourceOnBattlefield,
-    ) }]
 }

@@ -1,10 +1,8 @@
 //! Domri, Anarch of Bolas — `{1}{R}{G}` Legendary Planeswalker — Domri.
 //! Printed starting loyalty 3 (CR 113.3c). Colors R/G.
 //!
-//! Static: "Creatures you control get +1/+0." — a continuous anthem
-//! static, not a loyalty ability. GAP'd here (the loyalty abilities are
-//! the focus of this card class; a permanent-sourced anthem would need a
-//! separately-registered continuous effect).
+//! Static: "Creatures you control get +1/+0." — a printed static the
+//! engine installs as Domri enters (A1.5br), not a loyalty ability.
 //!
 //! Keyword: Fight is a templating word (used by the `−2`), not a
 //! standalone keyword ability — `keywords: vec![]`.
@@ -17,8 +15,9 @@
 //!   control. — expressible via `Effect::Fight`.
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
@@ -48,10 +47,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         loyalty: Some(3),
         ..Default::default()
     };
-    // GAP: "Creatures you control get +1/+0" static anthem omitted.
-
     reg.register(
         CardDefinition::new(name, chars)
+            .with_static(vec![ContinuousEffect::filtered_pump(
+                NULL_OBJECT_ID,
+                ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                1, 0, Duration::WhileSourceOnBattlefield,
+            )])
             .with_activated_ability(ActivatedAbilityDef {
                 text: "+1: Add {R} or {G}. Creature spells you cast this turn can't \
                        be countered.".into(),

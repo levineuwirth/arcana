@@ -92,6 +92,10 @@ pub struct GameState {
     ///
     /// [`event_log`]: Self::event_log
     pub trigger_event_cursor: usize,
+    /// Attachment-granted abilities whose event predicates matched when
+    /// emitted. Collected after SBAs alongside the other pending triggers;
+    /// a host/Aura leaving or a later grant/loss cannot rewrite that event.
+    pub(crate) captured_attachment_triggers: Vec<crate::triggers::CapturedAttachmentTrigger>,
     /// Format configuration — starting life, hand sizes, mulligan
     /// rule, deck constraints. Defaults to
     /// [`FormatConfig::standard_2026`]; override via
@@ -319,6 +323,7 @@ impl GameState {
             triggers_fired_this_game: TriggerLedger::default(),
             timestamp_counter: 0,
             trigger_event_cursor: 0,
+            captured_attachment_triggers: Vec::new(),
             format,
             rng_seed,
             storm_count: 0,
@@ -568,6 +573,7 @@ impl GameState {
     pub fn release_held_lki(&mut self) {
         if self.stack_is_empty()
             && self.pending_trigger_queue.is_empty()
+            && self.captured_attachment_triggers.is_empty()
             && self.pending_resolution.is_none()
             && self.pending_choice.is_none()
         {
@@ -612,6 +618,19 @@ impl GameState {
     /// replacement effects to live on the `CardDefinition` — that's
     /// Phase 3 work and out of scope here.
     pub fn after_enter_battlefield(&mut self, id: ObjectId) {
+        self.after_enter_battlefield_at(id, None);
+    }
+
+    /// [`Self::after_enter_battlefield`] with the entering permanent's
+    /// timestamp already drawn, for permanents that enter together: their
+    /// timestamps are given in APNAP order before any of them is finished
+    /// (CR 613.7m). `None` draws the next one.
+    pub(crate) fn after_enter_battlefield_at(&mut self, id: ObjectId, timestamp: Option<u64>) {
+        // A1.5br: the permanent gets its timestamp (CR 613.7d) and its
+        // printed statics here, the one hook every entry route runs, so
+        // they exist before any state-based action or priority.
+        self.stamp_object(id, timestamp);
+        self.install_printed_statics(id);
         let replacements = self.collect_etb_replacements(id);
         // Route ETB-event counter placement through the counter-placement
         // pipeline so downstream replacements (Hardened Scales et al.) can
@@ -1075,11 +1094,43 @@ impl GameState {
 
     /// Append an event to the log. The trigger matcher picks events up from
     /// here; replay reconstructs the game from the same sequence.
-    pub fn emit(&mut self, event: GameEvent) { self.event_log.push(event); }
+    pub fn emit(&mut self, event: GameEvent) {
+        self.event_log.push(event);
+        self.capture_attachment_triggers();
+    }
 
     /// Append several events atomically.
     pub fn emit_all<I: IntoIterator<Item = GameEvent>>(&mut self, events: I) {
-        self.event_log.extend(events);
+        for event in events { self.emit(event); }
+    }
+
+    /// Snapshot the grant's availability and event match, without putting
+    /// anything on the stack or running SBAs during an instruction. Unlike
+    /// registered abilities, an attachment's grant cannot be recovered from
+    /// the host's registry or LKI after the host and Aura have left.
+    fn capture_attachment_triggers(&mut self) {
+        use crate::layers::ContinuousEffectKind;
+        use crate::triggers::CapturedAttachmentTrigger;
+        let event_index = self.event_log.len() - 1;
+        let event = &self.event_log[event_index];
+        let captures: Vec<_> = self.continuous_effects.iter().filter_map(|e| {
+            let ContinuousEffectKind::AttachedCreatureGrantsTriggered { ability } = &e.kind
+                else { return None; };
+            if !e.is_live(self) { return None; }
+            let host = self.objects.get(e.source)?.attached_to?;
+            let obj = self.objects.get(host)?;
+            if !obj.zone.is_battlefield()
+                || self.ability_loss_timestamp(host).is_some_and(|lost| lost > e.timestamp)
+                || !ability.matches_event(event, host, obj.controller, self)
+            {
+                return None;
+            }
+            Some(CapturedAttachmentTrigger {
+                event_index, source: host, controller: obj.controller,
+                ability: (**ability).clone(),
+            })
+        }).collect();
+        self.captured_attachment_triggers.extend(captures);
     }
 
     // --- game-over ---------------------------------------------------------

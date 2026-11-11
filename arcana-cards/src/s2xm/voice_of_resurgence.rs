@@ -4,16 +4,18 @@
 //! 'This token's power and toughness are each equal to the number of
 //! creatures you control.'"
 //!
-//! GAP (token static ability): The token's dynamic P/T ("equal to the number
-//! of creatures you control") is not expressible in TokenDefinition — the token
-//! is created as a fixed 1/1 placeholder.
+//! The token's characteristic-defining ability is a printed static of the
+//! token, present as it enters (A1.5br). It counts creatures by printed
+//! type: a permanent a continuous effect has made a creature, or made
+//! not one, is miscounted.
 
 use arcana_core::effects::{Effect, TokenDefinition};
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
-use arcana_core::targets::ControllerConstraint;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
@@ -69,19 +71,24 @@ fn create_elemental_token(
         .expect("Elemental interned during register()");
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(elemental);
-    // GAP: The token's printed static ability "this token's power and toughness
-    // are each equal to the number of creatures you control" is not expressible
-    // in TokenDefinition. Emitted as a fixed 1/1 placeholder.
+    // "This token's power and toughness are each equal to the number of
+    // creatures you control" (CR 604.3). Without the ability the token is
+    // 0/0, as a `*`/`*` creature that has lost its abilities is.
     let token = TokenDefinition {
         name: elemental,
         colors: ColorSet::green() | ColorSet::white(),
         types: TypeLine::CREATURE.into(),
         subtypes,
-        power: Some(PtValue::Fixed(1)),
-        toughness: Some(PtValue::Fixed(1)),
+        power: Some(PtValue::Fixed(0)),
+        toughness: Some(PtValue::Fixed(0)),
         keywords: vec![],
         abilities: vec![],
-    };
+    }
+    .with_static(vec![ContinuousEffect::self_pt_from_match(
+        NULL_OBJECT_ID,
+        ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+        Duration::WhileSourceOnBattlefield,
+    )]);
     vec![Effect::CreateToken {
         controller: trig.controller,
         token,

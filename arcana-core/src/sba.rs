@@ -919,7 +919,7 @@ mod tests {
             layer: Layer::L7cPTModifying,
             timestamp: 0,
             duration: Duration::Permanent,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::PumpTarget {
                 target: c, power: 0, toughness: -2,
             },

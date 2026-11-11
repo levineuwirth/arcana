@@ -2595,7 +2595,7 @@ mod tests {
         s.objects.insert(obj);
         s.add_continuous_effect(ContinuousEffect {
             source: walker, layer: Layer::L4Type, timestamp: 0,
-            duration: Duration::Permanent, dependency: None,
+            duration: Duration::Permanent, dependency: None, printed: None,
             kind: ContinuousEffectKind::Custom(only_a_creature),
         });
         s.deal_damage(src, DamageTarget::Object(walker), 2, false);

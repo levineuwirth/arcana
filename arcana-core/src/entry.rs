@@ -28,6 +28,9 @@ pub(crate) struct BattlefieldEntry {
     pub was_cast: bool,
     pub resolved_spell: Option<ObjectId>,
     pub reveal: bool,
+    /// The entering permanent's timestamp, drawn ahead for permanents that
+    /// enter together (CR 613.7m). `None` draws one as the entry finishes.
+    pub timestamp: Option<u64>,
 }
 
 impl BattlefieldEntry {
@@ -48,6 +51,7 @@ impl BattlefieldEntry {
             was_cast: false,
             resolved_spell: None,
             reveal: false,
+            timestamp: None,
         }
     }
 }
@@ -232,6 +236,22 @@ impl GameState {
             }
             ready.push(request);
         }
+        // CR 613.7m: permanents that enter together get their timestamps
+        // in APNAP order, the active player's first and then each other
+        // player's in turn order, in the batch's own order within a player
+        // (A1.5br). Only the timestamps follow that order; the entries are
+        // still finished in the order the instruction listed them.
+        if ready.len() > 1 {
+            let active = self.active_player() as usize;
+            let players = self.num_players() as usize;
+            let seat = |r: &BattlefieldEntry|
+                (r.controller as usize + players - active) % players;
+            let mut order: Vec<usize> = (0..ready.len()).collect();
+            order.sort_by_key(|&i| seat(&ready[i]));
+            for i in order {
+                ready[i].timestamp = Some(self.next_timestamp());
+            }
+        }
         for request in ready {
             self.finish_battlefield_entry(request);
         }
@@ -339,7 +359,7 @@ impl GameState {
                 count,
             );
         }
-        self.after_enter_battlefield(new_id);
+        self.after_enter_battlefield_at(new_id, request.timestamp);
         if request.tapped {
             self.objects.get_mut(new_id).unwrap().tap();
         }

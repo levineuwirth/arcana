@@ -2485,7 +2485,7 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
             state.event_log[start..end].to_vec();
         state.trigger_event_cursor = end;
 
-        let pending = collect_pending_triggers(state, registry, &new_events);
+        let pending = collect_pending_triggers(state, registry, start, &new_events);
 
         // LKI served this pass's trigger scan as a source list; retire
         // it before the next iteration's SBAs so later moves are not
@@ -2655,6 +2655,7 @@ fn drain_one_queued_targeted_trigger(
 fn collect_pending_triggers(
     state: &mut GameState,
     registry: &CardRegistry,
+    event_start: usize,
     events: &[crate::events::GameEvent],
 ) -> Vec<crate::triggers::PendingTrigger> {
     let mut pending: Vec<crate::triggers::PendingTrigger> = Vec::new();
@@ -2674,7 +2675,13 @@ fn collect_pending_triggers(
     trigger_sources.extend(
         state.lki.iter().map(|(id, o)| (*id, o.card_id, o.controller, o.visible_face)));
 
-    for event in events {
+    // emit/emit_all captured attachment grants against the state of each
+    // event, before SBAs or another instruction could erase/change them.
+    // The caller supplies this batch's log offset independently of the
+    // cursor. Captures made during this scan remain for the next sweep.
+    let mut attached = std::mem::take(&mut state.captured_attachment_triggers)
+        .into_iter().filter(|c| c.event_index >= event_start).peekable();
+    for (offset, event) in events.iter().enumerate() {
         for &(source, card_id, controller, visible_face) in &trigger_sources {
             // A token has no registry definition (card_id 0); its
             // printed triggers are granted abilities, scanned below. A
@@ -2714,22 +2721,31 @@ fn collect_pending_triggers(
             }
         }
 
-        // 1b. STATIC filtered ability grants (Background statics —
-        //     ContinuousEffectKind::FilteredGrantTriggeredAbility):
-        //     each live grant's ability is checked for every
-        //     battlefield object matching its filter. Fires carry the
-        //     def's effect fn via effect_override (granted ids have no
-        //     registry entry — same dispatch as delayed triggers).
+        // 1b. Attachment-granted triggers already matched their event.
+        // Only the normal intervening-if/frequency gates remain; neither
+        // current attachment nor current ability loss can undo the match.
+        while attached.peek().is_some_and(|c| c.event_index == event_start + offset) {
+            let captured = attached.next().unwrap();
+            if let Some(mut pt) = captured.ability.after_event_match(
+                event, captured.source, captured.controller, state, registry)
+            {
+                pt.effect_override = Some(captured.ability.effect);
+                pending.push(pt);
+            }
+        }
+
+        // 1c. Existing filtered grants retain their collection-time scan.
+        // A later ability-loss timestamp on the host removes the grant;
+        // an earlier one does not. Attachment grants are captured above.
         let grants: Vec<(crate::targets::ObjectFilter,
                          crate::triggers::TriggeredAbilityDef,
-                         ObjectId)> =
+                         ObjectId, u64)> =
             state.continuous_effects.iter()
                 .filter(|e| e.is_live(state))
                 .filter_map(|e| match &e.kind {
                     crate::layers::ContinuousEffectKind::
                         FilteredGrantTriggeredAbility { filter, ability } =>
-                            Some((filter.clone(), (**ability).clone(),
-                                  e.source)),
+                            Some((filter.clone(), (**ability).clone(), e.source, e.timestamp)),
                     _ => None,
                 })
                 .collect();
@@ -2738,13 +2754,14 @@ fn collect_pending_triggers(
                 .objects_in_zone(Zone::Battlefield)
                 .map(|o| (o.id, o.controller))
                 .collect();
-            for (filter, ability, grant_src) in &grants {
-                let Some(src_ctrl) = state.objects.get(*grant_src)
-                    .map(|s| s.controller) else { continue; };
+            for (filter, ability, grant_src, grant_ts) in &grants {
+                let Some(src) = state.objects.get(*grant_src) else { continue; };
                 for &(oid, octrl) in &bf {
-                    let matches = state.objects.get(oid).is_some_and(|o|
-                        filter.matches_base_with_source(o, state, *grant_src, src_ctrl));
-                    if !matches { continue; }
+                    if !state.objects.get(oid).is_some_and(|o|
+                        filter.matches_base_with_source(o, state, *grant_src, src.controller))
+                    { continue; }
+                    if state.ability_loss_timestamp(oid)
+                        .is_some_and(|lost| lost > *grant_ts) { continue; }
                     if let Some(mut pt) = ability.should_fire(
                         event, oid, octrl, state, registry)
                     {
@@ -8403,11 +8420,11 @@ mod tests {
 
         let ev = GameEvent::Tapped { object_id: obj };
         // Front face (visible_face == 0): gated trigger does NOT fire.
-        assert!(collect_pending_triggers(&mut state, &registry, std::slice::from_ref(&ev)).is_empty(),
+        assert!(collect_pending_triggers(&mut state, &registry, 0, std::slice::from_ref(&ev)).is_empty(),
             "back-face-gated trigger must not fire on the front face");
         // Flip to the back face: now it fires.
         state.objects.get_mut(obj).unwrap().visible_face = 1;
-        assert_eq!(collect_pending_triggers(&mut state, &registry, &[ev]).len(), 1,
+        assert_eq!(collect_pending_triggers(&mut state, &registry, 0, &[ev]).len(), 1,
             "the trigger fires once the back face is showing");
     }
 

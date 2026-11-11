@@ -1,12 +1,15 @@
 //! Goblin Warchief — `{1}{R}{R}` 2/2 Goblin Warrior.
 //! "Goblin spells you cast cost {1} less to cast. Goblins you control
-//! have haste." Both lines are static continuous abilities (a
-//! cost-reduction effect and a keyword-granting anthem) — neither is a
-//! triggered or activated ability, so only the bones are emitted here.
+//! have haste." Two printed static abilities, a cost reduction and a
+//! keyword grant, which the engine installs as the Warchief enters
+//! (A1.5br).
 
+use arcana_core::effects::KeywordAbility;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::targets::{ControllerConstraint, ObjectFilter};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -28,7 +31,24 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    // GAP: static "Goblin spells you cast cost {1} less" — cost-reduction static, not a triggered/activated ability.
-    // GAP: static "Goblins you control have haste" — keyword-granting anthem static, not a triggered/activated ability.
-    reg.register(CardDefinition::new(name, chars))
+    reg.register(
+        CardDefinition::new(name, chars)
+            // "Goblin spells you cast cost {1} less to cast."
+            .with_static(vec![ContinuousEffect::spell_cost_modifier(
+                NULL_OBJECT_ID,
+                ObjectFilter::default().with_subtype_sym(goblin),
+                ControllerConstraint::You,
+                -1,
+                Duration::WhileSourceOnBattlefield,
+            )])
+            // "Goblins you control have haste." It names no "other", so
+            // the Warchief has haste itself.
+            .with_static(vec![ContinuousEffect::filtered_keyword(
+                NULL_OBJECT_ID,
+                ObjectFilter::default().with_subtype_sym(goblin)
+                    .controlled_by(ControllerConstraint::You),
+                KeywordAbility::Haste,
+                Duration::WhileSourceOnBattlefield,
+            )]),
+    )
 }
