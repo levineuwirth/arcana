@@ -2743,7 +2743,7 @@ fn collect_pending_triggers(
                     .map(|s| s.controller) else { continue; };
                 for &(oid, octrl) in &bf {
                     let matches = state.objects.get(oid).is_some_and(|o|
-                        filter.matches_base(o, state, src_ctrl));
+                        filter.matches_base_with_source(o, state, *grant_src, src_ctrl));
                     if !matches { continue; }
                     if let Some(mut pt) = ability.should_fire(
                         event, oid, octrl, state, registry)
@@ -3372,9 +3372,9 @@ fn untap_step(state: &mut GameState) {
         // filter matches it.
         let mut blocked = false;
         let mut matched: Vec<usize> = Vec::new();
-        for (i, (filter, max, src_ctrl)) in caps.iter().enumerate() {
+        for (i, (filter, max, source, src_ctrl)) in caps.iter().enumerate() {
             let m = state.objects.get(id).is_some_and(|o|
-                filter.matches_base(o, state, *src_ctrl));
+                filter.matches_base_with_source(o, state, *source, *src_ctrl));
             if m {
                 if cap_used[i] >= *max { blocked = true; break; }
                 matched.push(i);
@@ -8544,6 +8544,90 @@ mod tests {
             "creature stays tapped under don't-untap");
         assert!(!state.objects.get(beast).unwrap().status.summoning_sick,
             "sickness still clears");
+    }
+
+    #[test]
+    fn source_relative_untap_cap_exempts_only_its_source() {
+        use crate::layers::{ContinuousEffect, Duration};
+        use crate::targets::{ControllerConstraint, ObjectFilter};
+        for p in [0, 1] {
+            let mut state = GameState::new(2, 20261111);
+            state.turn.active_player = p;
+            let mut ids = Vec::new();
+            for controller in [p, p, p, 1 - p] {
+                let id = state.allocate_object_id();
+                let mut obj = GameObject::new(id, controller, Zone::Battlefield, 0,
+                    creature_chars(2, 2));
+                obj.tap();
+                state.objects.insert(obj);
+                ids.push(id);
+            }
+            // The source untaps without consuming the cap; only the first
+            // other creature may untap, in the existing ascending-id order.
+            state.add_continuous_effect(ContinuousEffect::untap_cap(ids[0],
+                ObjectFilter::creature().controlled_by(ControllerConstraint::You)
+                    .excluding_source(), 1, Duration::WhileSourceOnBattlefield));
+            untap_step(&mut state);
+            let tapped: Vec<_> = ids.iter().map(|id|
+                state.objects.get(*id).unwrap().is_tapped()).collect();
+            assert_eq!(tapped, vec![false, false, true, true]);
+        }
+    }
+
+    #[test]
+    fn source_relative_trigger_grants_exclude_the_grantor_not_the_host() {
+        use crate::layers::{ContinuousEffect, Duration};
+        use crate::targets::{ControllerConstraint, ObjectFilter};
+        use crate::triggers::{TriggeredAbilityDef, TriggerCondition, TriggerFrequency,
+                              GRANTED_TRIGGER_ID_BASE};
+        fn gain_one(_s: &GameState, pt: &crate::triggers::PendingTrigger,
+                    _r: &CardRegistry) -> Vec<crate::effects::Effect> {
+            vec![crate::effects::Effect::GainLife { player: pt.controller, amount: 1 }]
+        }
+        for p in [0, 1] {
+            let registry = CardRegistry::new();
+            let mut state = GameState::new(2, 20261111);
+            let mut ids = Vec::new();
+            for controller in [p, p, p, 1 - p] {
+                let id = state.allocate_object_id();
+                state.objects.insert(GameObject::new(id, controller, Zone::Battlefield,
+                    0, creature_chars(2, 2)));
+                ids.push(id);
+            }
+            for source in &ids[..2] {
+                state.add_continuous_effect(ContinuousEffect::filtered_grant_triggered(
+                    *source, ObjectFilter::creature()
+                        .controlled_by(ControllerConstraint::You).excluding_source(),
+                    TriggeredAbilityDef {
+                        id: GRANTED_TRIGGER_ID_BASE + 8,
+                        trigger_condition: TriggerCondition::SelfAttacks,
+                        intervening_if: None, effect: gain_one,
+                        trigger_zones: vec![Zone::Battlefield],
+                        frequency: TriggerFrequency::EachTime,
+                        target_requirements: Vec::new(),
+                    }, Duration::WhileSourceOnBattlefield));
+            }
+            for (id, expected) in [(ids[0], 1), (ids[1], 1), (ids[2], 2), (ids[3], 0)] {
+                state.emit(GameEvent::CreatureAttacks { attacker: id,
+                    defending: crate::combat::DefendingEntity::Player(1 - p) });
+                run_sba_and_triggers(&mut state, &registry);
+                assert_eq!(state.stack_size(), expected);
+                assert!(state.stack.iter().all(|entry| entry.source == id));
+                let before = state.player(p).life;
+                for _ in 0..expected { resolve_top_of_stack(&mut state, &registry); }
+                assert_eq!(state.player(p).life, before + expected as i32);
+            }
+            // A grant follows the grantor's current controller.
+            state.objects.get_mut(ids[1]).unwrap().controller = 1 - p;
+            state.emit(GameEvent::CreatureAttacks { attacker: ids[3],
+                defending: crate::combat::DefendingEntity::Player(p) });
+            run_sba_and_triggers(&mut state, &registry);
+            assert_eq!(state.stack_size(), 1);
+            assert_eq!(state.stack[0].source, ids[3]);
+            let before = state.player(1 - p).life;
+            resolve_top_of_stack(&mut state, &registry);
+            assert_eq!(state.player(1 - p).life, before + 1);
+        }
     }
 
     #[test]

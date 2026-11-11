@@ -908,7 +908,7 @@ impl GameState {
             let Some(src_ctrl) = self.objects.get(e.source)
                 .map(|s| s.controller) else { continue; };
             let matches = self.objects.get(attacker).is_some_and(|o|
-                filter.matches_base(o, self, src_ctrl));
+                filter.matches_base_with_source(o, self, e.source, src_ctrl));
             if matches {
                 c.max_blockers = Some(c.max_blockers
                     .map_or(*max, |m| m.min(*max)));

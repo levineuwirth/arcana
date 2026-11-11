@@ -1,10 +1,9 @@
 //! Empyrean Eagle — `{1}{W}{U}` Creature — Bird Spirit, 2/3, Flying.
 //! "Other creatures you control with flying get +1/+1." — WIRED as an
 //! ETB-installed `ContinuousEffect::filtered_pump` (creatures you control with
-//! Flying), lasting while Empyrean Eagle is on the battlefield (glorious_anthem
-//! precedent). The "other" self-exclusion is the accepted lord-self caveat (no
-//! exclude-source primitive; cf. immerwolf); the keyword filter matches base
-//! characteristics, so a granted-flying creature is a minor miss.
+//! Flying), lasting while Empyrean Eagle is on the battlefield.
+//! A1.5bq excludes this source and reads flying after layer 6. A1.5br still
+//! owns immediate printed-static installation and ability-loss handling.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::{ContinuousEffect, Duration};
@@ -56,6 +55,7 @@ fn install_flying_anthem(
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
     let filter = ObjectFilter::creature()
+        .excluding_source()
         .controlled_by(ControllerConstraint::You)
         .with_keyword(KeywordAbility::Flying);
     vec![Effect::InstallContinuousEffect {

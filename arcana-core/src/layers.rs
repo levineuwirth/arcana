@@ -157,6 +157,18 @@ pub struct ContinuousEffect {
 }
 
 impl ContinuousEffect {
+    /// A source-only effect whose applicability follows live game state.
+    pub fn conditional_self(source: ObjectId, condition: SourceCondition,
+                            modification: SelfModification, duration: Duration) -> Self {
+        let layer = match &modification {
+            SelfModification::ModifyPt { .. } => Layer::L7cPTModifying,
+            SelfModification::RemoveTypes { .. } => Layer::L4Type,
+            SelfModification::CantAttackOrBlock => Layer::L6Ability,
+        };
+        Self { source, layer, timestamp: 0, duration, dependency: None,
+            kind: ContinuousEffectKind::ConditionalSelf { condition, modification } }
+    }
+
     /// Build a standard pump effect ("+P/+T to target"), layer 7c.
     pub fn pump(source: ObjectId, target: ObjectId, power: i32, toughness: i32,
                 duration: Duration) -> Self {
@@ -1094,6 +1106,9 @@ impl ContinuousEffect {
 // TODO(serialize): `Custom` carries a bare fn pointer.
 #[derive(Clone, Debug)]
 pub enum ContinuousEffectKind {
+    /// Conditional printed self effect; state-only conditions do not recurse
+    /// through characteristic computation. Installed with a source lifetime.
+    ConditionalSelf { condition: SourceCondition, modification: SelfModification },
     /// "Target object gets +P/+T until end of turn" (Giant Growth).
     PumpTarget { target: ObjectId, power: i32, toughness: i32 },
     /// "Creatures you control get +P/+T" (Crusade, Glorious Anthem).
@@ -1289,10 +1304,9 @@ pub enum ContinuousEffectKind {
     /// Layer 7c — GLOBAL FILTERED pump: "[filter] creatures get
     /// +P/+T" beyond the controller-anthem ("creatures with flying
     /// you control get +1/+1", "all Goblins get +1/+0", "white
-    /// creatures get -1/-1"). The filter is evaluated against BASE
-    /// characteristics (`ObjectFilter::matches_base`) from the
-    /// SOURCE's controller's perspective — layer-aware predicates
-    /// here would recurse.
+    /// creatures get -1/-1"). Applicability reads the in-flight
+    /// characteristics from the source controller's perspective,
+    /// without starting another characteristic computation.
     FilteredPump {
         filter: crate::targets::ObjectFilter,
         power: i32,
@@ -1348,7 +1362,7 @@ pub enum ContinuousEffectKind {
     },
     /// Layer 6 — global filtered keyword grant ("all Zombies have
     /// menace", "creatures with power 2 or less have shroud"). Same
-    /// base-characteristics filter posture as
+    /// in-flight-characteristics filter posture as
     /// [`Self::FilteredPump`].
     FilteredGrantKeyword {
         filter: crate::targets::ObjectFilter,
@@ -1477,6 +1491,37 @@ pub enum ContinuousEffectKind {
     Custom(fn(ObjectId, &mut Characteristics, &GameState)),
 }
 
+/// Conditions whose inputs are independent of the characteristic pipeline.
+/// Keeping these typed avoids a predicate recursively asking for its own P/T.
+#[derive(Clone, Debug)]
+pub enum SourceCondition {
+    ControllerHandSizeAtLeast(u32),
+    Attacking,
+    ControllerDevotionBelow { colors: ColorSet, threshold: u32 },
+}
+
+impl SourceCondition {
+    pub fn matches(&self, state: &GameState, source: ObjectId) -> bool {
+        let Some(obj) = state.objects.get(source).filter(|o| o.zone.is_battlefield())
+            else { return false; };
+        match self {
+            Self::ControllerHandSizeAtLeast(n) =>
+                state.objects.count_in_zone(crate::zones::Zone::Hand(obj.controller)) >= *n as usize,
+            Self::Attacking => state.combat.as_ref().is_some_and(|c| c.is_attacker(source)),
+            Self::ControllerDevotionBelow { colors, threshold } =>
+                crate::script::devotion(state, obj.controller, *colors) < *threshold,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum SelfModification {
+    ModifyPt { power: i32, toughness: i32 },
+    /// Remove the named card types and their associated subtype symbols.
+    RemoveTypes { types: TypeLine, subtypes: SubtypeSet },
+    CantAttackOrBlock,
+}
+
 /// How a [`ContinuousEffectKind::MaxHandSize`] effect changes its
 /// controller's maximum hand size.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1525,7 +1570,17 @@ impl ContinuousEffectKind {
         source: ObjectId,
         state: &GameState,
     ) -> bool {
+        let Some(obj) = state.objects.get(object_id) else { return false; };
+        self.applies_to_in_layer(object_id, source, &obj.characteristics, state)
+    }
+
+    fn applies_to_in_layer(
+        &self, object_id: ObjectId, source: ObjectId,
+        chars: &Characteristics, state: &GameState,
+    ) -> bool {
         match self {
+            Self::ConditionalSelf { condition, .. } =>
+                object_id == source && condition.matches(state, source),
             Self::PumpTarget { target, .. }
             | Self::SetPt { target, .. }
             | Self::GrantKeywordTarget { target, .. }
@@ -1543,7 +1598,7 @@ impl ContinuousEffectKind {
             Self::AnthemForController { controller, .. }
             | Self::GrantKeywordToController { controller, .. } => {
                 state.objects.get(object_id).is_some_and(|o|
-                    o.is_creature()
+                    chars.types.is_creature()
                     && o.zone.is_battlefield()
                     && o.controller == *controller)
             }
@@ -1574,13 +1629,13 @@ impl ContinuousEffectKind {
             | Self::FilteredSetBasePt { filter, .. }
             | Self::FilteredAddType { filter, .. }
             | Self::FilteredGrantKeyword { filter, .. } => {
-                // Battlefield-only, base-characteristics filter from
+                // Battlefield-only, in-flight filter from
                 // the source controller's perspective.
                 let Some(src_ctrl) = state.objects.get(source)
                     .map(|s| s.controller) else { return false; };
                 state.objects.get(object_id).is_some_and(|o|
                     o.zone.is_battlefield()
-                        && filter.matches_base(o, state, src_ctrl))
+                        && filter.matches_in_layer(o, chars, state, source, src_ctrl))
             }
             // Markers: consumed by their scanners, never applied to
             // characteristics.
@@ -1621,6 +1676,14 @@ impl ContinuousEffectKind {
         state: &GameState,
     ) {
         match self {
+            Self::ConditionalSelf { modification, .. } => match modification {
+                SelfModification::ModifyPt { power, toughness } => add_to_pt(chars, *power, *toughness),
+                SelfModification::RemoveTypes { types, subtypes } => {
+                    chars.types.0 &= !types.0;
+                    chars.subtypes.0.retain(|subtype| !subtypes.contains(*subtype));
+                }
+                SelfModification::CantAttackOrBlock => {}
+            },
             Self::PumpTarget { power, toughness, .. }
             | Self::AnthemForController { power, toughness, .. }
             | Self::AttachedCreatureGetsPt { power, toughness } => {
@@ -1673,7 +1736,7 @@ impl ContinuousEffectKind {
                 // BASE-characteristics count — recursion-proof at Layer 7a.
                 let n = state.objects
                     .objects_in_zone(crate::zones::Zone::Battlefield)
-                    .filter(|o| count_filter.matches_base(o, state, who))
+                    .filter(|o| count_filter.matches_base_with_source(o, state, source, who))
                     .count() as i32;
                 chars.power = Some(PtValue::Fixed(n));
                 chars.toughness = Some(PtValue::Fixed(n));
@@ -1683,7 +1746,7 @@ impl ContinuousEffectKind {
                     .map(|s| s.controller).unwrap_or(0);
                 let n = state.objects
                     .objects_in_zone(crate::zones::Zone::Battlefield)
-                    .filter(|o| count_filter.matches_base(o, state, who))
+                    .filter(|o| count_filter.matches_base_with_source(o, state, source, who))
                     .count() as i32;
                 let (p, t) = if *count_is_power { (n, *other_fixed) }
                              else { (*other_fixed, n) };
@@ -1700,7 +1763,7 @@ impl ContinuousEffectKind {
                 // which uses layer-aware `matches` and could recurse).
                 let n = state.objects
                     .objects_in_zone(crate::zones::Zone::Battlefield)
-                    .filter(|o| count_filter.matches_base(o, state, who))
+                    .filter(|o| count_filter.matches_base_with_source(o, state, source, who))
                     .count() as i32;
                 add_to_pt(chars, per_power * n, per_toughness * n);
             }
@@ -1943,12 +2006,16 @@ impl GameState {
             // analysis — we only honor timestamps for now.)
             let mut effects: Vec<&ContinuousEffect> = self.continuous_effects.iter()
                 .filter(|e| e.layer == layer
-                    && e.is_live(self)
-                    && e.kind.applies_to(object_id, e.source, self))
+                    && e.is_live(self))
                 .collect();
             effects.sort_by_key(|e| e.timestamp);
             for e in effects {
-                e.kind.apply(object_id, e.source, &mut chars, self);
+                // Applicability observes earlier layers AND earlier timestamps
+                // in this layer; gathering only applicable effects up front
+                // would miss a keyword granted by an earlier effect.
+                if e.kind.applies_to_in_layer(object_id, e.source, &chars, self) {
+                    e.kind.apply(object_id, e.source, &mut chars, self);
+                }
             }
         }
 
@@ -2025,6 +2092,9 @@ impl GameState {
     /// Does `object_id` have an active "can't attack" restriction?
     pub fn cant_attack(&self, object_id: ObjectId) -> bool {
         self.continuous_effects.iter().any(|e| match &e.kind {
+            ContinuousEffectKind::ConditionalSelf { condition,
+                modification: SelfModification::CantAttackOrBlock } =>
+                e.source == object_id && e.is_live(self) && condition.matches(self, e.source),
             ContinuousEffectKind::CantAttack { target } => *target == object_id,
             ContinuousEffectKind::AttachedCreatureCantAttack =>
                 e.is_live(self)
@@ -2036,7 +2106,7 @@ impl GameState {
                         .map(|s| s.controller)
                         .zip(self.objects.get(object_id))
                         .is_some_and(|(ctrl, o)|
-                            filter.matches_base(o, self, ctrl))
+                            filter.matches_base_with_source(o, self, e.source, ctrl))
             }
             _ => false,
         })
@@ -2058,7 +2128,7 @@ impl GameState {
                         .map(|s| s.controller)
                         .zip(self.objects.get(object_id))
                         .is_some_and(|(ctrl, o)|
-                            filter.matches_base(o, self, ctrl))
+                            filter.matches_base_with_source(o, self, e.source, ctrl))
             }
             _ => false,
         })
@@ -2080,23 +2150,23 @@ impl GameState {
                         .map(|s| s.controller)
                         .zip(self.objects.get(object_id))
                         .is_some_and(|(ctrl, o)|
-                            filter.matches_base(o, self, ctrl))
+                            filter.matches_base_with_source(o, self, e.source, ctrl))
             }
             _ => None::<()>.is_some(),
         })
     }
 
-    /// Live untap caps: (filter, max, source controller) triples —
+    /// Live untap caps: (filter, max, source, source controller) —
     /// "players can't untap more than `max` [filter] during their
     /// untap steps". Consumed by `engine::untap_step`.
     pub fn untap_caps(&self)
-        -> Vec<(crate::targets::ObjectFilter, u32, PlayerId)>
+        -> Vec<(crate::targets::ObjectFilter, u32, ObjectId, PlayerId)>
     {
         self.continuous_effects.iter().filter_map(|e| match &e.kind {
             ContinuousEffectKind::UntapCap { filter, max }
                 if e.is_live(self) =>
                     self.objects.get(e.source).map(|s|
-                        (filter.clone(), *max, s.controller)),
+                        (filter.clone(), *max, e.source, s.controller)),
             _ => None,
         }).collect()
     }
@@ -2143,7 +2213,7 @@ impl GameState {
                     Some(p) => Some(*p),
                     None => self.objects.get(e.source).map(|s| s.controller),
                 };
-                holder == Some(player) && spell_filter.matches_base(spell, self, player)
+                holder == Some(player) && spell_filter.matches_base_with_source(spell, self, e.source, player)
             }
             _ => false,
         })
@@ -2179,8 +2249,9 @@ impl GameState {
                     None => return false,
                 };
                 player.matches(caster, src_ctrl)
-                    && spell_filter.matches_base(spell, self, caster)
-                    && crate::script::spells_cast_this_turn_by(self, spell_filter, caster) >= *max
+                    && spell_filter.matches_base_with_source(spell, self, e.source, caster)
+                    && crate::script::spells_cast_this_turn_by_with_source(
+                        self, spell_filter, caster, e.source) >= *max
             }
             _ => false,
         })
@@ -2218,7 +2289,7 @@ impl GameState {
                 let src_ctrl = self.objects.get(e.source)
                     .map(|s| s.controller)?;
                 (who.matches(caster, src_ctrl)
-                    && spell_filter.matches_base(&probe, self, src_ctrl))
+                    && spell_filter.matches_base_with_source(&probe, self, e.source, src_ctrl))
                     .then_some(*generic_delta)
             }
             _ => None,
@@ -2238,7 +2309,7 @@ impl GameState {
                 let src_ctrl = self.objects.get(e.source)
                     .map(|s| s.controller)?;
                 let m = self.objects.get(ability_source).is_some_and(|o|
-                    source_filter.matches_base(o, self, src_ctrl));
+                    source_filter.matches_base_with_source(o, self, e.source, src_ctrl));
                 m.then_some(*generic_delta)
             }
             _ => None,
@@ -2298,6 +2369,9 @@ impl GameState {
     /// Consumed by [`crate::combat::GameState::blocker_eligible`].
     pub fn cant_block(&self, object_id: ObjectId) -> bool {
         self.continuous_effects.iter().any(|e| match &e.kind {
+            ContinuousEffectKind::ConditionalSelf { condition,
+                modification: SelfModification::CantAttackOrBlock } =>
+                e.source == object_id && e.is_live(self) && condition.matches(self, e.source),
             ContinuousEffectKind::CantBlock { target } => *target == object_id,
             ContinuousEffectKind::AttachedCreatureCantBlock =>
                 e.is_live(self)
@@ -2309,7 +2383,7 @@ impl GameState {
                         .map(|s| s.controller)
                         .zip(self.objects.get(object_id))
                         .is_some_and(|(ctrl, o)|
-                            filter.matches_base(o, self, ctrl))
+                            filter.matches_base_with_source(o, self, e.source, ctrl))
             }
             _ => false,
         })
