@@ -226,9 +226,29 @@ pub struct CardDefinition {
     /// Enforced in `legal_actions` (the spell isn't enumerated as castable);
     /// not a layer/characteristic effect.
     pub cant_cast: Option<CastRestriction>,
+    /// An alternative cost for this card's main spell face, from its
+    /// caster's hand only. Normal timing and supported restrictions still
+    /// apply. Defaulted so existing definitions grant no permission.
+    pub free_cast_from_hand: Option<FreeCastCondition>,
 }
 
 pub use crate::objects::CastTimingRestriction;
+
+/// A condition for a card's own alternative cost of paying no mana cost.
+/// This grants neither another casting zone nor another timing window.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FreeCastCondition {
+    /// The caster has not completed any spell cast in this game.
+    FirstSpellOfGame,
+}
+
+impl FreeCastCondition {
+    pub fn is_met(self, state: &GameState, caster: PlayerId) -> bool {
+        match self {
+            Self::FirstSpellOfGame => state.player(caster).spells_cast_this_game == 0,
+        }
+    }
+}
 
 /// A static "you can't cast …" restriction a permanent imposes on its
 /// controller (CR 601.3e). Checked against the would-be spell's type line when
@@ -271,7 +291,16 @@ impl CardDefinition {
             mode_effects: None,
             trigger_face_gates: Vec::new(),
             cant_cast: None,
+            free_cast_from_hand: None,
         }
+    }
+
+    /// Offer the main spell face from hand without paying its mana cost
+    /// when `condition` holds. X is zero; supported additional costs and
+    /// taxes still apply. This is independent of resolution-time grants.
+    pub fn with_free_cast_from_hand(mut self, condition: FreeCastCondition) -> Self {
+        self.free_cast_from_hand = Some(condition);
+        self
     }
 
     /// Impose a static casting restriction on the controller while this

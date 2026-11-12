@@ -116,15 +116,14 @@ pub enum CastModifier {
     /// card when it's a LAND goes through `Action::PlayLand`, not this
     /// modifier (Oracle of Mul Daya's land half).
     TopOfLibrary,
-    /// CR 118.9 — cast "without paying its mana cost" (Spell Queller,
-    /// D18). Offered only through [`ChoiceKind::CastWithoutPaying`],
-    /// during the resolution of the effect that grants it, for the one
-    /// exiled card it names: the engine refuses this modifier on an
-    /// ordinary priority-window cast. The mana cost is replaced by
+    /// CR 118.9 — cast "without paying its mana cost". Offered through
+    /// [`ChoiceKind::CastWithoutPaying`] for its named exiled card during
+    /// resolution, or in an ordinary window under a card definition's
+    /// explicit main-face permission from hand. The mana cost is replaced by
     /// nothing, so `{X}` is 0 (CR 107.3b) and no other alternative cost
     /// can apply; additional costs (kicker) and cost increases are still
-    /// paid, from `mana_payment`. Card-type timing is ignored (CR 608.2g)
-    /// but casting restrictions still apply. The spell leaves the stack to
+    /// paid, from `mana_payment`. Only the resolution-time permission
+    /// ignores card-type timing (CR 608.2g); casting restrictions still apply. The spell leaves the stack to
     /// its normal destination, by `face`: an Adventure cast this way goes on
     /// an adventure like any other (CR 715.4).
     WithoutPayingManaCost {

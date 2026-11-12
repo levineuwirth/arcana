@@ -1149,6 +1149,11 @@ pub struct PlayerState {
     pub id: PlayerId,
     pub life: i32,
     pub mana_pool: ManaPool,
+    /// Completed casts by this player across the entire game, including
+    /// spells later countered and casts from other zones. Stack copies do
+    /// not count. Updated by `emit_spell_cast`, never reset at a new turn.
+    #[serde(default)]
+    pub spells_cast_this_game: u32,
     /// Land plays remaining this turn.
     pub land_plays_remaining: u32,
     /// Base land plays per turn (raised by Exploration, Azusa, etc.).
@@ -1197,6 +1202,7 @@ impl PlayerState {
             id,
             life: starting_life,
             mana_pool: ManaPool::new(),
+            spells_cast_this_game: 0,
             land_plays_remaining: 1,
             land_plays_per_turn: 1,
             has_drawn_from_empty_library: false,

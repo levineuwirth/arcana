@@ -649,6 +649,8 @@ impl GameState {
                 panic!("emit_spell_cast: stack entry {stack_entry_id} is not a spell"));
             (card_id, entry.controller, entry.targets.clone(), entry.mana_spent)
         };
+        let player = self.player_mut(controller);
+        player.spells_cast_this_game = player.spells_cast_this_game.saturating_add(1);
         self.emit(GameEvent::SpellCast {
             object_id: stack_entry_id,
             card_id,

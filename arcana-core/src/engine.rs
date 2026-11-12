@@ -275,6 +275,23 @@ fn apply_pass_priority(state: &mut GameState, registry: &CardRegistry) {
     }
 }
 
+/// The card's own main-face alternative cost from hand. Shared by action
+/// enumeration and cast application; resolution-time grants stay separate.
+pub(crate) fn hand_free_cast_permitted(
+    state: &GameState,
+    registry: &CardRegistry,
+    controller: PlayerId,
+    object_id: ObjectId,
+    face: crate::actions::CastFace,
+) -> bool {
+    if face != crate::actions::CastFace::Main { return false; }
+    let Some(obj) = state.objects.get(object_id) else { return false; };
+    obj.zone == crate::zones::Zone::Hand(controller)
+        && registry.get(obj.card_id)
+            .and_then(|def| def.free_cast_from_hand)
+            .is_some_and(|condition| condition.is_met(state, controller))
+}
+
 // The compositional-fields approach (matching `Action::CastSpell`)
 // pushes the arg count past clippy's default 7. Refactor to a grouped
 // `CastInputs` struct is planned when a second cost-modifier (convoke
@@ -282,8 +299,8 @@ fn apply_pass_priority(state: &mut GameState, registry: &CardRegistry) {
 /// Cast `object_id` for `controller`: the priority holder in a priority
 /// window, or the owner answering a [`crate::actions::ChoiceKind::CastWithoutPaying`]
 /// mid-resolution. `without_paying_permitted` is true only on that choice's
-/// path; [`crate::actions::CastModifier::WithoutPayingManaCost`] is refused
-/// anywhere else.
+/// path. An ordinary free cast instead requires the card's explicit
+/// hand permission; normal timing is enforced by legal-action enumeration.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn apply_cast_spell(
     state: &mut GameState,
@@ -400,13 +417,18 @@ pub(crate) fn apply_cast_spell(
             }
         }
         crate::actions::CastModifier::WithoutPayingManaCost { face } => {
-            // CR 118.9 — only through the CastWithoutPaying choice, for an
-            // exiled card its owner casts during the granting effect's
-            // resolution, as one of the card's spell faces.
+            // CR 118.9 — either the named exile permission during a
+            // resolution, or the card's own alternative cost from hand.
+            // One authorization cannot substitute for the other.
             let owned_in_exile = state.objects.get(object_id)
                 .is_some_and(|o| o.zone == crate::zones::Zone::Exile
                     && o.owner == controller);
-            if !(without_paying_permitted && owned_in_exile) { return; }
+            let permitted = if without_paying_permitted {
+                owned_in_exile
+            } else {
+                hand_free_cast_permitted(state, registry, controller, object_id, face)
+            };
+            if !permitted { return; }
             let face_is_a_spell = match face {
                 crate::actions::CastFace::Main => state.objects.get(object_id)
                     .is_some_and(|o| !o.is_land()),

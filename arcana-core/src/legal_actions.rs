@@ -316,47 +316,64 @@ pub fn casts_without_paying(
             faces.push((CastFace::MdfcBack, &f.characteristics, f.spell_ability.as_ref()));
         }
     }
-    let kicker = crate::engine::kicker_cost_for(state, object);
     let mut out = Vec::new();
     for (face, chars, spell_ability) in faces {
-        if cast_restricted(state, player, registry, chars.types) { continue; }
-        let delta = state.spell_cost_delta(chars, player);
-        let ctx = SpendContext::for_spell(chars.types, chars.colors);
-        let x_value = chars.mana_cost.as_ref().filter(|c| c.x_count() > 0).map(|_| 0);
-        let mut variants = vec![(crate::mana::ManaCost::default().with_generic_delta(delta), Vec::new())];
-        if let Some(kicker) = &kicker {
-            variants.push((kicker.with_generic_delta(delta),
-                vec![crate::actions::AdditionalCostPayment::Kicker]));
-        }
-        let mode_combos: Vec<Vec<crate::stack::ModeChoice>> =
-            match spell_ability.and_then(|sa| sa.modal.as_ref()) {
-                None => vec![Vec::new()],
-                Some(modal) => enumerate_mode_combinations(modal)
-                    .into_iter().map(|c| vec![c]).collect(),
-            };
-        for modes in &mode_combos {
-            let reqs: Vec<TargetRequirement> = match spell_ability {
-                Some(sa) => crate::registry::effective_target_requirements(sa, modes),
-                None => Vec::new(),
-            };
-            let selections = enumerate_target_selections(&reqs, state, object, player);
-            if selections.is_empty() { continue; }
-            for (cost, additional_costs) in &variants {
-                let plans = enumerate_payment_plans(
-                    cost, &state.player(player).mana_pool, None, &ctx);
-                for plan in &plans {
-                    for targets in &selections {
-                        out.push(Action::CastSpell {
-                            object_id: object,
-                            targets: targets.clone(),
-                            modes: modes.clone(),
-                            mana_payment: plan.clone(),
-                            additional_costs: additional_costs.clone(),
-                            x_value,
-                            cast_modifier: crate::actions::CastModifier::WithoutPayingManaCost { face },
-                            cost_reductions: crate::actions::CostReductions::default(),
-                        });
-                    }
+        out.extend(free_casts_for_face(state, registry, player, object,
+            face, chars, spell_ability));
+    }
+    out
+}
+
+/// Expand a free cast after the caller has checked its zone, permission,
+/// timing and per-turn limit. Both windows pay the same supported costs.
+fn free_casts_for_face(
+    state: &GameState,
+    registry: &CardRegistry,
+    player: PlayerId,
+    object: ObjectId,
+    face: crate::actions::CastFace,
+    chars: &crate::objects::Characteristics,
+    spell_ability: Option<&crate::registry::SpellAbilityDef>,
+) -> Vec<Action> {
+    let kicker = crate::engine::kicker_cost_for(state, object);
+    let mut out = Vec::new();
+    if cast_restricted(state, player, registry, chars.types) { return Vec::new(); }
+    let delta = state.spell_cost_delta(chars, player);
+    let ctx = SpendContext::for_spell(chars.types, chars.colors);
+    let x_value = chars.mana_cost.as_ref().filter(|c| c.x_count() > 0).map(|_| 0);
+    let mut variants = vec![(crate::mana::ManaCost::default().with_generic_delta(delta), Vec::new())];
+    if let Some(kicker) = &kicker {
+        variants.push((kicker.with_generic_delta(delta),
+            vec![crate::actions::AdditionalCostPayment::Kicker]));
+    }
+    let mode_combos: Vec<Vec<crate::stack::ModeChoice>> =
+        match spell_ability.and_then(|sa| sa.modal.as_ref()) {
+            None => vec![Vec::new()],
+            Some(modal) => enumerate_mode_combinations(modal)
+                .into_iter().map(|c| vec![c]).collect(),
+        };
+    for modes in &mode_combos {
+        let reqs: Vec<TargetRequirement> = match spell_ability {
+            Some(sa) => crate::registry::effective_target_requirements(sa, modes),
+            None => Vec::new(),
+        };
+        let selections = enumerate_target_selections(&reqs, state, object, player);
+        if selections.is_empty() { continue; }
+        for (cost, additional_costs) in &variants {
+            let plans = enumerate_payment_plans(
+                cost, &state.player(player).mana_pool, None, &ctx);
+            for plan in &plans {
+                for targets in &selections {
+                    out.push(Action::CastSpell {
+                        object_id: object,
+                        targets: targets.clone(),
+                        modes: modes.clone(),
+                        mana_payment: plan.clone(),
+                        additional_costs: additional_costs.clone(),
+                        x_value,
+                        cast_modifier: crate::actions::CastModifier::WithoutPayingManaCost { face },
+                        cost_reductions: crate::actions::CostReductions::default(),
+                    });
                 }
             }
         }
@@ -1354,6 +1371,17 @@ fn legal_priority_actions(
                 .and_then(|af| af.as_split()).is_some())
             .map(|def| &def.base_characteristics)
             .unwrap_or(&obj.characteristics);
+
+        // The card's own alternative cost keeps this loop's normal timing
+        // and cast-limit checks. It never grants another zone or face, and
+        // does not require a payable printed mana cost.
+        if crate::engine::hand_free_cast_permitted(state, registry, player, id,
+            crate::actions::CastFace::Main)
+        {
+            actions.extend(free_casts_for_face(state, registry, player, id,
+                crate::actions::CastFace::Main, cast_chars,
+                registry.get(obj.card_id).and_then(|def| def.spell_ability.as_ref())));
+        }
 
         let Some(printed_cost) = cast_chars.mana_cost.clone() else { continue; };
         // CR 601.3e — static casting restrictions a permanent imposes on its
