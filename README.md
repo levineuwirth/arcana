@@ -1,8 +1,8 @@
 # Arcana
 
 A *Magic: The Gathering* rules engine in Rust — a rules-accurate core, a
-generated card catalog of over 20,000 cards, a playable web client, and a
-frozen line of RL research that motivated the whole project.
+generated card catalog of over 20,000 cards, a playable web client, and the
+research it was built for.
 
 For current project status see the latest dated audit under
 [`docs/audits/`](docs/audits/); it supersedes the status/roadmap docs
@@ -88,7 +88,7 @@ arguments for the full command list (`selfplay`, `replay`, `eval`, `arena`).
 
 ```bash
 cargo build --workspace
-cargo test --workspace       # ~1,624 tests across the workspace
+cargo test --workspace       # every crate's tests
 cargo test -p arcana-core    # a specific crate
 ```
 
@@ -121,6 +121,14 @@ results** — see [`docs/rl-status.md`](docs/rl-status.md) and
 [`docs/rl-benchmark.md`](docs/rl-benchmark.md) for what was tried and why
 it's parked. The one live thread for a future resumption (PIMC action
 distillation) is noted in [`docs/audit-2026-08.md`](docs/audit-2026-08.md).
+
+Research resumed in October 2026 as A2, on a field of 64 MTGTop8 Pioneer
+decks that the catalog covers in full. Its registered field experiment,
+A2.2, played every pair of those decks under search and random referees;
+its rows and readings are checked in under
+[`docs/a2-field/results/`](docs/a2-field/results/README.md). Next is A2.3,
+policy learning and comparison on a pinned engine, after a round of engine
+fidelity repairs.
 
 ## Status & roadmap
 
