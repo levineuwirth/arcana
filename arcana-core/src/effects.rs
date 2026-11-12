@@ -139,6 +139,16 @@ pub enum Effect {
     // --- zone manipulation -------------------------------------------------
     DestroyPermanent { target: ObjectId },
     ExilePermanent { target: ObjectId },
+    /// Exile a battlefield object, capture its new identity, and schedule
+    /// an action on that identity. The creating source stays separate.
+    /// Used for delayed blink; the capture also supports other schedules.
+    ExileAndSchedule {
+        target: ObjectId,
+        source: ObjectId,
+        controller: PlayerId,
+        when: DelayedWhen,
+        action: DelayedAction,
+    },
     ReturnToHand { target: ObjectId },
     PutOnTopOfLibrary { target: ObjectId },
     PutOnBottomOfLibrary { target: ObjectId },
@@ -149,6 +159,8 @@ pub enum Effect {
     /// battlefield. No-op if `target` isn't currently in exile.
     /// The owning controller is preserved by the underlying zone move.
     ReturnFromExileToBattlefield { target: ObjectId },
+    /// Return only this exile identity, under the specified player's control.
+    ReturnFromExileUnderControl { target: ObjectId, controller: PlayerId },
     /// Like [`Effect::ReturnFromGraveyardToBattlefield`] but places
     /// `count` counters of `kind` on the permanent *as it re-enters*
     /// (the object is re-id'd by the zone move, so the counters must
@@ -1071,11 +1083,12 @@ pub enum DelayedAction {
     Exile,
     /// Return the source to its owner's hand.
     ReturnToHand,
-    /// Blink/flicker: return the source from exile to the
-    /// battlefield. Pair with `Effect::ExilePermanent { target: id }`
-    /// now + `DelayedAction::ReturnFromExileToBattlefield` (when
-    /// `NextEndStep`) for the Cloudshift/Ghostway family.
+    /// Return the captured object from exile to the battlefield.
+    /// Pair with `Effect::ExileAndSchedule` to retain its new exile id;
+    /// scheduling an action on its pre-exile id cannot find the card.
     ReturnFromExileToBattlefield,
+    /// Return the captured exile object under the delayed ability's controller.
+    ReturnFromExileUnderYourControl,
     /// Grant haste until end of turn to the RESOLVED permanent (reads
     /// the firing `ZoneChange`'s `new_id`; pair with
     /// [`DelayedWhen::SelfResolvesToPermanent`]). "When you next cast
@@ -1126,6 +1139,8 @@ impl Effect {
             Effect::DestroyPermanent { target }
             | Effect::SacrificePermanent { target }
             | Effect::ExilePermanent { target }
+            | Effect::ExileAndSchedule { target, .. }
+            | Effect::ReturnFromExileUnderControl { target, .. }
             | Effect::ReturnToHand { target }
             | Effect::ReturnFromGraveyardToHand { target }
             | Effect::ReturnFromGraveyardToBattlefield { target }
@@ -1355,6 +1370,8 @@ impl Effect {
             | Effect::DestroyPermanent { .. }
             | Effect::SacrificePermanent { .. }
             | Effect::ExilePermanent { .. }
+            | Effect::ExileAndSchedule { .. }
+            | Effect::ReturnFromExileUnderControl { .. }
             | Effect::ReturnToHand { .. }
             | Effect::PutOnTopOfLibrary { .. }
             | Effect::PutOnBottomOfLibrary { .. }
@@ -1600,6 +1617,15 @@ impl Effect {
             Effect::ExilePermanent { target } => {
                 state.move_object_to_zone(*target, Zone::Exile, MoveCause::SpellResolution);
             }
+            Effect::ExileAndSchedule { target, source, controller, when, action } => {
+                if !valid_player(state, *controller) { return; }
+                if !state.objects.get(*target).is_some_and(|o| o.zone.is_battlefield()) { return; }
+                if let Some(exiled) = state.move_object_to_zone(*target, Zone::Exile, MoveCause::SpellResolution) {
+                    if state.objects.get(exiled).is_some_and(|o| o.zone == Zone::Exile) {
+                        install_delayed_action(state, *source, Some(exiled), *controller, *when, *action);
+                    }
+                }
+            }
             Effect::ReturnToHand { target } => {
                 if let Some(owner) = owner_of(state, *target) {
                     state.move_object_to_zone(*target, Zone::Hand(owner),
@@ -1638,6 +1664,13 @@ impl Effect {
                 if obj.zone != Zone::Exile { return; }
                 state.move_object_to_zone(
                     *target, Zone::Battlefield, MoveCause::SpellResolution);
+            }
+            Effect::ReturnFromExileUnderControl { target, controller } => {
+                if !valid_player(state, *controller) { return; }
+                let Some(obj) = state.objects.get(*target) else { return; };
+                if obj.zone != Zone::Exile { return; }
+                state.enter_battlefield(crate::entry::BattlefieldEntry::new(
+                    *target, *controller, MoveCause::SpellResolution));
             }
             Effect::ReturnFromGraveyardWithCounters { target, kind, count } => {
                 let Some(obj) = state.objects.get(*target) else { return; };
@@ -2635,6 +2668,7 @@ fn install_delayed_action(
         DelayedAction::ReturnToHand => delayed_return_hand,
         DelayedAction::ReturnFromExileToBattlefield =>
             delayed_return_exile_bf,
+        DelayedAction::ReturnFromExileUnderYourControl => delayed_return_exile_controlled,
         DelayedAction::GrantHasteUntilEndOfTurn =>
             delayed_grant_haste_eot,
         DelayedAction::EnterWithPlusOneCounter =>
@@ -2706,6 +2740,15 @@ fn delayed_controller_draws(
     _r: &crate::registry::CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::DrawCards { player: pt.controller, count: 1 }]
+}
+
+fn delayed_return_exile_controlled(
+    _s: &GameState, pt: &crate::triggers::PendingTrigger,
+    _r: &crate::registry::CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::ReturnFromExileUnderControl {
+        target: pt.affected.unwrap_or(pt.source), controller: pt.controller,
+    }]
 }
 // The SelfResolvesToPermanent pair act on the POST-MOVE id from the
 // firing ZoneChange (CR 400.7), not on `pt.source` (the stack id).

@@ -1,19 +1,19 @@
 //! Charming Prince — `{1}{W}` 2/2 Human Noble.
 //!
-//! * "When this creature enters, choose one — Scry 2; You gain 3 life; Exile
-//!   another target creature you own, return it under your control at the next
-//!   end step." — a modal "choose one" on a TRIGGERED ability has no dispatch
-//!   in the usable API (modal support is spell-ability only), so the whole
-//!   modal ETB is GAP'd.
-//! * "Scry" in Scryfall's keyword line tags the mode, not a `KeywordAbility`.
+//! When this creature enters, choose one —
+//! • Scry 2.
+//! • You gain 3 life.
+//! • Exile another target creature you own. Return it to the battlefield
+//!   under your control at the beginning of the next end step.
 
-use arcana_core::effects::Effect;
+use arcana_core::effects::{Effect, DelayedAction, DelayedWhen};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::state::GameState;
+use arcana_core::targets::{ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
 use arcana_core::triggers::{
-    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
+    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef, TriggerMode,
 };
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
 use arcana_core::zones::Zone;
@@ -46,16 +46,51 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             trigger_zones: vec![Zone::Battlefield],
             frequency: TriggerFrequency::EachTime,
             target_requirements: Vec::new(),
-        }),
+        }).with_trigger_modes(1, vec![
+            TriggerMode {
+                description: "Scry 2".into(),
+                target_requirements: Vec::new(),
+                effect: scry,
+            },
+            TriggerMode {
+                description: "Gain 3 life".into(),
+                target_requirements: Vec::new(),
+                effect: gain_life,
+            },
+            TriggerMode {
+                description: "Exile another creature you own; return it at the next end step".into(),
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Permanent(ObjectFilter::creature().excluding_source())
+                        .owned_by(ControllerConstraint::You),
+                    count: TargetCount::Exactly(1),
+                    controller: None,
+                }],
+                effect: blink,
+            },
+        ]),
     )
 }
 
-fn etb_modal(
-    _state: &GameState,
-    _trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    // GAP: modal "choose one" (Scry 2 / gain 3 life / exile-and-return a
-    // creature you own) is not expressible on a triggered ability.
+// The engine dispatches the chosen clause; this ordinary callback is unused.
+fn etb_modal(_state: &GameState, _trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
     Vec::new()
+}
+
+fn scry(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::Scry { player: trig.controller, count: 2 }]
+}
+
+fn gain_life(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::GainLife { player: trig.controller, amount: 3 }]
+}
+
+fn blink(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    match trig.targets.targets.first() {
+        Some(TargetChoice::Object(target)) => vec![Effect::ExileAndSchedule {
+            target: *target, source: trig.source, controller: trig.controller,
+            when: DelayedWhen::NextEndStep,
+            action: DelayedAction::ReturnFromExileUnderYourControl,
+        }],
+        _ => Vec::new(),
+    }
 }

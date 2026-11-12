@@ -283,6 +283,9 @@ pub enum TargetFilter {
     /// CR 115.4 "any target" — creature, player, or planeswalker.
     AnyTarget,
     Permanent(ObjectFilter),
+    /// Constrain an object target's owner independently of its controller.
+    /// A wrapper keeps ownership-only targeting out of general layer filters.
+    OwnedBy { filter: Box<TargetFilter>, owner: ControllerConstraint },
     Spell(ObjectFilter),
     /// "Counter target activated ability" / "target activated or
     /// triggered ability [from a noncreature source]" (Cursecatcher's
@@ -331,6 +334,11 @@ fn blocking_pairing(
 }
 
 impl TargetFilter {
+    /// "A target ... you own"; relative players use the ability's controller.
+    pub fn owned_by(self, owner: ControllerConstraint) -> Self {
+        Self::OwnedBy { filter: Box::new(self), owner }
+    }
+
     /// Is `choice` a legal target under this filter, given current state?
     ///
     /// Pure filter check — does not consult any outer controller
@@ -347,6 +355,11 @@ impl TargetFilter {
         source_controller: PlayerId,
     ) -> bool {
         match (self, choice) {
+            (TargetFilter::OwnedBy { filter, owner }, _) => {
+                choice.object_id().and_then(|id| state.objects.get(id))
+                    .is_some_and(|o| owner.matches(o.owner, source_controller))
+                    && filter.matches(choice, state, source, source_controller)
+            }
             // --- Creature: battlefield, creature type ---
             (TargetFilter::Creature, TargetChoice::Object(id)) => {
                 state.objects.get(*id).is_some_and(|o|
@@ -469,6 +482,10 @@ impl TargetFilter {
     ) -> Vec<TargetChoice> {
         let mut out = Vec::new();
         match self {
+            TargetFilter::OwnedBy { filter, .. } => {
+                out.extend(filter.enumerate_legal(state, source, source_controller)
+                    .into_iter().filter(|choice| self.matches(choice, state, source, source_controller)));
+            }
             TargetFilter::Creature => {
                 for o in state.objects.objects_in_zone(Zone::Battlefield) {
                     if o.is_creature() {

@@ -1622,6 +1622,29 @@ pub(crate) fn apply_resolution_choice(
             }
         }
 
+        // Modal triggers choose their clause at stack placement, then ask
+        // only for that clause's targets. No priority window intervenes.
+        (
+            ChoiceKind::ChooseTriggerMode { source: entry_id, .. },
+            _,
+            ChoiceResponse::ChooseTriggerMode { mode },
+        ) => {
+            let entry = state.find_stack_entry(*entry_id)
+                .expect("modal choice requires its stack entry");
+            let crate::stack::StackEntryKind::TriggeredAbility { trigger_id, .. } = entry.kind
+                else { panic!("modal choice requires a triggered ability"); };
+            let chosen = triggered_ability_modes(state, registry, entry.source, trigger_id)
+                .expect("modal trigger requires its definition")[*mode].clone();
+            let controller = entry.controller;
+            let entry = state.stack.iter_mut().find(|e| e.id == *entry_id).unwrap();
+            entry.modes = vec![crate::stack::ModeChoice::new(vec![*mode])];
+            entry.target_requirements = chosen.target_requirements.clone();
+            if let crate::stack::StackEntryKind::TriggeredAbility { resolved_effect, .. } = &mut entry.kind {
+                *resolved_effect = Some(chosen.effect);
+            }
+            prompt_trigger_targets(state, *entry_id, controller, chosen.target_requirements);
+        }
+
         // --- ChooseTargets mid-resolution (storm copies, CopySpell,
         // targeted triggered abilities). The pushing effect stashed
         // an `ApplyTargetsToStackEntry` follow-up naming the entry
@@ -2460,10 +2483,8 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
         apply_state_based_actions(state);
         if state.is_game_over() { state.clear_lki(); return; }
 
-        // 1b. Drain any targeted triggers that have been waiting for a
-        //     target prompt. Each pop either drops the trigger (no legal
-        //     targets, CR 603.3d) or pushes a stack entry + ChooseTargets
-        //     prompt; the latter case returns and the settle loop yields.
+        // 1b. Drain the APNAP batch, pausing for modes or targets.
+        //     An ability with no legal choices is dropped (CR 603.3c-d).
         if !state.pending_trigger_queue.is_empty() {
             // Draining a targeted trigger pushes a ChooseTargets choice.
             // If a resolution is already parked on a choice (a scry /
@@ -2480,12 +2501,15 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
             if state.pending_choice.is_some() {
                 return;
             }
-            if drain_one_queued_targeted_trigger(state, registry) {
-                // A choice was pushed — let settle detect it and yield.
-                return;
+            // Drain the whole batch up to its first choice. Plain triggers
+            // share this queue to retain APNAP order across a modal prompt;
+            // a large untargeted batch must not consume the settle-loop cap.
+            while !state.pending_trigger_queue.is_empty() {
+                if drain_one_queued_trigger(state, registry) {
+                    return;
+                }
             }
-            // Otherwise we dropped the head per CR 603.3d; loop and try
-            // the next entry (may still be more in the queue).
+            // The batch is complete; check for events it produced.
             continue;
         }
 
@@ -2517,16 +2541,9 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
 
         if pending.is_empty() { return; }
 
-        // 3. Split pending triggers by targeted-ness. Untargeted ones
-        //    push to the stack immediately; targeted ones queue for
-        //    async target choice via the next iteration's drain.
-        for pt in pending {
-            if ability_needs_targets(state, registry, &pt) {
-                state.pending_trigger_queue.push_back(pt);
-            } else {
-                push_trigger_stack_entry(state, registry, pt, Vec::new());
-            }
-        }
+        // 3. Collection already sorted APNAP. Preserve that order while
+        //    pausing for modes and targets, including plain abilities.
+        state.pending_trigger_queue.extend(pending);
         // Loop — the push emitted no direct events, but on the next
         // iteration SBAs re-run just in case the trigger list
         // referenced dead objects, and any further delayed triggers
@@ -2538,18 +2555,15 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
             {MAX_SETTLE_ITERATIONS} iterations");
 }
 
-/// Does this pending trigger's ability carry any target requirements?
-/// Looks the ability up via the source object's card_id; a missing
-/// source or missing ability entry is treated as "no targets" so the
-/// fallback "push with empty targets" path runs (consistent with
-/// pre-targeted-trigger behavior for synthesized triggers).
-fn ability_needs_targets(
+fn triggered_ability_modes<'a>(
     state: &GameState,
-    registry: &CardRegistry,
-    pt: &crate::triggers::PendingTrigger,
-) -> bool {
-    triggered_ability_requirements(state, registry, pt)
-        .is_some_and(|reqs| !reqs.is_empty())
+    registry: &'a CardRegistry,
+    source: ObjectId,
+    trigger_id: crate::types::TriggerId,
+) -> Option<&'a [crate::triggers::TriggerMode]> {
+    let obj = state.object_or_lki(source)?;
+    registry.get(obj.card_id)?.trigger_modes.iter()
+        .find(|(id, _)| *id == trigger_id).map(|(_, modes)| modes.as_slice())
 }
 
 /// The target requirements of a pending trigger's ability, from the
@@ -2627,26 +2641,39 @@ fn push_trigger_stack_entry(
     entry_id
 }
 
-/// Pop the next queued targeted trigger and either drop it
-/// (CR 603.3d — no legal targets) or push its stack entry together
-/// with a `ChooseTargets` prompt. Returns `true` if a prompt was
-/// pushed (caller should yield); `false` if the entry was dropped
-/// (caller should loop to try the next).
-fn drain_one_queued_targeted_trigger(
+/// Put the next queued trigger on the stack in APNAP order. A modal
+/// ability chooses its mode before targets (CR 603.3c-d). Return true
+/// only when a prompt was pushed; otherwise the queue may keep draining.
+fn drain_one_queued_trigger(
     state: &mut GameState,
     registry: &CardRegistry,
 ) -> bool {
     let Some(pt) = state.pending_trigger_queue.pop_front() else { return false; };
+    // Delayed and captured effects carry their own callback, not a printed
+    // modal declaration which happens to share the same source and id.
+    if pt.effect_override.is_none() {
+        if let Some(modes) = triggered_ability_modes(state, registry, pt.source, pt.trigger_id) {
+            let available: Vec<_> = modes.iter().enumerate()
+                .filter(|(_, mode)| !crate::legal_actions::enumerate_target_selections(
+                    &mode.target_requirements, state, pt.source, pt.controller).is_empty())
+                .map(|(i, mode)| (i, mode.description.clone())).collect();
+            if available.is_empty() { return false; }
+            let controller = pt.controller;
+            let entry_id = push_trigger_stack_entry(state, registry, pt, Vec::new());
+            state.push_pending_choice(controller,
+                crate::actions::ChoiceContext::ResolvingStack(entry_id),
+                crate::actions::ChoiceKind::ChooseTriggerMode { source: entry_id, modes: available });
+            return true;
+        }
+    }
     // Re-look up the ability's target_requirements. The source might
     // have changed zones (and so been re-id'd) between enqueue and
     // drain — we use object_or_lki so leaves-the-battlefield triggers
     // still find their printed text.
-    // A vanished source or ability drops the trigger silently.
-    let Some(requirements) = triggered_ability_requirements(state, registry, &pt)
-        else { return false; };
+    // Synthesized and delayed triggers need no registry definition.
+    let requirements = triggered_ability_requirements(state, registry, &pt).unwrap_or_default();
     if requirements.is_empty() {
-        // Defensive: caller mis-queued a non-targeted trigger. Push
-        // it like any other untargeted trigger.
+        // Plain and synthesized triggers need no choice.
         push_trigger_stack_entry(state, registry, pt, Vec::new());
         return false;
     }
@@ -2658,11 +2685,21 @@ fn drain_one_queued_targeted_trigger(
         return false;
     }
     let entry_id = push_trigger_stack_entry(state, registry, pt.clone(), requirements.clone());
+    prompt_trigger_targets(state, entry_id, pt.controller, requirements)
+}
+
+fn prompt_trigger_targets(
+    state: &mut GameState,
+    entry_id: ObjectId,
+    controller: PlayerId,
+    requirements: Vec<crate::targets::TargetRequirement>,
+) -> bool {
+    if requirements.is_empty() { return false; }
     state.pending_target_requirements = Some(requirements);
     state.pending_choice_follow_up = Some(
         crate::actions::ChoiceFollowUp::ApplyTargetsToStackEntry { entry_id });
     state.push_pending_choice(
-        pt.controller,
+        controller,
         crate::actions::ChoiceContext::ResolvingStack(entry_id),
         crate::actions::ChoiceKind::ChooseTargets { source: entry_id },
     );

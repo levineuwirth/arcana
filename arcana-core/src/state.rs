@@ -175,12 +175,10 @@ pub struct GameState {
     /// bottom-shuffle the full exiled list (incl. `hit`) via the
     /// engine's seeded RNG.
     pub pending_cascade: Option<PendingCascade>,
-    /// CR 603.3b/d — targeted triggered abilities that have matched
-    /// an event but haven't been put on the stack yet. Since target
-    /// choice is an agent decision and simultaneous triggers fire
-    /// in APNAP order, the engine processes them one at a time:
-    /// push stack entry + `ChooseTargets` prompt, yield, and on
-    /// choice resolution pop the next entry. Drained by
+    /// CR 603.3b-d — an APNAP-sorted batch waiting for stack placement.
+    /// Plain abilities share the queue with modal and targeted abilities
+    /// so pausing for a mode or target choice preserves the batch order.
+    /// Drained by
     /// [`crate::engine::run_sba_and_triggers`].
     pub pending_trigger_queue: std::collections::VecDeque<crate::triggers::PendingTrigger>,
     /// Last-known-information table (CR 603.10 / 400.7). When an

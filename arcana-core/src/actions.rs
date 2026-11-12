@@ -606,6 +606,13 @@ pub enum ChoiceKind {
     ChooseTargets {
         source: ObjectId,
     },
+    /// Choose exactly one available mode as a trigger goes on the stack,
+    /// before choosing that mode's targets (CR 603.3c, 700.2b).
+    /// `source` names the stack entry; indices retain printed clause order.
+    ChooseTriggerMode {
+        source: ObjectId,
+        modes: Vec<(usize, String)>,
+    },
     /// Choose one of the five colors (CR 700.4 — "choose a color").
     /// Answer: [`ChoiceResponse::ChooseColor`]. The follow-up that
     /// consumes the chosen color lives on
@@ -754,6 +761,8 @@ pub enum ChoiceResponse {
     /// of requirements; each `TargetChoice` is validated at the
     /// dispatcher (legality is rechecked per CR 608.2b).
     ChooseTargets { selection: crate::targets::TargetSelection },
+    /// Reply to [`ChoiceKind::ChooseTriggerMode`]. Saved in action replays.
+    ChooseTriggerMode { mode: usize },
     /// Reply to [`ChoiceKind::ChooseColor`].
     ChooseColor { color: crate::types::Color },
     /// Reply to [`ChoiceKind::CastWithoutPaying`]: `None` declines; `Some`

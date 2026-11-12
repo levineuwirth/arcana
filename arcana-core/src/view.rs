@@ -353,6 +353,10 @@ fn build_decision_prompt(
             })
         }
         ChoiceKind::PickPlayer { .. } => Some("Choose a player".to_string()),
+        ChoiceKind::ChooseTriggerMode { source, .. } => {
+            let who = state.find_stack_entry(*source).and_then(|e| name_of(e.source));
+            Some(who.map_or_else(|| "Choose one".to_string(), |n| format!("Choose one for {n}")))
+        }
         ChoiceKind::ChooseColor => Some("Choose a color".to_string()),
         ChoiceKind::CastWithoutPaying { object } => Some(match name_of(*object) {
             Some(n) => format!("Cast {n} without paying its mana cost?"),

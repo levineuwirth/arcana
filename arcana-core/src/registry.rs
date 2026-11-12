@@ -203,6 +203,9 @@ pub struct CardDefinition {
     /// so card files don't need to thread a new field into every
     /// `TriggeredAbilityDef` literal (1,800+ files).
     pub dynamic_x: Vec<(crate::types::TriggerId, crate::triggers::DynamicXFn)>,
+    /// "Choose one" clauses for registered triggers, keyed by ability id.
+    /// Modes are chosen at stack placement, before their own targets.
+    pub trigger_modes: Vec<(crate::types::TriggerId, Vec<crate::triggers::TriggerMode>)>,
     /// Sidecar: per-mode effect callbacks for modal spells (CR 700.2).
     /// Index by clause position in `SpellAbilityDef.modal.clauses`.
     /// `None` for non-modal cards. When `Some`, set the spell ability's
@@ -288,11 +291,30 @@ impl CardDefinition {
             alternate_face: None,
             combined_characteristics: None,
             dynamic_x: Vec::new(),
+            trigger_modes: Vec::new(),
             mode_effects: None,
             trigger_face_gates: Vec::new(),
             cant_cast: None,
             free_cast_from_hand: None,
         }
+    }
+
+    /// Give a printed trigger distinct modes. The ability's ordinary effect
+    /// is replaced by the chosen clause, and shared targets are forbidden.
+    /// This bounded API supports choosing exactly one mode, not entwine or
+    /// multiple/repeated modes, and does not attach modes to runtime grants.
+    pub fn with_trigger_modes(
+        mut self,
+        id: crate::types::TriggerId,
+        modes: Vec<crate::triggers::TriggerMode>,
+    ) -> Self {
+        let ability = self.triggered_abilities.iter().find(|a| a.id == id)
+            .expect("modal trigger must be registered first");
+        assert!(ability.target_requirements.is_empty(), "modal targets belong to each mode");
+        assert!(!modes.is_empty(), "modal trigger needs modes");
+        assert!(!self.trigger_modes.iter().any(|(other, _)| *other == id), "duplicate modal trigger");
+        self.trigger_modes.push((id, modes));
+        self
     }
 
     /// Offer the main spell face from hand without paying its mana cost

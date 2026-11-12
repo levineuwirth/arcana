@@ -260,6 +260,12 @@ fn render_choice_response(r: &ChoiceResponse, state: &GameState, registry: &Card
             format!("Target {}", names.join(", "))
         }
         ChoiceResponse::PickPlayer { picked } => format!("Choose P{picked}"),
+        ChoiceResponse::ChooseTriggerMode { mode } => state.pending_choice.as_ref()
+            .and_then(|pc| match &pc.kind {
+                crate::actions::ChoiceKind::ChooseTriggerMode { modes, .. } =>
+                    modes.iter().find(|(i, _)| i == mode).map(|(_, text)| text.clone()),
+                _ => None,
+            }).unwrap_or_else(|| format!("Choose mode {}", mode + 1)),
         ChoiceResponse::ChooseColor { color } => format!("Choose {color:?}"),
         ChoiceResponse::CastWithoutPaying { cast: None } => "Don't cast it".to_string(),
         ChoiceResponse::CastWithoutPaying { cast: Some(cast) } => {

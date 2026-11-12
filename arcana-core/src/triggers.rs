@@ -116,6 +116,16 @@ pub struct GrantedTrigger {
 /// route a pending trigger to the object's granted list unambiguously).
 pub const GRANTED_TRIGGER_ID_BASE: TriggerId = 0xF000_0000;
 
+/// One clause of a registered "choose one" triggered ability (CR 700.2).
+/// Each clause owns its targeting requirements and resolution callback.
+/// Stored on CardDefinition so existing triggered-ability literals stay valid.
+#[derive(Clone, Debug)]
+pub struct TriggerMode {
+    pub description: String,
+    pub target_requirements: Vec<crate::targets::TargetRequirement>,
+    pub effect: EffectFn,
+}
+
 #[derive(Clone, Debug)]
 pub struct TriggeredAbilityDef {
     pub id: TriggerId,

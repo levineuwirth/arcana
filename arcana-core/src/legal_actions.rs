@@ -612,6 +612,14 @@ fn legal_resolution_choice_actions(state: &GameState, registry: &CardRegistry) -
                 }
             }
         }
+        ChoiceKind::ChooseTriggerMode { modes, .. } => {
+            for (mode, _) in modes {
+                out.push(Action::SubmitResolutionChoice {
+                    id,
+                    response: ChoiceResponse::ChooseTriggerMode { mode: *mode },
+                });
+            }
+        }
         ChoiceKind::ChooseColor => {
             for color in crate::types::Color::all() {
                 out.push(Action::SubmitResolutionChoice {
