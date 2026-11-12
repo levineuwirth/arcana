@@ -513,7 +513,10 @@ impl GameState {
         amount: u32,
         is_combat: bool,
     ) {
-        if amount == 0 { return; }
+        // An illegal target cannot perform damage (CR 608.2b). Check
+        // the resolution sentinel, not arena membership: ordinary damage
+        // sources may have left play and still deal damage using LKI.
+        if source == crate::objects::ILLEGAL_TARGET_ID || amount == 0 { return; }
         // CR 702.16d — Protection: all damage from a qualifying source
         // is prevented. Check before the replacement pipeline so the
         // DamageDealt event never fires for fully-protected targets.
@@ -553,12 +556,20 @@ impl GameState {
                 // CR 702.2b — Deathtouch damage flags the target for
                 // the SBA regardless of how much damage is marked.
                 let source_has_dt = self.has_keyword(source, &KeywordAbility::Deathtouch);
+                // The recipient's current types, through the layers: a
+                // permanent that has become, or stopped being, a
+                // planeswalker, battle or creature takes damage as what it
+                // is now (A1.5bc).
+                let types = self.compute_characteristics(id).map(|c| c.types);
+                let is_creature = self.is_creature_now(id);
+                let is_planeswalker = types.is_some_and(|t| t.is_planeswalker());
+                let is_battle = types.is_some_and(|t| t.is_battle());
                 let Some(obj) = self.objects.get_mut(id) else { return; };
                 // CR 310.8 — damage dealt to a battle causes that many
                 // defense counters to be removed (it is not marked as
                 // creature-style damage). The 0-defense SBA handles
                 // defeat. Wither/infect/deathtouch don't apply.
-                if obj.characteristics.types.is_battle() {
+                if is_battle {
                     let removed = obj.remove_counters(CounterKind::Defense, amount);
                     self.emit(GameEvent::DamageDealt {
                         source, target, amount, is_combat,
@@ -572,20 +583,42 @@ impl GameState {
                     }
                     return;
                 }
-                if deals_minus_counters {
-                    // CR 702.90b/702.91b — dealt as −1/−1 counters
-                    // instead of marked damage (still "damage dealt").
-                    obj.add_counters(CounterKind::MinusOneMinusOne, amount);
+                // CR 120.3c — damage dealt to a planeswalker removes that
+                // many loyalty counters; the loyalty SBA (704.5i) handles
+                // the rest. A planeswalker that is also a creature takes
+                // the creature's result as well (CR 120.3d-e); a
+                // noncreature planeswalker has no damage marked, and
+                // wither and infect, which concern creatures, don't
+                // reshape what it takes (A1.5bc).
+                let loyalty_removed = if is_planeswalker {
+                    obj.remove_counters(CounterKind::Loyalty, amount)
                 } else {
-                    obj.mark_damage(amount);
-                }
-                if source_has_dt {
-                    obj.has_deathtouch_damage = true;
+                    0
+                };
+                let creature_result = is_creature || !is_planeswalker;
+                if creature_result {
+                    if deals_minus_counters {
+                        // CR 702.90b/702.91b — dealt as −1/−1 counters
+                        // instead of marked damage (still "damage dealt").
+                        obj.add_counters(CounterKind::MinusOneMinusOne, amount);
+                    } else {
+                        obj.mark_damage(amount);
+                    }
+                    if source_has_dt {
+                        obj.has_deathtouch_damage = true;
+                    }
                 }
                 self.emit(GameEvent::DamageDealt {
                     source, target, amount, is_combat,
                 });
-                if deals_minus_counters {
+                if loyalty_removed > 0 {
+                    self.emit(GameEvent::CounterRemoved {
+                        object_id: id,
+                        kind: CounterKind::Loyalty,
+                        count: loyalty_removed,
+                    });
+                }
+                if creature_result && deals_minus_counters {
                     self.emit(GameEvent::CounterAdded {
                         object_id: id,
                         kind: CounterKind::MinusOneMinusOne,
@@ -875,7 +908,7 @@ impl GameState {
             let Some(src_ctrl) = self.objects.get(e.source)
                 .map(|s| s.controller) else { continue; };
             let matches = self.objects.get(attacker).is_some_and(|o|
-                filter.matches_base(o, self, src_ctrl));
+                filter.matches_base_with_source(o, self, e.source, src_ctrl));
             if matches {
                 c.max_blockers = Some(c.max_blockers
                     .map_or(*max, |m| m.min(*max)));
@@ -2481,6 +2514,7 @@ mod tests {
         let pw_id = s.allocate_object_id();
         let mut pw = GameObject::new(pw_id, 1, Zone::Battlefield, 2, planeswalker_chars(4));
         pw.controller = 1;
+        pw.add_counters(CounterKind::Loyalty, 4);
         s.objects.insert(pw);
 
         s.apply_declared_attackers(vec![AttackerDeclaration {
@@ -2491,10 +2525,94 @@ mod tests {
         s.apply_declared_blockers(vec![]);
         s.deal_combat_damage();
 
-        // Damage goes on the planeswalker as an object.
-        assert_eq!(s.objects.get(pw_id).unwrap().damage_marked, 3);
+        // CR 120.3c — the damage removes loyalty; nothing is marked on
+        // a noncreature planeswalker (A1.5bc). This test asserted
+        // marked damage before, which encoded the defect.
+        let pw = s.objects.get(pw_id).unwrap();
+        assert_eq!(pw.count_counters(CounterKind::Loyalty), 1);
+        assert_eq!(pw.damage_marked, 0);
+        assert!(s.event_log.iter().any(|e| matches!(e,
+            GameEvent::CounterRemoved { object_id, kind: CounterKind::Loyalty, count: 3 }
+                if *object_id == pw_id)));
         // Defending player took no life loss.
         assert_eq!(s.player(1).life, 20);
+    }
+
+    /// A planeswalker that is also a creature takes both results of
+    /// damage (CR 120.3c and 120.3e), and a source with infect still
+    /// removes loyalty from a noncreature planeswalker rather than
+    /// putting −1/−1 counters on it (A1.5bc).
+    #[test]
+    fn damage_to_a_planeswalker_creature_and_from_infect() {
+        let mut s = GameState::new(2, 0);
+        let src = put_creature(&mut s, 0, 3, 3);
+        let both = s.allocate_object_id();
+        let mut chars = planeswalker_chars(4);
+        chars.types = TypeLine(TypeLine::PLANESWALKER | TypeLine::CREATURE);
+        chars.power = Some(PtValue::Fixed(5));
+        chars.toughness = Some(PtValue::Fixed(5));
+        let mut obj = GameObject::new(both, 1, Zone::Battlefield, 2, chars);
+        obj.controller = 1;
+        obj.add_counters(CounterKind::Loyalty, 4);
+        s.objects.insert(obj);
+        s.deal_damage(src, DamageTarget::Object(both), 3, false);
+        let o = s.objects.get(both).unwrap();
+        assert_eq!((o.count_counters(CounterKind::Loyalty), o.damage_marked), (1, 3));
+
+        let walker = s.allocate_object_id();
+        let mut obj = GameObject::new(walker, 1, Zone::Battlefield, 2, planeswalker_chars(4));
+        obj.controller = 1;
+        obj.add_counters(CounterKind::Loyalty, 4);
+        s.objects.insert(obj);
+        s.objects.get_mut(src).unwrap().characteristics.keywords.push(KeywordAbility::Infect);
+        s.deal_damage(src, DamageTarget::Object(walker), 2, false);
+        let o = s.objects.get(walker).unwrap();
+        assert_eq!(o.count_counters(CounterKind::Loyalty), 2);
+        assert_eq!(o.count_counters(CounterKind::MinusOneMinusOne), 0);
+        assert_eq!(o.damage_marked, 0);
+    }
+
+    /// Damage reads the recipient's computed types (A1.5bc): a planeswalker
+    /// that a layer-4 effect has made only a creature takes creature damage
+    /// and keeps its loyalty, and a creature that gains the planeswalker
+    /// type loses loyalty as well as taking the damage.
+    #[test]
+    fn damage_reads_a_changed_planeswalker_type() {
+        use crate::layers::{ContinuousEffect, ContinuousEffectKind, Duration, Layer};
+        fn only_a_creature(_: ObjectId, chars: &mut Characteristics, _: &GameState) {
+            if chars.types.is_planeswalker() {
+                chars.types = TypeLine(TypeLine::CREATURE);
+                chars.power = Some(PtValue::Fixed(4));
+                chars.toughness = Some(PtValue::Fixed(4));
+            }
+        }
+        let mut s = GameState::new(2, 0);
+        let src = put_creature(&mut s, 0, 2, 2);
+        let walker = s.allocate_object_id();
+        let mut obj = GameObject::new(walker, 1, Zone::Battlefield, 2, planeswalker_chars(4));
+        obj.controller = 1;
+        obj.add_counters(CounterKind::Loyalty, 4);
+        s.objects.insert(obj);
+        s.add_continuous_effect(ContinuousEffect {
+            source: walker, layer: Layer::L4Type, timestamp: 0,
+            duration: Duration::Permanent, dependency: None, printed: None,
+            kind: ContinuousEffectKind::Custom(only_a_creature),
+        });
+        s.deal_damage(src, DamageTarget::Object(walker), 2, false);
+        let o = s.objects.get(walker).unwrap();
+        assert_eq!((o.count_counters(CounterKind::Loyalty), o.damage_marked), (4, 2),
+            "no longer a planeswalker: creature damage, loyalty kept");
+
+        let mut s = GameState::new(2, 0);
+        let src = put_creature(&mut s, 0, 2, 2);
+        let bear = put_creature(&mut s, 1, 4, 4);
+        s.objects.get_mut(bear).unwrap().add_counters(CounterKind::Loyalty, 4);
+        s.add_continuous_effect(ContinuousEffect::add_type(
+            bear, bear, TypeLine(TypeLine::PLANESWALKER), Duration::Permanent));
+        s.deal_damage(src, DamageTarget::Object(bear), 2, false);
+        let o = s.objects.get(bear).unwrap();
+        assert_eq!((o.count_counters(CounterKind::Loyalty), o.damage_marked), (2, 2),
+            "now also a planeswalker: both results");
     }
 
     fn battle_chars(defense: u32) -> Characteristics {

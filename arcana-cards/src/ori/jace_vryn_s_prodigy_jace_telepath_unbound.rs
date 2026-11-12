@@ -11,26 +11,22 @@
 //! -9: You get an emblem with "Whenever you cast a spell, target opponent mills
 //!     five cards."
 //!
-//! # GAPs
-//! - The front-face activated ability (`{T}: draw then discard; if 5+ cards in
-//!   graveyard, exile then return transformed`) requires checking graveyard size
-//!   at activation time and then exiling + returning from exile as a transform
-//!   sequence. ActivatedAbilityDef is not in this prompt's API surface; the
-//!   triggered-ability approach is used instead as a best-effort stub, but the
-//!   exact condition (`graveyard_size >= 5` check before transform) and the
-//!   tap/draw/discard part cannot be fully modeled. The ability is omitted.
-//! - Planeswalker loyalty abilities (+1/-3/-9) are not expressible: the engine
-//!   has no LoyaltyAbilityDef in the demonstrated API.
-//! - "You may cast target instant or sorcery card from your graveyard this
-//!   turn" — casting from graveyard permission not expressible.
-//! - Emblem creation not available.
-//! Back-face-only triggered abilities are not modeled (GAP).
+//! GAP: front-face loot/exile/return-transformed needs a zone-change continuation.
+//! GAP: −3 needs casting permission (including alternative costs), not flashback.
+//! GAP: −9 needs correct controller identity when choosing an emblem trigger’s targets.
 
+use arcana_core::effects::Effect;
+use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
-use arcana_core::registry::{CardDefinition, CardFace, CardRegistry};
+use arcana_core::registry::{
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone, CardDefinition,
+    CardFace, CardRegistry,
+};
+use arcana_core::state::GameState;
+use arcana_core::targets::{TargetChoice, TargetCount, TargetRequirement};
 use arcana_core::types::{
-    CardId, ColorSet, PtValue, SubtypeSet, SupertypeSet, TypeLine,
+    CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine,
 };
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -72,13 +68,37 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         spell_ability: None,
     };
 
-    // GAP: front-face tap activated ability not modeled (ActivatedAbilityDef
-    // not in demonstrated API for this prompt shape; graveyard-size conditional
-    // transform + exile/return sequence not expressible).
-    // GAP: planeswalker loyalty abilities (+1/-3/-9) not modeled.
-    // GAP: back-face-only triggered abilities not modeled.
+    let mut target = TargetRequirement::target_creature();
+    target.count = TargetCount::UpTo(1);
     reg.register(
         CardDefinition::new(name, chars)
-            .with_transform_back(back),
+            .with_transform_back(back)
+            .with_activated_ability(ActivatedAbilityDef {
+                text: "+1: Up to one target creature gets -2/-0 until your next turn.".into(),
+                cost: ActivationCost {
+                    add_self_counter: Some((CounterKind::Loyalty, 1)),
+                    ..Default::default()
+                },
+                target_requirements: vec![target],
+                is_mana_ability: false,
+                is_loyalty_ability: true,
+                activation_zone: ActivationZone::Battlefield,
+                is_instant_speed: false,
+                face_gate: Some(1),
+                effect: plus_one,
+            }),
     )
+}
+
+fn plus_one(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(TargetChoice::Object(id)) = ctx.targets.targets.first() else {
+        return vec![];
+    };
+    vec![Effect::Pump {
+        target: *id,
+        power: -2,
+        toughness: 0,
+        keywords: vec![],
+        duration: Duration::UntilYourNextTurn(ctx.controller),
+    }]
 }

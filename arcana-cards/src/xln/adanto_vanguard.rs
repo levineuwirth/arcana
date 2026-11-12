@@ -5,9 +5,9 @@
 //! * "Pay 4 life: This creature gains indestructible until end of turn."
 
 use arcana_core::effects::{Effect, KeywordAbility};
-use arcana_core::layers::Duration;
+use arcana_core::layers::{ContinuousEffect, Duration, SourceCondition, SelfModification};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
@@ -32,10 +32,14 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         toughness: Some(PtValue::Fixed(1)),
         ..Default::default()
     };
-    // GAP: static "As long as this creature is attacking, it gets +2/+0" —
-    // a conditional continuous buff, not a triggered/activated ability.
+    // Live attacking bonus, installed by the engine on entry (A1.5br).
     reg.register(
         CardDefinition::new(name, chars)
+            .with_static(vec![ContinuousEffect::conditional_self(
+                NULL_OBJECT_ID, SourceCondition::Attacking,
+                SelfModification::ModifyPt { power: 2, toughness: 0 },
+                Duration::WhileSourceOnBattlefield,
+            )])
             .with_activated_ability(ActivatedAbilityDef {
                 text: "Pay 4 life: This creature gains indestructible until end of turn.".into(),
                 cost: ActivationCost {

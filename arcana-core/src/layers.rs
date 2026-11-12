@@ -153,10 +153,76 @@ pub struct ContinuousEffect {
     pub timestamp: u64,
     pub duration: Duration,
     pub dependency: Option<DependencyInfo>,
+    /// `Some` for an effect of a printed static ability, installed by the
+    /// engine as its source entered the battlefield (A1.5br). `None` for
+    /// every effect a spell or ability created.
+    pub printed: Option<PrintedStatic>,
     pub kind: ContinuousEffectKind,
 }
 
+/// The identity of an installed printed static ability: with the effect's
+/// `source`, its position in the source's definition. Every part of one
+/// static carries the same tag, so the parts are added, suppressed and
+/// removed together, and installing a tag that is present does nothing.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PrintedStatic {
+    /// Position of the static ability in the source's definition.
+    pub index: u16,
+    /// The earliest layer any part of the static applies in. A static that
+    /// starts applying before layer 6 keeps applying after its source has
+    /// lost its abilities there (CR 613.6).
+    pub first_layer: Layer,
+    /// The static has more than one part. Its parts share the set of
+    /// objects fixed where the first one is applied (CR 613.6).
+    pub grouped: bool,
+}
+
+/// A printed static ability (CR 604): the continuous effects it generates
+/// while its permanent is on the battlefield. Built at registration with
+/// [`crate::objects::NULL_OBJECT_ID`] as each part's source; the engine
+/// points the parts at the permanent as it enters
+/// ([`GameState::install_printed_statics`]). Use kinds that read their
+/// source live (the filtered, attached, self and conditional kinds), never
+/// one that names a fixed object or player, and a source-bound duration.
+/// One definition is one ability: an ability whose effect spans layers
+/// lists every part here, so the parts stay one group.
+#[derive(Clone, Debug)]
+pub struct StaticAbilityDef {
+    pub parts: Vec<ContinuousEffect>,
+}
+
+/// Append one printed static ability to a characteristics block.
+pub fn push_static_ability(chars: &mut Characteristics, def: StaticAbilityDef) {
+    let mut defs: Vec<StaticAbilityDef> = chars.static_abilities.as_deref()
+        .cloned().unwrap_or_default();
+    defs.push(def);
+    chars.static_abilities = Some(defs.into());
+}
+
+impl StaticAbilityDef {
+    pub fn new(parts: Vec<ContinuousEffect>) -> Self {
+        debug_assert!(parts.iter().all(|p| matches!(p.duration,
+            Duration::WhileSourceOnBattlefield
+            | Duration::WhileSourceShowsFace(_)
+            | Duration::WhileControllerTurn)),
+            "a printed static lasts while its source is on the battlefield");
+        Self { parts }
+    }
+}
+
 impl ContinuousEffect {
+    /// A source-only effect whose applicability follows live game state.
+    pub fn conditional_self(source: ObjectId, condition: SourceCondition,
+                            modification: SelfModification, duration: Duration) -> Self {
+        let layer = match &modification {
+            SelfModification::ModifyPt { .. } => Layer::L7cPTModifying,
+            SelfModification::RemoveTypes { .. } => Layer::L4Type,
+            SelfModification::CantAttackOrBlock => Layer::L6Ability,
+        };
+        Self { source, layer, timestamp: 0, duration, dependency: None, printed: None,
+            kind: ContinuousEffectKind::ConditionalSelf { condition, modification } }
+    }
+
     /// Build a standard pump effect ("+P/+T to target"), layer 7c.
     pub fn pump(source: ObjectId, target: ObjectId, power: i32, toughness: i32,
                 duration: Duration) -> Self {
@@ -165,7 +231,7 @@ impl ContinuousEffect {
             layer: Layer::L7cPTModifying,
             timestamp: 0, // overwritten by `add_continuous_effect`
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::PumpTarget { target, power, toughness },
         }
     }
@@ -178,7 +244,7 @@ impl ContinuousEffect {
             layer: Layer::L7cPTModifying,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::AnthemForController {
                 controller, power, toughness,
             },
@@ -193,7 +259,7 @@ impl ContinuousEffect {
             layer: Layer::L7bPTSetting,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::SetPt { target, power, toughness },
         }
     }
@@ -207,7 +273,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::GrantKeywordTarget { target, keyword },
         }
     }
@@ -227,7 +293,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::GrantKeywordToController { controller, keyword },
         }
     }
@@ -241,7 +307,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::Goaded { target, goader },
         }
     }
@@ -258,7 +324,7 @@ impl ContinuousEffect {
             layer: Layer::L7cPTModifying,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::AttachedCreatureGetsPt { power, toughness },
         }
     }
@@ -278,7 +344,7 @@ impl ContinuousEffect {
             layer: Layer::L7cPTModifying,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::AttachedCreatureGetsPtDynamic { compute },
         }
     }
@@ -295,7 +361,7 @@ impl ContinuousEffect {
             layer: Layer::L7cPTModifying,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::AttachedCreatureGetsPtPerMatch {
                 filter, per_power, per_toughness },
         }
@@ -313,7 +379,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::AttachedCreatureGainsKeyword { keyword },
         }
     }
@@ -329,7 +395,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::RemoveKeywordTarget { target, keyword },
         }
     }
@@ -344,7 +410,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::AttachedCreatureLosesKeyword { keyword },
         }
     }
@@ -363,7 +429,7 @@ impl ContinuousEffect {
             layer: Layer::L4Type,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::AttachedCreatureAddSubtypes { subtypes },
         }
     }
@@ -379,7 +445,7 @@ impl ContinuousEffect {
             layer: Layer::L4Type,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::AddSubtypesTarget { target, subtypes },
         }
     }
@@ -394,7 +460,7 @@ impl ContinuousEffect {
             layer: Layer::L4Type,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::AddSupertypesTarget { target, supertypes },
         }
     }
@@ -409,7 +475,7 @@ impl ContinuousEffect {
             layer: Layer::L4Type,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::AttachedCreatureAddTypes { types },
         }
     }
@@ -423,7 +489,7 @@ impl ContinuousEffect {
             layer: Layer::L4Type,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::AttachedCreatureEveryCreatureType,
         }
     }
@@ -439,7 +505,7 @@ impl ContinuousEffect {
             layer: Layer::L5Color,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::AttachedCreatureAddColors { colors },
         }
     }
@@ -455,7 +521,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::AttachedCreatureCantAttack,
         }
     }
@@ -468,7 +534,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::AttachedCreatureCantBlock,
         }
     }
@@ -485,8 +551,30 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::AttachedCreatureGrantsActivated { ability },
+        }
+    }
+
+    /// Build a "[filter] permanents have '\[cost\]: \[effect\]'" grant
+    /// (Rishkar, Peema Renegade: "each creature you control with a
+    /// counter on it has '{T}: Add {G}.'"). The `ability`'s cost and
+    /// effect run against each matching permanent when its controller
+    /// activates it. Nothing is installed on the permanents: the grant
+    /// is read from this one effect each time abilities are listed.
+    pub fn filtered_grant_activated(source: ObjectId,
+                                    filter: crate::targets::ObjectFilter,
+                                    ability: crate::registry::ActivatedAbilityDef,
+                                    duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None, printed: None,
+            kind: ContinuousEffectKind::FilteredGrantsActivated {
+                filter, ability: Box::new(ability),
+            },
         }
     }
 
@@ -498,7 +586,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::AttachedCreatureDontUntap,
         }
     }
@@ -511,7 +599,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::AttachedCreatureCantBeBlocked,
         }
     }
@@ -526,7 +614,7 @@ impl ContinuousEffect {
             layer: Layer::L7bPTSetting,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::AttachedCreatureSetsPt { power, toughness },
         }
     }
@@ -543,7 +631,7 @@ impl ContinuousEffect {
             layer: Layer::L7cPTModifying,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::FilteredPump { filter, power, toughness },
         }
     }
@@ -570,7 +658,7 @@ impl ContinuousEffect {
             layer: Layer::L7cPTModifying,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::FilteredPumpDynamic { filter, compute },
         }
     }
@@ -594,7 +682,7 @@ impl ContinuousEffect {
             layer: Layer::L7cPTModifying,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::FilteredPumpPerMatch {
                 filter, count_filter, per_power, per_toughness },
         }
@@ -620,7 +708,7 @@ impl ContinuousEffect {
             layer: Layer::L7aPTCharacteristicDefining,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::SetBasePtFromCda { compute },
         }
     }
@@ -642,7 +730,7 @@ impl ContinuousEffect {
             layer: Layer::L7aPTCharacteristicDefining,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::SetBasePtFromMatch { count_filter },
         }
     }
@@ -667,7 +755,7 @@ impl ContinuousEffect {
             layer: Layer::L7aPTCharacteristicDefining,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::SetBasePtFromMatchAsym {
                 count_filter, count_is_power, other_fixed },
         }
@@ -684,7 +772,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::FilteredGrantKeyword { filter, keyword },
         }
     }
@@ -698,7 +786,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::FilteredCantAttack { filter },
         }
     }
@@ -712,7 +800,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::FilteredCantBlock { filter },
         }
     }
@@ -733,9 +821,31 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::FilteredGrantTriggeredAbility {
                 filter, ability: Box::new(ability),
+            },
+        }
+    }
+
+    /// "Enchanted/equipped permanent has '[triggered ability]'" (Curious
+    /// Obsession). The ability belongs to whatever the source is attached
+    /// to, for as long as it is attached: the grant has the source's
+    /// lifetime and timestamp, and ends on detachment (A1.5br). Give the
+    /// ability an id in the granted range.
+    pub fn attached_grant_triggered(
+        source: ObjectId,
+        ability: crate::triggers::TriggeredAbilityDef,
+        duration: Duration,
+    ) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None, printed: None,
+            kind: ContinuousEffectKind::AttachedCreatureGrantsTriggered {
+                ability: Box::new(ability),
             },
         }
     }
@@ -749,7 +859,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::DontUntapTarget { target },
         }
     }
@@ -764,7 +874,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::FilteredDontUntap { filter },
         }
     }
@@ -780,7 +890,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::UntapCap { filter, max },
         }
     }
@@ -797,7 +907,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::SpellCostModifier {
                 spell_filter, caster, generic_delta,
             },
@@ -814,7 +924,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::AbilityCostModifier {
                 source_filter, generic_delta,
             },
@@ -832,7 +942,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::FilteredMaxBlockers { filter, max },
         }
     }
@@ -848,7 +958,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::MaxHandSize { modifier },
         }
     }
@@ -865,7 +975,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::CastAsThoughFlash { spell_filter, player: None },
         }
     }
@@ -882,7 +992,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::CastAsThoughFlash { spell_filter, player: Some(player) },
         }
     }
@@ -901,7 +1011,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::SpellCastLimit { spell_filter, player, max },
         }
     }
@@ -914,7 +1024,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::PlayFromTopOfLibrary,
         }
     }
@@ -931,7 +1041,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::FilteredRemoveKeyword { filter, keyword },
         }
     }
@@ -945,7 +1055,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::AttackTax { generic },
         }
     }
@@ -958,7 +1068,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::CantAttack { target },
         }
     }
@@ -969,7 +1079,7 @@ impl ContinuousEffect {
                        duration: Duration) -> Self {
         Self {
             source, layer: Layer::L6Ability, timestamp: 0, duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::MustAttack { target },
         }
     }
@@ -980,7 +1090,7 @@ impl ContinuousEffect {
                                 duration: Duration) -> Self {
         Self {
             source, layer: Layer::L6Ability, timestamp: 0, duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::FilteredMustAttack { filter },
         }
     }
@@ -996,7 +1106,7 @@ impl ContinuousEffect {
             layer: Layer::L6Ability,
             timestamp: 0,
             duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::CantBeBlocked { target },
         }
     }
@@ -1007,7 +1117,7 @@ impl ContinuousEffect {
                       duration: Duration) -> Self {
         Self {
             source, layer: Layer::L6Ability, timestamp: 0, duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::CantBlock { target },
         }
     }
@@ -1017,7 +1127,7 @@ impl ContinuousEffect {
                               duration: Duration) -> Self {
         Self {
             source, layer: Layer::L6Ability, timestamp: 0, duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::LoseAllAbilities { target },
         }
     }
@@ -1033,7 +1143,7 @@ impl ContinuousEffect {
                                    duration: Duration) -> Self {
         Self {
             source, layer: Layer::L6Ability, timestamp: 0, duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::FilteredLoseAllAbilities { filter },
         }
     }
@@ -1048,7 +1158,7 @@ impl ContinuousEffect {
                                 duration: Duration) -> Self {
         Self {
             source, layer: Layer::L7bPTSetting, timestamp: 0, duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::FilteredSetBasePt { filter, power, toughness },
         }
     }
@@ -1058,7 +1168,7 @@ impl ContinuousEffect {
                     types: crate::types::TypeLine, duration: Duration) -> Self {
         Self {
             source, layer: Layer::L4Type, timestamp: 0, duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::AddType { target, types },
         }
     }
@@ -1072,7 +1182,7 @@ impl ContinuousEffect {
                              duration: Duration) -> Self {
         Self {
             source, layer: Layer::L4Type, timestamp: 0, duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::FilteredAddType { filter, types },
         }
     }
@@ -1082,7 +1192,7 @@ impl ContinuousEffect {
                      colors: crate::types::ColorSet, duration: Duration) -> Self {
         Self {
             source, layer: Layer::L5Color, timestamp: 0, duration,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::SetColor { target, colors },
         }
     }
@@ -1094,6 +1204,9 @@ impl ContinuousEffect {
 // TODO(serialize): `Custom` carries a bare fn pointer.
 #[derive(Clone, Debug)]
 pub enum ContinuousEffectKind {
+    /// Conditional printed self effect; state-only conditions do not recurse
+    /// through characteristic computation. Installed with a source lifetime.
+    ConditionalSelf { condition: SourceCondition, modification: SelfModification },
     /// "Target object gets +P/+T until end of turn" (Giant Growth).
     PumpTarget { target: ObjectId, power: i32, toughness: i32 },
     /// "Creatures you control get +P/+T" (Crusade, Glorious Anthem).
@@ -1246,6 +1359,21 @@ pub enum ContinuousEffectKind {
     AttachedCreatureGrantsActivated {
         ability: crate::registry::ActivatedAbilityDef,
     },
+    /// MARKER — "[filter] permanents have '\[cost\]: \[effect\]'"
+    /// (Rishkar, Peema Renegade). Grants the held [`ActivatedAbilityDef`]
+    /// to every battlefield permanent matching `filter`, read from the
+    /// source's controller's side and against the permanent's computed
+    /// characteristics, so "creature" means a creature now. Gathered by
+    /// [`GameState::granted_activated_for`] beside the attachment grants;
+    /// the cost applies to the permanent that has the ability. A
+    /// permanent stops having it the moment it stops matching, the
+    /// source leaves or loses its abilities, or a later "loses all
+    /// abilities" takes it away. The ability is boxed so that this
+    /// variant does not set the size of every continuous effect.
+    FilteredGrantsActivated {
+        filter: crate::targets::ObjectFilter,
+        ability: Box<crate::registry::ActivatedAbilityDef>,
+    },
     /// MARKER — "Enchanted/equipped creature doesn't untap during its
     /// controller's untap step" (Glimmerdust Nap, Ice Over, Encrust).
     /// Dynamic sibling of [`Self::DontUntapTarget`]; follows
@@ -1289,10 +1417,9 @@ pub enum ContinuousEffectKind {
     /// Layer 7c — GLOBAL FILTERED pump: "[filter] creatures get
     /// +P/+T" beyond the controller-anthem ("creatures with flying
     /// you control get +1/+1", "all Goblins get +1/+0", "white
-    /// creatures get -1/-1"). The filter is evaluated against BASE
-    /// characteristics (`ObjectFilter::matches_base`) from the
-    /// SOURCE's controller's perspective — layer-aware predicates
-    /// here would recurse.
+    /// creatures get -1/-1"). Applicability reads the in-flight
+    /// characteristics from the source controller's perspective,
+    /// without starting another characteristic computation.
     FilteredPump {
         filter: crate::targets::ObjectFilter,
         power: i32,
@@ -1348,7 +1475,7 @@ pub enum ContinuousEffectKind {
     },
     /// Layer 6 — global filtered keyword grant ("all Zombies have
     /// menace", "creatures with power 2 or less have shroud"). Same
-    /// base-characteristics filter posture as
+    /// in-flight-characteristics filter posture as
     /// [`Self::FilteredPump`].
     FilteredGrantKeyword {
         filter: crate::targets::ObjectFilter,
@@ -1362,6 +1489,12 @@ pub enum ContinuousEffectKind {
     /// kin, "creatures with power 2 or less can't block"). Consumed
     /// by [`GameState::cant_block`].
     FilteredCantBlock { filter: crate::targets::ObjectFilter },
+    /// "Enchanted/equipped permanent has '[triggered ability]'": a marker
+    /// read by the engine's trigger collection, which offers `ability` to
+    /// the permanent the source is attached to. Inert while unattached.
+    AttachedCreatureGrantsTriggered {
+        ability: Box<crate::triggers::TriggeredAbilityDef>,
+    },
     /// Marker — STATIC ability grant to a filtered class: "[filter]
     /// creatures have '<triggered ability>'" (Backgrounds' "Commander
     /// creatures you own have …", Aether Charge-kin). Consumed by the
@@ -1477,6 +1610,37 @@ pub enum ContinuousEffectKind {
     Custom(fn(ObjectId, &mut Characteristics, &GameState)),
 }
 
+/// Conditions whose inputs are independent of the characteristic pipeline.
+/// Keeping these typed avoids a predicate recursively asking for its own P/T.
+#[derive(Clone, Debug)]
+pub enum SourceCondition {
+    ControllerHandSizeAtLeast(u32),
+    Attacking,
+    ControllerDevotionBelow { colors: ColorSet, threshold: u32 },
+}
+
+impl SourceCondition {
+    pub fn matches(&self, state: &GameState, source: ObjectId) -> bool {
+        let Some(obj) = state.objects.get(source).filter(|o| o.zone.is_battlefield())
+            else { return false; };
+        match self {
+            Self::ControllerHandSizeAtLeast(n) =>
+                state.objects.count_in_zone(crate::zones::Zone::Hand(obj.controller)) >= *n as usize,
+            Self::Attacking => state.combat.as_ref().is_some_and(|c| c.is_attacker(source)),
+            Self::ControllerDevotionBelow { colors, threshold } =>
+                crate::script::devotion(state, obj.controller, *colors) < *threshold,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum SelfModification {
+    ModifyPt { power: i32, toughness: i32 },
+    /// Remove the named card types and their associated subtype symbols.
+    RemoveTypes { types: TypeLine, subtypes: SubtypeSet },
+    CantAttackOrBlock,
+}
+
 /// How a [`ContinuousEffectKind::MaxHandSize`] effect changes its
 /// controller's maximum hand size.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1498,6 +1662,31 @@ impl ContinuousEffect {
     /// battlefield); every other duration is live until removed by
     /// its expiry hook.
     pub fn is_live(&self, state: &GameState) -> bool {
+        self.duration_is_live(state) && !self.suppressed_by_ability_loss(state)
+    }
+
+    /// Has this printed static's source lost the ability that generates
+    /// it? True while a "loses all abilities" effect is aimed at the
+    /// source, unless the static started applying in a layer before the
+    /// one where abilities are removed: such an effect goes on applying
+    /// to the same objects in its later layers (CR 613.6). The tag stays
+    /// installed, so when the loss ends this same static resumes. Only
+    /// loss aimed at the source counts; a filtered loss
+    /// ([`ContinuousEffectKind::FilteredLoseAllAbilities`]) does not
+    /// suppress statics yet.
+    pub fn suppressed_by_ability_loss(&self, state: &GameState) -> bool {
+        match self.printed {
+            Some(tag) if tag.first_layer >= Layer::L6Ability =>
+                state.has_lost_all_abilities(self.source),
+            _ => false,
+        }
+    }
+
+    /// Liveness by duration alone. The layer pipeline filters on this and
+    /// asks about ability loss only for the printed statics it is about to
+    /// apply; everything else calls [`Self::is_live`].
+    #[inline]
+    pub(crate) fn duration_is_live(&self, state: &GameState) -> bool {
         match self.duration {
             Duration::WhileSourceShowsFace(face) => {
                 state.objects.get(self.source).is_some_and(|o|
@@ -1514,6 +1703,36 @@ impl ContinuousEffect {
 }
 
 impl ContinuousEffectKind {
+    /// A marker changes no characteristic: its own scanner reads it (the
+    /// combat restrictions, cost modifiers, granted abilities and the
+    /// rest), and the layer pipeline passes over it. Keep this list in
+    /// step with the marker arms of `applies_to_in_layer` and `apply`.
+    pub fn is_marker(&self) -> bool {
+        matches!(self,
+            Self::FilteredCantAttack { .. }
+            | Self::FilteredMustAttack { .. }
+            | Self::FilteredCantBlock { .. }
+            | Self::AttachedCreatureCantAttack
+            | Self::AttachedCreatureCantBlock
+            | Self::AttachedCreatureDontUntap
+            | Self::AttachedCreatureCantBeBlocked
+            | Self::AttachedCreatureGrantsActivated { .. }
+            | Self::FilteredGrantsActivated { .. }
+            | Self::AttachedCreatureGrantsTriggered { .. }
+            | Self::FilteredGrantTriggeredAbility { .. }
+            | Self::DontUntapTarget { .. }
+            | Self::FilteredDontUntap { .. }
+            | Self::UntapCap { .. }
+            | Self::FilteredMaxBlockers { .. }
+            | Self::SpellCostModifier { .. }
+            | Self::AbilityCostModifier { .. }
+            | Self::AttackTax { .. }
+            | Self::MaxHandSize { .. }
+            | Self::CastAsThoughFlash { .. }
+            | Self::SpellCastLimit { .. }
+            | Self::PlayFromTopOfLibrary)
+    }
+
     /// Does this effect variant apply to `object_id`? `source` is the
     /// installer (the permanent that produced the effect) — needed by
     /// variants whose target depends on live state referencing the
@@ -1525,7 +1744,17 @@ impl ContinuousEffectKind {
         source: ObjectId,
         state: &GameState,
     ) -> bool {
+        let Some(obj) = state.objects.get(object_id) else { return false; };
+        self.applies_to_in_layer(object_id, source, &obj.characteristics, state)
+    }
+
+    fn applies_to_in_layer(
+        &self, object_id: ObjectId, source: ObjectId,
+        chars: &Characteristics, state: &GameState,
+    ) -> bool {
         match self {
+            Self::ConditionalSelf { condition, .. } =>
+                object_id == source && condition.matches(state, source),
             Self::PumpTarget { target, .. }
             | Self::SetPt { target, .. }
             | Self::GrantKeywordTarget { target, .. }
@@ -1543,7 +1772,7 @@ impl ContinuousEffectKind {
             Self::AnthemForController { controller, .. }
             | Self::GrantKeywordToController { controller, .. } => {
                 state.objects.get(object_id).is_some_and(|o|
-                    o.is_creature()
+                    chars.types.is_creature()
                     && o.zone.is_battlefield()
                     && o.controller == *controller)
             }
@@ -1574,13 +1803,13 @@ impl ContinuousEffectKind {
             | Self::FilteredSetBasePt { filter, .. }
             | Self::FilteredAddType { filter, .. }
             | Self::FilteredGrantKeyword { filter, .. } => {
-                // Battlefield-only, base-characteristics filter from
+                // Battlefield-only, in-flight filter from
                 // the source controller's perspective.
                 let Some(src_ctrl) = state.objects.get(source)
                     .map(|s| s.controller) else { return false; };
                 state.objects.get(object_id).is_some_and(|o|
                     o.zone.is_battlefield()
-                        && filter.matches_base(o, state, src_ctrl))
+                        && filter.matches_in_layer(o, chars, state, source, src_ctrl))
             }
             // Markers: consumed by their scanners, never applied to
             // characteristics.
@@ -1592,6 +1821,8 @@ impl ContinuousEffectKind {
             | Self::AttachedCreatureDontUntap
             | Self::AttachedCreatureCantBeBlocked
             | Self::AttachedCreatureGrantsActivated { .. }
+            | Self::FilteredGrantsActivated { .. }
+            | Self::AttachedCreatureGrantsTriggered { .. }
             | Self::FilteredGrantTriggeredAbility { .. }
             | Self::DontUntapTarget { .. }
             | Self::FilteredDontUntap { .. }
@@ -1621,6 +1852,14 @@ impl ContinuousEffectKind {
         state: &GameState,
     ) {
         match self {
+            Self::ConditionalSelf { modification, .. } => match modification {
+                SelfModification::ModifyPt { power, toughness } => add_to_pt(chars, *power, *toughness),
+                SelfModification::RemoveTypes { types, subtypes } => {
+                    chars.types.0 &= !types.0;
+                    chars.subtypes.0.retain(|subtype| !subtypes.contains(*subtype));
+                }
+                SelfModification::CantAttackOrBlock => {}
+            },
             Self::PumpTarget { power, toughness, .. }
             | Self::AnthemForController { power, toughness, .. }
             | Self::AttachedCreatureGetsPt { power, toughness } => {
@@ -1673,7 +1912,7 @@ impl ContinuousEffectKind {
                 // BASE-characteristics count — recursion-proof at Layer 7a.
                 let n = state.objects
                     .objects_in_zone(crate::zones::Zone::Battlefield)
-                    .filter(|o| count_filter.matches_base(o, state, who))
+                    .filter(|o| count_filter.matches_base_with_source(o, state, source, who))
                     .count() as i32;
                 chars.power = Some(PtValue::Fixed(n));
                 chars.toughness = Some(PtValue::Fixed(n));
@@ -1683,7 +1922,7 @@ impl ContinuousEffectKind {
                     .map(|s| s.controller).unwrap_or(0);
                 let n = state.objects
                     .objects_in_zone(crate::zones::Zone::Battlefield)
-                    .filter(|o| count_filter.matches_base(o, state, who))
+                    .filter(|o| count_filter.matches_base_with_source(o, state, source, who))
                     .count() as i32;
                 let (p, t) = if *count_is_power { (n, *other_fixed) }
                              else { (*other_fixed, n) };
@@ -1700,7 +1939,7 @@ impl ContinuousEffectKind {
                 // which uses layer-aware `matches` and could recurse).
                 let n = state.objects
                     .objects_in_zone(crate::zones::Zone::Battlefield)
-                    .filter(|o| count_filter.matches_base(o, state, who))
+                    .filter(|o| count_filter.matches_base_with_source(o, state, source, who))
                     .count() as i32;
                 add_to_pt(chars, per_power * n, per_toughness * n);
             }
@@ -1720,6 +1959,8 @@ impl ContinuousEffectKind {
             | Self::AttachedCreatureDontUntap
             | Self::AttachedCreatureCantBeBlocked
             | Self::AttachedCreatureGrantsActivated { .. }
+            | Self::FilteredGrantsActivated { .. }
+            | Self::AttachedCreatureGrantsTriggered { .. }
             | Self::FilteredGrantTriggeredAbility { .. }
             | Self::DontUntapTarget { .. }
             | Self::FilteredDontUntap { .. }
@@ -1826,8 +2067,101 @@ impl GameState {
     /// Register a continuous effect. Overwrites `effect.timestamp`
     /// with a fresh value so callers don't need to manage it.
     pub fn add_continuous_effect(&mut self, mut effect: ContinuousEffect) {
+        // A1.5ax: an effect bound to its source is never installed once
+        // the source has left the battlefield, as `add_replacement_effect`
+        // already holds (A1.5ab). Statics are installed by entry
+        // triggers, so a permanent removed in response to its own
+        // trigger would otherwise leave a source-blind kind (an anthem,
+        // a keyword grant) applying for the rest of the game. Durations
+        // that outlive the source are untouched.
+        if matches!(effect.duration, Duration::WhileSourceOnBattlefield)
+            && !self.objects.get(effect.source).is_some_and(|o| o.zone.is_battlefield())
+        {
+            return;
+        }
         effect.timestamp = self.next_timestamp();
         self.continuous_effects.push(effect);
+    }
+
+    /// Is a live "loses all abilities" effect aimed at `id`
+    /// ([`ContinuousEffectKind::LoseAllAbilities`])? Reads no
+    /// characteristics, so the layer pipeline can ask it.
+    pub fn has_lost_all_abilities(&self, id: ObjectId) -> bool {
+        self.ability_loss_timestamp(id).is_some()
+    }
+
+    /// The latest timestamp of a live "loses all abilities" effect aimed
+    /// at `id`, if any. An ability granted to `id` by an effect with a
+    /// later timestamp survives the loss (CR 613.7a).
+    pub fn ability_loss_timestamp(&self, id: ObjectId) -> Option<u64> {
+        self.continuous_effects.iter().filter_map(|e| match e.kind {
+            ContinuousEffectKind::LoseAllAbilities { target }
+                if target == id && e.duration_is_live(self) => Some(e.timestamp),
+            _ => None,
+        }).max()
+    }
+
+    /// Every object a live "loses all abilities" effect is aimed at.
+    fn sources_without_abilities(&self) -> Vec<ObjectId> {
+        self.continuous_effects.iter().filter_map(|e| match e.kind {
+            ContinuousEffectKind::LoseAllAbilities { target }
+                if e.duration_is_live(self) => Some(target),
+            _ => None,
+        }).collect()
+    }
+
+    /// Install the printed static abilities of the permanent `id`
+    /// (A1.5br). The engine calls this as a permanent enters the
+    /// battlefield, on every entry route, so its statics exist before
+    /// state-based actions are checked and before any player has priority;
+    /// no trigger is involved. Each static is tagged by this source and its
+    /// position ([`PrintedStatic`]) and takes the permanent's timestamp
+    /// (CR 613.7a). Installing a tag that is present does nothing, so the
+    /// call is safe to repeat and never refreshes a timestamp. A face-down
+    /// permanent's replaced characteristics carry no statics, so nothing
+    /// is installed for it.
+    pub fn install_printed_statics(&mut self, id: ObjectId) {
+        let Some(obj) = self.objects.get(id) else { return; };
+        if !obj.zone.is_battlefield() { return; }
+        let Some(defs) = obj.characteristics.static_abilities.clone() else { return; };
+        let timestamp = obj.timestamp;
+        for (index, def) in defs.iter().enumerate() {
+            let index = index as u16;
+            if self.continuous_effects.iter().any(|e| e.source == id
+                && e.printed.is_some_and(|tag| tag.index == index))
+            {
+                continue;
+            }
+            let Some(first_layer) = def.parts.iter().map(|p| p.layer).min()
+                else { continue; };
+            let tag = PrintedStatic { index, first_layer, grouped: def.parts.len() > 1 };
+            for part in &def.parts {
+                let mut effect = part.clone();
+                effect.source = id;
+                effect.timestamp = timestamp;
+                effect.printed = Some(tag);
+                self.continuous_effects.push(effect);
+            }
+        }
+    }
+
+    /// Give the permanent `id` a new timestamp from the shared clock, and
+    /// with it its installed printed statics, whose effects take their
+    /// object's timestamp (CR 613.7a). Called when a permanent enters the
+    /// battlefield (CR 613.7d) and when an Aura or Equipment becomes
+    /// attached (CR 613.7e); never by a control change or by installing
+    /// statics again.
+    pub fn stamp_object(&mut self, id: ObjectId, timestamp: Option<u64>) {
+        if self.objects.get(id).is_none() { return; }
+        let timestamp = timestamp.unwrap_or_else(|| self.next_timestamp());
+        if let Some(obj) = self.objects.get_mut(id) {
+            obj.timestamp = timestamp;
+        }
+        for e in self.continuous_effects.iter_mut() {
+            if e.source == id && e.printed.is_some() {
+                e.timestamp = timestamp;
+            }
+        }
     }
 
     /// Remove every continuous effect matching `pred`. Returns the
@@ -1915,6 +2249,12 @@ impl GameState {
             chars.every_creature_type = true;
         }
 
+        // Sources whose printed statics are suppressed (A1.5br), gathered
+        // the first time a printed static is about to be applied, so a
+        // board with none in force pays nothing for the question.
+        let mut lost_abilities: Option<Vec<ObjectId>> = None;
+        let mut group_applies: Vec<((ObjectId, u16), bool)> = Vec::new();
+
         for &layer in Layer::all_in_order().iter() {
             if layer == Layer::L7dPTCounters {
                 // Inline: fold the object's own +1/+1 and -1/-1
@@ -1931,12 +2271,47 @@ impl GameState {
             // analysis — we only honor timestamps for now.)
             let mut effects: Vec<&ContinuousEffect> = self.continuous_effects.iter()
                 .filter(|e| e.layer == layer
-                    && e.is_live(self)
-                    && e.kind.applies_to(object_id, e.source, self))
+                    && e.duration_is_live(self))
                 .collect();
             effects.sort_by_key(|e| e.timestamp);
             for e in effects {
-                e.kind.apply(object_id, e.source, &mut chars, self);
+                // A printed static whose source has lost its abilities is
+                // suppressed, as in `ContinuousEffect::is_live`.
+                if let Some(tag) = e.printed {
+                    if tag.first_layer >= Layer::L6Ability
+                        && lost_abilities
+                            .get_or_insert_with(|| self.sources_without_abilities())
+                            .contains(&e.source)
+                    {
+                        continue;
+                    }
+                }
+                // Applicability observes earlier layers AND earlier timestamps
+                // in this layer; gathering only applicable effects up front
+                // would miss a keyword granted by an earlier effect.
+                let applies = match e.printed {
+                    // CR 613.6: a static whose effect spans layers applies,
+                    // in each later layer, to the objects it applied to in
+                    // its first. The later parts do not ask their filter
+                    // again, which the earlier part may have changed. A
+                    // marker part is not applied here, so it fixes no set.
+                    Some(tag) if tag.grouped && !e.kind.is_marker() => {
+                        let key = (e.source, tag.index);
+                        match group_applies.iter().find(|(k, _)| *k == key) {
+                            Some((_, applied)) => *applied,
+                            None => {
+                                let applied = e.kind.applies_to_in_layer(
+                                    object_id, e.source, &chars, self);
+                                group_applies.push((key, applied));
+                                applied
+                            }
+                        }
+                    }
+                    _ => e.kind.applies_to_in_layer(object_id, e.source, &chars, self),
+                };
+                if applies {
+                    e.kind.apply(object_id, e.source, &mut chars, self);
+                }
             }
         }
 
@@ -2013,6 +2388,9 @@ impl GameState {
     /// Does `object_id` have an active "can't attack" restriction?
     pub fn cant_attack(&self, object_id: ObjectId) -> bool {
         self.continuous_effects.iter().any(|e| match &e.kind {
+            ContinuousEffectKind::ConditionalSelf { condition,
+                modification: SelfModification::CantAttackOrBlock } =>
+                e.source == object_id && e.is_live(self) && condition.matches(self, e.source),
             ContinuousEffectKind::CantAttack { target } => *target == object_id,
             ContinuousEffectKind::AttachedCreatureCantAttack =>
                 e.is_live(self)
@@ -2024,7 +2402,7 @@ impl GameState {
                         .map(|s| s.controller)
                         .zip(self.objects.get(object_id))
                         .is_some_and(|(ctrl, o)|
-                            filter.matches_base(o, self, ctrl))
+                            filter.matches_base_with_source(o, self, e.source, ctrl))
             }
             _ => false,
         })
@@ -2046,7 +2424,7 @@ impl GameState {
                         .map(|s| s.controller)
                         .zip(self.objects.get(object_id))
                         .is_some_and(|(ctrl, o)|
-                            filter.matches_base(o, self, ctrl))
+                            filter.matches_base_with_source(o, self, e.source, ctrl))
             }
             _ => false,
         })
@@ -2068,23 +2446,23 @@ impl GameState {
                         .map(|s| s.controller)
                         .zip(self.objects.get(object_id))
                         .is_some_and(|(ctrl, o)|
-                            filter.matches_base(o, self, ctrl))
+                            filter.matches_base_with_source(o, self, e.source, ctrl))
             }
             _ => None::<()>.is_some(),
         })
     }
 
-    /// Live untap caps: (filter, max, source controller) triples —
+    /// Live untap caps: (filter, max, source, source controller) —
     /// "players can't untap more than `max` [filter] during their
     /// untap steps". Consumed by `engine::untap_step`.
     pub fn untap_caps(&self)
-        -> Vec<(crate::targets::ObjectFilter, u32, PlayerId)>
+        -> Vec<(crate::targets::ObjectFilter, u32, ObjectId, PlayerId)>
     {
         self.continuous_effects.iter().filter_map(|e| match &e.kind {
             ContinuousEffectKind::UntapCap { filter, max }
                 if e.is_live(self) =>
                     self.objects.get(e.source).map(|s|
-                        (filter.clone(), *max, s.controller)),
+                        (filter.clone(), *max, e.source, s.controller)),
             _ => None,
         }).collect()
     }
@@ -2131,7 +2509,7 @@ impl GameState {
                     Some(p) => Some(*p),
                     None => self.objects.get(e.source).map(|s| s.controller),
                 };
-                holder == Some(player) && spell_filter.matches_base(spell, self, player)
+                holder == Some(player) && spell_filter.matches_base_with_source(spell, self, e.source, player)
             }
             _ => false,
         })
@@ -2167,8 +2545,9 @@ impl GameState {
                     None => return false,
                 };
                 player.matches(caster, src_ctrl)
-                    && spell_filter.matches_base(spell, self, caster)
-                    && crate::script::spells_cast_this_turn_by(self, spell_filter, caster) >= *max
+                    && spell_filter.matches_base_with_source(spell, self, e.source, caster)
+                    && crate::script::spells_cast_this_turn_by_with_source(
+                        self, spell_filter, caster, e.source) >= *max
             }
             _ => false,
         })
@@ -2206,7 +2585,7 @@ impl GameState {
                 let src_ctrl = self.objects.get(e.source)
                     .map(|s| s.controller)?;
                 (who.matches(caster, src_ctrl)
-                    && spell_filter.matches_base(&probe, self, src_ctrl))
+                    && spell_filter.matches_base_with_source(&probe, self, e.source, src_ctrl))
                     .then_some(*generic_delta)
             }
             _ => None,
@@ -2226,7 +2605,7 @@ impl GameState {
                 let src_ctrl = self.objects.get(e.source)
                     .map(|s| s.controller)?;
                 let m = self.objects.get(ability_source).is_some_and(|o|
-                    source_filter.matches_base(o, self, src_ctrl));
+                    source_filter.matches_base_with_source(o, self, e.source, src_ctrl));
                 m.then_some(*generic_delta)
             }
             _ => None,
@@ -2261,31 +2640,72 @@ impl GameState {
         })
     }
 
-    /// Does `object_id` have an active "can't block" restriction?
-    /// Activated abilities granted to `object_id` by an attached
-    /// Aura/Equipment (CR 303.4 / 702.6 "enchanted creature has
-    /// '\[cost\]: …'"). Gathers every live
-    /// [`ContinuousEffectKind::AttachedCreatureGrantsActivated`] whose
-    /// source is attached to `object_id`, in `continuous_effects`
-    /// order. The SAME order is used by both the legal-action
-    /// enumerator and `lookup_activated_ability`, so the flat ability
-    /// index stays consistent between enumeration and resolution.
+    /// Activated abilities granted to `object_id` by continuous effects,
+    /// in `continuous_effects` order, one entry per granting effect:
+    ///
+    /// * [`ContinuousEffectKind::AttachedCreatureGrantsActivated`], from
+    ///   an Aura or Equipment attached to it (CR 303.4 / 702.6
+    ///   "enchanted creature has '\[cost\]: …'");
+    /// * [`ContinuousEffectKind::FilteredGrantsActivated`], from a
+    ///   static that names a class of permanents it belongs to
+    ///   ("each creature you control with a counter on it has …").
+    ///
+    /// This one list is what both the legal-action enumerator and
+    /// `lookup_activated_ability` read, so the flat ability index means
+    /// the same ability when an action is offered and when it is
+    /// applied. Two effects granting the same ability give two entries.
     pub fn granted_activated_for(&self, object_id: ObjectId)
         -> Vec<&crate::registry::ActivatedAbilityDef>
     {
+        // Computed at most once, and only when a filtered grant gets
+        // past its cheap checks.
+        let mut computed: Option<Option<Characteristics>> = None;
         self.continuous_effects.iter().filter_map(|e| match &e.kind {
             ContinuousEffectKind::AttachedCreatureGrantsActivated { ability }
                 if e.is_live(self)
                     && self.objects.get(e.source)
                         .and_then(|s| s.attached_to) == Some(object_id) =>
                 Some(ability),
+            ContinuousEffectKind::FilteredGrantsActivated { filter, ability } => {
+                let obj = self.objects.get(object_id)?;
+                if !obj.zone.is_battlefield() { return None; }
+                let src = self.objects.get(e.source)?;
+                // Two of the filter's own conditions, asked first because
+                // they need no characteristics. The full match below asks
+                // them again, so these can only save work.
+                if filter.controller.as_ref()
+                    .is_some_and(|c| !c.matches(obj.controller, src.controller))
+                    || (filter.any_counter && !obj.has_any_counter())
+                {
+                    return None;
+                }
+                // The source has lost its abilities (or shows another face).
+                if !e.is_live(self) { return None; }
+                // A "loses all abilities" aimed at the permanent takes the
+                // grant away only if it is the later of the two (CR 613.7).
+                if self.ability_loss_timestamp(object_id)
+                    .is_some_and(|lost| lost > e.timestamp) { return None; }
+                // The grant applies in layer 6, after type-changing
+                // effects: match what the permanent is now, not what is
+                // printed on it. Called from outside the layer pipeline,
+                // so computing here cannot recurse.
+                let chars = computed
+                    .get_or_insert_with(|| self.compute_characteristics(object_id))
+                    .as_ref()?;
+                filter.matches_in_layer(obj, chars, self, e.source, src.controller)
+                    .then_some(&**ability)
+            }
             _ => None,
         }).collect()
     }
 
+    /// Does `object_id` have an active "can't block" restriction?
     /// Consumed by [`crate::combat::GameState::blocker_eligible`].
     pub fn cant_block(&self, object_id: ObjectId) -> bool {
         self.continuous_effects.iter().any(|e| match &e.kind {
+            ContinuousEffectKind::ConditionalSelf { condition,
+                modification: SelfModification::CantAttackOrBlock } =>
+                e.source == object_id && e.is_live(self) && condition.matches(self, e.source),
             ContinuousEffectKind::CantBlock { target } => *target == object_id,
             ContinuousEffectKind::AttachedCreatureCantBlock =>
                 e.is_live(self)
@@ -2297,7 +2717,7 @@ impl GameState {
                         .map(|s| s.controller)
                         .zip(self.objects.get(object_id))
                         .is_some_and(|(ctrl, o)|
-                            filter.matches_base(o, self, ctrl))
+                            filter.matches_base_with_source(o, self, e.source, ctrl))
             }
             _ => false,
         })
@@ -2695,9 +3115,12 @@ mod tests {
         let mine1 = put_creature(&mut s, 0, 1, 1);
         let mine2 = put_creature(&mut s, 0, 2, 2);
         let theirs = put_creature(&mut s, 1, 3, 3);
+        // A real source on the battlefield: a source-bound effect from a
+        // phantom id is refused at installation (A1.5ax).
+        let source = put_creature(&mut s, 0, 0, 1);
 
         s.add_continuous_effect(ContinuousEffect::keyword_anthem(
-            999, /*ctrl=*/ 0, KeywordAbility::Menace, Duration::WhileSourceOnBattlefield));
+            source, /*ctrl=*/ 0, KeywordAbility::Menace, Duration::WhileSourceOnBattlefield));
 
         assert!(s.has_keyword(mine1, &KeywordAbility::Menace));
         assert!(s.has_keyword(mine2, &KeywordAbility::Menace));
@@ -3243,7 +3666,7 @@ mod tests {
             layer: Layer::L7cPTModifying,
             timestamp: 0,
             duration: Duration::WhileSourceShowsFace(1),
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::AnthemForController {
                 controller: 0, power: 1, toughness: 1 },
         });
@@ -3650,7 +4073,7 @@ mod tests {
             layer: Layer::L7cPTModifying,
             timestamp: 0,
             duration: Duration::Permanent,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::Custom(grow),
         });
         assert_eq!(s.computed_power(c), Some(4));

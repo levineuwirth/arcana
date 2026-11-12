@@ -513,7 +513,7 @@ mod tests {
             object_id: 1,
             card_id: 42,
             controller: 0,
-            targets: TargetSelection { targets: vec![] },
+            targets: TargetSelection { targets: vec![], clause_lengths: Vec::new() },
             mana_spent: 0,
         };
         assert_eq!(ev.kind(), EventKind::SpellOrAbility);
@@ -628,7 +628,7 @@ mod tests {
             object_id: 1,
             card_id: 42,
             controller: 1,
-            targets: TargetSelection { targets: vec![] },
+            targets: TargetSelection { targets: vec![], clause_lengths: Vec::new() },
             mana_spent: 0,
         };
         assert_eq!(ev.affected_player(), Some(1));

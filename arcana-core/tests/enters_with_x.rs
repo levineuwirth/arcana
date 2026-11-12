@@ -32,10 +32,12 @@ fn table(green: u32) -> GameState {
     s
 }
 
-/// Answer every decision by passing until the stack is empty.
+/// Pass until the stack is empty or a modal entry trigger needs a choice.
 fn settle(mut s: GameState, mut yld: EngineYield, reg: &CardRegistry) -> GameState {
     for _ in 0..100 {
         if s.stack_is_empty() && s.pending_choice.is_none() { return s; }
+        if matches!(s.pending_choice.as_ref().map(|p| &p.kind),
+            Some(arcana_core::actions::ChoiceKind::ChooseTriggerMode { .. })) { return s; }
         let EngineYield::PendingDecision { legal_actions, .. } = &yld else { return s };
         let a = legal_actions.iter().find(|a| a.is_pass()).cloned()
             .or_else(|| legal_actions.iter().find(|a| !matches!(a, Action::Concede)).cloned())
@@ -80,13 +82,23 @@ fn stonecoil_serpent_enters_with_x_counters_and_survives() {
 #[test]
 fn voracious_hydra_enters_with_x_counters() {
     let mut reg = CardRegistry::new();
-    let hydra = arcana_cards::m20::voracious_hydra::register(&mut reg);
+    arcana_cards::register_all::register_all(&mut reg);
+    let hydra = reg.card_id_by_name("Voracious Hydra").unwrap();
     let mut s = table(4);
     let card = add(&mut s, &reg, 0, hydra, Zone::Hand(0));
     let (s, on) = cast_for_x(s, &reg, card, 2);
     let on = on.expect("Voracious Hydra is on the battlefield");
     assert_eq!(plus_ones(&s, on), 2, "a 0/1 with two counters");
     assert_eq!((arcana_core::script::power_of(&s, on), arcana_core::script::toughness_of(&s, on)), (2, 3));
+    // Entry counters precede the modal trigger; choosing doubling adds the
+    // same number again only when that trigger resolves.
+    let double = legal_actions(&s, &reg).into_iter().find(|a| matches!(a,
+        Action::SubmitResolutionChoice {
+            response: arcana_core::actions::ChoiceResponse::ChooseTriggerMode { mode: 0 }, ..
+        })).expect("doubling mode");
+    let (s, yld) = step(s, double, &reg);
+    let s = settle(s, yld, &reg);
+    assert_eq!(plus_ones(&s, on), 4);
 }
 
 #[test]

@@ -103,6 +103,7 @@ mod tests {
             },
             targets: Default::default(),
             effect_override: None,
+            affected: None,
         };
         match etb_graveyard_counter(&s, &trig, &reg).as_slice() {
             [Effect::AddCounters { target: 5, kind: CounterKind::PlusOnePlusOne, count: 1 }] => {}

@@ -116,15 +116,14 @@ pub enum CastModifier {
     /// card when it's a LAND goes through `Action::PlayLand`, not this
     /// modifier (Oracle of Mul Daya's land half).
     TopOfLibrary,
-    /// CR 118.9 — cast "without paying its mana cost" (Spell Queller,
-    /// D18). Offered only through [`ChoiceKind::CastWithoutPaying`],
-    /// during the resolution of the effect that grants it, for the one
-    /// exiled card it names: the engine refuses this modifier on an
-    /// ordinary priority-window cast. The mana cost is replaced by
+    /// CR 118.9 — cast "without paying its mana cost". Offered through
+    /// [`ChoiceKind::CastWithoutPaying`] for its named exiled card during
+    /// resolution, or in an ordinary window under a card definition's
+    /// explicit main-face permission from hand. The mana cost is replaced by
     /// nothing, so `{X}` is 0 (CR 107.3b) and no other alternative cost
     /// can apply; additional costs (kicker) and cost increases are still
-    /// paid, from `mana_payment`. Card-type timing is ignored (CR 608.2g)
-    /// but casting restrictions still apply. The spell leaves the stack to
+    /// paid, from `mana_payment`. Only the resolution-time permission
+    /// ignores card-type timing (CR 608.2g); casting restrictions still apply. The spell leaves the stack to
     /// its normal destination, by `face`: an Adventure cast this way goes on
     /// an adventure like any other (CR 715.4).
     WithoutPayingManaCost {
@@ -531,6 +530,8 @@ pub enum ChoiceContext {
     /// so the dispatcher handles the OrderCards answer by advancing
     /// the mulligan phase rather than resuming a stack entry.
     MulliganScry { player: PlayerId },
+    /// An optional life payment made before a permanent enters (A1.5bj).
+    EnteringBattlefield { object_id: ObjectId },
     /// Some other engine-driven prompt that doesn't fit the above.
     Other,
 }
@@ -593,16 +594,24 @@ pub enum ChoiceKind {
     PickPlayer {
         candidates: Vec<PlayerId>,
     },
-    /// Pick targets at resolution time (storm copies, copy-spell
-    /// effects). The actual list of targeting clauses lives on
+    /// Pick targets for a triggered ability going on the stack or a
+    /// copied spell. The actual list of targeting clauses lives on
     /// [`crate::state::GameState::pending_target_requirements`] —
     /// stored there because [`crate::targets::TargetRequirement`]
     /// carries fn-pointer-bearing filters and isn't Hash/Eq/Serialize.
-    /// Answer: [`ChoiceResponse::ChooseTargets`] with selection length
-    /// equal to that requirement vector's length.
-    /// `source` is the stack object on whose behalf targets are chosen.
+    /// Answer: [`ChoiceResponse::ChooseTargets`] satisfying those clauses.
+    /// `source` is the stack entry's ID. Its `source` and `controller`
+    /// fields supply the targeting context; an ability entry has no
+    /// corresponding arena object.
     ChooseTargets {
         source: ObjectId,
+    },
+    /// Choose exactly one available mode as a trigger goes on the stack,
+    /// before choosing that mode's targets (CR 603.3c, 700.2b).
+    /// `source` names the stack entry; indices retain printed clause order.
+    ChooseTriggerMode {
+        source: ObjectId,
+        modes: Vec<(usize, String)>,
     },
     /// Choose one of the five colors (CR 700.4 — "choose a color").
     /// Answer: [`ChoiceResponse::ChooseColor`]. The follow-up that
@@ -752,6 +761,8 @@ pub enum ChoiceResponse {
     /// of requirements; each `TargetChoice` is validated at the
     /// dispatcher (legality is rechecked per CR 608.2b).
     ChooseTargets { selection: crate::targets::TargetSelection },
+    /// Reply to [`ChoiceKind::ChooseTriggerMode`]. Saved in action replays.
+    ChooseTriggerMode { mode: usize },
     /// Reply to [`ChoiceKind::ChooseColor`].
     ChooseColor { color: crate::types::Color },
     /// Reply to [`ChoiceKind::CastWithoutPaying`]: `None` declines; `Some`
@@ -1071,7 +1082,7 @@ mod tests {
     fn cast(object_id: ObjectId) -> Action {
         Action::CastSpell {
             object_id,
-            targets: TargetSelection { targets: vec![] },
+            targets: TargetSelection { targets: vec![], clause_lengths: Vec::new() },
             modes: vec![],
             mana_payment: pay_nothing(),
             additional_costs: vec![],
@@ -1235,7 +1246,7 @@ mod tests {
         let a = Action::CastSpell {
             object_id: 7,
             targets: TargetSelection {
-                targets: vec![TargetChoice::Player(1)],
+                targets: vec![TargetChoice::Player(1)], clause_lengths: Vec::new(),
             },
             modes: vec![],
             mana_payment: pay_nothing(),

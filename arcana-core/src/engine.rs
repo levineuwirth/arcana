@@ -120,6 +120,7 @@ pub fn step(
         return (state, EngineYield::GameOver(result));
     }
 
+    state.cache_entry_specs(registry);
     apply_action(&mut state, action, registry);
     settle(&mut state, registry);
     detect_and_mark_loop_draw(&mut state);
@@ -274,6 +275,23 @@ fn apply_pass_priority(state: &mut GameState, registry: &CardRegistry) {
     }
 }
 
+/// The card's own main-face alternative cost from hand. Shared by action
+/// enumeration and cast application; resolution-time grants stay separate.
+pub(crate) fn hand_free_cast_permitted(
+    state: &GameState,
+    registry: &CardRegistry,
+    controller: PlayerId,
+    object_id: ObjectId,
+    face: crate::actions::CastFace,
+) -> bool {
+    if face != crate::actions::CastFace::Main { return false; }
+    let Some(obj) = state.objects.get(object_id) else { return false; };
+    obj.zone == crate::zones::Zone::Hand(controller)
+        && registry.get(obj.card_id)
+            .and_then(|def| def.free_cast_from_hand)
+            .is_some_and(|condition| condition.is_met(state, controller))
+}
+
 // The compositional-fields approach (matching `Action::CastSpell`)
 // pushes the arg count past clippy's default 7. Refactor to a grouped
 // `CastInputs` struct is planned when a second cost-modifier (convoke
@@ -281,8 +299,8 @@ fn apply_pass_priority(state: &mut GameState, registry: &CardRegistry) {
 /// Cast `object_id` for `controller`: the priority holder in a priority
 /// window, or the owner answering a [`crate::actions::ChoiceKind::CastWithoutPaying`]
 /// mid-resolution. `without_paying_permitted` is true only on that choice's
-/// path; [`crate::actions::CastModifier::WithoutPayingManaCost`] is refused
-/// anywhere else.
+/// path. An ordinary free cast instead requires the card's explicit
+/// hand permission; normal timing is enforced by legal-action enumeration.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn apply_cast_spell(
     state: &mut GameState,
@@ -399,13 +417,18 @@ pub(crate) fn apply_cast_spell(
             }
         }
         crate::actions::CastModifier::WithoutPayingManaCost { face } => {
-            // CR 118.9 — only through the CastWithoutPaying choice, for an
-            // exiled card its owner casts during the granting effect's
-            // resolution, as one of the card's spell faces.
+            // CR 118.9 — either the named exile permission during a
+            // resolution, or the card's own alternative cost from hand.
+            // One authorization cannot substitute for the other.
             let owned_in_exile = state.objects.get(object_id)
                 .is_some_and(|o| o.zone == crate::zones::Zone::Exile
                     && o.owner == controller);
-            if !(without_paying_permitted && owned_in_exile) { return; }
+            let permitted = if without_paying_permitted {
+                owned_in_exile
+            } else {
+                hand_free_cast_permitted(state, registry, controller, object_id, face)
+            };
+            if !permitted { return; }
             let face_is_a_spell = match face {
                 crate::actions::CastFace::Main => state.objects.get(object_id)
                     .is_some_and(|o| !o.is_land()),
@@ -1070,7 +1093,7 @@ fn apply_activate_ability(
     // source-object re-id'ing that happens when a cost like
     // sacrifice-self or discard-self moves the card before the
     // ability resolves (CR 400.7).
-    let (card_id, is_mana_ability, is_loyalty_ability, tap, sacrifice, life,
+    let (card_id, is_mana_ability, is_loyalty_ability, tap, sacrifice,
          discard_random, once_per_turn, effect_fn) = {
         let Some(obj) = state.objects.get(source) else { return; };
         // Flat index covers registry-backed abilities first, then the
@@ -1087,7 +1110,6 @@ fn apply_activate_ability(
             ability.is_loyalty_ability,
             ability.cost.tap,
             ability.cost.sacrifice,
-            ability.cost.life,
             ability.cost.discard_random,
             ability.cost.once_per_turn,
             ability.effect,
@@ -1114,13 +1136,12 @@ fn apply_activate_ability(
             }
         }
     }
-    if life > 0 {
-        state.player_mut(controller).life -= life as i32;
-        state.emit(GameEvent::LifeLost { player: controller, amount: life });
-    }
+    // A life cost is paid once, by the action's declared
+    // `AdditionalCostPayment::PayLife` in `apply_additional_costs` below
+    // (`legal_actions::build_additional_costs` always declares it).
+    // Paying it here as well charged every life cost twice (A1.5bd).
     if sacrifice {
-        state.move_object_to_zone(
-            source, Zone::Graveyard(controller), MoveCause::Cost);
+        sacrifice_as_cost(state, controller, source);
     }
     // Any additional costs beyond the fixed cost (tap/sacrifice-self/
     // life) — sacrifice-a-different-permanent, discard, exile from
@@ -1266,39 +1287,13 @@ fn apply_play_land(
 
     state.player_mut(controller).land_plays_remaining =
         state.player(controller).land_plays_remaining.saturating_sub(1);
-    // Land play is NOT a spell — no stack entry, so it never goes through
-    // finalize_resolved_spell (where a cast permanent's printed `enters_with`
-    // clauses are applied). Do the battlefield-entry sequence here, mirroring
-    // that path so the land's enters-tapped clause (tap-land / check-land /
-    // fast-land / …) is honored — and applied BEFORE the EntersBattlefield
-    // event, so an "enters untapped" ETB trigger sees the correct state.
-    // (Previously a PLAYED land skipped enters_with entirely — the Clifftop
-    // Retreat "didn't enter tapped" bug.)
-    let Some((new_id, from)) = state.swap_to_zone_reid(object_id, Zone::Battlefield) else {
-        state.priority.record_action();
-        return;
-    };
-    // CR 305.2 — playing a land gives its controller to the player who played
-    // it; set this BEFORE the enters_with check (a "unless you control …"
-    // condition is evaluated from the controller's board).
-    if let Some(obj) = state.objects.get_mut(new_id) {
-        obj.controller = controller;
-    }
-    state.emit(GameEvent::ZoneChange {
-        object_id, from, to: Zone::Battlefield, new_id, cause: MoveCause::PlayLand,
-    });
-    let enters_with = state.objects.get(new_id)
+    // Use the same pre-entry choice and lifecycle as fetched/returned
+    // cards and resolving permanent spells.
+    let mut entry = crate::entry::BattlefieldEntry::new(object_id, controller, MoveCause::PlayLand);
+    entry.clauses = Some(state.objects.get(object_id)
         .and_then(|o| registry.get(o.card_id))
-        .map(|d| d.enters_with.clone())
-        .unwrap_or_default();
-    if !enters_with.is_empty() {
-        crate::stack::apply_enters_with_clauses(
-            state, new_id, &enters_with, /*x_value=*/ None, /*delve_count=*/ 0);
-    }
-    state.after_enter_battlefield(new_id);
-    state.emit(GameEvent::EntersBattlefield {
-        object_id: new_id, from_zone: from, was_cast: false,
-    });
+        .map(|d| d.enters_with.clone()).unwrap_or_default());
+    state.enter_battlefield(entry);
     state.priority.record_action();
 }
 
@@ -1323,6 +1318,11 @@ pub(crate) fn apply_resolution_choice(
     use crate::actions::{ChoiceKind, ChoiceContext, ChoiceResponse};
 
     match (&pending.kind, &pending.context, &response) {
+        (
+            ChoiceKind::OptionalCost { .. },
+            ChoiceContext::EnteringBattlefield { object_id },
+            ChoiceResponse::OptionalCost { pay },
+        ) => state.answer_entry_payment(*object_id, *pay),
         // --- OrderCards (Scry, Surveil, Fateseal) --------------------
         (
             ChoiceKind::OrderCards { cards, allowed },
@@ -1464,13 +1464,12 @@ pub(crate) fn apply_resolution_choice(
                 .filter(|id| !picked.contains(id))
                 .collect();
             for id in sacrificed {
-                let Some(owner) = state.objects.get(id).map(|o| o.owner)
-                    else { continue; };
-                state.move_object_to_zone(
-                    id,
-                    crate::zones::Zone::Graveyard(owner),
-                    crate::events::MoveCause::StateBasedAction,
-                );
+                // Put into the graveyard by the rule, not sacrificed or
+                // destroyed: a death, so an exile-instead applies and no
+                // regeneration does (A1.5bk).
+                state.put_into_graveyard_dying(id,
+                    crate::replacement::DeathKind::Other,
+                    crate::events::MoveCause::StateBasedAction);
             }
             // Re-enter the SBA loop: more legend groups may still be
             // conflicting, and the just-sacrificed moves may have
@@ -1623,6 +1622,29 @@ pub(crate) fn apply_resolution_choice(
             }
         }
 
+        // Modal triggers choose their clause at stack placement, then ask
+        // only for that clause's targets. No priority window intervenes.
+        (
+            ChoiceKind::ChooseTriggerMode { source: entry_id, .. },
+            _,
+            ChoiceResponse::ChooseTriggerMode { mode },
+        ) => {
+            let entry = state.find_stack_entry(*entry_id)
+                .expect("modal choice requires its stack entry");
+            let crate::stack::StackEntryKind::TriggeredAbility { trigger_id, .. } = entry.kind
+                else { panic!("modal choice requires a triggered ability"); };
+            let chosen = triggered_ability_modes(state, registry, entry.source, trigger_id)
+                .expect("modal trigger requires its definition")[*mode].clone();
+            let controller = entry.controller;
+            let entry = state.stack.iter_mut().find(|e| e.id == *entry_id).unwrap();
+            entry.modes = vec![crate::stack::ModeChoice::new(vec![*mode])];
+            entry.target_requirements = chosen.target_requirements.clone();
+            if let crate::stack::StackEntryKind::TriggeredAbility { resolved_effect, .. } = &mut entry.kind {
+                *resolved_effect = Some(chosen.effect);
+            }
+            prompt_trigger_targets(state, *entry_id, controller, chosen.target_requirements);
+        }
+
         // --- ChooseTargets mid-resolution (storm copies, CopySpell,
         // targeted triggered abilities). The pushing effect stashed
         // an `ApplyTargetsToStackEntry` follow-up naming the entry
@@ -1676,6 +1698,8 @@ pub(crate) fn apply_resolution_choice(
             );
         }
     }
+
+    state.drain_entry_continuations();
 
     // Resume any parked resolution now that the choice is cleared.
     // A handler may have pushed a *new* pending_choice itself (e.g. a
@@ -1734,6 +1758,7 @@ fn apply_order_cards(
     // we rebuild library ordering.
     //
     // First: move any non-library destinations.
+    let mut entries = Vec::new();
     for (pid, dest) in placements {
         match dest {
             CardDestination::Graveyard => {
@@ -1756,12 +1781,8 @@ fn apply_order_cards(
             CardDestination::Battlefield => {
                 // Direct-to-battlefield via OrderCards (Collected
                 // Company-style). Controller is the choosing player.
-                if let Some(obj) = state.objects.get_mut(*pid) {
-                    obj.controller = choosing_player;
-                }
-                state.move_object_to_zone(
-                    *pid, crate::zones::Zone::Battlefield,
-                    crate::events::MoveCause::SpellResolution);
+                entries.push(crate::entry::BattlefieldEntry::new(
+                    *pid, choosing_player, MoveCause::SpellResolution));
             }
             CardDestination::TopOfLibrary | CardDestination::BottomOfLibrary => {
                 // handled below via library ordering
@@ -1769,6 +1790,21 @@ fn apply_order_cards(
         }
     }
 
+    state.enter_battlefield_batch(entries);
+    if state.pending_choice.is_some() {
+        state.entry_continuations.push_back(crate::entry::EntryContinuation::LibraryOrder {
+            player: choosing_player, cards: cards.to_vec(), placements: placements.to_vec(),
+        });
+    } else {
+        finish_library_order(state, choosing_player, cards, placements);
+    }
+}
+
+pub(crate) fn finish_library_order(
+    state: &mut GameState, choosing_player: PlayerId,
+    cards: &[ObjectId], placements: &[(ObjectId, crate::actions::CardDestination)],
+) {
+    use crate::actions::CardDestination;
     // Remove all prompt-cards that are still in the library from the
     // current library ordering, then re-insert per submitted order.
     let lib = &mut state.player_mut(choosing_player).library_top_to_bottom;
@@ -1942,7 +1978,16 @@ fn apply_choice_follow_up(
         ChoiceFollowUp::MoveToZone {
             destination, reveal, shuffle_library_owner,
         } => {
+            let mut entries = Vec::new();
             for id in chosen {
+                if destination == Zone::Battlefield {
+                    if let Some(obj) = state.objects.get(*id) {
+                        let mut entry = crate::entry::BattlefieldEntry::new(*id, obj.controller, MoveCause::SpellResolution);
+                        entry.reveal = reveal;
+                        entries.push(entry);
+                    }
+                    continue;
+                }
                 let new_id = state.move_object_to_zone(
                     *id, destination, MoveCause::SpellResolution);
                 if reveal {
@@ -1953,30 +1998,22 @@ fn apply_choice_follow_up(
                     }
                 }
             }
-            if let Some(p) = shuffle_library_owner {
-                state.shuffle_library(p);
+            state.enter_battlefield_batch(entries);
+            if let Some(player) = shuffle_library_owner {
+                crate::effects::Effect::Shuffle { player }.execute(state);
             }
         }
         ChoiceFollowUp::MoveToBattlefield {
             controller, tapped, shuffle_library_owner,
         } => {
-            for id in chosen {
-                // Set controller pre-move so the move preserves it on
-                // entry to the battlefield.
-                if let Some(obj) = state.objects.get_mut(*id) {
-                    obj.controller = controller;
-                }
-                let new_id = state.move_object_to_zone(
-                    *id, Zone::Battlefield, MoveCause::SpellResolution);
-                if let Some(bf_id) = new_id {
-                    if let Some(obj) = state.objects.get_mut(bf_id) {
-                        obj.controller = controller;
-                        if tapped { obj.tap(); }
-                    }
-                }
-            }
-            if let Some(p) = shuffle_library_owner {
-                state.shuffle_library(p);
+            let requests = chosen.iter().map(|id| {
+                let mut entry = crate::entry::BattlefieldEntry::new(*id, controller, MoveCause::SpellResolution);
+                entry.tapped = tapped;
+                entry
+            }).collect();
+            state.enter_battlefield_batch(requests);
+            if let Some(player) = shuffle_library_owner {
+                crate::effects::Effect::Shuffle { player }.execute(state);
             }
         }
         // Consumed by the PickPlayer dispatch arm directly (it pairs
@@ -1987,20 +2024,12 @@ fn apply_choice_follow_up(
                     with PickPlayer, not PickCards");
         }
         ChoiceFollowUp::MoveToBattlefieldAttacking { controller } => {
-            for id in chosen {
-                if let Some(obj) = state.objects.get_mut(*id) {
-                    obj.controller = controller;
-                }
-                let new_id = state.move_object_to_zone(
-                    *id, Zone::Battlefield, MoveCause::SpellResolution);
-                if let Some(bf_id) = new_id {
-                    if let Some(obj) = state.objects.get_mut(bf_id) {
-                        obj.controller = controller;
-                    }
-                    crate::effects::enter_tapped_attacking(
-                        state, bf_id, controller);
-                }
-            }
+            let requests = chosen.iter().map(|id| {
+                let mut entry = crate::entry::BattlefieldEntry::new(*id, controller, MoveCause::SpellResolution);
+                entry.attacking = true;
+                entry
+            }).collect();
+            state.enter_battlefield_batch(requests);
         }
         ChoiceFollowUp::Destroy => {
             for id in chosen {
@@ -2011,10 +2040,8 @@ fn apply_choice_follow_up(
         ChoiceFollowUp::Sacrifice { player } => {
             for id in chosen {
                 state.emit(GameEvent::Sacrifice { player, object_id: *id });
-                let owner = state.objects.get(*id)
-                    .map(|o| o.owner).unwrap_or(player);
-                state.move_object_to_zone(
-                    *id, Zone::Graveyard(owner), MoveCause::SpellResolution);
+                state.put_into_graveyard_dying(*id,
+                    crate::replacement::DeathKind::Other, MoveCause::SpellResolution);
             }
         }
         ChoiceFollowUp::Provoke { provoker } => {
@@ -2055,8 +2082,8 @@ fn apply_choice_follow_up(
                     .map(|o| o.owner).unwrap_or(0);
                 state.emit(GameEvent::Sacrifice {
                     player: owner, object_id: *id });
-                state.move_object_to_zone(
-                    *id, Zone::Graveyard(owner), MoveCause::SpellResolution);
+                state.put_into_graveyard_dying(*id,
+                    crate::replacement::DeathKind::Other, MoveCause::SpellResolution);
             }
             let total = per as u32 * eaten;
             if total > 0 {
@@ -2387,6 +2414,9 @@ fn apply_concede(state: &mut GameState) {
     state.emit(GameEvent::PlayerLoses {
         player, reason: LoseReason::Concession,
     });
+    // Concession is immediate, even when an entry or instruction is
+    // waiting. Determine the winner without running deferred SBAs.
+    crate::sba::update_game_result(state);
 }
 
 // =============================================================================
@@ -2396,6 +2426,7 @@ fn apply_concede(state: &mut GameState) {
 /// Advance the state through every transition that does not require
 /// agent input. Runs SBAs + triggers between each advance.
 fn settle(state: &mut GameState, registry: &CardRegistry) {
+    if state.is_game_over() { return; }
     // Cap iterations — if we ever advance for this many passes
     // without reaching a yield, there's a state machine bug. The
     // panic is a programmer bug per the design principle.
@@ -2441,6 +2472,9 @@ fn combat_decision_pending(state: &GameState) -> bool {
 /// when the loop iteration started, so each pass makes forward
 /// progress.
 fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
+    // Entry and its containing instruction must finish before SBAs,
+    // triggers, or priority can observe the permanent (CR 614.12).
+    if state.pending_entry.is_some() || !state.entry_continuations.is_empty() { return; }
     // Snapshots held for abilities that triggered in earlier sweeps
     // go once nothing is left to resolve them.
     state.release_held_lki();
@@ -2449,10 +2483,8 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
         apply_state_based_actions(state);
         if state.is_game_over() { state.clear_lki(); return; }
 
-        // 1b. Drain any targeted triggers that have been waiting for a
-        //     target prompt. Each pop either drops the trigger (no legal
-        //     targets, CR 603.3d) or pushes a stack entry + ChooseTargets
-        //     prompt; the latter case returns and the settle loop yields.
+        // 1b. Drain the APNAP batch, pausing for modes or targets.
+        //     An ability with no legal choices is dropped (CR 603.3c-d).
         if !state.pending_trigger_queue.is_empty() {
             // Draining a targeted trigger pushes a ChooseTargets choice.
             // If a resolution is already parked on a choice (a scry /
@@ -2469,12 +2501,15 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
             if state.pending_choice.is_some() {
                 return;
             }
-            if drain_one_queued_targeted_trigger(state, registry) {
-                // A choice was pushed — let settle detect it and yield.
-                return;
+            // Drain the whole batch up to its first choice. Plain triggers
+            // share this queue to retain APNAP order across a modal prompt;
+            // a large untargeted batch must not consume the settle-loop cap.
+            while !state.pending_trigger_queue.is_empty() {
+                if drain_one_queued_trigger(state, registry) {
+                    return;
+                }
             }
-            // Otherwise we dropped the head per CR 603.3d; loop and try
-            // the next entry (may still be more in the queue).
+            // The batch is complete; check for events it produced.
             continue;
         }
 
@@ -2496,7 +2531,7 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
             state.event_log[start..end].to_vec();
         state.trigger_event_cursor = end;
 
-        let pending = collect_pending_triggers(state, registry, &new_events);
+        let pending = collect_pending_triggers(state, registry, start, &new_events);
 
         // LKI served this pass's trigger scan as a source list; retire
         // it before the next iteration's SBAs so later moves are not
@@ -2506,16 +2541,9 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
 
         if pending.is_empty() { return; }
 
-        // 3. Split pending triggers by targeted-ness. Untargeted ones
-        //    push to the stack immediately; targeted ones queue for
-        //    async target choice via the next iteration's drain.
-        for pt in pending {
-            if ability_needs_targets(state, registry, &pt) {
-                state.pending_trigger_queue.push_back(pt);
-            } else {
-                push_trigger_stack_entry(state, registry, pt, Vec::new());
-            }
-        }
+        // 3. Collection already sorted APNAP. Preserve that order while
+        //    pausing for modes and targets, including plain abilities.
+        state.pending_trigger_queue.extend(pending);
         // Loop — the push emitted no direct events, but on the next
         // iteration SBAs re-run just in case the trigger list
         // referenced dead objects, and any further delayed triggers
@@ -2527,21 +2555,39 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
             {MAX_SETTLE_ITERATIONS} iterations");
 }
 
-/// Does this pending trigger's ability carry any target requirements?
-/// Looks the ability up via the source object's card_id; a missing
-/// source or missing ability entry is treated as "no targets" so the
-/// fallback "push with empty targets" path runs (consistent with
-/// pre-targeted-trigger behavior for synthesized triggers).
-fn ability_needs_targets(
+fn triggered_ability_modes<'a>(
+    state: &GameState,
+    registry: &'a CardRegistry,
+    source: ObjectId,
+    trigger_id: crate::types::TriggerId,
+) -> Option<&'a [crate::triggers::TriggerMode]> {
+    let obj = state.object_or_lki(source)?;
+    registry.get(obj.card_id)?.trigger_modes.iter()
+        .find(|(id, _)| *id == trigger_id).map(|(_, modes)| modes.as_slice())
+}
+
+/// The target requirements of a pending trigger's ability, from the
+/// registry for a card's printed ability, or from the source object's
+/// runtime list for an ability in the granted range: a token's printed
+/// triggers and granted triggers live there (A1.5bg). `None` if the
+/// source or the ability is gone. The source is read through
+/// last-known information so leaves-the-battlefield triggers still
+/// find their text.
+fn triggered_ability_requirements(
     state: &GameState,
     registry: &CardRegistry,
     pt: &crate::triggers::PendingTrigger,
-) -> bool {
-    let Some(obj) = state.object_or_lki(pt.source) else { return false; };
-    let Some(def) = registry.get(obj.card_id) else { return false; };
-    def.triggered_abilities.iter()
+) -> Option<Vec<crate::targets::TargetRequirement>> {
+    let obj = state.object_or_lki(pt.source)?;
+    if pt.trigger_id >= crate::triggers::GRANTED_TRIGGER_ID_BASE {
+        return obj.granted_triggered_abilities.iter()
+            .find(|g| g.def.id == pt.trigger_id)
+            .map(|g| g.def.target_requirements.clone());
+    }
+    registry.get(obj.card_id)?
+        .triggered_abilities.iter()
         .find(|a| a.id == pt.trigger_id)
-        .is_some_and(|a| !a.target_requirements.is_empty())
+        .map(|a| a.target_requirements.clone())
 }
 
 /// Push a plain triggered-ability stack entry and record its frequency
@@ -2570,6 +2616,7 @@ fn push_trigger_stack_entry(
         Vec::new(),
     );
     entry.target_requirements = requirements;
+    entry.affected = pt.affected;
     // Delayed triggers carry their effect fn (no registry def exists
     // for trigger_id 0) — snapshot it onto the entry for resolution.
     if let Some(f) = pt.effect_override {
@@ -2594,34 +2641,39 @@ fn push_trigger_stack_entry(
     entry_id
 }
 
-/// Pop the next queued targeted trigger and either drop it
-/// (CR 603.3d — no legal targets) or push its stack entry together
-/// with a `ChooseTargets` prompt. Returns `true` if a prompt was
-/// pushed (caller should yield); `false` if the entry was dropped
-/// (caller should loop to try the next).
-fn drain_one_queued_targeted_trigger(
+/// Put the next queued trigger on the stack in APNAP order. A modal
+/// ability chooses its mode before targets (CR 603.3c-d). Return true
+/// only when a prompt was pushed; otherwise the queue may keep draining.
+fn drain_one_queued_trigger(
     state: &mut GameState,
     registry: &CardRegistry,
 ) -> bool {
     let Some(pt) = state.pending_trigger_queue.pop_front() else { return false; };
+    // Delayed and captured effects carry their own callback, not a printed
+    // modal declaration which happens to share the same source and id.
+    if pt.effect_override.is_none() {
+        if let Some(modes) = triggered_ability_modes(state, registry, pt.source, pt.trigger_id) {
+            let available: Vec<_> = modes.iter().enumerate()
+                .filter(|(_, mode)| !crate::legal_actions::enumerate_target_selections(
+                    &mode.target_requirements, state, pt.source, pt.controller).is_empty())
+                .map(|(i, mode)| (i, mode.description.clone())).collect();
+            if available.is_empty() { return false; }
+            let controller = pt.controller;
+            let entry_id = push_trigger_stack_entry(state, registry, pt, Vec::new());
+            state.push_pending_choice(controller,
+                crate::actions::ChoiceContext::ResolvingStack(entry_id),
+                crate::actions::ChoiceKind::ChooseTriggerMode { source: entry_id, modes: available });
+            return true;
+        }
+    }
     // Re-look up the ability's target_requirements. The source might
     // have changed zones (and so been re-id'd) between enqueue and
     // drain — we use object_or_lki so leaves-the-battlefield triggers
     // still find their printed text.
-    let requirements = {
-        let Some(obj) = state.object_or_lki(pt.source) else {
-            // Source vanished entirely; trigger drops silently.
-            return false;
-        };
-        let Some(def) = registry.get(obj.card_id) else { return false; };
-        let Some(ability) = def.triggered_abilities.iter()
-            .find(|a| a.id == pt.trigger_id)
-        else { return false; };
-        ability.target_requirements.clone()
-    };
+    // Synthesized and delayed triggers need no registry definition.
+    let requirements = triggered_ability_requirements(state, registry, &pt).unwrap_or_default();
     if requirements.is_empty() {
-        // Defensive: caller mis-queued a non-targeted trigger. Push
-        // it like any other untargeted trigger.
+        // Plain and synthesized triggers need no choice.
         push_trigger_stack_entry(state, registry, pt, Vec::new());
         return false;
     }
@@ -2633,11 +2685,21 @@ fn drain_one_queued_targeted_trigger(
         return false;
     }
     let entry_id = push_trigger_stack_entry(state, registry, pt.clone(), requirements.clone());
+    prompt_trigger_targets(state, entry_id, pt.controller, requirements)
+}
+
+fn prompt_trigger_targets(
+    state: &mut GameState,
+    entry_id: ObjectId,
+    controller: PlayerId,
+    requirements: Vec<crate::targets::TargetRequirement>,
+) -> bool {
+    if requirements.is_empty() { return false; }
     state.pending_target_requirements = Some(requirements);
     state.pending_choice_follow_up = Some(
         crate::actions::ChoiceFollowUp::ApplyTargetsToStackEntry { entry_id });
     state.push_pending_choice(
-        pt.controller,
+        controller,
         crate::actions::ChoiceContext::ResolvingStack(entry_id),
         crate::actions::ChoiceKind::ChooseTargets { source: entry_id },
     );
@@ -2652,6 +2714,7 @@ fn drain_one_queued_targeted_trigger(
 fn collect_pending_triggers(
     state: &mut GameState,
     registry: &CardRegistry,
+    event_start: usize,
     events: &[crate::events::GameEvent],
 ) -> Vec<crate::triggers::PendingTrigger> {
     let mut pending: Vec<crate::triggers::PendingTrigger> = Vec::new();
@@ -2671,28 +2734,42 @@ fn collect_pending_triggers(
     trigger_sources.extend(
         state.lki.iter().map(|(id, o)| (*id, o.card_id, o.controller, o.visible_face)));
 
-    for event in events {
+    // emit/emit_all captured attachment grants against the state of each
+    // event, before SBAs or another instruction could erase/change them.
+    // The caller supplies this batch's log offset independently of the
+    // cursor. Captures made during this scan remain for the next sweep.
+    let mut attached = std::mem::take(&mut state.captured_attachment_triggers)
+        .into_iter().filter(|c| c.event_index >= event_start).peekable();
+    for (offset, event) in events.iter().enumerate() {
         for &(source, card_id, controller, visible_face) in &trigger_sources {
-            let Some(def) = registry.get(card_id) else { continue; };
-            for ability in &def.triggered_abilities {
-                // CR 712 — face gate: a back-face-only (or front-only)
-                // trigger on a transforming DFC fires only while the
-                // object shows that face. Sidecar lookup; absent = any
-                // face. Checked before should_fire so a wrong-face
-                // trigger never even consults its condition.
-                if let Some(face) = def.trigger_face_gate(ability.id) {
-                    if visible_face != face { continue; }
-                }
-                if let Some(pt) = ability.should_fire(
-                    event, source, controller, state, registry)
-                {
-                    pending.push(pt);
+            // A token has no registry definition (card_id 0); its
+            // printed triggers are granted abilities, scanned below. A
+            // `continue` here skipped that scan, so no token's trigger
+            // ever fired (A1.5bg).
+            if let Some(def) = registry.get(card_id) {
+                for ability in &def.triggered_abilities {
+                    // CR 712 — face gate: a back-face-only (or front-only)
+                    // trigger on a transforming DFC fires only while the
+                    // object shows that face. Sidecar lookup; absent = any
+                    // face. Checked before should_fire so a wrong-face
+                    // trigger never even consults its condition.
+                    if let Some(face) = def.trigger_face_gate(ability.id) {
+                        if visible_face != face { continue; }
+                    }
+                    if let Some(pt) = ability.should_fire(
+                        event, source, controller, state, registry)
+                    {
+                        pending.push(pt);
+                    }
                 }
             }
-            // Granted triggered abilities (Effect::GrantTriggeredAbility)
-            // live on the object, not the registry def. Scan them for
-            // this source alongside the printed ones.
-            if let Some(obj) = state.objects.get(source) {
+            // Granted triggered abilities (Effect::GrantTriggeredAbility,
+            // and a token's printed triggers) live on the object, not the
+            // registry def. Scan them for this source alongside the
+            // printed ones, through last-known information so a departed
+            // source's leave triggers fire: a token's own "when this
+            // dies" read only live objects and never fired (A1.5bg).
+            if let Some(obj) = state.object_or_lki(source) {
                 for granted in &obj.granted_triggered_abilities {
                     if let Some(pt) = granted.def.should_fire(
                         event, source, controller, state, registry)
@@ -2703,22 +2780,31 @@ fn collect_pending_triggers(
             }
         }
 
-        // 1b. STATIC filtered ability grants (Background statics —
-        //     ContinuousEffectKind::FilteredGrantTriggeredAbility):
-        //     each live grant's ability is checked for every
-        //     battlefield object matching its filter. Fires carry the
-        //     def's effect fn via effect_override (granted ids have no
-        //     registry entry — same dispatch as delayed triggers).
+        // 1b. Attachment-granted triggers already matched their event.
+        // Only the normal intervening-if/frequency gates remain; neither
+        // current attachment nor current ability loss can undo the match.
+        while attached.peek().is_some_and(|c| c.event_index == event_start + offset) {
+            let captured = attached.next().unwrap();
+            if let Some(mut pt) = captured.ability.after_event_match(
+                event, captured.source, captured.controller, state, registry)
+            {
+                pt.effect_override = Some(captured.ability.effect);
+                pending.push(pt);
+            }
+        }
+
+        // 1c. Existing filtered grants retain their collection-time scan.
+        // A later ability-loss timestamp on the host removes the grant;
+        // an earlier one does not. Attachment grants are captured above.
         let grants: Vec<(crate::targets::ObjectFilter,
                          crate::triggers::TriggeredAbilityDef,
-                         ObjectId)> =
+                         ObjectId, u64)> =
             state.continuous_effects.iter()
                 .filter(|e| e.is_live(state))
                 .filter_map(|e| match &e.kind {
                     crate::layers::ContinuousEffectKind::
                         FilteredGrantTriggeredAbility { filter, ability } =>
-                            Some((filter.clone(), (**ability).clone(),
-                                  e.source)),
+                            Some((filter.clone(), (**ability).clone(), e.source, e.timestamp)),
                     _ => None,
                 })
                 .collect();
@@ -2727,13 +2813,14 @@ fn collect_pending_triggers(
                 .objects_in_zone(Zone::Battlefield)
                 .map(|o| (o.id, o.controller))
                 .collect();
-            for (filter, ability, grant_src) in &grants {
-                let Some(src_ctrl) = state.objects.get(*grant_src)
-                    .map(|s| s.controller) else { continue; };
+            for (filter, ability, grant_src, grant_ts) in &grants {
+                let Some(src) = state.objects.get(*grant_src) else { continue; };
                 for &(oid, octrl) in &bf {
-                    let matches = state.objects.get(oid).is_some_and(|o|
-                        filter.matches_base(o, state, src_ctrl));
-                    if !matches { continue; }
+                    if !state.objects.get(oid).is_some_and(|o|
+                        filter.matches_base_with_source(o, state, *grant_src, src.controller))
+                    { continue; }
+                    if state.ability_loss_timestamp(oid)
+                        .is_some_and(|lost| lost > *grant_ts) { continue; }
                     if let Some(mut pt) = ability.should_fire(
                         event, oid, octrl, state, registry)
                     {
@@ -2773,6 +2860,7 @@ fn collect_pending_triggers(
                             trigger_event: event.clone(),
                             targets: crate::targets::TargetSelection::new(),
                             effect_override: None,
+                            affected: None,
                         });
                     }
                 }
@@ -2816,6 +2904,7 @@ fn collect_pending_triggers(
                         trigger_event: zc.clone(),
                         targets: crate::targets::TargetSelection::new(),
                         effect_override: None,
+                        affected: None,
                     });
                 };
                 if kws.contains(&KA::Undying) && no_plus {
@@ -2857,6 +2946,7 @@ fn collect_pending_triggers(
                     trigger_event: event.clone(),
                     targets: crate::targets::TargetSelection::new(),
                     effect_override: None,
+                    affected: None,
                 });
             };
             // Exalted (CR 702.83a): a creature attacking alone. One
@@ -2930,6 +3020,7 @@ fn collect_pending_triggers(
                     trigger_event: event.clone(),
                     targets: crate::targets::TargetSelection::new(),
                     effect_override: None,
+                    affected: None,
                 });
             }
         }
@@ -2949,6 +3040,7 @@ fn collect_pending_triggers(
                     trigger_event: event.clone(),
                     targets: crate::targets::TargetSelection::new(),
                     effect_override: None,
+                    affected: None,
                 });
             };
             match event {
@@ -3009,6 +3101,7 @@ fn collect_pending_triggers(
                             controller: c, trigger_event: event.clone(),
                             targets: crate::targets::TargetSelection::new(),
                             effect_override: None,
+                            affected: None,
                         });
                     }
                 }
@@ -3030,6 +3123,7 @@ fn collect_pending_triggers(
                         controller: c, trigger_event: event.clone(),
                         targets: crate::targets::TargetSelection::new(),
                         effect_override: None,
+                        affected: None,
                     });
                 };
                 if kws.iter().any(|k| matches!(k, KA::Devour(_))) {
@@ -3065,6 +3159,7 @@ fn collect_pending_triggers(
                     controller: ap, trigger_event: event.clone(),
                     targets: crate::targets::TargetSelection::new(),
                     effect_override: None,
+                    affected: None,
                 });
             }
         }
@@ -3353,9 +3448,9 @@ fn untap_step(state: &mut GameState) {
         // filter matches it.
         let mut blocked = false;
         let mut matched: Vec<usize> = Vec::new();
-        for (i, (filter, max, src_ctrl)) in caps.iter().enumerate() {
+        for (i, (filter, max, source, src_ctrl)) in caps.iter().enumerate() {
             let m = state.objects.get(id).is_some_and(|o|
-                filter.matches_base(o, state, *src_ctrl));
+                filter.matches_base_with_source(o, state, *source, *src_ctrl));
             if m {
                 if cap_used[i] >= *max { blocked = true; break; }
                 matched.push(i);
@@ -3513,11 +3608,154 @@ fn resolve_top_of_stack(state: &mut GameState, registry: &CardRegistry) {
                 state.counter_resolved_ability(entry);
             }
         }
-        ResolutionOutcome::Resolve { target_legality: _ } => {
-            let effects = resolution_effects(state, &entry, registry);
+        ResolutionOutcome::Resolve { target_legality } => {
+            let masked = mask_illegal_targets(&entry, &target_legality);
+            let effects = resolution_effects(state, &masked, registry);
+            let effects = follow_moved_source(state, &entry, effects);
             let is_spell = entry.is_spell();
             execute_effects_or_park(state, entry, effects, is_spell);
         }
+    }
+}
+
+/// CR 608.2b: a spell or ability that still has a legal target resolves,
+/// but an illegal target occurrence must not be affected, perform actions,
+/// or supply information (A1.5aw). Its effects are computed from a
+/// copy of the entry whose illegal occurrences are replaced by ids that
+/// name nothing, [`crate::objects::ILLEGAL_TARGET_ID`] and
+/// [`crate::objects::ILLEGAL_TARGET_PLAYER`]. Card code reads targets by
+/// position, so every other target keeps its place. Object lookups fail;
+/// damage sources and player-consuming primitives explicitly reject the
+/// sentinels. A divided damage share falls on no one while the others keep
+/// theirs. This does not propagate failed information queries through
+/// total card helpers and arithmetic (A1.5bo). Legality is
+/// per occurrence (CR 115.3): an object legal for another clause keeps its
+/// real id there. Before, the legality was computed and discarded.
+fn mask_illegal_targets(
+    entry: &crate::stack::StackEntry,
+    legality: &[crate::targets::TargetLegality],
+) -> crate::stack::StackEntry {
+    use crate::objects::{ILLEGAL_TARGET_ID, ILLEGAL_TARGET_PLAYER};
+    use crate::targets::{ObjectOrPlayer, TargetChoice, TargetLegality};
+    let mut masked = entry.clone();
+    for (choice, l) in masked.targets.targets.iter_mut().zip(legality) {
+        if *l != TargetLegality::Illegal { continue; }
+        *choice = match choice {
+            TargetChoice::Object(_) => TargetChoice::Object(ILLEGAL_TARGET_ID),
+            TargetChoice::Player(_) => TargetChoice::Player(ILLEGAL_TARGET_PLAYER),
+            TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Object(_)) =>
+                TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Object(ILLEGAL_TARGET_ID)),
+            TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Player(_)) =>
+                TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Player(ILLEGAL_TARGET_PLAYER)),
+        };
+    }
+    masked
+}
+
+/// CR 400.7e: an ability that triggers on its own source moving to a
+/// public zone can find the object the card became there. While that
+/// ability resolves, its effects that move or return the card act on that
+/// object, including those inside optional, conditional and random
+/// containers. A delayed action it schedules for the next end step or
+/// upkeep carries that object apart from its source, which stays the
+/// ability's source (CR 603.7e; A1.5bh, A1.5az). Murderous Rider reaches
+/// the library, and The Scarab God's end-step return finds it in the
+/// graveyard.
+/// Nothing else follows the card. Source attribution, last-known
+/// information and general lookup keep the old id. Once the card has left
+/// that zone it is a new object again, its id gone, and the link finds
+/// nothing. The effect list is computed once per resolution, so a parked
+/// resolution keeps the link.
+fn follow_moved_source(
+    state: &GameState,
+    entry: &crate::stack::StackEntry,
+    effects: Vec<crate::effects::Effect>,
+) -> Vec<crate::effects::Effect> {
+    let crate::stack::StackEntryKind::TriggeredAbility { trigger_event, .. } = &entry.kind
+        else { return effects; };
+    let Some(moved) = first_public_destination(state, entry.source, trigger_event)
+        else { return effects; };
+    effects.into_iter().map(|e| relink_moved_card(e, entry.source, moved)).collect()
+}
+
+/// The object `source` became when the triggering event moved it to a
+/// graveyard or exile, if that object is still there. A dies or
+/// leaves-the-battlefield event carries only the old id; the zone change
+/// in the event log carries the new one (ids are never reused, so there is
+/// one such change).
+fn first_public_destination(
+    state: &GameState,
+    source: ObjectId,
+    event: &GameEvent,
+) -> Option<ObjectId> {
+    let public = |z: &crate::zones::Zone| matches!(z,
+        crate::zones::Zone::Graveyard(_) | crate::zones::Zone::Exile);
+    let new_id = match event {
+        GameEvent::ZoneChange { object_id, new_id, to, .. }
+            if *object_id == source && public(to) => *new_id,
+        GameEvent::Dies { object_id } | GameEvent::LeavesBattlefield { object_id, .. }
+            if *object_id == source =>
+            state.event_log.iter().rev().find_map(|e| match e {
+                GameEvent::ZoneChange { object_id, new_id, to, .. }
+                    if *object_id == source && public(to) => Some(*new_id),
+                _ => None,
+            })?,
+        _ => return None,
+    };
+    state.objects.get(new_id).map(|_| new_id)
+}
+
+/// Point the effects that move or return the card from `old` to `new`;
+/// every other effect, and every other id, is left alone.
+fn relink_moved_card(
+    e: crate::effects::Effect,
+    old: ObjectId,
+    new: ObjectId,
+) -> crate::effects::Effect {
+    use crate::effects::{DelayedWhen, Effect as E};
+    let to = |t: ObjectId| if t == old { new } else { t };
+    let deep = |b: Box<E>| Box::new(relink_moved_card(*b, old, new));
+    match e {
+        E::ReturnToHand { target } => E::ReturnToHand { target: to(target) },
+        E::PutOnTopOfLibrary { target } => E::PutOnTopOfLibrary { target: to(target) },
+        E::PutOnBottomOfLibrary { target } => E::PutOnBottomOfLibrary { target: to(target) },
+        E::ReturnFromGraveyardToHand { target } =>
+            E::ReturnFromGraveyardToHand { target: to(target) },
+        E::ReturnFromGraveyardToBattlefield { target } =>
+            E::ReturnFromGraveyardToBattlefield { target: to(target) },
+        E::ReturnFromGraveyardWithCounters { target, kind, count } =>
+            E::ReturnFromGraveyardWithCounters { target: to(target), kind, count },
+        E::ReturnFromExileToBattlefield { target } =>
+            E::ReturnFromExileToBattlefield { target: to(target) },
+        E::ExileFromGraveyard { target } => E::ExileFromGraveyard { target: to(target) },
+        // A delayed action the ability schedules on its card falls on
+        // the object the card became, while its source stays the
+        // creating ability's source (CR 603.7e).
+        E::DelayedAction { source, controller, when, action }
+            if source == old
+                && matches!(when, DelayedWhen::NextEndStep | DelayedWhen::NextUpkeep) =>
+            E::DelayedActionOn { source, affected: new, controller, when, action },
+        // Containers: the link reaches the effects they hold, so an
+        // optional or conditional return follows the card too.
+        E::Sequence(v) => E::Sequence(
+            v.into_iter().map(|x| relink_moved_card(x, old, new)).collect()),
+        E::Conditional { condition, then, otherwise } =>
+            E::Conditional { condition, then: deep(then), otherwise: otherwise.map(deep) },
+        E::OptionalPayment { chooser, cost, then, else_effect } =>
+            E::OptionalPayment { chooser, cost, then: deep(then), else_effect: else_effect.map(deep) },
+        E::ChoosePlayerThen { chooser, opponents_only, then } =>
+            E::ChoosePlayerThen { chooser, opponents_only, then: deep(then) },
+        E::FlipCoin { player, win, lose } =>
+            E::FlipCoin { player, win: deep(win), lose: lose.map(deep) },
+        E::RollDie { player, sides, outcomes } => E::RollDie { player, sides,
+            outcomes: outcomes.into_iter().map(|mut o| { o.effect = deep(o.effect); o }).collect() },
+        // Specialize each iteration to its id first, as execution and
+        // flattening do, then link: a loop over the moved card's old id
+        // otherwise reached it only after this pass, by placeholder.
+        E::ForEach { targets, effect } => E::Sequence(targets.into_iter()
+            .map(|id| relink_moved_card(effect.retargeted(id), old, new))
+            .collect()),
+        other => other,
     }
 }
 
@@ -3610,7 +3848,9 @@ fn execute_effects_or_park(
 /// straight-line execute — single-choice branches are safe there and the
 /// multi-choice case is not reachable from current call sites.
 fn execute_optional_branch(state: &mut GameState, branch: crate::effects::Effect) {
-    if let Some(parked) = state.pending_resolution.as_mut() {
+    if !state.entry_continuations.is_empty() {
+        state.entry_continuations.push_front(crate::entry::EntryContinuation::Effect(Box::new(branch)));
+    } else if let Some(parked) = state.pending_resolution.as_mut() {
         parked.remaining_effects.insert(0, branch);
     } else {
         branch.execute(state);
@@ -3784,6 +4024,7 @@ fn resolution_effects(
                     trigger_event: trigger_event.clone(),
                     targets: entry.targets.clone(),
                     effect_override: None,
+                    affected: entry.affected,
                 };
                 return (f)(state, &pt, registry);
             }
@@ -3827,6 +4068,7 @@ fn resolution_effects(
                 trigger_event: trigger_event.clone(),
                 targets: entry.targets.clone(),
                 effect_override: None,
+                affected: entry.affected,
             };
             // Granted abilities (id in the granted range) dispatch from
             // the object's runtime list; otherwise the registry def.
@@ -4191,16 +4433,21 @@ fn misc_trigger_resolve(
     let Some(kind) = kind else { return Vec::new(); };
     let Some(obj) = state.objects.get(source) else { return Vec::new(); };
     let have = obj.count_counters(kind);
-    if have == 0 {
-        return vec![Effect::DestroyPermanent { target: source }];
+    // Sacrifices, not destroys (A1.5bk), at the rules' own moments:
+    // - Fading (CR 702.32a): remove a fade counter; sacrifice only if
+    //   none can be removed, so it survives removing its last one.
+    // - Vanishing (CR 702.63a): with a time counter, remove one; when the
+    //   last is removed, sacrifice it. That is a separate trigger in the
+    //   rules, approximated here inside the same resolution. With none, the
+    //   upkeep ability does nothing.
+    let remove = Effect::RemoveCounters { target: source, kind, count: 1 };
+    match (kind, have) {
+        (CounterKind::Fade, 0) => vec![Effect::SacrificePermanent { target: source }],
+        (CounterKind::Fade, _) => vec![remove],
+        (_, 0) => Vec::new(),
+        (_, 1) => vec![remove, Effect::SacrificePermanent { target: source }],
+        (_, _) => vec![remove],
     }
-    let mut out = vec![Effect::RemoveCounters {
-        target: source, kind, count: 1 }];
-    if have == 1 {
-        // That was the last — sacrifice it now.
-        out.push(Effect::DestroyPermanent { target: source });
-    }
-    out
 }
 
 // =============================================================================
@@ -4273,6 +4520,20 @@ fn spend_mana_plan(
 /// Pay the non-mana additional costs on a cast / activation. Ordering
 /// within the batch matches action-submission order so replays are
 /// deterministic.
+/// Sacrifice `id` to pay a cost (A1.5be). A sacrifice is a sacrifice
+/// however it is made, so the event goes out before the move, as the
+/// effect and state-based paths emit it, for "whenever you sacrifice"
+/// watchers. The permanent goes to its owner's graveyard (CR 400.3). One
+/// no longer on the battlefield is skipped: an ability's own sacrifice is
+/// paid by its fixed cost before the action's declared payment repeats it.
+fn sacrifice_as_cost(state: &mut GameState, player: PlayerId, id: ObjectId) {
+    if !state.objects.get(id).is_some_and(|o| o.zone.is_battlefield()) { return; }
+    state.emit(GameEvent::Sacrifice { player, object_id: id });
+    // A sacrifice isn't destruction: no regeneration, but an
+    // exile-instead replacement applies (A1.5bk).
+    state.put_into_graveyard_dying(id, crate::replacement::DeathKind::Other, MoveCause::Cost);
+}
+
 fn apply_additional_costs(
     state: &mut GameState,
     player: PlayerId,
@@ -4281,10 +4542,7 @@ fn apply_additional_costs(
     use crate::actions::AdditionalCostPayment as A;
     for cost in costs {
         match cost {
-            A::Sacrifice(id) => {
-                state.move_object_to_zone(
-                    *id, Zone::Graveyard(player), MoveCause::Cost);
-            }
+            A::Sacrifice(id) => sacrifice_as_cost(state, player, *id),
             A::Discard(id) => {
                 // Route through the Madness-aware helper (CR 702.34a):
                 // a card with Madness on its characteristics goes to
@@ -6334,6 +6592,88 @@ mod prowess_tests {
     use crate::zones::Zone;
     use crate::types::*;
 
+    /// The moved-card link (A1.5bh, A1.5az) reaches every container and
+    /// return kind, keeps every other id, and moves a delayed action's
+    /// object apart from its source (CR 603.7e).
+    #[test]
+    fn the_moved_card_link_reaches_containers_and_keeps_sources() {
+        use crate::effects::{DelayedAction, DelayedWhen, Effect as E, RollOutcome};
+        use crate::combat::DamageTarget;
+        let (old, new, other) = (10, 20, 30);
+        let r = |e| relink_moved_card(e, old, new);
+        assert!(matches!(r(E::ReturnFromExileToBattlefield { target: old }),
+            E::ReturnFromExileToBattlefield { target } if target == new));
+        assert!(matches!(r(E::ReturnFromGraveyardWithCounters { target: old, kind: CounterKind::PlusOnePlusOne, count: 1 }),
+            E::ReturnFromGraveyardWithCounters { target, .. } if target == new));
+        let E::FlipCoin { win, lose, .. } = r(E::FlipCoin { player: 0,
+            win: Box::new(E::ReturnToHand { target: old }),
+            lose: Some(Box::new(E::ReturnToHand { target: other })) }) else { panic!() };
+        assert!(matches!(*win, E::ReturnToHand { target } if target == new));
+        assert!(matches!(lose.as_deref(), Some(E::ReturnToHand { target }) if *target == other));
+        let E::RollDie { outcomes, .. } = r(E::RollDie { player: 0, sides: 6, outcomes: vec![RollOutcome {
+            min: 1, max: 6, effect: Box::new(E::PutOnBottomOfLibrary { target: old }) }] }) else { panic!() };
+        assert!(matches!(*outcomes[0].effect, E::PutOnBottomOfLibrary { target } if target == new));
+        let E::ChoosePlayerThen { then, .. } = r(E::ChoosePlayerThen { chooser: 0, opponents_only: false,
+            then: Box::new(E::ReturnFromGraveyardToHand { target: old }) }) else { panic!() };
+        assert!(matches!(*then, E::ReturnFromGraveyardToHand { target } if target == new));
+        // A loop over the old id with a placeholder body: each iteration is
+        // specialized, then linked; a nonmoving body keeps its old id.
+        use crate::objects::NULL_OBJECT_ID;
+        let E::Sequence(iters) = r(E::ForEach { targets: vec![old, other],
+            effect: Box::new(E::ReturnFromGraveyardToHand { target: NULL_OBJECT_ID }) }) else { panic!() };
+        assert!(matches!(iters.as_slice(), [E::ReturnFromGraveyardToHand { target: a }, E::ReturnFromGraveyardToHand { target: b }]
+            if *a == new && *b == other), "{iters:?}");
+        let E::Sequence(iters) = r(E::ForEach { targets: vec![old],
+            effect: Box::new(E::Tap { target: NULL_OBJECT_ID }) }) else { panic!() };
+        assert!(matches!(iters.as_slice(), [E::Tap { target }] if *target == old), "{iters:?}");
+        let E::OptionalPayment { then, .. } = r(E::OptionalPayment { chooser: 0,
+            cost: crate::actions::OptionalPaymentKind::Life(1),
+            then: Box::new(E::ForEach { targets: vec![old], effect: Box::new(E::ReturnFromGraveyardToBattlefield { target: NULL_OBJECT_ID }) }),
+            else_effect: None }) else { panic!() };
+        assert!(matches!(&*then, E::Sequence(v) if matches!(v.as_slice(), [E::ReturnFromGraveyardToBattlefield { target }] if *target == new)));
+        // Not a move or return: the source keeps its old id.
+        assert!(matches!(r(E::DealDamage { source: old, target: DamageTarget::Object(other), amount: 1 }),
+            E::DealDamage { source, .. } if source == old));
+        // A delayed action on the card: its object moves, its source stays.
+        assert!(matches!(r(E::DelayedAction { source: old, controller: 0, when: DelayedWhen::NextEndStep, action: DelayedAction::ReturnToHand }),
+            E::DelayedActionOn { source, affected, .. } if source == old && affected == new));
+        assert!(matches!(r(E::DelayedAction { source: other, controller: 0, when: DelayedWhen::NextEndStep, action: DelayedAction::ReturnToHand }),
+            E::DelayedAction { source, .. } if source == other));
+    }
+
+    /// Fading and vanishing at their own moments (CR 702.32a, 702.63a;
+    /// A1.5bk), sacrificing rather than destroying: fading removes a
+    /// counter while it has one and sacrifices only with none left;
+    /// vanishing removes a counter while it has one, sacrifices on removing
+    /// the last, and does nothing with none.
+    #[test]
+    fn fading_and_vanishing_sacrifice_at_their_own_moments() {
+        use crate::effects::Effect;
+        let run = |kw: KeywordAbility, kind: CounterKind, have: u32| {
+            let mut s = GameState::new(2, 0);
+            let c = put_creature(&mut s, 0, 2, 2);
+            s.objects.get_mut(c).unwrap().characteristics.keywords.push(kw);
+            if have > 0 { s.objects.get_mut(c).unwrap().add_counters(kind, have); }
+            (c, misc_trigger_resolve(&s, c, FADEVANISH_TRIGGER_ID))
+        };
+        let sac = |out: &[Effect], c| matches!(out.last(), Some(Effect::SacrificePermanent { target }) if *target == c);
+        let removes = |out: &[Effect]| matches!(out.first(), Some(Effect::RemoveCounters { count: 1, .. }));
+        // Fading.
+        let (c, out) = run(KeywordAbility::Fading(1), CounterKind::Fade, 0);
+        assert!(sac(&out, c) && out.len() == 1, "fading with none: {out:?}");
+        for have in [1, 2] {
+            let (c, out) = run(KeywordAbility::Fading(1), CounterKind::Fade, have);
+            assert!(removes(&out) && !sac(&out, c), "fading with {have}: {out:?}");
+        }
+        // Vanishing.
+        let (_, out) = run(KeywordAbility::Vanishing(1), CounterKind::Time, 0);
+        assert!(out.is_empty(), "vanishing with none: {out:?}");
+        let (c, out) = run(KeywordAbility::Vanishing(1), CounterKind::Time, 1);
+        assert!(removes(&out) && sac(&out, c), "vanishing with one: {out:?}");
+        let (c, out) = run(KeywordAbility::Vanishing(1), CounterKind::Time, 2);
+        assert!(removes(&out) && !sac(&out, c), "vanishing with two: {out:?}");
+    }
+
     fn put_creature(s: &mut GameState, owner: PlayerId, p: i32, t: i32) -> ObjectId {
         let id = s.allocate_object_id();
         let chars = Characteristics {
@@ -6522,6 +6862,7 @@ mod tests {
             trigger_event: GameEvent::TurnBegins { player: 0, turn_number: 1 },
             targets: Default::default(),
             effect_override: None,
+            affected: None,
         });
 
         // Must not panic (it would, pre-fix, when the drain pushed a 2nd
@@ -7472,10 +7813,17 @@ mod tests {
             state.objects.get(id).unwrap().count_counters(CounterKind::Fade),
             1);
         assert!(state.objects.get(id).is_some());
-        tick(&mut state, &registry); // 1 -> 0, sacrificed
+        // CR 702.32a: it survives removing its last fade counter and is
+        // sacrificed at the next upkeep, when none can be removed. This
+        // test sacrificed it on the second tick, which encoded the old
+        // timing (A1.5bk).
+        tick(&mut state, &registry); // 1 -> 0, still here
+        assert!(state.objects.get(id).is_some_and(|o| o.zone.is_battlefield()
+            && o.count_counters(CounterKind::Fade) == 0));
+        tick(&mut state, &registry); // none to remove: sacrificed
         let alive = state.objects.get(id)
             .is_some_and(|o| o.zone.is_battlefield());
-        assert!(!alive, "Fading creature sacrificed when counters run out");
+        assert!(!alive, "Fading creature sacrificed when no counter can be removed");
     }
 
     #[test]
@@ -8131,11 +8479,11 @@ mod tests {
 
         let ev = GameEvent::Tapped { object_id: obj };
         // Front face (visible_face == 0): gated trigger does NOT fire.
-        assert!(collect_pending_triggers(&mut state, &registry, std::slice::from_ref(&ev)).is_empty(),
+        assert!(collect_pending_triggers(&mut state, &registry, 0, std::slice::from_ref(&ev)).is_empty(),
             "back-face-gated trigger must not fire on the front face");
         // Flip to the back face: now it fires.
         state.objects.get_mut(obj).unwrap().visible_face = 1;
-        assert_eq!(collect_pending_triggers(&mut state, &registry, &[ev]).len(), 1,
+        assert_eq!(collect_pending_triggers(&mut state, &registry, 0, &[ev]).len(), 1,
             "the trigger fires once the back face is showing");
     }
 
@@ -8170,7 +8518,7 @@ mod tests {
         apply_resolution_choice(&mut state, &registry, choice_id,
             ChoiceResponse::ChooseTargets {
                 selection: TargetSelection {
-                    targets: vec![TargetChoice::Object(bear_id)],
+                    targets: vec![TargetChoice::Object(bear_id)], clause_lengths: Vec::new(),
                 },
             });
 
@@ -8272,6 +8620,90 @@ mod tests {
             "creature stays tapped under don't-untap");
         assert!(!state.objects.get(beast).unwrap().status.summoning_sick,
             "sickness still clears");
+    }
+
+    #[test]
+    fn source_relative_untap_cap_exempts_only_its_source() {
+        use crate::layers::{ContinuousEffect, Duration};
+        use crate::targets::{ControllerConstraint, ObjectFilter};
+        for p in [0, 1] {
+            let mut state = GameState::new(2, 20261111);
+            state.turn.active_player = p;
+            let mut ids = Vec::new();
+            for controller in [p, p, p, 1 - p] {
+                let id = state.allocate_object_id();
+                let mut obj = GameObject::new(id, controller, Zone::Battlefield, 0,
+                    creature_chars(2, 2));
+                obj.tap();
+                state.objects.insert(obj);
+                ids.push(id);
+            }
+            // The source untaps without consuming the cap; only the first
+            // other creature may untap, in the existing ascending-id order.
+            state.add_continuous_effect(ContinuousEffect::untap_cap(ids[0],
+                ObjectFilter::creature().controlled_by(ControllerConstraint::You)
+                    .excluding_source(), 1, Duration::WhileSourceOnBattlefield));
+            untap_step(&mut state);
+            let tapped: Vec<_> = ids.iter().map(|id|
+                state.objects.get(*id).unwrap().is_tapped()).collect();
+            assert_eq!(tapped, vec![false, false, true, true]);
+        }
+    }
+
+    #[test]
+    fn source_relative_trigger_grants_exclude_the_grantor_not_the_host() {
+        use crate::layers::{ContinuousEffect, Duration};
+        use crate::targets::{ControllerConstraint, ObjectFilter};
+        use crate::triggers::{TriggeredAbilityDef, TriggerCondition, TriggerFrequency,
+                              GRANTED_TRIGGER_ID_BASE};
+        fn gain_one(_s: &GameState, pt: &crate::triggers::PendingTrigger,
+                    _r: &CardRegistry) -> Vec<crate::effects::Effect> {
+            vec![crate::effects::Effect::GainLife { player: pt.controller, amount: 1 }]
+        }
+        for p in [0, 1] {
+            let registry = CardRegistry::new();
+            let mut state = GameState::new(2, 20261111);
+            let mut ids = Vec::new();
+            for controller in [p, p, p, 1 - p] {
+                let id = state.allocate_object_id();
+                state.objects.insert(GameObject::new(id, controller, Zone::Battlefield,
+                    0, creature_chars(2, 2)));
+                ids.push(id);
+            }
+            for source in &ids[..2] {
+                state.add_continuous_effect(ContinuousEffect::filtered_grant_triggered(
+                    *source, ObjectFilter::creature()
+                        .controlled_by(ControllerConstraint::You).excluding_source(),
+                    TriggeredAbilityDef {
+                        id: GRANTED_TRIGGER_ID_BASE + 8,
+                        trigger_condition: TriggerCondition::SelfAttacks,
+                        intervening_if: None, effect: gain_one,
+                        trigger_zones: vec![Zone::Battlefield],
+                        frequency: TriggerFrequency::EachTime,
+                        target_requirements: Vec::new(),
+                    }, Duration::WhileSourceOnBattlefield));
+            }
+            for (id, expected) in [(ids[0], 1), (ids[1], 1), (ids[2], 2), (ids[3], 0)] {
+                state.emit(GameEvent::CreatureAttacks { attacker: id,
+                    defending: crate::combat::DefendingEntity::Player(1 - p) });
+                run_sba_and_triggers(&mut state, &registry);
+                assert_eq!(state.stack_size(), expected);
+                assert!(state.stack.iter().all(|entry| entry.source == id));
+                let before = state.player(p).life;
+                for _ in 0..expected { resolve_top_of_stack(&mut state, &registry); }
+                assert_eq!(state.player(p).life, before + expected as i32);
+            }
+            // A grant follows the grantor's current controller.
+            state.objects.get_mut(ids[1]).unwrap().controller = 1 - p;
+            state.emit(GameEvent::CreatureAttacks { attacker: ids[3],
+                defending: crate::combat::DefendingEntity::Player(p) });
+            run_sba_and_triggers(&mut state, &registry);
+            assert_eq!(state.stack_size(), 1);
+            assert_eq!(state.stack[0].source, ids[3]);
+            let before = state.player(1 - p).life;
+            resolve_top_of_stack(&mut state, &registry);
+            assert_eq!(state.player(1 - p).life, before + 1);
+        }
     }
 
     #[test]

@@ -6,7 +6,7 @@
 //!   `Effect::CreateCommodityToken`.)
 //! * `+1`: Target artifact or creature loses all abilities and becomes a
 //!   green Elk creature with base power and toughness 3/3. (Functional for
-//!   lose-all-abilities + base 3/3 + green; the Elk subtype overlay /
+//!   creature type + lose-all-abilities + base 3/3 + green; the Elk subtype overlay /
 //!   strip-other-types is omitted — no subtype-set effect in the surface.)
 //! * `−5`: Exchange control of an artifact/creature you control and a
 //!   small creature an opponent controls. GAP — a two-way control exchange
@@ -17,11 +17,12 @@ use arcana_core::layers::Duration;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
-    ActivatedAbilityDef, ActivationContext, ActivationCost, CardDefinition,
-    CardRegistry,
+    ActivatedAbilityDef, ActivationContext, ActivationCost, CardDefinition, CardRegistry,
 };
 use arcana_core::state::GameState;
-use arcana_core::targets::{ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ObjectFilter, TargetChoice, TargetCount, TargetFilter, TargetRequirement,
+};
 use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine};
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -117,7 +118,15 @@ fn plus_one_elk(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry
     // subtype overlay and strip-other-types are omitted (no subtype-set
     // effect in the demonstrated surface).
     vec![
-        Effect::LoseAllAbilities { target: *id, duration: Duration::WhileSourceOnBattlefield },
+        Effect::AddType {
+            target: *id,
+            types: TypeLine::CREATURE.into(),
+            duration: Duration::WhileSourceOnBattlefield,
+        },
+        Effect::LoseAllAbilities {
+            target: *id,
+            duration: Duration::WhileSourceOnBattlefield,
+        },
         Effect::SetBasePT {
             target: *id,
             power: 3,
@@ -132,7 +141,11 @@ fn plus_one_elk(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry
     ]
 }
 
-fn minus_five_gap(_state: &GameState, _ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+fn minus_five_gap(
+    _state: &GameState,
+    _ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
     // GAP: two-way control exchange is not expressible (ChangeControl is
     // one-directional).
     Vec::new()

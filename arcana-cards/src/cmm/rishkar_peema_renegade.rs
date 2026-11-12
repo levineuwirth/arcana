@@ -2,18 +2,29 @@
 //! When Rishkar enters, put a +1/+1 counter on each of up to two
 //! target creatures.
 //! Each creature you control with a counter on it has "{T}: Add {G}."
-//! (static — GAP).
+//! That is a printed static ability, which the engine installs as Rishkar
+//! enters; the mana ability belongs to each creature that has a counter
+//! of any kind, for as long as it has one.
 
 use arcana_core::effects::Effect;
-use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
-use arcana_core::registry::{CardDefinition, CardRegistry};
+use arcana_core::layers::{ContinuousEffect, Duration};
+use arcana_core::mana::{ManaCost, ManaUnit};
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
+use arcana_core::registry::{
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
+    CardDefinition, CardRegistry,
+};
 use arcana_core::state::GameState;
-use arcana_core::targets::{TargetChoice, TargetCount, TargetFilter, TargetRequirement};
+use arcana_core::targets::{
+    ControllerConstraint, ObjectFilter, TargetChoice, TargetCount, TargetFilter,
+    TargetRequirement,
+};
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, PtValue, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{
+    CardId, ColorSet, CounterKind, ManaColor, PtValue, SubtypeSet, SupertypeSet, TypeLine,
+};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -36,24 +47,56 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    // GAP: "Each creature you control with a counter on it has '{T}: Add
-    // {G}.'" is a static ability-granting continuous effect, not a
-    // triggered/activated ability.
     reg.register(
-        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
-            id: 1,
-            trigger_condition: TriggerCondition::SelfEntersBattlefield,
-            intervening_if: None,
-            effect: etb_counters,
-            trigger_zones: vec![Zone::Battlefield],
-            frequency: TriggerFrequency::EachTime,
-            target_requirements: vec![TargetRequirement {
-                filter: TargetFilter::Creature,
-                count: TargetCount::UpTo(2),
-                controller: None,
-            }],
-        }),
+        CardDefinition::new(name, chars)
+            .with_triggered_ability(TriggeredAbilityDef {
+                id: 1,
+                trigger_condition: TriggerCondition::SelfEntersBattlefield,
+                intervening_if: None,
+                effect: etb_counters,
+                trigger_zones: vec![Zone::Battlefield],
+                frequency: TriggerFrequency::EachTime,
+                target_requirements: vec![TargetRequirement {
+                    filter: TargetFilter::Creature,
+                    count: TargetCount::UpTo(2),
+                    controller: None,
+                }],
+            })
+            // "Each creature you control with a counter on it has
+            // '{T}: Add {G}.'" Any kind of counter; Rishkar counts
+            // himself when he has one.
+            .with_static(vec![ContinuousEffect::filtered_grant_activated(
+                NULL_OBJECT_ID,
+                ObjectFilter::creature()
+                    .controlled_by(ControllerConstraint::You)
+                    .with_any_counter(),
+                ActivatedAbilityDef {
+                    text: "{T}: Add {G}.".into(),
+                    cost: ActivationCost::tap_only(),
+                    target_requirements: Vec::new(),
+                    is_mana_ability: true,
+                    is_loyalty_ability: false,
+                    activation_zone: ActivationZone::Battlefield,
+                    is_instant_speed: true,
+                    face_gate: None,
+                    effect: add_green,
+                },
+                Duration::WhileSourceOnBattlefield,
+            )]),
     )
+}
+
+/// The granted "{T}: Add {G}." `ctx.source` is the creature that has the
+/// ability and `ctx.controller` the player who tapped it.
+fn add_green(
+    _state: &GameState,
+    ctx: &ActivationContext,
+    _reg: &CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Green, ctx.source)],
+    }]
 }
 
 fn etb_counters(

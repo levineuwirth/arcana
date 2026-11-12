@@ -33,6 +33,17 @@ pub type ObjectId = u32;
 /// and as a placeholder for the pre-game state. Real object ids start at 1.
 pub const NULL_OBJECT_ID: ObjectId = 0;
 
+/// Stands in, at resolution, for a target occurrence that has become
+/// illegal (A1.5aw; CR 608.2b), preserving the other target positions.
+/// No object has this id. Operations that accept absent objects, notably
+/// damage sources, must reject it explicitly. Total information helpers
+/// can still turn a missing lookup into a value (the A1.5bo limitation).
+/// Distinct from [`NULL_OBJECT_ID`], the for-each placeholder that
+/// iteration fills in.
+pub const ILLEGAL_TARGET_ID: ObjectId = ObjectId::MAX - 1;
+/// The player counterpart of [`ILLEGAL_TARGET_ID`]: no seat has it.
+pub const ILLEGAL_TARGET_PLAYER: crate::types::PlayerId = crate::types::PlayerId::MAX;
+
 // =============================================================================
 // ObjectArena
 // =============================================================================
@@ -284,6 +295,14 @@ pub struct GameObject {
     /// Cleared by [`Self::reset_on_zone_change`]: a fresh re-id'd
     /// object spent no mana until a cast says otherwise.
     pub colors_paid: ColorSet,
+    /// CR 613.7 — this permanent's timestamp, from the shared clock
+    /// ([`crate::state::GameState::next_timestamp`]). Given when it enters
+    /// the battlefield (613.7d) and again each time an Aura or Equipment
+    /// becomes attached (613.7e); a control change or a recheck of its
+    /// statics leaves it alone. The effects of its printed static
+    /// abilities take this timestamp (613.7a). Zero off the battlefield.
+    #[serde(default)]
+    pub timestamp: u64,
 }
 
 impl GameObject {
@@ -322,6 +341,7 @@ impl GameObject {
             is_token: false,
             commodity: None,
             colors_paid: ColorSet::new(),
+            timestamp: 0,
             intrinsic_activated_abilities: Vec::new(),
             granted_triggered_abilities: Vec::new(),
         }
@@ -367,6 +387,11 @@ impl GameObject {
 
     pub fn has_counter(&self, kind: CounterKind) -> bool {
         self.count_counters(kind) > 0
+    }
+
+    /// Is there a counter of any kind on this object?
+    pub fn has_any_counter(&self) -> bool {
+        self.counters.values().any(|&n| n > 0)
     }
 
     /// Add `count` counters of `kind`. No-op if `count == 0`.
@@ -516,6 +541,8 @@ impl GameObject {
         // so the spent-colors record must not survive the re-id. The
         // cast path re-stamps this in `finalize_resolved_spell`.
         self.colors_paid = ColorSet::new();
+        // A new object has no timestamp until it enters the battlefield.
+        self.timestamp = 0;
     }
 }
 
@@ -612,6 +639,18 @@ pub struct Characteristics {
     /// static (Vexing Shusher-class) is a separate, future concern.
     #[serde(default)]
     pub cant_be_countered: bool,
+    /// The printed static abilities of this object (CR 604), installed by
+    /// the engine as the permanent enters the battlefield (A1.5br). They
+    /// are part of the copiable values, so a copy of the permanent and a
+    /// token made from a definition carry them without a registry lookup;
+    /// a face-down permanent's replaced characteristics have none. `None`
+    /// for the vast majority. Set through `CardDefinition::with_static`
+    /// and `TokenDefinition::with_static`. Skipped by serde: the effects
+    /// can carry fn pointers, as `intrinsic_activated_abilities` does.
+    /// One thin pointer: every object holds several of these blocks, and
+    /// the field's width is paid on each of them (see the br cost probe).
+    #[serde(skip)]
+    pub static_abilities: Option<std::sync::Arc<Vec<crate::layers::StaticAbilityDef>>>,
 }
 
 impl Characteristics {
@@ -665,6 +704,7 @@ mod tests {
             every_creature_type: false,
             cant_be_countered: false,
             cast_timing: None,
+            static_abilities: None,
         }
     }
 
