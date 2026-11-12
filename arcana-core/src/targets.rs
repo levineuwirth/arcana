@@ -653,6 +653,10 @@ pub struct ObjectFilter {
     pub name: Option<SmallString>,
     pub is_token: Option<bool>,
     pub has_counter: Option<CounterKind>,
+    /// "With a counter on it": at least one counter of any kind
+    /// (Rishkar, Peema Renegade). Contrast [`Self::has_counter`], which
+    /// names one kind.
+    pub any_counter: bool,
     /// `Some(true)` = only commanders (CR 903.3 designation —
     /// Background statics); `Some(false)` = only non-commanders.
     pub is_commander: Option<bool>,
@@ -680,6 +684,12 @@ impl ObjectFilter {
     /// Builder: exclude only the source object, not other copies of its card.
     pub fn excluding_source(mut self) -> Self {
         self.exclude_source = true;
+        self
+    }
+
+    /// Builder: "with a counter on it", whatever the counter's kind.
+    pub fn with_any_counter(mut self) -> Self {
+        self.any_counter = true;
         self
     }
 
@@ -1201,6 +1211,9 @@ impl ObjectFilter {
             if !obj.has_counter(kind.clone()) {
                 return false;
             }
+        }
+        if self.any_counter && !obj.has_any_counter() {
+            return false;
         }
 
         // --- commodity token (Treasure / Clue / Food / …): minted

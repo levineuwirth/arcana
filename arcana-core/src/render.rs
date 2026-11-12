@@ -87,8 +87,9 @@ pub fn describe_event(
 fn ability_text(state: &GameState, registry: &CardRegistry,
                 source: crate::objects::ObjectId, index: usize) -> Option<String> {
     let obj = state.objects.get(source)?;
-    let def = registry.get(obj.card_id)?;
-    let text = def.activated_abilities.get(index)?.text.trim();
+    // The same flat index the action carries: printed, intrinsic, granted.
+    let text = crate::legal_actions::lookup_activated_ability(obj, registry, state, index)?
+        .text.trim();
     if text.is_empty() { return None; }
     const MAX: usize = 64;
     Some(if text.chars().count() > MAX {

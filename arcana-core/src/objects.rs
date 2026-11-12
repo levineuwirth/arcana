@@ -389,6 +389,11 @@ impl GameObject {
         self.count_counters(kind) > 0
     }
 
+    /// Is there a counter of any kind on this object?
+    pub fn has_any_counter(&self) -> bool {
+        self.counters.values().any(|&n| n > 0)
+    }
+
     /// Add `count` counters of `kind`. No-op if `count == 0`.
     pub fn add_counters(&mut self, kind: CounterKind, count: u32) {
         if count == 0 { return; }

@@ -556,6 +556,28 @@ impl ContinuousEffect {
         }
     }
 
+    /// Build a "[filter] permanents have '\[cost\]: \[effect\]'" grant
+    /// (Rishkar, Peema Renegade: "each creature you control with a
+    /// counter on it has '{T}: Add {G}.'"). The `ability`'s cost and
+    /// effect run against each matching permanent when its controller
+    /// activates it. Nothing is installed on the permanents: the grant
+    /// is read from this one effect each time abilities are listed.
+    pub fn filtered_grant_activated(source: ObjectId,
+                                    filter: crate::targets::ObjectFilter,
+                                    ability: crate::registry::ActivatedAbilityDef,
+                                    duration: Duration) -> Self {
+        Self {
+            source,
+            layer: Layer::L6Ability,
+            timestamp: 0,
+            duration,
+            dependency: None, printed: None,
+            kind: ContinuousEffectKind::FilteredGrantsActivated {
+                filter, ability: Box::new(ability),
+            },
+        }
+    }
+
     /// Build an "enchanted/equipped creature doesn't untap" marker
     /// (Glimmerdust Nap). Follows `source.attached_to`.
     pub fn attached_dont_untap(source: ObjectId, duration: Duration) -> Self {
@@ -1337,6 +1359,21 @@ pub enum ContinuousEffectKind {
     AttachedCreatureGrantsActivated {
         ability: crate::registry::ActivatedAbilityDef,
     },
+    /// MARKER — "[filter] permanents have '\[cost\]: \[effect\]'"
+    /// (Rishkar, Peema Renegade). Grants the held [`ActivatedAbilityDef`]
+    /// to every battlefield permanent matching `filter`, read from the
+    /// source's controller's side and against the permanent's computed
+    /// characteristics, so "creature" means a creature now. Gathered by
+    /// [`GameState::granted_activated_for`] beside the attachment grants;
+    /// the cost applies to the permanent that has the ability. A
+    /// permanent stops having it the moment it stops matching, the
+    /// source leaves or loses its abilities, or a later "loses all
+    /// abilities" takes it away. The ability is boxed so that this
+    /// variant does not set the size of every continuous effect.
+    FilteredGrantsActivated {
+        filter: crate::targets::ObjectFilter,
+        ability: Box<crate::registry::ActivatedAbilityDef>,
+    },
     /// MARKER — "Enchanted/equipped creature doesn't untap during its
     /// controller's untap step" (Glimmerdust Nap, Ice Over, Encrust).
     /// Dynamic sibling of [`Self::DontUntapTarget`]; follows
@@ -1680,6 +1717,7 @@ impl ContinuousEffectKind {
             | Self::AttachedCreatureDontUntap
             | Self::AttachedCreatureCantBeBlocked
             | Self::AttachedCreatureGrantsActivated { .. }
+            | Self::FilteredGrantsActivated { .. }
             | Self::AttachedCreatureGrantsTriggered { .. }
             | Self::FilteredGrantTriggeredAbility { .. }
             | Self::DontUntapTarget { .. }
@@ -1783,6 +1821,7 @@ impl ContinuousEffectKind {
             | Self::AttachedCreatureDontUntap
             | Self::AttachedCreatureCantBeBlocked
             | Self::AttachedCreatureGrantsActivated { .. }
+            | Self::FilteredGrantsActivated { .. }
             | Self::AttachedCreatureGrantsTriggered { .. }
             | Self::FilteredGrantTriggeredAbility { .. }
             | Self::DontUntapTarget { .. }
@@ -1920,6 +1959,7 @@ impl ContinuousEffectKind {
             | Self::AttachedCreatureDontUntap
             | Self::AttachedCreatureCantBeBlocked
             | Self::AttachedCreatureGrantsActivated { .. }
+            | Self::FilteredGrantsActivated { .. }
             | Self::AttachedCreatureGrantsTriggered { .. }
             | Self::FilteredGrantTriggeredAbility { .. }
             | Self::DontUntapTarget { .. }
@@ -2600,28 +2640,66 @@ impl GameState {
         })
     }
 
-    /// Does `object_id` have an active "can't block" restriction?
-    /// Activated abilities granted to `object_id` by an attached
-    /// Aura/Equipment (CR 303.4 / 702.6 "enchanted creature has
-    /// '\[cost\]: …'"). Gathers every live
-    /// [`ContinuousEffectKind::AttachedCreatureGrantsActivated`] whose
-    /// source is attached to `object_id`, in `continuous_effects`
-    /// order. The SAME order is used by both the legal-action
-    /// enumerator and `lookup_activated_ability`, so the flat ability
-    /// index stays consistent between enumeration and resolution.
+    /// Activated abilities granted to `object_id` by continuous effects,
+    /// in `continuous_effects` order, one entry per granting effect:
+    ///
+    /// * [`ContinuousEffectKind::AttachedCreatureGrantsActivated`], from
+    ///   an Aura or Equipment attached to it (CR 303.4 / 702.6
+    ///   "enchanted creature has '\[cost\]: …'");
+    /// * [`ContinuousEffectKind::FilteredGrantsActivated`], from a
+    ///   static that names a class of permanents it belongs to
+    ///   ("each creature you control with a counter on it has …").
+    ///
+    /// This one list is what both the legal-action enumerator and
+    /// `lookup_activated_ability` read, so the flat ability index means
+    /// the same ability when an action is offered and when it is
+    /// applied. Two effects granting the same ability give two entries.
     pub fn granted_activated_for(&self, object_id: ObjectId)
         -> Vec<&crate::registry::ActivatedAbilityDef>
     {
+        // Computed at most once, and only when a filtered grant gets
+        // past its cheap checks.
+        let mut computed: Option<Option<Characteristics>> = None;
         self.continuous_effects.iter().filter_map(|e| match &e.kind {
             ContinuousEffectKind::AttachedCreatureGrantsActivated { ability }
                 if e.is_live(self)
                     && self.objects.get(e.source)
                         .and_then(|s| s.attached_to) == Some(object_id) =>
                 Some(ability),
+            ContinuousEffectKind::FilteredGrantsActivated { filter, ability } => {
+                let obj = self.objects.get(object_id)?;
+                if !obj.zone.is_battlefield() { return None; }
+                let src = self.objects.get(e.source)?;
+                // Two of the filter's own conditions, asked first because
+                // they need no characteristics. The full match below asks
+                // them again, so these can only save work.
+                if filter.controller.as_ref()
+                    .is_some_and(|c| !c.matches(obj.controller, src.controller))
+                    || (filter.any_counter && !obj.has_any_counter())
+                {
+                    return None;
+                }
+                // The source has lost its abilities (or shows another face).
+                if !e.is_live(self) { return None; }
+                // A "loses all abilities" aimed at the permanent takes the
+                // grant away only if it is the later of the two (CR 613.7).
+                if self.ability_loss_timestamp(object_id)
+                    .is_some_and(|lost| lost > e.timestamp) { return None; }
+                // The grant applies in layer 6, after type-changing
+                // effects: match what the permanent is now, not what is
+                // printed on it. Called from outside the layer pipeline,
+                // so computing here cannot recurse.
+                let chars = computed
+                    .get_or_insert_with(|| self.compute_characteristics(object_id))
+                    .as_ref()?;
+                filter.matches_in_layer(obj, chars, self, e.source, src.controller)
+                    .then_some(&**ability)
+            }
             _ => None,
         }).collect()
     }
 
+    /// Does `object_id` have an active "can't block" restriction?
     /// Consumed by [`crate::combat::GameState::blocker_eligible`].
     pub fn cant_block(&self, object_id: ObjectId) -> bool {
         self.continuous_effects.iter().any(|e| match &e.kind {

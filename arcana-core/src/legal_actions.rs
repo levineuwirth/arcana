@@ -2745,9 +2745,11 @@ fn enumerate_activation_actions(
         // `intrinsic_activated_abilities`. The resolver inverts the
         // same way via `lookup_activated_ability_with_kind`.
         // Flat index space: 0..R registry, R..R+I intrinsic,
-        // R+I.. granted-by-attachment (Aura/Equipment "enchanted
-        // creature has '[cost]: …'"). `lookup_activated_ability`
-        // inverts in the same order.
+        // R+I.. granted by continuous effects (an Aura or Equipment's
+        // "enchanted creature has '[cost]: …'", a static's "each
+        // creature you control with a counter on it has …").
+        // `lookup_activated_ability` inverts in the same order, from
+        // the same `granted_activated_for` list.
         let reg_count = registry.get(obj.card_id)
             .map_or(0, |d| d.activated_abilities.len());
         let granted = state.granted_activated_for(obj.id);
@@ -3206,11 +3208,13 @@ pub fn playable_cards(
     set.into_iter().collect()
 }
 
-/// Number of mana abilities on `obj` (registry-declared + intrinsic). A
-/// permanent with ≥2 is "flexible" — a dual land that can tap for more than
-/// one color, which `available_mana`'s deterministic first-ability coloring
-/// can't represent.
+/// Number of mana abilities on `obj` (registry-declared, intrinsic and
+/// granted). A permanent with ≥2 is "flexible" — a dual land that can tap
+/// for more than one color, or a creature with a mana ability of its own
+/// and a granted one — which `available_mana`'s deterministic
+/// first-ability coloring can't represent.
 fn count_mana_abilities(
+    state: &GameState,
     obj: &crate::objects::GameObject,
     registry: &CardRegistry,
 ) -> usize {
@@ -3218,7 +3222,9 @@ fn count_mana_abilities(
         d.activated_abilities.iter().filter(|a| a.is_mana_ability).count());
     let intr_n = obj.intrinsic_activated_abilities.iter()
         .filter(|a| a.is_mana_ability).count();
-    reg_n + intr_n
+    let granted_n = state.granted_activated_for(obj.id).iter()
+        .filter(|a| a.is_mana_ability).count();
+    reg_n + intr_n + granted_n
 }
 
 /// Does `player` control an UNTAPPED flexible mana source (≥2 mana
@@ -3231,7 +3237,7 @@ fn player_has_flexible_mana_source(
 ) -> bool {
     state.objects.objects_in_zone(Zone::Battlefield)
         .filter(|o| o.controller == player && !o.is_tapped())
-        .any(|o| count_mana_abilities(o, registry) >= 2)
+        .any(|o| count_mana_abilities(state, o, registry) >= 2)
 }
 
 /// Does `obj` have any NON-mana activated ability (registry / intrinsic /
@@ -3495,9 +3501,10 @@ fn auto_tap_for(
 }
 
 /// Look up an activated ability by flat index — registry abilities
-/// first, then [`crate::objects::GameObject::intrinsic_activated_abilities`].
-/// Returns the ability and a tag identifying which list it came from
-/// (debug / dispatch hint; the engine treats them uniformly).
+/// first, then [`crate::objects::GameObject::intrinsic_activated_abilities`],
+/// then the abilities continuous effects grant
+/// ([`GameState::granted_activated_for`]). The engine treats the three
+/// uniformly.
 pub(crate) fn lookup_activated_ability<'a>(
     obj: &'a crate::objects::GameObject,
     registry: &'a crate::registry::CardRegistry,
@@ -3513,8 +3520,9 @@ pub(crate) fn lookup_activated_ability<'a>(
     } else if index < reg_count + intrinsic_count {
         obj.intrinsic_activated_abilities.get(index - reg_count)
     } else {
-        // Granted-by-attachment tier — same `continuous_effects` order
-        // as the enumerator (`granted_activated_for`).
+        // Granted tier, attachment and filtered grants alike — the same
+        // `granted_activated_for` list, in the same order, as the
+        // enumerator.
         state.granted_activated_for(obj.id)
             .get(index - reg_count - intrinsic_count)
             .copied()
