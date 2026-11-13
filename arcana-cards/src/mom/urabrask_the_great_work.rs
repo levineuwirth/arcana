@@ -107,7 +107,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             // GAP: "only as a sorcery and only if you've cast 3+ instant/sorcery
             // spells this turn" precondition not expressible as an ActivationCost gate.
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{R}: Exile Urabrask, then return it to the battlefield transformed.".into(),
+                text: "{R}: Exile Urabrask, then return it to the battlefield transformed. Activate only as a sorcery and only if you've cast three or more instant and/or sorcery spells this turn.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{R}").expect("valid cost"),
                     ..ActivationCost::default()

@@ -1564,6 +1564,7 @@ mod behavioral_triage {
             T::AttachedCreatureDoes{..} => "AttachedCreatureDoes",
             T::SelfLeavesBattlefield => "SelfLeavesBattlefield",
             T::Custom(_) => "Custom",
+            T::PrintedStatic(_) => "PrintedStatic",
         }
     }
 }

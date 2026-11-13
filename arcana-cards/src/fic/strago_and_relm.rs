@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{2}{R}, {T}: Target opponent exiles cards until instant/sorcery/creature; you may cast it free.".into(),
+                text: "{2}{R}, {T}: Target opponent exiles cards until instant/sorcery/creature; you may cast it free. Activate only as a sorcery.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{2}{R}").unwrap(),
                     tap: true,

@@ -1,12 +1,13 @@
 //! Hazoret the Fervent — `{3}{R}` 5/4 Legendary God.
 //! Indestructible, haste. "Hazoret can't attack or block unless you have one
-//! or fewer cards in hand." (static — GAP)
+//! or fewer cards in hand." (A1.5bq; a printed static since A1.5br.)
 //! "{2}{R}, Discard a card: Hazoret deals 2 damage to each opponent."
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
+use arcana_core::layers::{ContinuousEffect, Duration, SourceCondition, SelfModification};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
@@ -35,9 +36,13 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    // GAP: static "can't attack or block unless you have one or fewer cards in hand" — no conditional attack/block restriction primitive.
+    // Live conditional restriction, installed by the engine on entry.
     reg.register(
         CardDefinition::new(name, chars)
+            .with_static(vec![ContinuousEffect::conditional_self(
+                NULL_OBJECT_ID, SourceCondition::ControllerHandSizeAtLeast(2),
+                SelfModification::CantAttackOrBlock, Duration::WhileSourceOnBattlefield,
+            )])
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{2}{R}, Discard a card: Hazoret deals 2 damage to each opponent.".into(),
                 cost: ActivationCost {
@@ -49,7 +54,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
+                is_instant_speed: true,
                 face_gate: None,
                 effect: damage_each_opponent,
             }),

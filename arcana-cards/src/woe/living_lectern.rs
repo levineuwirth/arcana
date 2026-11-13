@@ -32,7 +32,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{1}, Sacrifice this creature: Draw a card. Create a Sorcerer Role token.".into(),
+                text: "{1}, Sacrifice this creature: Draw a card. Create a Sorcerer Role token. Activate only as a sorcery.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}").unwrap(),
                     sacrifice: true,

@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{1}{B}{B}, Exile this card from your graveyard: Put three +1/+1 counters on target creature you control.".into(),
+                text: "{1}{B}{B}, Exile this card from your graveyard: Put three +1/+1 counters on target creature you control. Activate only as a sorcery.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}{B}{B}").unwrap(),
                     // GAP: exile-self-from-graveyard cost not expressible.

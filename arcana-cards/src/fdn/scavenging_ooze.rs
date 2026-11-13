@@ -1,8 +1,6 @@
 //! Scavenging Ooze — `{1}{G}` 2/2 Ooze.
 //! `{G}: Exile target card from a graveyard. If it was a creature card, put a +1/+1 counter
 //! on this creature and you gain 1 life.`
-//! GAP: "if it was a creature card" — cannot branch on the type of the exiled graveyard card.
-//! We emit ExileFromGraveyard + unconditional counter + life gain as best-effort.
 
 use arcana_core::effects::Effect;
 use arcana_core::mana::ManaCost;
@@ -58,7 +56,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn exile_and_grow(
-    _state: &GameState,
+    state: &GameState,
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
@@ -68,18 +66,19 @@ fn exile_and_grow(
     let TargetChoice::Object(id) = target else {
         return Vec::new();
     };
-    // GAP: "if it was a creature card" — cannot inspect exiled card's type at resolution.
-    // Emitting the exile + counter + life gain unconditionally as best-effort.
-    vec![
-        Effect::ExileFromGraveyard { target: *id },
-        Effect::AddCounters {
+    // Read the legal graveyard target before the exile gives it a new id.
+    let was_creature = state.is_creature_now(*id);
+    let mut effects = vec![Effect::ExileFromGraveyard { target: *id }];
+    if was_creature {
+        effects.push(Effect::AddCounters {
             target: ctx.source,
             kind: CounterKind::PlusOnePlusOne,
             count: 1,
-        },
-        Effect::GainLife {
+        });
+        effects.push(Effect::GainLife {
             player: ctx.controller,
             amount: 1,
-        },
-    ]
+        });
+    }
+    effects
 }

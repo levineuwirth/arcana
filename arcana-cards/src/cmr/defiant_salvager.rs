@@ -34,7 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "Sacrifice an artifact or creature: Put a +1/+1 counter on this creature.".into(),
+                text: "Sacrifice an artifact or creature: Put a +1/+1 counter on this creature. Activate only as a sorcery.".into(),
                 cost: ActivationCost {
                     sacrifice_other: Some(arcana_core::targets::ObjectFilter {
                         types_any: Some(TypeLine(TypeLine::ARTIFACT | TypeLine::CREATURE)),

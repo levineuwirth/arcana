@@ -1,11 +1,5 @@
-//! Kari Zev, Skyship Raider — `{1}{R}` 1/3 Legendary Human Pirate with First
-//! strike and Menace.
-//!
-//! * First strike, menace (keywords).
-//! * Whenever Kari Zev attacks, create Ragavan, a legendary 2/1 red Monkey
-//!   creature token. (The token "enters tapped and attacking" and "exile that
-//!   token at end of combat" riders are fidelity gaps — a plain token is minted;
-//!   no CreateToken-tapped-attacking / end-of-combat-exile Effect is available.)
+//! Kari Zev creates Ragavan tapped and attacking.
+//! GAP: token legendary supertype and end-of-combat exile need engine support.
 
 use arcana_core::effects::{Effect, KeywordAbility, TokenDefinition};
 use arcana_core::mana::ManaCost;
@@ -61,11 +55,14 @@ fn make_ragavan(_state: &GameState, trig: &PendingTrigger, reg: &CardRegistry) -
     };
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(monkey);
-    // GAP: token enters tapped and attacking, and is exiled at end of combat.
-    vec![Effect::CreateToken {
+    // GAP: legendary token and exile at end of combat.
+    vec![Effect::CreateTokenTappedAttacking {
         controller: trig.controller,
         token: TokenDefinition {
-            name: monkey,
+            name: reg
+                .interner()
+                .lookup("Ragavan")
+                .expect("interned at register"),
             colors: ColorSet::red(),
             types: TypeLine::CREATURE.into(),
             subtypes,

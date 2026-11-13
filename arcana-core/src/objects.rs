@@ -33,6 +33,17 @@ pub type ObjectId = u32;
 /// and as a placeholder for the pre-game state. Real object ids start at 1.
 pub const NULL_OBJECT_ID: ObjectId = 0;
 
+/// Stands in, at resolution, for a target occurrence that has become
+/// illegal (A1.5aw; CR 608.2b), preserving the other target positions.
+/// No object has this id. Operations that accept absent objects, notably
+/// damage sources, must reject it explicitly. Total information helpers
+/// can still turn a missing lookup into a value (the A1.5bo limitation).
+/// Distinct from [`NULL_OBJECT_ID`], the for-each placeholder that
+/// iteration fills in.
+pub const ILLEGAL_TARGET_ID: ObjectId = ObjectId::MAX - 1;
+/// The player counterpart of [`ILLEGAL_TARGET_ID`]: no seat has it.
+pub const ILLEGAL_TARGET_PLAYER: crate::types::PlayerId = crate::types::PlayerId::MAX;
+
 // =============================================================================
 // ObjectArena
 // =============================================================================
@@ -160,6 +171,12 @@ pub struct GameObject {
     /// battlefield under its owner's control (CR 610.3 — no stack).
     /// Zone-local: cleared by [`Self::reset_on_zone_change`], so a
     /// card that leaves exile by any other route sheds the link.
+    /// The source whose linked ability exiled this card (CR 607): Spell
+    /// Queller's exile, which its leave ability reads back. Unlike
+    /// [`Self::exiled_with`], it never returns the card on its own when the
+    /// source leaves. Zone-local: any later move clears it.
+    #[serde(default)]
+    pub linked_exile_source: Option<ObjectId>,
     pub exiled_with: Option<ObjectId>,
     /// CR 903.3 — the commander DESIGNATION. Never set by the 2-player
     /// engine paths today (commander games are future work); exists so
@@ -278,6 +295,14 @@ pub struct GameObject {
     /// Cleared by [`Self::reset_on_zone_change`]: a fresh re-id'd
     /// object spent no mana until a cast says otherwise.
     pub colors_paid: ColorSet,
+    /// CR 613.7 — this permanent's timestamp, from the shared clock
+    /// ([`crate::state::GameState::next_timestamp`]). Given when it enters
+    /// the battlefield (613.7d) and again each time an Aura or Equipment
+    /// becomes attached (613.7e); a control change or a recheck of its
+    /// statics leaves it alone. The effects of its printed static
+    /// abilities take this timestamp (613.7a). Zero off the battlefield.
+    #[serde(default)]
+    pub timestamp: u64,
 }
 
 impl GameObject {
@@ -306,6 +331,7 @@ impl GameObject {
             status: PermanentStatus::default(),
             madness_pending: false,
             exiled_with: None,
+            linked_exile_source: None,
             is_commander: false,
             adventure_exile_pending: false,
             impulse_play_pending: false,
@@ -315,6 +341,7 @@ impl GameObject {
             is_token: false,
             commodity: None,
             colors_paid: ColorSet::new(),
+            timestamp: 0,
             intrinsic_activated_abilities: Vec::new(),
             granted_triggered_abilities: Vec::new(),
         }
@@ -360,6 +387,11 @@ impl GameObject {
 
     pub fn has_counter(&self, kind: CounterKind) -> bool {
         self.count_counters(kind) > 0
+    }
+
+    /// Is there a counter of any kind on this object?
+    pub fn has_any_counter(&self) -> bool {
+        self.counters.values().any(|&n| n > 0)
     }
 
     /// Add `count` counters of `kind`. No-op if `count == 0`.
@@ -490,6 +522,7 @@ impl GameObject {
         // on the freshly-exiled object AFTER the move, and any later
         // zone change (return, recursion, cast-from-exile) sheds it.
         self.exiled_with = None;
+        self.linked_exile_source = None;
         // Adventure-exile marker is similarly zone-local (CR 715):
         // set when an Adventure spell leaves the stack to exile,
         // cleared the moment the card moves anywhere (creature
@@ -508,6 +541,8 @@ impl GameObject {
         // so the spent-colors record must not survive the re-id. The
         // cast path re-stamps this in `finalize_resolved_spell`.
         self.colors_paid = ColorSet::new();
+        // A new object has no timestamp until it enters the battlefield.
+        self.timestamp = 0;
     }
 }
 
@@ -519,6 +554,17 @@ impl GameObject {
 /// the card registry's `base_characteristics` and then modified by the layer
 /// system. For tokens, this is assembled from the `TokenDefinition` when the
 /// token is created.
+/// A static restriction on when players may cast spells, imposed by a
+/// permanent while it is on the battlefield. See
+/// [`Characteristics::cast_timing`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CastTimingRestriction {
+    /// "Each opponent can cast spells only any time they could cast a
+    /// sorcery." (Teferi, Time Raveler.) Opponents of the permanent's
+    /// current controller.
+    OpponentsSorceryTiming,
+}
+
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Characteristics {
     pub name: SmallString,
@@ -575,6 +621,13 @@ pub struct Characteristics {
     /// Forest" still type-fails before the subtype check).
     #[serde(default)]
     pub every_creature_type: bool,
+    /// A static restriction on when other players may cast spells while
+    /// this permanent is on the battlefield (CR 601.3e) — Teferi, Time
+    /// Raveler. Read from game state by every cast path, so the effects
+    /// that cast a card mid-resolution observe it too. `None` for the
+    /// vast majority. Set through `CardDefinition::with_cast_timing`.
+    #[serde(default)]
+    pub cast_timing: Option<CastTimingRestriction>,
     /// CR 701.5f — "This spell can't be countered." A static ability of
     /// the spell that functions on the stack; the spell's characteristics
     /// carry the flag onto its [`crate::stack::StackEntry`], where the
@@ -586,6 +639,18 @@ pub struct Characteristics {
     /// static (Vexing Shusher-class) is a separate, future concern.
     #[serde(default)]
     pub cant_be_countered: bool,
+    /// The printed static abilities of this object (CR 604), installed by
+    /// the engine as the permanent enters the battlefield (A1.5br). They
+    /// are part of the copiable values, so a copy of the permanent and a
+    /// token made from a definition carry them without a registry lookup;
+    /// a face-down permanent's replaced characteristics have none. `None`
+    /// for the vast majority. Set through `CardDefinition::with_static`
+    /// and `TokenDefinition::with_static`. Skipped by serde: the effects
+    /// can carry fn pointers, as `intrinsic_activated_abilities` does.
+    /// One thin pointer: every object holds several of these blocks, and
+    /// the field's width is paid on each of them (see the br cost probe).
+    #[serde(skip)]
+    pub static_abilities: Option<std::sync::Arc<Vec<crate::layers::StaticAbilityDef>>>,
 }
 
 impl Characteristics {
@@ -638,6 +703,8 @@ mod tests {
             saga_final_chapter: None,
             every_creature_type: false,
             cant_be_countered: false,
+            cast_timing: None,
+            static_abilities: None,
         }
     }
 

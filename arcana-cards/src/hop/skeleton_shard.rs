@@ -61,7 +61,7 @@ fn shard_ability(text: &str, mana_cost: ManaCost) -> ActivatedAbilityDef {
         is_mana_ability: false,
         is_loyalty_ability: false,
         activation_zone: ActivationZone::Battlefield,
-        is_instant_speed: false,
+        is_instant_speed: true,
         face_gate: None,
         effect: return_artifact_creature,
     }

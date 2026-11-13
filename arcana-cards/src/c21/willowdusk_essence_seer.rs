@@ -31,7 +31,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{1}, {T}: Put +1/+1 counters on target creature equal to max(life gained, life lost) this turn.".into(),
+                text: "{1}, {T}: Put +1/+1 counters on target creature equal to max(life gained, life lost) this turn. Activate only as a sorcery.".into(),
                 cost: ActivationCost { mana_cost: ManaCost::parse("{1}").unwrap(), tap: true, ..ActivationCost::default() },
                 target_requirements: vec![TargetRequirement::target_creature()],
                 is_mana_ability: false,

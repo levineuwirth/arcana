@@ -209,6 +209,11 @@ pub struct StackEntry {
     /// Defaults to Stack (the sentinel "not a cast-from-zone").
     #[serde(default = "default_cast_from_zone")]
     pub cast_from_zone: crate::zones::Zone,
+    /// For a delayed trigger that acts on a moved card: the object it
+    /// acts on, apart from its source (CR 603.7e; A1.5bh, A1.5az).
+    /// Carried to [`crate::triggers::PendingTrigger::affected`].
+    #[serde(default)]
+    pub affected: Option<ObjectId>,
 }
 
 fn default_cast_from_zone() -> crate::zones::Zone { crate::zones::Zone::Stack }
@@ -252,6 +257,7 @@ impl StackEntry {
             colors_spent: crate::types::ColorSet::new(),
             mana_spent: 0,
             cast_from_zone: crate::zones::Zone::Stack,
+            affected: None,
         }
     }
 
@@ -292,6 +298,7 @@ impl StackEntry {
             colors_spent: crate::types::ColorSet::new(),
             mana_spent: 0,
             cast_from_zone: crate::zones::Zone::Stack,
+            affected: None,
         }
     }
 
@@ -361,6 +368,7 @@ impl StackEntry {
             colors_spent: crate::types::ColorSet::new(),
             mana_spent: 0,
             cast_from_zone: crate::zones::Zone::Stack,
+            affected: None,
         }
     }
 
@@ -641,6 +649,8 @@ impl GameState {
                 panic!("emit_spell_cast: stack entry {stack_entry_id} is not a spell"));
             (card_id, entry.controller, entry.targets.clone(), entry.mana_spent)
         };
+        let player = self.player_mut(controller);
+        player.spells_cast_this_game = player.spells_cast_this_game.saturating_add(1);
         self.emit(GameEvent::SpellCast {
             object_id: stack_entry_id,
             card_id,
@@ -682,17 +692,27 @@ impl GameState {
             return ResolutionOutcome::Resolve { target_legality: Vec::new() };
         }
 
-        // Recheck each chosen target against its corresponding
-        // requirement by position. Extra chosen targets (more than the
-        // requirement count) are treated as illegal.
+        // Recheck each chosen target against the requirement of the
+        // clause it belongs to (A1.5aw): the selection's clause lengths
+        // say how many targets each clause took, and none means one each,
+        // the older shape. Targets beyond the clauses are illegal.
+        let lengths: Vec<usize> = if entry.targets.clause_lengths.is_empty() {
+            vec![1; chosen.len()]
+        } else {
+            entry.targets.clause_lengths.iter().map(|&n| n as usize).collect()
+        };
         let mut legality = Vec::with_capacity(chosen.len());
-        for (i, choice) in chosen.iter().enumerate() {
-            let legal = match requirements.get(i) {
-                Some(req) => req.matches_choice(choice, self, entry.source, entry.controller),
-                None => false,
-            };
-            legality.push(if legal { TargetLegality::Legal } else { TargetLegality::Illegal });
+        let mut i = 0;
+        for (k, &n) in lengths.iter().enumerate() {
+            for _ in 0..n {
+                let Some(choice) = chosen.get(i) else { break };
+                let legal = requirements.get(k).is_some_and(|req|
+                    req.matches_choice(choice, self, entry.source, entry.controller));
+                legality.push(if legal { TargetLegality::Legal } else { TargetLegality::Illegal });
+                i += 1;
+            }
         }
+        while legality.len() < chosen.len() { legality.push(TargetLegality::Illegal); }
 
         if legality.iter().all(|l| *l == TargetLegality::Illegal) {
             ResolutionOutcome::CounteredIllegalTargets
@@ -751,8 +771,7 @@ impl GameState {
         // are instant/sorcery, so `chars.is_permanent()` is false
         // above and the normal graveyard route would fire — the
         // Adventure branch overrides that).
-        let is_adventure = matches!(entry.cast_modifier,
-            crate::actions::CastModifier::Adventure);
+        let is_adventure = entry.cast_modifier.face() == crate::actions::CastFace::Adventure;
         let destination = if matches!(entry.cast_modifier,
             crate::actions::CastModifier::Flashback)
             || is_adventure
@@ -764,22 +783,22 @@ impl GameState {
             Zone::Graveyard(owner)
         };
 
+        if destination == Zone::Battlefield {
+            let mut request = crate::entry::BattlefieldEntry::new(id, controller, MoveCause::SpellResolution);
+            request.clauses = Some(entry.enters_with.clone());
+            request.x_value = x_value;
+            request.delve_count = entry.delve_count;
+            request.colors_spent = Some(colors_spent);
+            request.was_cast = true;
+            request.resolved_spell = Some(id);
+            if self.objects.get(id).is_some_and(|o| o.characteristics.is_aura) {
+                request.attached_to = entry.targets.targets.first().and_then(|t| t.object_id());
+            }
+            self.enter_battlefield(request);
+            return;
+        }
         let (new_id, from) = self.swap_to_zone_reid(id, destination)
             .expect("finalize_resolved_spell: swap_to_zone_reid returned None");
-
-        // For battlefield entries the caster becomes the controller
-        // (CR 110.2a). Set it before the ETB hook runs so replacement
-        // effects that key off "controlled by you" see the right
-        // player.
-        if destination == Zone::Battlefield {
-            if let Some(obj) = self.objects.get_mut(new_id) {
-                obj.controller = controller;
-                // CR 702.43a — carry the cast's spent-color set onto
-                // the permanent before the ETB hook so Sunburst's
-                // enters-with-counters branch reads the right count.
-                obj.colors_paid = colors_spent;
-            }
-        }
 
         // Adventure exile: restore the creature-face characteristics
         // (captured at cast time on the entry) and flag the exile so
@@ -812,48 +831,7 @@ impl GameState {
             cause: MoveCause::SpellResolution,
         });
 
-        if destination == Zone::Battlefield {
-            // Apply card-declared `enters_with` clauses (CR 121.6a)
-            // BEFORE the state-installed ETB replacement pass, so
-            // self-replacement precedence holds (CR 614.15) and the
-            // counters/tapped state are visible to the first SBA
-            // sweep after the event cascade.
-            if !entry.enters_with.is_empty() {
-                apply_enters_with_clauses(
-                    self, new_id, &entry.enters_with, x_value,
-                    entry.delve_count,
-                );
-            }
-            self.after_enter_battlefield(new_id);
-            // CR 303.4f — an Aura permanent enters the battlefield
-            // already attached to the object its spell was cast to
-            // enchant. That target was chosen at cast time (the Aura's
-            // sole target requirement, declared via
-            // `CardDefinition::with_enchant`) and survived the CR 608.2b
-            // recheck in `resolve_top_of_stack`, so it's still a legal
-            // attach target here. Attaching BEFORE the `EntersBattlefield`
-            // event means ETB triggers and the next SBA sweep both observe
-            // the Aura correctly attached — otherwise CR 704.5n would move
-            // the unattached Aura straight to the graveyard. Reuses the
-            // same `Effect::Attach` path Equipment's Equip ability drives.
-            if self.objects.get(new_id)
-                .is_some_and(|o| o.characteristics.is_aura)
-            {
-                if let Some(target) = entry.targets.targets.first()
-                    .and_then(|t| t.object_id())
-                {
-                    crate::effects::Effect::Attach {
-                        equipment_or_aura: new_id,
-                        target,
-                    }.execute(self);
-                }
-            }
-            self.emit(GameEvent::EntersBattlefield {
-                object_id: new_id,
-                from_zone: from,
-                was_cast: true,
-            });
-        } else if matches!(destination, Zone::Graveyard(_)) {
+        if matches!(destination, Zone::Graveyard(_)) {
             self.emit(GameEvent::PutIntoGraveyard {
                 object_id: new_id,
                 from,
@@ -955,20 +933,8 @@ pub(crate) fn apply_enters_with_clauses(
                     }
                 }
             }
-            EntersWithSpec::TappedUnlessPayLife { life } => {
-                // Shock land: pay `life` and enter untapped iff that keeps the
-                // controller above 0 life; otherwise enter tapped. Synchronous
-                // pipeline — see the variant's doc for why this is a fixed
-                // policy rather than an async "you may pay" choice.
-                let controller = state.objects.get(object_id).map(|o| o.controller);
-                if let Some(ctrl) = controller {
-                    if state.player(ctrl).life > *life as i32 {
-                        crate::effects::lose_life(state, ctrl, *life);
-                    } else if let Some(obj) = state.objects.get_mut(object_id) {
-                        obj.tap();
-                    }
-                }
-            }
+            // Already answered by the entry continuation, before the move.
+            EntersWithSpec::TappedUnlessPayLife { .. } => {}
         }
     }
 }
@@ -1014,8 +980,7 @@ impl GameState {
         // creature-face characteristics restored. Countered /
         // fizzled Adventure spells stay castable as the creature
         // half, matching the printed rules.
-        let is_adventure = matches!(entry.cast_modifier,
-            crate::actions::CastModifier::Adventure);
+        let is_adventure = entry.cast_modifier.face() == crate::actions::CastFace::Adventure;
         let destination = if matches!(entry.cast_modifier,
             crate::actions::CastModifier::Flashback)
             || is_adventure
@@ -1024,24 +989,43 @@ impl GameState {
         } else {
             Zone::Graveyard(owner)
         };
-
-        let (new_id, from) = self.swap_to_zone_reid(id, destination)
-            .expect("counter_resolved_spell: swap_to_zone_reid returned None");
-
+        let new_id = self.relocate_spell(&entry, destination);
         if is_adventure {
             if let Some(obj) = self.objects.get_mut(new_id) {
                 obj.adventure_exile_pending = true;
-                if let Some(pre) = entry.pre_adventure_characteristics.as_ref() {
-                    obj.characteristics = pre.clone();
-                }
             }
         }
+        self.emit(GameEvent::SpellCountered { object_id: id });
+    }
 
-        // CR 711.4 — mirror finalize_resolved_spell: a countered or
-        // fizzled split spell returns to the graveyard with combined
-        // characteristics, not the cast-face-only view.
-        if let Some(pre_split) = entry.pre_split_characteristics.as_ref() {
-            if let Some(obj) = self.objects.get_mut(new_id) {
+    /// Move a spell `entry`, already removed from the stack, to
+    /// `destination` without resolving or countering it (Spell Queller's
+    /// exile; a bounce through [`Self::move_object_to_zone`]). Returns the
+    /// card's new id. Not a counter: no `SpellCountered` event, and no
+    /// flashback or Adventure routing.
+    pub fn move_spell_off_stack(&mut self, entry: StackEntry, destination: Zone) -> ObjectId {
+        assert!(entry.is_spell(), "move_spell_off_stack requires a spell entry");
+        self.relocate_spell(&entry, destination)
+    }
+
+    /// The move shared by countering and moving a spell off the stack:
+    /// the CR 400.7 re-id (LKI is snapshotted under the old stack id, a
+    /// fresh id is allocated, and the events carry ids accordingly; see
+    /// [`Self::finalize_resolved_spell`] for the pattern), the card's full
+    /// characteristics restored, and the zone events.
+    fn relocate_spell(&mut self, entry: &StackEntry, destination: Zone) -> ObjectId {
+        let id = entry.id;
+        let (new_id, from) = self.swap_to_zone_reid(id, destination)
+            .expect("relocate_spell: swap_to_zone_reid returned None");
+
+        // CR 715 / 711.4 — an Adventure or split spell leaves the stack as
+        // the whole card (mirroring finalize_resolved_spell), not the
+        // face it was cast as.
+        if let Some(obj) = self.objects.get_mut(new_id) {
+            if let Some(pre) = entry.pre_adventure_characteristics.as_ref() {
+                obj.characteristics = pre.clone();
+            }
+            if let Some(pre_split) = entry.pre_split_characteristics.as_ref() {
                 obj.characteristics = pre_split.clone();
                 obj.visible_face = 0;
             }
@@ -1057,10 +1041,10 @@ impl GameState {
         // Only emit PutIntoGraveyard if that's actually where it went.
         if matches!(destination, Zone::Graveyard(_)) {
             self.emit(GameEvent::PutIntoGraveyard { object_id: new_id, from });
-        } else {
+        } else if destination.is_exile() {
             self.emit(GameEvent::Exiled { object_id: new_id, from });
         }
-        self.emit(GameEvent::SpellCountered { object_id: id });
+        new_id
     }
 
     /// Counter an ability — remove it from the stack, emit
@@ -1107,7 +1091,7 @@ pub fn recheck_stack_entry_targets(
             Some(r) => r,
             None => return TargetLegality::Illegal,
         };
-        let single = TargetSelection { targets: vec![choice.clone()] };
+        let single = TargetSelection { targets: vec![choice.clone()], clause_lengths: Vec::new() };
         let legalities = validate_targets_on_resolution(
             req, &single, state, entry.source, entry.controller);
         legalities.into_iter().next().unwrap_or(TargetLegality::Illegal)
@@ -1200,7 +1184,7 @@ mod tests {
     }
 
     fn one_creature_target(c: ObjectId) -> TargetSelection {
-        TargetSelection { targets: vec![TargetChoice::Object(c)] }
+        TargetSelection { targets: vec![TargetChoice::Object(c)], clause_lengths: Vec::new() }
     }
 
     fn target_creature() -> TargetRequirement { TargetRequirement::target_creature() }
@@ -1263,7 +1247,7 @@ mod tests {
 
         let with = StackEntry::new_spell(
             1, 0, 1, instant_chars(),
-            TargetSelection { targets: vec![TargetChoice::Player(0)] },
+            TargetSelection { targets: vec![TargetChoice::Player(0)], clause_lengths: Vec::new() },
             vec![], None);
         assert!(with.has_targets());
     }
@@ -1441,7 +1425,7 @@ mod tests {
         let b = put_object(&mut s, 0, Zone::Battlefield, creature_chars(2, 2));
         s.push_stack_entry(StackEntry::new_spell(
             99, 0, 1, instant_chars(),
-            TargetSelection { targets: vec![TargetChoice::Object(a), TargetChoice::Object(b)] },
+            TargetSelection { targets: vec![TargetChoice::Object(a), TargetChoice::Object(b)], clause_lengths: Vec::new() },
             vec![], None,
         ));
         // Only b leaves.
@@ -1466,7 +1450,7 @@ mod tests {
         let c = put_object(&mut s, 0, Zone::Battlefield, creature_chars(2, 2));
         s.push_stack_entry(StackEntry::new_spell(
             99, 0, 1, instant_chars(),
-            TargetSelection { targets: vec![TargetChoice::Object(c), TargetChoice::Object(c)] },
+            TargetSelection { targets: vec![TargetChoice::Object(c), TargetChoice::Object(c)], clause_lengths: Vec::new() },
             vec![], None,
         ));
         let entry = s.top_of_stack().unwrap().clone();
@@ -1752,7 +1736,7 @@ mod tests {
     fn stack_entry_spell_roundtrip() {
         let entry = StackEntry::new_spell(
             1, 0, 42, instant_chars(),
-            TargetSelection { targets: vec![TargetChoice::Player(1)] },
+            TargetSelection { targets: vec![TargetChoice::Player(1)], clause_lengths: Vec::new() },
             vec![ModeChoice::new(vec![0, 1])], Some(3),
         );
         let json = serde_json::to_string(&entry).unwrap();
@@ -2045,7 +2029,7 @@ mod tests {
         let land_chars = || crate::objects::Characteristics {
             types: TypeLine::LAND.into(), ..Default::default() };
         // Returns (tapped?, controller life after).
-        let resolve = |life0: i32| -> (bool, i32) {
+        let resolve = |life0: i32, pay: bool| -> (bool, i32) {
             let mut s = GameState::new(2, 0);
             s.player_mut(0).life = life0;
             let obj = put_object(&mut s, 0, Zone::Stack, land_chars());
@@ -2053,14 +2037,18 @@ mod tests {
                 obj, 0, 1, land_chars(), TargetSelection::new(), vec![], None);
             entry.enters_with = vec![EntersWithSpec::TappedUnlessPayLife { life: 2 }];
             s.finalize_resolved_spell(entry);
+            assert_eq!(s.objects.get(obj).unwrap().zone, Zone::Stack);
+            assert!(s.pending_choice.take().is_some());
+            s.answer_entry_payment(obj, pay);
             let id = only_battlefield_permanent(&s);
             (s.objects.get(id).unwrap().is_tapped(), s.player(0).life)
         };
         // Comfortable life → pay 2, enter untapped.
-        assert_eq!(resolve(20), (false, 18));
-        // Paying would drop to 0 (lethal) → don't pay, enter tapped, life kept.
-        assert_eq!(resolve(2), (true, 2));
+        assert_eq!(resolve(20, true), (false, 18));
+        assert_eq!(resolve(20, false), (true, 20));
+        // Paying exactly the remaining life is legal; SBAs happen later.
+        assert_eq!(resolve(2, true), (false, 0));
         // Can't afford → tapped, life unchanged.
-        assert_eq!(resolve(1), (true, 1));
+        assert_eq!(resolve(1, false), (true, 1));
     }
 }

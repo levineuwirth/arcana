@@ -354,6 +354,17 @@ pub fn spells_cast_this_turn_by(
     filter: &ObjectFilter,
     caster: PlayerId,
 ) -> u32 {
+    spells_cast_this_turn_by_with_source(state, filter, caster, crate::objects::NULL_OBJECT_ID)
+}
+
+/// Internal static-effect variant, retaining the granting source while
+/// matching both live and last-known spell objects.
+pub(crate) fn spells_cast_this_turn_by_with_source(
+    state: &GameState,
+    filter: &ObjectFilter,
+    caster: PlayerId,
+    source: ObjectId,
+) -> u32 {
     let mut n = 0u32;
     for ev in this_turn_events(state) {
         if let crate::events::GameEvent::SpellCast { object_id, controller, .. } = ev {
@@ -361,7 +372,7 @@ pub fn spells_cast_this_turn_by(
             let obj = state.objects.get(*object_id)
                 .or_else(|| state.lki(*object_id));
             if let Some(o) = obj {
-                if filter.matches(o, state, caster) { n += 1; }
+                if filter.matches_with_source(o, state, source, caster) { n += 1; }
             }
         }
     }

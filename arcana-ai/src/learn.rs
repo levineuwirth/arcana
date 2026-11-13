@@ -27,7 +27,7 @@ use crate::observation::{BasicE2Encoder, Encoder};
 use crate::search::{PimcPolicy, RandomStatePolicy, StatePolicy, ValueFn};
 
 fn sigmoid(z: f32) -> f32 {
-    1.0 / (1.0 + (-z).exp())
+    1.0 / (1.0 + crate::portable::exp(-z))
 }
 
 /// Play `n_games` self-play games (both seats built by `make_policy`, seeded per

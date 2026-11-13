@@ -97,6 +97,7 @@ mod tests {
             },
             targets,
             effect_override: None,
+            affected: None,
         }
     }
 

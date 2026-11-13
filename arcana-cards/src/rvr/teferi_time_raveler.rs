@@ -7,19 +7,18 @@
 //! −3: Return up to one target artifact, creature, or enchantment to its
 //!     owner's hand. Draw a card.
 //!
-//! GAP: the static "each opponent can cast spells only at sorcery speed" is a
-//!   continuous timing-restriction static with no demonstrated Effect /
-//!   ContinuousEffect surface — not modeled.
-//! GAP: +1 "you may cast sorcery spells as though they had flash" — no Effect
-//!   grants flash-timing to sorceries from hand; the ability shell is declared
-//!   with the +1 cost and returns Vec::new().
+//! The static is `CastTimingRestriction::OpponentsSorceryTiming`, read from
+//! the battlefield by every cast path, Spell Queller's free cast included.
+//! The +1 grants its controller a flash permission for sorceries until their
+//! next turn, which outlasts Teferi (A1.5aa: both were GAP'd).
 
 use arcana_core::effects::Effect;
+use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
-    CardDefinition, CardRegistry,
+    CardDefinition, CardRegistry, CastTimingRestriction,
 };
 use arcana_core::state::GameState;
 use arcana_core::targets::{
@@ -52,6 +51,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 
     reg.register(
         CardDefinition::new(name, chars)
+            .with_cast_timing(CastTimingRestriction::OpponentsSorceryTiming)
             .with_activated_ability(ActivatedAbilityDef {
                 text: "+1: Until your next turn, you may cast sorcery spells as \
                        though they had flash."
@@ -66,7 +66,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 activation_zone: ActivationZone::Battlefield,
                 is_instant_speed: false,
                 face_gate: None,
-                effect: plus_one_gap,
+                effect: plus_one_sorceries_with_flash,
             })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "-3: Return up to one target artifact, creature, or \
@@ -91,13 +91,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn plus_one_gap(
+fn plus_one_sorceries_with_flash(
     _state: &GameState,
-    _ctx: &ActivationContext,
+    ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: no Effect grants flash-timing to sorceries.
-    Vec::new()
+    vec![Effect::InstallContinuousEffect {
+        effect: ContinuousEffect::cast_as_though_flash_for(
+            ctx.source,
+            ctx.controller,
+            ObjectFilter::default().with_types(TypeLine::SORCERY.into()),
+            Duration::UntilYourNextTurn(ctx.controller),
+        ),
+    }]
 }
 
 fn minus_three_bounce(

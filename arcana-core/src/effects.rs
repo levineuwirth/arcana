@@ -139,6 +139,16 @@ pub enum Effect {
     // --- zone manipulation -------------------------------------------------
     DestroyPermanent { target: ObjectId },
     ExilePermanent { target: ObjectId },
+    /// Exile a battlefield object, capture its new identity, and schedule
+    /// an action on that identity. The creating source stays separate.
+    /// Used for delayed blink; the capture also supports other schedules.
+    ExileAndSchedule {
+        target: ObjectId,
+        source: ObjectId,
+        controller: PlayerId,
+        when: DelayedWhen,
+        action: DelayedAction,
+    },
     ReturnToHand { target: ObjectId },
     PutOnTopOfLibrary { target: ObjectId },
     PutOnBottomOfLibrary { target: ObjectId },
@@ -149,6 +159,8 @@ pub enum Effect {
     /// battlefield. No-op if `target` isn't currently in exile.
     /// The owning controller is preserved by the underlying zone move.
     ReturnFromExileToBattlefield { target: ObjectId },
+    /// Return only this exile identity, under the specified player's control.
+    ReturnFromExileUnderControl { target: ObjectId, controller: PlayerId },
     /// Like [`Effect::ReturnFromGraveyardToBattlefield`] but places
     /// `count` counters of `kind` on the permanent *as it re-enters*
     /// (the object is re-id'd by the zone move, so the counters must
@@ -404,6 +416,26 @@ pub enum Effect {
     CastFromExileFree {
         player: PlayerId,
         target: ObjectId,
+    },
+    /// Exile `target`, a spell on the stack (Spell Queller, D18). Moving a
+    /// spell is not countering it: a spell that can't be countered is
+    /// exiled all the same, and no "countered" event fires. `link_to`
+    /// stamps [`crate::objects::GameObject::linked_exile_source`] on the
+    /// exiled card (CR 607), so the source's later ability can find it.
+    /// No-op if `target` is no longer a spell on the stack.
+    ExileSpell {
+        target: ObjectId,
+        link_to: Option<ObjectId>,
+    },
+    /// "The card's owner may cast `object` without paying its mana cost"
+    /// (CR 118.9, 608.2g): asks the owner, mid-resolution, through
+    /// [`crate::actions::ChoiceKind::CastWithoutPaying`]. The effect that
+    /// emits this checks first that a cast exists
+    /// ([`crate::legal_actions::casts_without_paying`]), so the owner is
+    /// never asked about a spell with no legal target. No-op if `object`
+    /// has left exile.
+    OfferCastWithoutPaying {
+        object: ObjectId,
     },
 
     // --- state flip --------------------------------------------------------
@@ -751,6 +783,12 @@ pub enum Effect {
         then: Box<Effect>,
     },
     Sacrifice { player: PlayerId, filter: ObjectFilter, count: u32 },
+    /// Its controller sacrifices this one permanent: a delayed "sacrifice
+    /// it at the next end step", fading, vanishing. A sacrifice is not
+    /// destruction, so indestructible and regeneration don't stop it, but
+    /// an exile-instead replacement applies (A1.5bk). Nothing happens if
+    /// the permanent has left the battlefield.
+    SacrificePermanent { target: ObjectId },
     /// Pass 4.1 — Enlist (CR 702.151a). Posts the optional "tap a
     /// nonattacking creature you control without summoning sickness"
     /// choice for `enlister`; the follow-up taps it and adds its
@@ -884,6 +922,17 @@ pub enum Effect {
     /// documented GAP.)
     DelayedAction {
         source: ObjectId,
+        controller: PlayerId,
+        when: DelayedWhen,
+        action: DelayedAction,
+    },
+    /// Engine-produced only: a [`Self::DelayedAction`] whose action falls
+    /// on `affected`, the object a resolving ability found its moved card
+    /// became (CR 400.7e), while `source` stays that ability's source
+    /// (CR 603.7e; A1.5bh, A1.5az). Card code writes `DelayedAction`.
+    DelayedActionOn {
+        source: ObjectId,
+        affected: ObjectId,
         controller: PlayerId,
         when: DelayedWhen,
         action: DelayedAction,
@@ -1034,11 +1083,12 @@ pub enum DelayedAction {
     Exile,
     /// Return the source to its owner's hand.
     ReturnToHand,
-    /// Blink/flicker: return the source from exile to the
-    /// battlefield. Pair with `Effect::ExilePermanent { target: id }`
-    /// now + `DelayedAction::ReturnFromExileToBattlefield` (when
-    /// `NextEndStep`) for the Cloudshift/Ghostway family.
+    /// Return the captured object from exile to the battlefield.
+    /// Pair with `Effect::ExileAndSchedule` to retain its new exile id;
+    /// scheduling an action on its pre-exile id cannot find the card.
     ReturnFromExileToBattlefield,
+    /// Return the captured exile object under the delayed ability's controller.
+    ReturnFromExileUnderYourControl,
     /// Grant haste until end of turn to the RESOLVED permanent (reads
     /// the firing `ZoneChange`'s `new_id`; pair with
     /// [`DelayedWhen::SelfResolvesToPermanent`]). "When you next cast
@@ -1087,7 +1137,10 @@ impl Effect {
             // fixed target the author chose ("put a counter on ~ for each …"),
             // which the old unconditional stamp clobbered.
             Effect::DestroyPermanent { target }
+            | Effect::SacrificePermanent { target }
             | Effect::ExilePermanent { target }
+            | Effect::ExileAndSchedule { target, .. }
+            | Effect::ReturnFromExileUnderControl { target, .. }
             | Effect::ReturnToHand { target }
             | Effect::ReturnFromGraveyardToHand { target }
             | Effect::ReturnFromGraveyardToBattlefield { target }
@@ -1111,6 +1164,7 @@ impl Effect {
             | Effect::CastFromHandFree { target, .. }
             | Effect::CastFromGraveyard { target, .. }
             | Effect::CastFromExileFree { target, .. }
+            | Effect::ExileSpell { target, .. }
             | Effect::GrantFlashback { target, .. }
             | Effect::ChangeControl { target, .. }
             | Effect::ChangeControlEot { target, .. }
@@ -1228,7 +1282,9 @@ impl Effect {
             | Effect::RollDie { .. }
             | Effect::SetDayNight { .. }
             | Effect::DelayedAction { .. }
+            | Effect::DelayedActionOn { .. }
             | Effect::NextCastThisTurn { .. }
+            | Effect::OfferCastWithoutPaying { .. }
             | Effect::EachCastThisTurn { .. } => {}
         }
         e
@@ -1312,7 +1368,10 @@ impl Effect {
             | Effect::PreventDamageFrom { .. }
             | Effect::Regenerate { .. }
             | Effect::DestroyPermanent { .. }
+            | Effect::SacrificePermanent { .. }
             | Effect::ExilePermanent { .. }
+            | Effect::ExileAndSchedule { .. }
+            | Effect::ReturnFromExileUnderControl { .. }
             | Effect::ReturnToHand { .. }
             | Effect::PutOnTopOfLibrary { .. }
             | Effect::PutOnBottomOfLibrary { .. }
@@ -1382,7 +1441,10 @@ impl Effect {
             | Effect::ForEach { .. }
             | Effect::SetDayNight { .. }
             | Effect::DelayedAction { .. }
+            | Effect::DelayedActionOn { .. }
             | Effect::NextCastThisTurn { .. }
+            | Effect::ExileSpell { .. }
+            | Effect::OfferCastWithoutPaying { .. }
             | Effect::EachCastThisTurn { .. } => {}
         }
         e
@@ -1398,6 +1460,10 @@ impl Effect {
     /// needs to tolerate late-breaking state changes (e.g. another
     /// effect earlier in a Sequence removed this one's target).
     pub fn execute(&self, state: &mut GameState) {
+        if state.pending_choice.is_some() {
+            state.entry_continuations.push_back(crate::entry::EntryContinuation::Effect(Box::new(self.clone())));
+            return;
+        }
         match self {
             // --- damage / life -------------------------------------------
             Effect::DealDamage { source, target, amount } => {
@@ -1528,13 +1594,37 @@ impl Effect {
                 if state.has_keyword(*target, &KeywordAbility::Indestructible) {
                     return;
                 }
-                if let Some(owner) = owner_of(state, *target) {
+                // Destruction, through the death replacements, so a
+                // regeneration shield or an exile-instead applies
+                // (A1.5bk).
+                if state.objects.get(*target).is_some_and(|o| o.zone.is_battlefield()) {
+                    state.put_into_graveyard_dying(*target,
+                        crate::replacement::DeathKind::Destruction,
+                        MoveCause::SpellResolution);
+                } else if let Some(owner) = owner_of(state, *target) {
                     state.move_object_to_zone(*target, Zone::Graveyard(owner),
                         MoveCause::SpellResolution);
                 }
             }
+            Effect::SacrificePermanent { target } => {
+                let Some(controller) = state.objects.get(*target)
+                    .filter(|o| o.zone.is_battlefield())
+                    .map(|o| o.controller) else { return; };
+                state.emit(GameEvent::Sacrifice { player: controller, object_id: *target });
+                state.put_into_graveyard_dying(*target,
+                    crate::replacement::DeathKind::Other, MoveCause::SpellResolution);
+            }
             Effect::ExilePermanent { target } => {
                 state.move_object_to_zone(*target, Zone::Exile, MoveCause::SpellResolution);
+            }
+            Effect::ExileAndSchedule { target, source, controller, when, action } => {
+                if !valid_player(state, *controller) { return; }
+                if !state.objects.get(*target).is_some_and(|o| o.zone.is_battlefield()) { return; }
+                if let Some(exiled) = state.move_object_to_zone(*target, Zone::Exile, MoveCause::SpellResolution) {
+                    if state.objects.get(exiled).is_some_and(|o| o.zone == Zone::Exile) {
+                        install_delayed_action(state, *source, Some(exiled), *controller, *when, *action);
+                    }
+                }
             }
             Effect::ReturnToHand { target } => {
                 if let Some(owner) = owner_of(state, *target) {
@@ -1575,18 +1665,19 @@ impl Effect {
                 state.move_object_to_zone(
                     *target, Zone::Battlefield, MoveCause::SpellResolution);
             }
+            Effect::ReturnFromExileUnderControl { target, controller } => {
+                if !valid_player(state, *controller) { return; }
+                let Some(obj) = state.objects.get(*target) else { return; };
+                if obj.zone != Zone::Exile { return; }
+                state.enter_battlefield(crate::entry::BattlefieldEntry::new(
+                    *target, *controller, MoveCause::SpellResolution));
+            }
             Effect::ReturnFromGraveyardWithCounters { target, kind, count } => {
                 let Some(obj) = state.objects.get(*target) else { return; };
                 if !matches!(obj.zone, Zone::Graveyard(_)) { return; }
-                if let Some(new_id) = state.move_object_to_zone(
-                    *target, Zone::Battlefield, MoveCause::SpellResolution)
-                {
-                    if *count > 0 {
-                        state.place_counters(
-                            crate::replacement::CounterTarget::Object(new_id),
-                            *kind, *count);
-                    }
-                }
+                let mut entry = crate::entry::BattlefieldEntry::new(*target, obj.controller, MoveCause::SpellResolution);
+                entry.counters.push((*kind, *count));
+                state.enter_battlefield(entry);
             }
             Effect::ReturnFromGraveyardToHand { target } => {
                 let Some(obj) = state.objects.get(*target) else { return; };
@@ -1693,15 +1784,10 @@ impl Effect {
                 }
             }
             Effect::PutOntoBattlefieldTappedAttacking { target, controller } => {
-                if state.objects.get(*target).is_none() { return; }
-                if let Some(new_id) = state.move_object_to_zone(
-                    *target, Zone::Battlefield, MoveCause::AbilityResolution)
-                {
-                    if let Some(obj) = state.objects.get_mut(new_id) {
-                        obj.controller = *controller;
-                    }
-                    enter_tapped_attacking(state, new_id, *controller);
-                }
+                if !can_receive_control(state, *controller) { return; }
+                let mut entry = crate::entry::BattlefieldEntry::new(*target, *controller, MoveCause::AbilityResolution);
+                entry.attacking = true;
+                state.enter_battlefield(entry);
             }
             Effect::CreateTokenSacEot { controller, token } => {
                 use crate::triggers::{DelayedTrigger, TriggerCondition};
@@ -1799,6 +1885,7 @@ impl Effect {
                 }
             }
             Effect::Anthem { controller, power, toughness, duration } => {
+                if !valid_player(state, *controller) { return; }
                 state.add_continuous_effect(
                     crate::layers::ContinuousEffect::anthem(
                         /*source=*/ crate::objects::NULL_OBJECT_ID,
@@ -1843,6 +1930,27 @@ impl Effect {
                     state, *player, *target,
                     |z| matches!(z, Zone::Graveyard(_)));
             }
+            Effect::ExileSpell { target, link_to } => {
+                let is_spell = state.stack.iter().any(|e| e.id == *target && e.is_spell());
+                if !is_spell { return; }
+                let Some(entry) = state.remove_stack_entry_by_id(*target) else { return; };
+                let new_id = state.move_spell_off_stack(entry, crate::zones::Zone::Exile);
+                if let Some(obj) = state.objects.get_mut(new_id) {
+                    obj.linked_exile_source = *link_to;
+                }
+            }
+            Effect::OfferCastWithoutPaying { object } => {
+                let Some(owner) = state.objects.get(*object)
+                    .filter(|o| o.zone.is_exile())
+                    .map(|o| o.owner) else { return; };
+                let resolving = state.currently_resolving
+                    .expect("Effect::OfferCastWithoutPaying: must execute mid-resolution");
+                state.push_pending_choice(
+                    owner,
+                    crate::actions::ChoiceContext::ResolvingStack(resolving),
+                    crate::actions::ChoiceKind::CastWithoutPaying { object: *object },
+                );
+            }
             Effect::CastFromExileFree { player, target } => {
                 cast_from_zone_free(
                     state, *player, *target,
@@ -1857,6 +1965,7 @@ impl Effect {
 
             // --- state flips --------------------------------------------
             Effect::ChangeControl { target, new_controller } => {
+                if !can_receive_control(state, *new_controller) { return; }
                 let Some(obj) = state.objects.get_mut(*target) else { return; };
                 let old = obj.controller;
                 if old == *new_controller { return; }
@@ -1866,6 +1975,7 @@ impl Effect {
                 });
             }
             Effect::ChangeControlEot { target, new_controller } => {
+                if !can_receive_control(state, *new_controller) { return; }
                 use crate::triggers::{DelayedTrigger, TriggerCondition};
                 let Some(obj) = state.objects.get_mut(*target) else { return; };
                 let original = obj.controller;
@@ -1952,6 +2062,7 @@ impl Effect {
                 }
             }
             Effect::WardPrompt { caster, cost, counter_target } => {
+                if !valid_player(state, *caster) { return; }
                 // Resolution of a Ward trigger. Push a PayOrDecline on
                 // the targeting spell's controller; a decline routes
                 // to CounterStackEntry on the original source.
@@ -2107,6 +2218,7 @@ impl Effect {
                 }
             }
             Effect::NameCardAndExile { chooser, target } => {
+                if !valid_player(state, *chooser) { return; }
                 name_card_and_exile(state, *chooser, *target);
             }
             Effect::GrantTriggeredAbility { target, ability, duration } => {
@@ -2184,6 +2296,7 @@ impl Effect {
             Effect::ScheduleFloatingTrigger {
                 source, controller, condition, effect, until,
             } => {
+                if !valid_player(state, *controller) { return; }
                 use crate::triggers::DelayedTrigger;
                 let trig = match until {
                     FloatingUntil::EndOfTurn =>
@@ -2197,6 +2310,7 @@ impl Effect {
                 state.register_delayed_trigger(trig);
             }
             Effect::ScheduleDelayedEffect { source, controller, when, effect } => {
+                if !valid_player(state, *controller) { return; }
                 use crate::triggers::{DelayedTrigger, TriggerCondition};
                 let condition = match when {
                     DelayedWhen::NextEndStep => TriggerCondition::StepBegins {
@@ -2288,6 +2402,7 @@ impl Effect {
                 fight(state, *a, *b);
             }
             Effect::Goad { target, goader, duration } => {
+                if !valid_player(state, *goader) { return; }
                 state.add_continuous_effect(
                     crate::layers::ContinuousEffect::goad(
                         /*source=*/ *target, *target, *goader, *duration));
@@ -2362,48 +2477,13 @@ impl Effect {
                     outcome.effect.execute(state);
                 }
             }
-            Effect::DelayedAction { source, controller, when, action } => {
-                use crate::triggers::{DelayedTrigger, TriggerCondition};
-                let condition = match when {
-                    DelayedWhen::NextEndStep => TriggerCondition::StepBegins {
-                        step: crate::turn::Step::End,
-                        whose: crate::targets::ControllerConstraint::Any,
-                    },
-                    DelayedWhen::NextUpkeep => TriggerCondition::StepBegins {
-                        step: crate::turn::Step::Upkeep,
-                        whose: crate::targets::ControllerConstraint::Any,
-                    },
-                    DelayedWhen::ThisDies => TriggerCondition::SelfDies,
-                    DelayedWhen::SelfResolvesToPermanent =>
-                        TriggerCondition::Custom(cond_self_zone_to_battlefield),
-                };
-                let effect_fn: crate::triggers::EffectFn = match action {
-                    DelayedAction::Sacrifice => delayed_sacrifice,
-                    DelayedAction::Exile => delayed_exile,
-                    DelayedAction::ReturnToHand => delayed_return_hand,
-                    DelayedAction::ReturnFromExileToBattlefield =>
-                        delayed_return_exile_bf,
-                    DelayedAction::GrantHasteUntilEndOfTurn =>
-                        delayed_grant_haste_eot,
-                    DelayedAction::EnterWithPlusOneCounter =>
-                        delayed_enter_plus_one_counter,
-                    DelayedAction::ControllerDrawsCard =>
-                        delayed_controller_draws,
-                };
-                // A resolves-to-permanent watcher must lapse with the
-                // turn — a countered spell never resolves, and the
-                // rider it carries says "this turn".
-                let trig = if matches!(when, DelayedWhen::SelfResolvesToPermanent) {
-                    DelayedTrigger::one_shot_this_turn(
-                        *source, *controller, condition, effect_fn)
-                } else {
-                    DelayedTrigger::one_shot(
-                        *source, *controller, condition, effect_fn)
-                };
-                state.register_delayed_trigger(trig);
-            }
+            Effect::DelayedAction { source, controller, when, action } =>
+                install_delayed_action(state, *source, None, *controller, *when, *action),
+            Effect::DelayedActionOn { source, affected, controller, when, action } =>
+                install_delayed_action(state, *source, Some(*affected), *controller, *when, *action),
 
             Effect::NextCastThisTurn { controller, kind, rider } => {
+                if !valid_player(state, *controller) { return; }
                 use crate::triggers::{DelayedTrigger, TriggerCondition};
                 let condition = TriggerCondition::SpellCast {
                     filter: Some(kind.to_filter()),
@@ -2423,6 +2503,7 @@ impl Effect {
             }
 
             Effect::EachCastThisTurn { controller, kind, rider } => {
+                if !valid_player(state, *controller) { return; }
                 use crate::triggers::{DelayedTrigger, TriggerCondition};
                 let filter = kind.to_filter();
                 let condition = TriggerCondition::SpellCast {
@@ -2556,6 +2637,60 @@ fn each_cast_copy_your_token(
     }
 }
 
+/// Install a delayed action (`Effect::DelayedAction` and, with the object
+/// it falls on, `Effect::DelayedActionOn`).
+fn install_delayed_action(
+    state: &mut GameState,
+    source: ObjectId,
+    affected: Option<ObjectId>,
+    controller: PlayerId,
+    when: DelayedWhen,
+    action: DelayedAction,
+) {
+    if !valid_player(state, controller) { return; }
+    use crate::triggers::{DelayedTrigger, TriggerCondition};
+    let condition = match when {
+        DelayedWhen::NextEndStep => TriggerCondition::StepBegins {
+            step: crate::turn::Step::End,
+            whose: crate::targets::ControllerConstraint::Any,
+        },
+        DelayedWhen::NextUpkeep => TriggerCondition::StepBegins {
+            step: crate::turn::Step::Upkeep,
+            whose: crate::targets::ControllerConstraint::Any,
+        },
+        DelayedWhen::ThisDies => TriggerCondition::SelfDies,
+        DelayedWhen::SelfResolvesToPermanent =>
+            TriggerCondition::Custom(cond_self_zone_to_battlefield),
+    };
+    let effect_fn: crate::triggers::EffectFn = match action {
+        DelayedAction::Sacrifice => delayed_sacrifice,
+        DelayedAction::Exile => delayed_exile,
+        DelayedAction::ReturnToHand => delayed_return_hand,
+        DelayedAction::ReturnFromExileToBattlefield =>
+            delayed_return_exile_bf,
+        DelayedAction::ReturnFromExileUnderYourControl => delayed_return_exile_controlled,
+        DelayedAction::GrantHasteUntilEndOfTurn =>
+            delayed_grant_haste_eot,
+        DelayedAction::EnterWithPlusOneCounter =>
+            delayed_enter_plus_one_counter,
+        DelayedAction::ControllerDrawsCard =>
+            delayed_controller_draws,
+    };
+    // A resolves-to-permanent watcher must lapse with the
+    // turn — a countered spell never resolves, and the
+    // rider it carries says "this turn".
+    let trig = if matches!(when, DelayedWhen::SelfResolvesToPermanent) {
+        DelayedTrigger::one_shot_this_turn(
+            source, controller, condition, effect_fn)
+    } else {
+        DelayedTrigger::one_shot(
+            source, controller, condition, effect_fn)
+    };
+    let mut trig = trig;
+    trig.affected = affected;
+    state.register_delayed_trigger(trig);
+}
+
 // Fixed delayed-action callbacks for [`Effect::DelayedAction`]. Each
 // acts on the firing trigger's `source` (set to the scheduled object
 // id). Bare fns so they fit [`crate::triggers::EffectFn`].
@@ -2563,19 +2698,19 @@ fn delayed_sacrifice(
     _s: &GameState, pt: &crate::triggers::PendingTrigger,
     _r: &crate::registry::CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::DestroyPermanent { target: pt.source }]
+    vec![Effect::SacrificePermanent { target: pt.affected.unwrap_or(pt.source) }]
 }
 fn delayed_exile(
     _s: &GameState, pt: &crate::triggers::PendingTrigger,
     _r: &crate::registry::CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::ExilePermanent { target: pt.source }]
+    vec![Effect::ExilePermanent { target: pt.affected.unwrap_or(pt.source) }]
 }
 fn delayed_return_hand(
     _s: &GameState, pt: &crate::triggers::PendingTrigger,
     _r: &crate::registry::CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::ReturnToHand { target: pt.source }]
+    vec![Effect::ReturnToHand { target: pt.affected.unwrap_or(pt.source) }]
 }
 /// Delayed-trigger callback for `Effect::ChangeControlEot` — restores
 /// the target's controller. The trigger's `source` carries the target
@@ -2598,13 +2733,22 @@ fn delayed_return_exile_bf(
     _s: &GameState, pt: &crate::triggers::PendingTrigger,
     _r: &crate::registry::CardRegistry,
 ) -> Vec<Effect> {
-    vec![Effect::ReturnFromExileToBattlefield { target: pt.source }]
+    vec![Effect::ReturnFromExileToBattlefield { target: pt.affected.unwrap_or(pt.source) }]
 }
 fn delayed_controller_draws(
     _s: &GameState, pt: &crate::triggers::PendingTrigger,
     _r: &crate::registry::CardRegistry,
 ) -> Vec<Effect> {
     vec![Effect::DrawCards { player: pt.controller, count: 1 }]
+}
+
+fn delayed_return_exile_controlled(
+    _s: &GameState, pt: &crate::triggers::PendingTrigger,
+    _r: &crate::registry::CardRegistry,
+) -> Vec<Effect> {
+    vec![Effect::ReturnFromExileUnderControl {
+        target: pt.affected.unwrap_or(pt.source), controller: pt.controller,
+    }]
 }
 // The SelfResolvesToPermanent pair act on the POST-MOVE id from the
 // firing ZoneChange (CR 400.7), not on `pt.source` (the stack id).
@@ -2886,9 +3030,49 @@ pub struct EmblemDefinition {
 }
 
 impl TokenDefinition {
+    /// Add a printed static ability of the token (CR 604), such as a
+    /// characteristic-defining "this token's power and toughness are each
+    /// equal to …" (CR 604.3). Same contract as
+    /// `CardDefinition::with_static`: each part's source is
+    /// [`crate::objects::NULL_OBJECT_ID`] and the engine installs the
+    /// parts as the token enters. The struct cannot take a field (it is a
+    /// complete literal in the generated catalog), so the definition rides
+    /// in `abilities` behind [`crate::triggers::TriggerCondition::PrintedStatic`];
+    /// [`Self::to_characteristics`] moves it into the token's
+    /// characteristics, where a copy of the token finds it too.
+    pub fn with_static(mut self, parts: Vec<crate::layers::ContinuousEffect>) -> Self {
+        fn no_effect(_: &GameState, _: &crate::triggers::PendingTrigger,
+                     _: &crate::registry::CardRegistry) -> Vec<Effect> { Vec::new() }
+        self.abilities.push(crate::triggers::TriggeredAbilityDef {
+            id: 0,
+            trigger_condition: crate::triggers::TriggerCondition::PrintedStatic(
+                crate::layers::StaticAbilityDef::new(parts)),
+            intervening_if: None,
+            effect: no_effect,
+            trigger_zones: Vec::new(),
+            frequency: crate::triggers::TriggerFrequency::EachTime,
+            target_requirements: Vec::new(),
+        });
+        self
+    }
+
+    /// The token's printed triggered abilities: `abilities` without the
+    /// static carriers.
+    pub fn triggered_abilities(&self)
+        -> impl Iterator<Item = &crate::triggers::TriggeredAbilityDef>
+    {
+        self.abilities.iter().filter(|a| !matches!(a.trigger_condition,
+            crate::triggers::TriggerCondition::PrintedStatic(_)))
+    }
+
     /// Build the [`Characteristics`] block a token would have on the
     /// battlefield.
     pub fn to_characteristics(&self) -> Characteristics {
+        let statics: Vec<crate::layers::StaticAbilityDef> = self.abilities.iter()
+            .filter_map(|a| match &a.trigger_condition {
+                crate::triggers::TriggerCondition::PrintedStatic(def) => Some(def.clone()),
+                _ => None,
+            }).collect();
         Characteristics {
             name: self.name,
             mana_cost: None,
@@ -2909,6 +3093,8 @@ impl TokenDefinition {
                 &KeywordAbility::Changeling),
             // Tokens aren't cast, so "can't be countered" never applies.
             cant_be_countered: false,
+            cast_timing: None,
+            static_abilities: (!statics.is_empty()).then(|| statics.into()),
         }
     }
 }
@@ -3236,6 +3422,13 @@ fn valid_player(state: &GameState, p: PlayerId) -> bool {
     (p as usize) < state.players.len()
 }
 
+/// CR 800.4b: an object cannot enter or change to a departed player's
+/// control. Also rejects the illegal-target player sentinel (A1.5aw)
+/// before any zone move, controller assignment, event, or delayed revert.
+fn can_receive_control(state: &GameState, p: PlayerId) -> bool {
+    valid_player(state, p) && state.player(p).is_alive()
+}
+
 /// CR 701.25 — greedy proliferate. Choose every permanent and player
 /// that has a counter and add one of each kind already present.
 /// Object counters emit `CounterAdded`; player counters currently
@@ -3472,9 +3665,9 @@ fn mint_one_token(
     // and are shed when the token leaves. Attached BEFORE the ETB event
     // below so a token's own enters-the-battlefield trigger is present
     // when that event fires.
-    if !token.abilities.is_empty() {
+    if token.triggered_abilities().next().is_some() {
         if let Some(obj) = state.objects.get_mut(id) {
-            for (i, ability) in token.abilities.iter().enumerate() {
+            for (i, ability) in token.triggered_abilities().enumerate() {
                 let mut def = ability.clone();
                 def.id = crate::triggers::GRANTED_TRIGGER_ID_BASE
                     + 1 + i as crate::types::TriggerId;
@@ -3568,7 +3761,7 @@ fn commodity_token_spec(
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
+                is_instant_speed: true,
                 face_gate: None,
                 effect: clue_draw_a_card,
             };
@@ -3597,7 +3790,7 @@ fn commodity_token_spec(
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
+                is_instant_speed: true,
                 face_gate: None,
                 effect: food_gain_three_life,
             };
@@ -3668,7 +3861,7 @@ fn commodity_token_spec(
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
+                is_instant_speed: true,
                 face_gate: None,
                 effect: clue_draw_a_card, // discard is the cost; effect draws one
             };
@@ -3686,7 +3879,8 @@ fn commodity_token_spec(
                 abilities: Vec::new(),
             };
             let activation = ActivatedAbilityDef {
-                text: "{1}, {T}, Sacrifice this artifact: Target creature you control explores."
+                text: "{1}, {T}, Sacrifice this artifact: Target creature you control explores. \
+                       Activate only as a sorcery."
                     .into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}").unwrap(),
@@ -3779,21 +3973,9 @@ fn manifest_top_of_library(state: &mut GameState, p: PlayerId) {
     if !valid_player(state, p) { return; }
     let top = state.player(p).library_top_to_bottom.first().copied();
     let Some(id) = top else { return; };
-    // Re-id happens on the move; address the resulting battlefield
-    // object by the new id the mover returns.
-    let Some(new_id) = state.move_object_to_zone(
-        id, Zone::Battlefield, MoveCause::SpellResolution) else { return; };
-    let Some(obj) = state.objects.get_mut(new_id) else { return; };
-    obj.status.face_down = true;
-    obj.status.summoning_sick = true;
-    // Save the original characteristics for when the card flips back
-    // face-up; expose the face-down 2/2 vanilla profile for now.
-    obj.characteristics = Characteristics {
-        power: Some(PtValue::Fixed(2)),
-        toughness: Some(PtValue::Fixed(2)),
-        types: TypeLine::new().with(TypeLine::CREATURE),
-        ..Default::default()
-    };
+    let mut entry = crate::entry::BattlefieldEntry::new(id, p, MoveCause::SpellResolution);
+    entry.face_down = true;
+    state.enter_battlefield(entry);
 }
 
 fn install_regenerate_shield(state: &mut GameState, target: ObjectId) {
@@ -3834,8 +4016,15 @@ fn attach(state: &mut GameState, attacher: ObjectId, target: ObjectId) {
         });
     }
     // Wire the new relationship.
+    let already = state.objects.get(attacher).and_then(|o| o.attached_to) == Some(target);
     state.objects.get_mut(attacher).unwrap().attached_to = Some(target);
     state.objects.get_mut(target).unwrap().attachments.push(attacher);
+    // CR 613.7e: an Aura or Equipment gets a new timestamp each time it
+    // becomes attached, and its printed statics' effects with it (A1.5br).
+    // Attaching it to the object it is already on does nothing (701.3b).
+    if !already {
+        state.stamp_object(attacher, None);
+    }
     state.emit(GameEvent::AttachedTo {
         equipment_or_aura: attacher, target,
     });
@@ -3954,6 +4143,7 @@ fn snapcaster_grant_flashback(
     duration: crate::layers::Duration,
 ) {
     use crate::types::TypeLine;
+    if !valid_player(state, controller) { return; }
     // Enumerate instants/sorceries across *every* player's graveyard
     // — Snapcaster's printed text says "a graveyard" without a
     // controller restriction.
@@ -4156,6 +4346,12 @@ pub(crate) fn apply_dig_rest(
     rest: DigRest,
 ) {
     if rest_ids.is_empty() { return; }
+    if state.pending_choice.is_some() {
+        state.entry_continuations.push_back(crate::entry::EntryContinuation::DigRest {
+            player, ids: rest_ids.to_vec(), rest,
+        });
+        return;
+    }
     match rest {
         DigRest::BottomRandom => {
             use rand::seq::SliceRandom;
@@ -4245,16 +4441,8 @@ fn reveal_until(
                     hit, Zone::Hand(owner), crate::events::MoveCause::SpellResolution);
             }
             RevealDest::Battlefield => {
-                if let Some(obj) = state.objects.get_mut(hit) {
-                    obj.controller = player;
-                }
-                let new_id = state.move_object_to_zone(
-                    hit, Zone::Battlefield, crate::events::MoveCause::SpellResolution);
-                if let Some(bf) = new_id {
-                    if let Some(obj) = state.objects.get_mut(bf) {
-                        obj.controller = player;
-                    }
-                }
+                state.enter_battlefield(crate::entry::BattlefieldEntry::new(
+                    hit, player, MoveCause::SpellResolution));
             }
         }
     }
@@ -4605,6 +4793,11 @@ fn cast_from_zone_free<F: Fn(Zone) -> bool>(
     zone_ok: F,
 ) {
     if !valid_player(state, player) { return; }
+    // These casts happen during a resolution, which is never a time a
+    // player restricted to sorcery timing could cast a sorcery (CR 307.5,
+    // 608.2g): with an opposing Teferi, Time Raveler out, nothing is cast
+    // and the card stays where it is (A1.5aa).
+    if state.casts_restricted_to_sorcery_timing(player) { return; }
     let Some(obj) = state.objects.get(target) else { return; };
     if !zone_ok(obj.zone) { return; }
     if obj.is_land() { return; } // Lands aren't cast (CR 305.1).
@@ -7775,6 +7968,7 @@ mod tests {
             trigger_event: GameEvent::StepBegins { step: crate::turn::Step::End },
             targets: crate::targets::TargetSelection::new(),
             effect_override: None,
+            affected: None,
         };
         let eff = (t.effect)(&s, &pt, &crate::registry::CardRegistry::new());
         assert!(matches!(eff.as_slice(),
@@ -7816,16 +8010,18 @@ mod tests {
         assert!(matches!(t.condition,
             TriggerCondition::StepBegins { step: crate::turn::Step::End, .. }));
         assert!(t.fire_once);
-        // The callback destroys the token via DestroyPermanent.
+        // The callback sacrifices the token (A1.5bk: a sacrifice, not a
+        // destroy, so regeneration and indestructible don't stop it).
         let pt = crate::triggers::PendingTrigger {
             source: token_id, trigger_id: 0, controller: 0,
             trigger_event: GameEvent::StepBegins { step: crate::turn::Step::End },
             targets: crate::targets::TargetSelection::new(),
             effect_override: None,
+            affected: None,
         };
         let eff = (t.effect)(&s, &pt, &reg);
         assert!(matches!(eff.as_slice(),
-            [Effect::DestroyPermanent { target }] if *target == token_id));
+            [Effect::SacrificePermanent { target }] if *target == token_id));
     }
 
     #[test]

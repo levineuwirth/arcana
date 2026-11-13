@@ -3,15 +3,14 @@
 //! +1: Exile the top card of your library. You may cast that card. If you
 //!     don't, Chandra deals 2 damage to each opponent. (GAP — exile-top-and-
 //!     may-cast rider + "each opponent" damage branch not expressible.)
-//! +1: Add {R}{R}. (GAP — mana production is not part of the demonstrated
-//!     Effect surface for this card class.)
+//! +1: Add {R}{R}. (A loyalty ability: uses the stack.)
 //! −3: Chandra deals 4 damage to target creature.
 //! −7: You get an emblem with "Whenever you cast a spell, this emblem deals 5
 //!     damage to any target." (Implemented as a triggered emblem.)
 
 use arcana_core::effects::{Effect, EmblemDefinition};
 use arcana_core::events::DamageTarget;
-use arcana_core::mana::ManaCost;
+use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone, CardDefinition,
@@ -22,7 +21,7 @@ use arcana_core::targets::{ControllerConstraint, TargetChoice, TargetRequirement
 use arcana_core::triggers::{
     PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
 };
-use arcana_core::types::{CardId, ColorSet, CounterKind, SubtypeSet, SupertypeSet, TypeLine};
+use arcana_core::types::{CardId, ColorSet, CounterKind, ManaColor, SubtypeSet, SupertypeSet, TypeLine};
 use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
@@ -116,9 +115,11 @@ fn plus_one_impulse(_state: &GameState, _ctx: &ActivationContext, _reg: &CardReg
 }
 
 /// `+1: Add {R}{R}.`
-fn plus_one_mana(_state: &GameState, _ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: mana production not in the demonstrated Effect surface.
-    Vec::new()
+fn plus_one_mana(_state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Red, ctx.source); 2],
+    }]
 }
 
 /// `−3: Chandra deals 4 damage to target creature.`

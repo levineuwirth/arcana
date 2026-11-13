@@ -1,15 +1,13 @@
-//! Lava Coil — `{1}{R}` sorcery. "Lava Coil deals 4 damage to target
-//! creature. If that creature would die this turn, exile it instead."
-//!
-//! Damage half expressible. 'Exile instead of die' replacement for the rest
-//! of turn is not a catalog primitive — but the engine offers a DelayedAction
-//! ThisDies → Exile, which approximates 'exile when it dies this turn'.
+//! Lava Coil deals 4 damage and replaces the creature’s death with exile this turn.
 
-use arcana_core::effects::{DelayedAction, DelayedWhen, Effect};
+use arcana_core::effects::Effect;
 use arcana_core::events::DamageTarget;
 use arcana_core::mana::ManaCost;
 use arcana_core::objects::Characteristics;
 use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::replacement::{
+    ReplacementCondition, ReplacementDuration, ReplacementEffect, ReplacementKind,
+};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::targets::{TargetChoice, TargetRequirement};
@@ -35,24 +33,29 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn resolve(
-    _state: &GameState,
-    entry: &StackEntry,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
-    let Some(target) = entry.targets.targets.first() else { return Vec::new(); };
-    let TargetChoice::Object(id) = target else { return Vec::new(); };
+fn resolve(_state: &GameState, entry: &StackEntry, _reg: &CardRegistry) -> Vec<Effect> {
+    let Some(target) = entry.targets.targets.first() else {
+        return Vec::new();
+    };
+    let TargetChoice::Object(id) = target else {
+        return Vec::new();
+    };
     vec![
         Effect::DealDamage {
             source: entry.source,
             target: DamageTarget::Object(*id),
             amount: 4,
         },
-        Effect::DelayedAction {
-            source: *id,
-            controller: entry.controller,
-            when: DelayedWhen::ThisDies,
-            action: DelayedAction::Exile,
+        Effect::InstallReplacementEffect {
+            effect: Box::new(ReplacementEffect {
+                source: entry.source,
+                id: 0,
+                condition: ReplacementCondition::WouldDieSpecific { object_id: *id },
+                kind: ReplacementKind::ExileInsteadOfDying,
+                is_self_replacement: false,
+                duration: ReplacementDuration::EndOfTurn,
+                state_gate: None,
+            }),
         },
     ]
 }

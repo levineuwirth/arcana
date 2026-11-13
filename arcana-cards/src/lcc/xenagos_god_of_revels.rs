@@ -4,17 +4,17 @@
 //! Oracle:
 //! * Indestructible.
 //! * "As long as your devotion to red and green is less than seven,
-//!   Xenagos isn't a creature." — GAP: a continuous characteristic-
-//!   altering static, not a triggered/activated ability.
+//!   Xenagos isn't a creature." — A1.5bq's live source-only type effect,
+//!   a printed static the engine installs on entry (A1.5br).
 //! * "At the beginning of combat on your turn, another target creature
 //!   you control gains haste and gets +X/+X until end of turn, where X
 //!   is that creature's power." — a combat-phase trigger that pumps a
 //!   target creature you control by its own power and grants Haste.
 
 use arcana_core::effects::{Effect, KeywordAbility};
-use arcana_core::layers::Duration;
+use arcana_core::layers::{ContinuousEffect, Duration, SourceCondition, SelfModification};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry};
 use arcana_core::script;
 use arcana_core::state::GameState;
@@ -49,7 +49,17 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     };
 
     reg.register(
-        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
+        CardDefinition::new(name, chars)
+            .with_static(vec![ContinuousEffect::conditional_self(
+                NULL_OBJECT_ID,
+                SourceCondition::ControllerDevotionBelow {
+                    colors: ColorSet::red() | ColorSet::green(), threshold: 7 },
+                SelfModification::RemoveTypes {
+                    types: TypeLine::CREATURE.into(),
+                    subtypes: SubtypeSet([god].into_iter().collect()),
+                },
+                Duration::WhileSourceOnBattlefield,
+            )]).with_triggered_ability(TriggeredAbilityDef {
             id: 1,
             trigger_condition: TriggerCondition::PhaseBegins {
                 phase: Phase::Combat,
@@ -59,11 +69,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             effect: haste_and_double,
             trigger_zones: vec![Zone::Battlefield],
             frequency: TriggerFrequency::EachTime,
-            // GAP: "another" (exclude this creature) is not enforced by
-            // the target filter; the engine may permit self-targeting.
+            // Source-relative exclusion is shared by enumeration and rechecking.
             target_requirements: vec![TargetRequirement {
                 filter: TargetFilter::Permanent(
-                    ObjectFilter::creature().controlled_by(ControllerConstraint::You),
+                    ObjectFilter::creature().excluding_source().controlled_by(ControllerConstraint::You),
                 ),
                 count: TargetCount::Exactly(1),
                 controller: None,

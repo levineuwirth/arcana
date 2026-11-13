@@ -87,8 +87,9 @@ pub fn describe_event(
 fn ability_text(state: &GameState, registry: &CardRegistry,
                 source: crate::objects::ObjectId, index: usize) -> Option<String> {
     let obj = state.objects.get(source)?;
-    let def = registry.get(obj.card_id)?;
-    let text = def.activated_abilities.get(index)?.text.trim();
+    // The same flat index the action carries: printed, intrinsic, granted.
+    let text = crate::legal_actions::lookup_activated_ability(obj, registry, state, index)?
+        .text.trim();
     if text.is_empty() { return None; }
     const MAX: usize = 64;
     Some(if text.chars().count() > MAX {
@@ -259,7 +260,28 @@ fn render_choice_response(r: &ChoiceResponse, state: &GameState, registry: &Card
             format!("Target {}", names.join(", "))
         }
         ChoiceResponse::PickPlayer { picked } => format!("Choose P{picked}"),
+        ChoiceResponse::ChooseTriggerMode { mode } => state.pending_choice.as_ref()
+            .and_then(|pc| match &pc.kind {
+                crate::actions::ChoiceKind::ChooseTriggerMode { modes, .. } =>
+                    modes.iter().find(|(i, _)| i == mode).map(|(_, text)| text.clone()),
+                _ => None,
+            }).unwrap_or_else(|| format!("Choose mode {}", mode + 1)),
         ChoiceResponse::ChooseColor { color } => format!("Choose {color:?}"),
+        ChoiceResponse::CastWithoutPaying { cast: None } => "Don't cast it".to_string(),
+        ChoiceResponse::CastWithoutPaying { cast: Some(cast) } => {
+            let mut s = render_action(cast, state, registry);
+            if let Action::CastSpell { modes, additional_costs, .. } = cast.as_ref() {
+                let picked: Vec<String> = modes.iter()
+                    .flat_map(|m| m.mode_indices.iter().map(|i| (i + 1).to_string()))
+                    .collect();
+                if !picked.is_empty() { let _ = write!(s, " (mode {})", picked.join(", ")); }
+                if additional_costs.iter().any(|c| matches!(c, crate::actions::AdditionalCostPayment::Kicker)) {
+                    s.push_str(" (kicked)");
+                }
+            }
+            s.push_str(" without paying its mana cost");
+            s
+        }
         ChoiceResponse::OrderCards { placements } if placements.is_empty() =>
             "Order (no cards)".to_string(),
         ChoiceResponse::OrderCards { placements } => {

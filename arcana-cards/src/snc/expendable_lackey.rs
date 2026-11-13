@@ -34,7 +34,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{1}{U}, Exile this card from your graveyard: Create a 1/1 blue Fish creature token with \"can't block\".".into(),
+                text: "{1}{U}, Exile this card from your graveyard: Create a 1/1 blue Fish creature token with \"can't block\". Activate only as a sorcery.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}{U}").unwrap(),
                     exile_self: true,

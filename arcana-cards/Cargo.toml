@@ -6,3 +6,7 @@ rust-version.workspace = true
 
 [dependencies]
 arcana-core = { path = "../arcana-core" }
+
+[[bench]]
+name = "stage3_statics"
+harness = false

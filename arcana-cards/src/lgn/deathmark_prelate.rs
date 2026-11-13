@@ -38,7 +38,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             .with_activated_ability(ActivatedAbilityDef {
                 // GAP: cost requires "Sacrifice a Zombie" (not self) — engine can only model
                 // sacrifice-self. Approximating with mana+tap only; zombie sacrifice not modeled.
-                text: "{2}{B}, {T}, Sacrifice a Zombie: Destroy target non-Zombie creature. It can't be regenerated.".into(),
+                text: "{2}{B}, {T}, Sacrifice a Zombie: Destroy target non-Zombie creature. It can't be regenerated. Activate only as a sorcery.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{2}{B}").unwrap(),
                     tap: true,

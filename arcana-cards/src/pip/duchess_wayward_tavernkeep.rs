@@ -71,7 +71,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{1}, Remove a quest counter from a permanent you \
-                       control: Create a Junk token."
+                       control: Create a Junk token. Activate only as a sorcery."
                     .into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}").expect("valid cost"),

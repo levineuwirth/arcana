@@ -116,6 +116,50 @@ pub enum CastModifier {
     /// card when it's a LAND goes through `Action::PlayLand`, not this
     /// modifier (Oracle of Mul Daya's land half).
     TopOfLibrary,
+    /// CR 118.9 — cast "without paying its mana cost". Offered through
+    /// [`ChoiceKind::CastWithoutPaying`] for its named exiled card during
+    /// resolution, or in an ordinary window under a card definition's
+    /// explicit main-face permission from hand. The mana cost is replaced by
+    /// nothing, so `{X}` is 0 (CR 107.3b) and no other alternative cost
+    /// can apply; additional costs (kicker) and cost increases are still
+    /// paid, from `mana_payment`. Only the resolution-time permission
+    /// ignores card-type timing (CR 608.2g); casting restrictions still apply. The spell leaves the stack to
+    /// its normal destination, by `face`: an Adventure cast this way goes on
+    /// an adventure like any other (CR 715.4).
+    WithoutPayingManaCost {
+        /// Which face is cast: the owner may cast any face a card has
+        /// (CR 709.3, 711.3, 712.11, 715.3).
+        face: CastFace,
+    },
+}
+
+/// Which face of a card a cast casts (CR 709): the main face, the right
+/// half of a split card (CR 711), an Adventure (CR 715), or the back face
+/// of a modal double-faced card (CR 712).
+#[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CastFace {
+    #[default]
+    Main,
+    SplitRight,
+    Adventure,
+    MdfcBack,
+}
+
+impl CastModifier {
+    /// The face this cast casts, whether paid for or free: the alternate
+    /// face for an Adventure, a modal double-faced back or a split right
+    /// half; the main face for every other modifier.
+    pub fn face(self) -> CastFace {
+        match self {
+            CastModifier::Adventure => CastFace::Adventure,
+            CastModifier::MdfcBack => CastFace::MdfcBack,
+            CastModifier::SplitRight => CastFace::SplitRight,
+            CastModifier::WithoutPayingManaCost { face } => face,
+            CastModifier::None | CastModifier::Flashback | CastModifier::Madness
+            | CastModifier::AdventureCreature | CastModifier::ImpulsePlay
+            | CastModifier::TopOfLibrary => CastFace::Main,
+        }
+    }
 }
 
 /// Bundle of *cost-reduction* choices (CR 601.2f category: "cost
@@ -486,6 +530,8 @@ pub enum ChoiceContext {
     /// so the dispatcher handles the OrderCards answer by advancing
     /// the mulligan phase rather than resuming a stack entry.
     MulliganScry { player: PlayerId },
+    /// An optional life payment made before a permanent enters (A1.5bj).
+    EnteringBattlefield { object_id: ObjectId },
     /// Some other engine-driven prompt that doesn't fit the above.
     Other,
 }
@@ -548,22 +594,38 @@ pub enum ChoiceKind {
     PickPlayer {
         candidates: Vec<PlayerId>,
     },
-    /// Pick targets at resolution time (storm copies, copy-spell
-    /// effects). The actual list of targeting clauses lives on
+    /// Pick targets for a triggered ability going on the stack or a
+    /// copied spell. The actual list of targeting clauses lives on
     /// [`crate::state::GameState::pending_target_requirements`] —
     /// stored there because [`crate::targets::TargetRequirement`]
     /// carries fn-pointer-bearing filters and isn't Hash/Eq/Serialize.
-    /// Answer: [`ChoiceResponse::ChooseTargets`] with selection length
-    /// equal to that requirement vector's length.
-    /// `source` is the stack object on whose behalf targets are chosen.
+    /// Answer: [`ChoiceResponse::ChooseTargets`] satisfying those clauses.
+    /// `source` is the stack entry's ID. Its `source` and `controller`
+    /// fields supply the targeting context; an ability entry has no
+    /// corresponding arena object.
     ChooseTargets {
         source: ObjectId,
+    },
+    /// Choose exactly one available mode as a trigger goes on the stack,
+    /// before choosing that mode's targets (CR 603.3c, 700.2b).
+    /// `source` names the stack entry; indices retain printed clause order.
+    ChooseTriggerMode {
+        source: ObjectId,
+        modes: Vec<(usize, String)>,
     },
     /// Choose one of the five colors (CR 700.4 — "choose a color").
     /// Answer: [`ChoiceResponse::ChooseColor`]. The follow-up that
     /// consumes the chosen color lives on
     /// [`crate::state::GameState::pending_choice_follow_up`].
     ChooseColor,
+    /// "You may cast `object` without paying its mana cost" (CR 118.9,
+    /// 608.2g), asked of the card's owner during the resolution of the
+    /// effect that grants it. Answer:
+    /// [`ChoiceResponse::CastWithoutPaying`] — decline, or one fully
+    /// specified cast with [`CastModifier::WithoutPayingManaCost`].
+    CastWithoutPaying {
+        object: ObjectId,
+    },
 }
 
 /// Destinations a card can be placed during an `OrderCards` choice.
@@ -699,8 +761,14 @@ pub enum ChoiceResponse {
     /// of requirements; each `TargetChoice` is validated at the
     /// dispatcher (legality is rechecked per CR 608.2b).
     ChooseTargets { selection: crate::targets::TargetSelection },
+    /// Reply to [`ChoiceKind::ChooseTriggerMode`]. Saved in action replays.
+    ChooseTriggerMode { mode: usize },
     /// Reply to [`ChoiceKind::ChooseColor`].
     ChooseColor { color: crate::types::Color },
+    /// Reply to [`ChoiceKind::CastWithoutPaying`]: `None` declines; `Some`
+    /// carries the chosen [`Action::CastSpell`], with its targets, modes,
+    /// X (0), additional costs and the payment for any of them.
+    CastWithoutPaying { cast: Option<Box<Action>> },
 }
 
 /// A spell/ability resolution that yielded mid-way to push a
@@ -1014,7 +1082,7 @@ mod tests {
     fn cast(object_id: ObjectId) -> Action {
         Action::CastSpell {
             object_id,
-            targets: TargetSelection { targets: vec![] },
+            targets: TargetSelection { targets: vec![], clause_lengths: Vec::new() },
             modes: vec![],
             mana_payment: pay_nothing(),
             additional_costs: vec![],
@@ -1178,7 +1246,7 @@ mod tests {
         let a = Action::CastSpell {
             object_id: 7,
             targets: TargetSelection {
-                targets: vec![TargetChoice::Player(1)],
+                targets: vec![TargetChoice::Player(1)], clause_lengths: Vec::new(),
             },
             modes: vec![],
             mana_payment: pay_nothing(),

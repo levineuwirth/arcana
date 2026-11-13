@@ -47,7 +47,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
+                is_instant_speed: true,
                 face_gate: None,
                 effect: become_white,
             })
@@ -58,7 +58,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
+                is_instant_speed: true,
                 face_gate: None,
                 effect: become_blue,
             })
@@ -69,7 +69,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
+                is_instant_speed: true,
                 face_gate: None,
                 effect: become_black,
             })
@@ -80,7 +80,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
+                is_instant_speed: true,
                 face_gate: None,
                 effect: become_red,
             })
@@ -91,7 +91,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
+                is_instant_speed: true,
                 face_gate: None,
                 effect: become_green,
             }),

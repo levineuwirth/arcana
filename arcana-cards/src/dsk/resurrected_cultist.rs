@@ -36,7 +36,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{2}{B}{B}: Return from graveyard if delirium. (GAP: finality counter + delirium check)".into(),
+                text: "{2}{B}{B}: Return from graveyard if delirium. (GAP: finality counter + delirium check) Activate only if there are four or more card types among cards in your graveyard and only as a sorcery.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{2}{B}{B}").unwrap(),
                     ..ActivationCost::default()

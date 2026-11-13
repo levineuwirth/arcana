@@ -35,7 +35,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{T}: You have thirty seconds to laud a creature. Creature gains trample and haste and gets +X/+0 where X = applauders.".into(),
+                text: "{T}: You have thirty seconds to laud a creature. Creature gains trample and haste and gets +X/+0 where X = applauders. Activate only as a sorcery and only once.".into(),
                 cost: ActivationCost::tap_only(),
                 target_requirements: Vec::new(),
                 is_mana_ability: false,

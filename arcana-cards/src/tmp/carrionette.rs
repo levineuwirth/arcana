@@ -43,7 +43,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_loyalty_ability: false,
                 // GAP: no ActivationZone::Graveyard; using Hand as placeholder
                 activation_zone: ActivationZone::Hand,
-                is_instant_speed: false,
+                is_instant_speed: true,
                 face_gate: None,
                 effect: exile_or_pay,
             }),

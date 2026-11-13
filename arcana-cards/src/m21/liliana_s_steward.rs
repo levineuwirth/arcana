@@ -30,7 +30,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{T}, Sacrifice this creature: Target opponent discards a card.".into(),
+                text: "{T}, Sacrifice this creature: Target opponent discards a card. Activate only as a sorcery.".into(),
                 cost: ActivationCost {
                     tap: true,
                     sacrifice: true,

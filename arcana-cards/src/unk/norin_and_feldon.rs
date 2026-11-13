@@ -41,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{2}{R}, {T}: Create a token that's a copy of target creature card in your graveyard with modifications.".into(),
+                text: "{2}{R}, {T}: Create a token that's a copy of target creature card in your graveyard with modifications. Activate only as a sorcery.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{2}{R}").unwrap(),
                     tap: true,

@@ -31,7 +31,7 @@ use crate::observation::{BasicE2Encoder, Encoder};
 use crate::search::{StatePolicy, ValueFn};
 
 fn sigmoid(z: f32) -> f32 {
-    1.0 / (1.0 + (-z).exp())
+    1.0 / (1.0 + crate::portable::exp(-z))
 }
 
 /// The trained weights of a one-hidden-layer MLP: input `d` → hidden `h` (tanh)
@@ -66,7 +66,7 @@ impl MlpParams {
             for j in 0..self.d {
                 z1 += self.w1[base + j] * x[j];
             }
-            z2 += self.w2[i] * z1.tanh();
+            z2 += self.w2[i] * crate::portable::tanh(z1);
         }
         sigmoid(z2)
     }
@@ -127,7 +127,7 @@ pub fn train_mlp(
                 for j in 0..d {
                     z1 += w1[base + j] * xi[j];
                 }
-                let a = z1.tanh();
+                let a = crate::portable::tanh(z1);
                 a1[i] = a;
                 z2 += w2[i] * a;
             }

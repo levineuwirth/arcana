@@ -37,7 +37,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{T}, Exile cards from your graveyard equal to the number of opponents you have: Target creature card in your graveyard gains encore until end of turn.".into(),
+                text: "{T}, Exile cards from your graveyard equal to the number of opponents you have: Target creature card in your graveyard gains encore until end of turn. Activate only as a sorcery.".into(),
                 cost: ActivationCost::tap_only(),
                 target_requirements: Vec::new(),
                 is_mana_ability: false,

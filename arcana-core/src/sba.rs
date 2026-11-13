@@ -73,6 +73,7 @@ pub fn apply_state_based_actions(state: &mut GameState) -> u32 {
         let mut fired = false;
         // Order within a pass is canonical and deterministic; the
         // loop ensures simultaneity-of-outcome.
+        fired |= remove_noncreatures_from_combat(state); // CR 506.4
         fired |= annihilate_pt_counters(state);       // CR 704.5p
         fired |= check_creature_graveyard(state);     // CR 704.5f, 704.5g
         fired |= check_planeswalker_graveyard(state); // CR 704.5i
@@ -189,9 +190,9 @@ fn pending_player_loss(state: &GameState) -> bool {
 /// that's what the spec calls out as 704.5f).
 fn check_creature_graveyard(state: &mut GameState) -> bool {
     use crate::effects::KeywordAbility;
-    let mut to_kill: Vec<ObjectId> = Vec::new();
+    let mut to_kill: Vec<(ObjectId, crate::replacement::DeathKind)> = Vec::new();
     for obj in state.objects.objects_in_zone(Zone::Battlefield) {
-        if !obj.is_creature() { continue; }
+        if !state.is_creature_now(obj.id) { continue; }
         let Some(t) = state.computed_toughness(obj.id) else { continue; };
         let indestructible = state.has_keyword(obj.id, &KeywordAbility::Indestructible);
         let dies_by_toughness = t <= 0;
@@ -203,39 +204,45 @@ fn check_creature_graveyard(state: &mut GameState) -> bool {
             && obj.damage_marked > 0
             && obj.has_deathtouch_damage;
         if dies_by_toughness || dies_by_damage || dies_by_deathtouch {
-            to_kill.push(obj.id);
+            // Zero toughness puts it into the graveyard without
+            // destroying it (CR 704.5f), so no regeneration shield
+            // applies; lethal and deathtouch damage destroy (704.5g-h).
+            let kind = if dies_by_toughness {
+                crate::replacement::DeathKind::Other
+            } else {
+                crate::replacement::DeathKind::Destruction
+            };
+            to_kill.push((obj.id, kind));
         }
     }
     if to_kill.is_empty() { return false; }
-    to_kill.sort();
-    for id in to_kill {
-        let Some(owner) = state.objects.get(id).map(|o| o.owner) else { continue; };
-        // CR 614 — run the die-replacement pipeline before commit.
-        match state.replace_die(id) {
-            crate::replacement::DieOutcome::ExileInstead => {
-                state.move_object_to_zone(
-                    id, Zone::Exile, MoveCause::StateBasedAction);
-            }
-            crate::replacement::DieOutcome::Regenerated => {
-                // CR 701.25c — remove damage, tap, remove from combat.
-                if let Some(obj) = state.objects.get_mut(id) {
-                    obj.clear_damage();
-                    obj.tap();
-                }
-                // Remove from active combat if present.
-                if let Some(combat) = state.combat.as_mut() {
-                    combat.attackers.retain(|a| a.object_id != id);
-                    combat.blockers.retain(|b| b.object_id != id);
-                    for atk in combat.attackers.iter_mut() {
-                        atk.blocked_by.retain(|b| *b != id);
-                    }
-                }
-            }
-            crate::replacement::DieOutcome::StillDies => {
-                state.move_object_to_zone(
-                    id, Zone::Graveyard(owner), MoveCause::StateBasedAction);
-            }
-        }
+    to_kill.sort_by_key(|&(id, _)| id);
+    for (id, kind) in to_kill {
+        // CR 614 — the death replacements apply before the move (A1.5bk).
+        state.put_into_graveyard_dying(id, kind, MoveCause::StateBasedAction);
+    }
+    true
+}
+
+// =============================================================================
+// 506.4 — a permanent that stops being a creature leaves combat
+// =============================================================================
+
+/// CR 506.4: an attacking or blocking permanent that stops being a creature
+/// (its animation ends, say) is removed from combat. Checked with the SBAs,
+/// before any player next gets priority; an attacker it was blocking stays
+/// blocked (CR 506.4c).
+fn remove_noncreatures_from_combat(state: &mut GameState) -> bool {
+    let Some(combat) = state.combat.as_ref() else { return false };
+    let mut gone: Vec<ObjectId> = combat.attackers.iter().map(|a| a.object_id)
+        .chain(combat.blockers.iter().map(|b| b.object_id))
+        .filter(|&id| !state.is_creature_now(id))
+        .collect();
+    if gone.is_empty() { return false; }
+    gone.sort_unstable();
+    gone.dedup();
+    for id in gone {
+        state.remove_from_combat(id);
     }
     true
 }
@@ -243,7 +250,7 @@ fn check_creature_graveyard(state: &mut GameState) -> bool {
 fn pending_creature_to_graveyard(state: &GameState) -> bool {
     use crate::effects::KeywordAbility;
     state.objects.objects_in_zone(Zone::Battlefield).any(|obj| {
-        if !obj.is_creature() { return false; }
+        if !state.is_creature_now(obj.id) { return false; }
         let indestructible = state.has_keyword(obj.id, &KeywordAbility::Indestructible);
         match state.computed_toughness(obj.id) {
             Some(t) if t <= 0 => true,
@@ -270,9 +277,11 @@ fn check_planeswalker_graveyard(state: &mut GameState) -> bool {
     if to_kill.is_empty() { return false; }
     to_kill.sort();
     for id in to_kill {
-        let Some(owner) = state.objects.get(id).map(|o| o.owner) else { continue; };
-        state.move_object_to_zone(
-            id, Zone::Graveyard(owner), MoveCause::StateBasedAction);
+        if state.objects.get(id).is_none() { continue; }
+        // Put into the graveyard by the rule: a death, so an exile-instead
+        // applies and no regeneration does (A1.5bk).
+        state.put_into_graveyard_dying(
+            id, crate::replacement::DeathKind::Other, MoveCause::StateBasedAction);
     }
     true
 }
@@ -557,11 +566,12 @@ fn check_aura_illegal(state: &mut GameState) -> bool {
         .collect();
     if to_move.is_empty() { return false; }
     for id in to_move {
-        let owner = state.objects.get(id).map(|o| o.owner);
-        if let Some(owner) = owner {
-            state.move_object_to_zone(
-                id, Zone::Graveyard(owner), MoveCause::StateBasedAction);
-        }
+        if state.objects.get(id).is_none() { continue; }
+        // Through the death replacements as a non-destruction move: the
+        // replacement's own condition decides whether it applies to an
+        // Aura (A1.5bk).
+        state.put_into_graveyard_dying(
+            id, crate::replacement::DeathKind::Other, MoveCause::StateBasedAction);
     }
     true
 }
@@ -617,13 +627,13 @@ fn check_saga_sacrifice(state: &mut GameState) -> bool {
         .collect();
     if to_sacrifice.is_empty() { return false; }
     for (id, controller) in to_sacrifice {
-        let Some(owner) = state.objects.get(id).map(|o| o.owner) else { continue; };
+        if state.objects.get(id).is_none() { continue; }
         // Emit the sacrifice event (CR 701.16) so "whenever you
         // sacrifice an enchantment / a permanent" triggers see it,
         // then route the card to graveyard.
         state.emit(GameEvent::Sacrifice { player: controller, object_id: id });
-        state.move_object_to_zone(
-            id, Zone::Graveyard(owner), MoveCause::StateBasedAction);
+        state.put_into_graveyard_dying(
+            id, crate::replacement::DeathKind::Other, MoveCause::StateBasedAction);
     }
     true
 }
@@ -673,7 +683,7 @@ fn check_battle_defeat(state: &mut GameState) -> bool {
         .map(|obj| (obj.id, obj.owner))
         .collect();
     if to_defeat.is_empty() { return false; }
-    for (id, owner) in to_defeat {
+    for (id, _owner) in to_defeat {
         // CR 310.11 — a defeated Siege is cast transformed (its back face).
         // Modeled as an in-place transform: the back-face permanent stays on
         // the battlefield under its controller, firing SelfTransforms{to_face:1}
@@ -684,8 +694,10 @@ fn check_battle_defeat(state: &mut GameState) -> bool {
         if has_back {
             crate::effects::Effect::Transform { target: id }.execute(state);
         } else {
-            state.move_object_to_zone(
-                id, Zone::Graveyard(owner), MoveCause::StateBasedAction);
+            // Through the death replacements as a non-destruction move;
+            // the replacement's condition decides (A1.5bk).
+            state.put_into_graveyard_dying(
+                id, crate::replacement::DeathKind::Other, MoveCause::StateBasedAction);
         }
     }
     true
@@ -706,8 +718,9 @@ fn pending_battle_defeat(state: &GameState) -> bool {
 // =============================================================================
 
 /// Apply the "last player standing wins / universal draw" rule.
-/// Called once per SBA pass after the per-variant checks settle.
-fn update_game_result(state: &mut GameState) {
+/// Called after each SBA pass, and directly after a concession so a
+/// pending resolution choice cannot delay the end of the game.
+pub(crate) fn update_game_result(state: &mut GameState) {
     if state.result.is_some() { return; }
     let alive: Vec<PlayerId> = (0..state.num_players())
         .filter(|&p| !state.player(p).has_lost)
@@ -906,7 +919,7 @@ mod tests {
             layer: Layer::L7cPTModifying,
             timestamp: 0,
             duration: Duration::Permanent,
-            dependency: None,
+            dependency: None, printed: None,
             kind: ContinuousEffectKind::PumpTarget {
                 target: c, power: 0, toughness: -2,
             },
@@ -1558,6 +1571,7 @@ mod tests {
             },
             targets: crate::targets::TargetSelection::default(),
             effect_override: None,
+            affected: None,
         });
         assert!(!pending_saga_sacrifice(&s));
         apply_state_based_actions(&mut s);

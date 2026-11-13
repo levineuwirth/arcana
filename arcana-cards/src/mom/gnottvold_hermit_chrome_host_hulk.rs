@@ -76,7 +76,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             // GAP: {U/P} Phyrexian mana approximated as {5}{U}.
             // GAP: "activate only as a sorcery" not modeled.
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{5}{U}: Transform this creature. (GAP: {U/P} approximated as {U})".into(),
+                text: "{5}{U}: Transform this creature. (GAP: {U/P} approximated as {U}) Activate only as a sorcery.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{5}{U}").expect("valid cost"),
                     ..ActivationCost::default()

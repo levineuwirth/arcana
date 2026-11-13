@@ -203,6 +203,9 @@ pub struct CardDefinition {
     /// so card files don't need to thread a new field into every
     /// `TriggeredAbilityDef` literal (1,800+ files).
     pub dynamic_x: Vec<(crate::types::TriggerId, crate::triggers::DynamicXFn)>,
+    /// "Choose one" clauses for registered triggers, keyed by ability id.
+    /// Modes are chosen at stack placement, before their own targets.
+    pub trigger_modes: Vec<(crate::types::TriggerId, Vec<crate::triggers::TriggerMode>)>,
     /// Sidecar: per-mode effect callbacks for modal spells (CR 700.2).
     /// Index by clause position in `SpellAbilityDef.modal.clauses`.
     /// `None` for non-modal cards. When `Some`, set the spell ability's
@@ -226,6 +229,28 @@ pub struct CardDefinition {
     /// Enforced in `legal_actions` (the spell isn't enumerated as castable);
     /// not a layer/characteristic effect.
     pub cant_cast: Option<CastRestriction>,
+    /// An alternative cost for this card's main spell face, from its
+    /// caster's hand only. Normal timing and supported restrictions still
+    /// apply. Defaulted so existing definitions grant no permission.
+    pub free_cast_from_hand: Option<FreeCastCondition>,
+}
+
+pub use crate::objects::CastTimingRestriction;
+
+/// A condition for a card's own alternative cost of paying no mana cost.
+/// This grants neither another casting zone nor another timing window.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FreeCastCondition {
+    /// The caster has not completed any spell cast in this game.
+    FirstSpellOfGame,
+}
+
+impl FreeCastCondition {
+    pub fn is_met(self, state: &GameState, caster: PlayerId) -> bool {
+        match self {
+            Self::FirstSpellOfGame => state.player(caster).spells_cast_this_game == 0,
+        }
+    }
 }
 
 /// A static "you can't cast …" restriction a permanent imposes on its
@@ -266,16 +291,76 @@ impl CardDefinition {
             alternate_face: None,
             combined_characteristics: None,
             dynamic_x: Vec::new(),
+            trigger_modes: Vec::new(),
             mode_effects: None,
             trigger_face_gates: Vec::new(),
             cant_cast: None,
+            free_cast_from_hand: None,
         }
+    }
+
+    /// Give a printed trigger distinct modes. The ability's ordinary effect
+    /// is replaced by the chosen clause, and shared targets are forbidden.
+    /// This bounded API supports choosing exactly one mode, not entwine or
+    /// multiple/repeated modes, and does not attach modes to runtime grants.
+    pub fn with_trigger_modes(
+        mut self,
+        id: crate::types::TriggerId,
+        modes: Vec<crate::triggers::TriggerMode>,
+    ) -> Self {
+        let ability = self.triggered_abilities.iter().find(|a| a.id == id)
+            .expect("modal trigger must be registered first");
+        assert!(ability.target_requirements.is_empty(), "modal targets belong to each mode");
+        assert!(!modes.is_empty(), "modal trigger needs modes");
+        assert!(!self.trigger_modes.iter().any(|(other, _)| *other == id), "duplicate modal trigger");
+        self.trigger_modes.push((id, modes));
+        self
+    }
+
+    /// Offer the main spell face from hand without paying its mana cost
+    /// when `condition` holds. X is zero; supported additional costs and
+    /// taxes still apply. This is independent of resolution-time grants.
+    pub fn with_free_cast_from_hand(mut self, condition: FreeCastCondition) -> Self {
+        self.free_cast_from_hand = Some(condition);
+        self
     }
 
     /// Impose a static casting restriction on the controller while this
     /// permanent is on the battlefield (e.g. Codie: `CastRestriction::Permanents`).
     pub fn with_cant_cast(mut self, restriction: CastRestriction) -> Self {
         self.cant_cast = Some(restriction);
+        self
+    }
+
+    /// Restrict when other players may cast spells while this permanent is
+    /// on the battlefield (Teferi, Time Raveler:
+    /// `CastTimingRestriction::OpponentsSorceryTiming`). Written into the
+    /// card's characteristics, so every object made from it carries it.
+    pub fn with_cast_timing(mut self, restriction: CastTimingRestriction) -> Self {
+        self.base_characteristics.cast_timing = Some(restriction);
+        if let Some(combined) = self.combined_characteristics.as_mut() {
+            combined.cast_timing = Some(restriction);
+        }
+        self
+    }
+
+    /// Add a printed static ability (CR 604): the continuous effects it
+    /// generates while this permanent is on the battlefield, as one
+    /// [`crate::layers::StaticAbilityDef`]. Build each part with
+    /// [`crate::objects::NULL_OBJECT_ID`] as its source and
+    /// `Duration::WhileSourceOnBattlefield`; the engine points the parts
+    /// at the permanent as it enters, on every entry route, before
+    /// state-based actions and priority (A1.5br). Call once per ability:
+    /// the parts of one call are one ability, and stay one group across
+    /// layers. Written into the card's characteristics, as
+    /// [`Self::with_cast_timing`] is, so every object made from the card,
+    /// and every copy of it, carries the definition.
+    pub fn with_static(mut self, parts: Vec<crate::layers::ContinuousEffect>) -> Self {
+        let def = crate::layers::StaticAbilityDef::new(parts);
+        crate::layers::push_static_ability(&mut self.base_characteristics, def.clone());
+        if let Some(combined) = self.combined_characteristics.as_mut() {
+            crate::layers::push_static_ability(combined, def);
+        }
         self
     }
 
@@ -842,12 +927,9 @@ pub enum EntersWithSpec {
     /// `<= life`; otherwise tapped. A pure life-total check, no board state.
     TappedUnlessAnyPlayerLifeAtMost { life: i32 },
     /// "As CARDNAME enters, you may pay `life` life. If you don't, it enters
-    /// tapped." — the Ravnica shock-land cycle. The enters-with pipeline is
-    /// synchronous (no async "you may pay" choice), so this resolves with a
-    /// fixed policy: the controller pays the life and the land enters UNTAPPED
-    /// iff that leaves them above 0 (`life_total > life`); otherwise it enters
-    /// tapped. Faithful in the overwhelming common case (a constructed player
-    /// pays 2 for an untapped dual) and still captures the near-death downside.
+    /// tapped." The entry continuation offers payment (including at exactly
+    /// `life` life) or decline before the permanent moves. Paying only avoids
+    /// this clause's tap; independent enters-tapped requirements still apply.
     TappedUnlessPayLife { life: u32 },
 }
 
@@ -1101,13 +1183,17 @@ pub struct ActivatedAbilityDef {
     /// dredge/flashback-style activations from Graveyard. Defaults
     /// to Battlefield via [`ActivationZone::default`].
     pub activation_zone: ActivationZone,
-    /// CR 702.29a (Cycling) / CR 113.3c (activated abilities with
-    /// "you may activate ... any time you could cast an instant"):
-    /// when true, the sorcery-speed gate in
-    /// [`crate::legal_actions`] is bypassed. Mana abilities are
-    /// implicitly instant-speed via [`Self::is_mana_ability`]; this
-    /// flag is for non-mana abilities that nonetheless may be
-    /// activated at instant speed.
+    /// CR 602.2: true for an ability its controller may activate
+    /// whenever they have priority, which is every activated ability
+    /// whose text sets no timing restriction. False only for an
+    /// ability restricted to sorcery timing ("Activate only as a
+    /// sorcery", or a keyword such as equip, level up or
+    /// reconfigure), which the gate in [`crate::legal_actions`] then
+    /// holds to its controller's main phase with an empty stack.
+    /// Mana abilities are never gated, whatever this says, and
+    /// loyalty abilities always are (CR 606.3). Other timing
+    /// restrictions ("only during your upkeep") are not modeled by
+    /// this flag; such abilities keep `false` (A1.5v).
     pub is_instant_speed: bool,
     /// CR 712 — multi-face gating. When `Some(n)`, the ability is
     /// only activatable while the object's `visible_face == n` (see
@@ -1590,6 +1676,10 @@ fn combine_split_characteristics(
         every_creature_type: left.every_creature_type
             || right.every_creature_type,
         cant_be_countered: left.cant_be_countered || right.cant_be_countered,
+        cast_timing: left.cast_timing.or(right.cast_timing),
+        // A split card's halves are instants and sorceries; statics added
+        // through `with_static` reach this block from the builder itself.
+        static_abilities: None,
     }
 }
 
@@ -2089,6 +2179,7 @@ mod tests {
             },
             targets: crate::targets::TargetSelection::new(),
             effect_override: None,
+            affected: None,
         };
         assert_eq!(found.unwrap()(&pt), 5);
 

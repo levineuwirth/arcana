@@ -23,7 +23,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     subtypes.0.insert(human);
     subtypes.0.insert(scout);
 
-    let clue_filter = script::subtype_filter(reg, "Clue");
+    let clue_filter = script::subtype_filter(reg, "Clue").controlled_by(ControllerConstraint::You);
 
     let chars = Characteristics {
         name,
@@ -55,7 +55,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             })
             .with_triggered_ability(TriggeredAbilityDef {
                 id: 2,
-                trigger_condition: TriggerCondition::Sacrificed { filter: clue_filter },
+                trigger_condition: TriggerCondition::Sacrificed {
+                    filter: clue_filter,
+                },
                 intervening_if: None,
                 effect: counter_on_self,
                 trigger_zones: vec![Zone::Battlefield],

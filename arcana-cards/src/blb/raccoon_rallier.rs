@@ -30,7 +30,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{T}: Target creature you control gains haste until end of turn.".into(),
+                text: "{T}: Target creature you control gains haste until end of turn. Activate only as a sorcery.".into(),
                 cost: ActivationCost::tap_only(),
                 target_requirements: vec![TargetRequirement {
                     filter: TargetFilter::Permanent(ObjectFilter::creature().controlled_by(ControllerConstraint::You)),

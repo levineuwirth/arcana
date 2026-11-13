@@ -66,6 +66,13 @@ pub struct GameState {
     pub continuous_effects: Vec<ContinuousEffect>,
     /// Replacement effects waiting to intercept would-be events (CR 614).
     pub replacement_effects: Vec<crate::replacement::ReplacementEffect>,
+    /// The player who installed each replacement effect, keyed by the
+    /// effect's id: its source's controller when
+    /// [`Self::add_replacement_effect`] ran. "You" in a replacement's
+    /// filters is the source's current controller while the source is
+    /// in the arena, and this player once it has gone, so an effect a
+    /// resolved spell installed never falls back to player 0 (A1.5ab).
+    pub replacement_controllers: HashMap<u64, PlayerId>,
     /// Delayed triggers waiting to fire.
     pub delayed_triggers: Vec<DelayedTrigger>,
     /// Fires-per-turn ledger for `TriggerFrequency::OncePerTurn`
@@ -85,6 +92,10 @@ pub struct GameState {
     ///
     /// [`event_log`]: Self::event_log
     pub trigger_event_cursor: usize,
+    /// Attachment-granted abilities whose event predicates matched when
+    /// emitted. Collected after SBAs alongside the other pending triggers;
+    /// a host/Aura leaving or a later grant/loss cannot rewrite that event.
+    pub(crate) captured_attachment_triggers: Vec<crate::triggers::CapturedAttachmentTrigger>,
     /// Format configuration — starting life, hand sizes, mulligan
     /// rule, deck constraints. Defaults to
     /// [`FormatConfig::standard_2026`]; override via
@@ -130,6 +141,11 @@ pub struct GameState {
     /// of its effects pushed a [`Self::pending_choice`]. Resumed by the
     /// engine once the choice is answered.
     pub pending_resolution: Option<crate::actions::PendingResolution>,
+    /// Card-declared entry clauses needed by the synchronous zone mover.
+    /// Populated from the registry at the engine boundary (A1.5bj).
+    pub(crate) entry_specs: HashMap<crate::types::CardId, Vec<crate::registry::EntersWithSpec>>,
+    pub(crate) pending_entry: Option<crate::entry::PendingEntry>,
+    pub(crate) entry_continuations: std::collections::VecDeque<crate::entry::EntryContinuation>,
     /// Scratch slot set by the engine around effect execution so
     /// stack-resolution effects (Scry, Surveil, Tutor, Ward, …) can
     /// reach the resolving stack entry's id for [`crate::actions::ChoiceContext::ResolvingStack`].
@@ -159,12 +175,10 @@ pub struct GameState {
     /// bottom-shuffle the full exiled list (incl. `hit`) via the
     /// engine's seeded RNG.
     pub pending_cascade: Option<PendingCascade>,
-    /// CR 603.3b/d — targeted triggered abilities that have matched
-    /// an event but haven't been put on the stack yet. Since target
-    /// choice is an agent decision and simultaneous triggers fire
-    /// in APNAP order, the engine processes them one at a time:
-    /// push stack entry + `ChooseTargets` prompt, yield, and on
-    /// choice resolution pop the next entry. Drained by
+    /// CR 603.3b-d — an APNAP-sorted batch waiting for stack placement.
+    /// Plain abilities share the queue with modal and targeted abilities
+    /// so pausing for a mode or target choice preserves the batch order.
+    /// Drained by
     /// [`crate::engine::run_sba_and_triggers`].
     pub pending_trigger_queue: std::collections::VecDeque<crate::triggers::PendingTrigger>,
     /// Last-known-information table (CR 603.10 / 400.7). When an
@@ -301,11 +315,13 @@ impl GameState {
             combat: None,
             continuous_effects: Vec::new(),
             replacement_effects: Vec::new(),
+            replacement_controllers: HashMap::default(),
             delayed_triggers: Vec::new(),
             triggers_fired_this_turn: TriggerLedger::default(),
             triggers_fired_this_game: TriggerLedger::default(),
             timestamp_counter: 0,
             trigger_event_cursor: 0,
+            captured_attachment_triggers: Vec::new(),
             format,
             rng_seed,
             storm_count: 0,
@@ -318,6 +334,9 @@ impl GameState {
             pending_choice: None,
             next_choice_id: 1,
             pending_resolution: None,
+            entry_specs: HashMap::default(),
+            pending_entry: None,
+            entry_continuations: Default::default(),
             currently_resolving: None,
             pending_choice_follow_up: None,
             lki: HashMap::default(),
@@ -552,6 +571,7 @@ impl GameState {
     pub fn release_held_lki(&mut self) {
         if self.stack_is_empty()
             && self.pending_trigger_queue.is_empty()
+            && self.captured_attachment_triggers.is_empty()
             && self.pending_resolution.is_none()
             && self.pending_choice.is_none()
         {
@@ -596,6 +616,19 @@ impl GameState {
     /// replacement effects to live on the `CardDefinition` — that's
     /// Phase 3 work and out of scope here.
     pub fn after_enter_battlefield(&mut self, id: ObjectId) {
+        self.after_enter_battlefield_at(id, None);
+    }
+
+    /// [`Self::after_enter_battlefield`] with the entering permanent's
+    /// timestamp already drawn, for permanents that enter together: their
+    /// timestamps are given in APNAP order before any of them is finished
+    /// (CR 613.7m). `None` draws the next one.
+    pub(crate) fn after_enter_battlefield_at(&mut self, id: ObjectId, timestamp: Option<u64>) {
+        // A1.5br: the permanent gets its timestamp (CR 613.7d) and its
+        // printed statics here, the one hook every entry route runs, so
+        // they exist before any state-based action or priority.
+        self.stamp_object(id, timestamp);
+        self.install_printed_statics(id);
         let replacements = self.collect_etb_replacements(id);
         // Route ETB-event counter placement through the counter-placement
         // pipeline so downstream replacements (Hardened Scales et al.) can
@@ -625,9 +658,11 @@ impl GameState {
             if replacements.enter_tapped {
                 obj.tap();
             }
-            if obj.is_creature() || obj.is_planeswalker() {
-                obj.status.summoning_sick = true;
-            }
+            // CR 302.6: every permanent that comes under its controller's
+            // control is marked; the checks read the mark only while the
+            // permanent is a creature, so a land animated or a Vehicle crewed
+            // the turn it entered can't attack or use {T} abilities (A1.5x).
+            obj.status.summoning_sick = true;
         }
     }
 
@@ -667,13 +702,40 @@ impl GameState {
     ) -> Option<ObjectId> {
         let from = self.objects.get(id)?.zone;
         if from == destination { return None; }
+        if self.pending_choice.is_some() {
+            self.entry_continuations.push_back(crate::entry::EntryContinuation::Move { id, destination, cause });
+            return None;
+        }
+        if destination == Zone::Battlefield {
+            let controller = self.objects.get(id)?.controller;
+            return self.enter_battlefield(crate::entry::BattlefieldEntry::new(id, controller, cause));
+        }
+
+        // A1.5p: an effect that moves a spell off the stack (Venser's
+        // bounce, Subtlety's tuck) takes its stack entry with it, so no
+        // stranded entry is left to resolve, and the card leaves as the
+        // whole card. Resolution and countering pop the entry before they
+        // move the card, so they never reach this.
+        if from == Zone::Stack {
+            let pos = self.stack.iter().position(|e| e.id == id && e.is_spell());
+            if let Some(entry) = pos.map(|p| self.stack.remove(p)) {
+                if let Some(obj) = self.objects.get_mut(id) {
+                    if let Some(pre) = entry.pre_adventure_characteristics {
+                        obj.characteristics = pre;
+                    }
+                    if let Some(pre_split) = entry.pre_split_characteristics {
+                        obj.characteristics = pre_split;
+                        obj.visible_face = 0;
+                    }
+                }
+            }
+        }
 
         let was_creature_or_pw = self.objects.get(id).map_or(false,
             |o| o.is_creature() || o.is_planeswalker());
         let from_battlefield = from.is_battlefield();
         let to_graveyard = matches!(destination, Zone::Graveyard(_));
         let to_exile = destination.is_exile();
-        let to_battlefield = destination.is_battlefield();
 
         if from_battlefield {
             self.emit(GameEvent::LeavesBattlefield {
@@ -689,6 +751,9 @@ impl GameState {
             // test when the enchantment was sent to the graveyard
             // but its +1/+1 stayed on the board.
             self.expire_effects_from_source(id);
+            // The same for its replacement effects (A1.5ab): a Hardened
+            // Scales that has left stops adding counters.
+            self.expire_replacements_from_source(id);
         }
 
         let (new_id, from) = self.swap_to_zone_reid(id, destination)?;
@@ -703,14 +768,6 @@ impl GameState {
             self.emit(GameEvent::PutIntoGraveyard { object_id: new_id, from });
         } else if to_exile {
             self.emit(GameEvent::Exiled { object_id: new_id, from });
-        } else if to_battlefield {
-            // Fold ETB-event replacements and summoning sickness in
-            // BEFORE the event fires so trigger matchers see the
-            // final state of the entering permanent.
-            self.after_enter_battlefield(new_id);
-            self.emit(GameEvent::EntersBattlefield {
-                object_id: new_id, from_zone: from, was_cast: false,
-            });
         }
 
         // O-ring release (CR 610.3): a permanent that leaves the
@@ -718,28 +775,19 @@ impl GameState {
         // in exile via [`crate::effects::Effect::ExileUntilSourceLeaves`]
         // — no stack, owner's control. `id` is the jailer's
         // battlefield id, which is what the linked objects recorded.
-        // Recursive `move_object_to_zone` is safe here: the main move
-        // above is complete, and the re-id gives each released object
-        // a clean link-free body (`reset_on_zone_change`).
+        // Stage the released cards together: every entry choice precedes
+        // the batch, and each re-id clears the old exile link.
         if from_battlefield {
             let jailed: Vec<ObjectId> = self.objects.iter()
                 .filter(|o| o.zone.is_exile() && o.exiled_with == Some(id))
                 .map(|o| o.id)
                 .collect();
-            for jailed_id in jailed {
-                let owner = match self.objects.get(jailed_id) {
-                    Some(o) => o.owner,
-                    None => continue,
-                };
-                if let Some(back) = self.move_object_to_zone(
-                    jailed_id, Zone::Battlefield,
-                    crate::events::MoveCause::SpellResolution,
-                ) {
-                    if let Some(obj) = self.objects.get_mut(back) {
-                        obj.controller = owner;
-                    }
-                }
-            }
+            let requests = jailed.into_iter().filter_map(|jailed_id| {
+                let owner = self.objects.get(jailed_id)?.owner;
+                Some(crate::entry::BattlefieldEntry::new(
+                    jailed_id, owner, crate::events::MoveCause::SpellResolution))
+            }).collect();
+            self.enter_battlefield_batch(requests);
         }
 
         Some(new_id)
@@ -970,6 +1018,20 @@ impl GameState {
 
     /// Push a new pending choice. Panics if one is already pending —
     /// the single-slot invariant must be upheld by the effect code.
+    /// Mana value of `obj` (CR 202.3): its mana cost's, except that a
+    /// spell on the stack counts each `{X}` as the value chosen for it
+    /// (CR 202.3e), so a Disintegrate cast for five has mana value six.
+    pub fn mana_value_of(&self, obj: &crate::objects::GameObject) -> u32 {
+        let Some(cost) = obj.characteristics.mana_cost.as_ref() else { return 0 };
+        if obj.zone == Zone::Stack {
+            let x = self.stack.iter().find(|e| e.id == obj.id).and_then(|e| e.x_value);
+            if let Some(x) = x {
+                return cost.mana_value_with_x(x);
+            }
+        }
+        cost.mana_value()
+    }
+
     pub fn push_pending_choice(
         &mut self,
         choosing_player: PlayerId,
@@ -1030,11 +1092,43 @@ impl GameState {
 
     /// Append an event to the log. The trigger matcher picks events up from
     /// here; replay reconstructs the game from the same sequence.
-    pub fn emit(&mut self, event: GameEvent) { self.event_log.push(event); }
+    pub fn emit(&mut self, event: GameEvent) {
+        self.event_log.push(event);
+        self.capture_attachment_triggers();
+    }
 
     /// Append several events atomically.
     pub fn emit_all<I: IntoIterator<Item = GameEvent>>(&mut self, events: I) {
-        self.event_log.extend(events);
+        for event in events { self.emit(event); }
+    }
+
+    /// Snapshot the grant's availability and event match, without putting
+    /// anything on the stack or running SBAs during an instruction. Unlike
+    /// registered abilities, an attachment's grant cannot be recovered from
+    /// the host's registry or LKI after the host and Aura have left.
+    fn capture_attachment_triggers(&mut self) {
+        use crate::layers::ContinuousEffectKind;
+        use crate::triggers::CapturedAttachmentTrigger;
+        let event_index = self.event_log.len() - 1;
+        let event = &self.event_log[event_index];
+        let captures: Vec<_> = self.continuous_effects.iter().filter_map(|e| {
+            let ContinuousEffectKind::AttachedCreatureGrantsTriggered { ability } = &e.kind
+                else { return None; };
+            if !e.is_live(self) { return None; }
+            let host = self.objects.get(e.source)?.attached_to?;
+            let obj = self.objects.get(host)?;
+            if !obj.zone.is_battlefield()
+                || self.ability_loss_timestamp(host).is_some_and(|lost| lost > e.timestamp)
+                || !ability.matches_event(event, host, obj.controller, self)
+            {
+                return None;
+            }
+            Some(CapturedAttachmentTrigger {
+                event_index, source: host, controller: obj.controller,
+                ability: (**ability).clone(),
+            })
+        }).collect();
+        self.captured_attachment_triggers.extend(captures);
     }
 
     // --- game-over ---------------------------------------------------------
@@ -1053,6 +1147,11 @@ pub struct PlayerState {
     pub id: PlayerId,
     pub life: i32,
     pub mana_pool: ManaPool,
+    /// Completed casts by this player across the entire game, including
+    /// spells later countered and casts from other zones. Stack copies do
+    /// not count. Updated by `emit_spell_cast`, never reset at a new turn.
+    #[serde(default)]
+    pub spells_cast_this_game: u32,
     /// Land plays remaining this turn.
     pub land_plays_remaining: u32,
     /// Base land plays per turn (raised by Exploration, Azusa, etc.).
@@ -1101,6 +1200,7 @@ impl PlayerState {
             id,
             life: starting_life,
             mana_pool: ManaPool::new(),
+            spells_cast_this_game: 0,
             land_plays_remaining: 1,
             land_plays_per_turn: 1,
             has_drawn_from_empty_library: false,

@@ -335,6 +335,12 @@ fn build_decision_prompt(
         registry.interner().resolve(o.characteristics.name)
             .filter(|s| !s.is_empty()).map(|s| s.to_string())
     };
+    if let crate::actions::ChoiceContext::EnteringBattlefield { object_id } = pc.context {
+        if let ChoiceKind::OptionalCost { cost: crate::actions::OptionalPaymentKind::Life(life) } = &pc.kind {
+            let name = name_of(object_id).unwrap_or_else(|| "This permanent".to_string());
+            return Some(format!("Pay {life} life? If you decline, {name} enters tapped."));
+        }
+    }
     match &pc.kind {
         // "Target X" buttons are otherwise context-free — name the source whose
         // ability is asking (the stack entry's source permanent).
@@ -347,7 +353,15 @@ fn build_decision_prompt(
             })
         }
         ChoiceKind::PickPlayer { .. } => Some("Choose a player".to_string()),
+        ChoiceKind::ChooseTriggerMode { source, .. } => {
+            let who = state.find_stack_entry(*source).and_then(|e| name_of(e.source));
+            Some(who.map_or_else(|| "Choose one".to_string(), |n| format!("Choose one for {n}")))
+        }
         ChoiceKind::ChooseColor => Some("Choose a color".to_string()),
+        ChoiceKind::CastWithoutPaying { object } => Some(match name_of(*object) {
+            Some(n) => format!("Cast {n} without paying its mana cost?"),
+            None => "Cast it without paying its mana cost?".to_string(),
+        }),
         // Scry / surveil / fateseal — name the effect so the ordering buttons
         // ("Top: … | Bottom: …") read in context.
         ChoiceKind::OrderCards { cards, allowed } => {

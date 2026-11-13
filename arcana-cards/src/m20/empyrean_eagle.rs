@@ -1,23 +1,16 @@
 //! Empyrean Eagle — `{1}{W}{U}` Creature — Bird Spirit, 2/3, Flying.
-//! "Other creatures you control with flying get +1/+1." — WIRED as an
-//! ETB-installed `ContinuousEffect::filtered_pump` (creatures you control with
-//! Flying), lasting while Empyrean Eagle is on the battlefield (glorious_anthem
-//! precedent). The "other" self-exclusion is the accepted lord-self caveat (no
-//! exclude-source primitive; cf. immerwolf); the keyword filter matches base
-//! characteristics, so a granted-flying creature is a minor miss.
+//! "Other creatures you control with flying get +1/+1." — a printed static
+//! `ContinuousEffect::filtered_pump` (creatures you control with Flying)
+//! that the engine installs as the Eagle enters (A1.5br).
+//! A1.5bq excludes this source and reads flying after layer 6.
 
-use arcana_core::effects::{Effect, KeywordAbility};
+use arcana_core::effects::KeywordAbility;
 use arcana_core::layers::{ContinuousEffect, Duration};
 use arcana_core::mana::ManaCost;
-use arcana_core::objects::Characteristics;
+use arcana_core::objects::{Characteristics, NULL_OBJECT_ID};
 use arcana_core::registry::{CardDefinition, CardRegistry};
-use arcana_core::state::GameState;
 use arcana_core::targets::{ControllerConstraint, ObjectFilter};
-use arcana_core::triggers::{
-    PendingTrigger, TriggerCondition, TriggerFrequency, TriggeredAbilityDef,
-};
 use arcana_core::types::{CardId, ColorSet, PtValue, SubtypeSet, TypeLine};
-use arcana_core::zones::Zone;
 
 pub fn register(reg: &mut CardRegistry) -> CardId {
     let name = reg.interner_mut().intern("Empyrean Eagle");
@@ -37,34 +30,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         keywords: vec![KeywordAbility::Flying],
         ..Default::default()
     };
-    reg.register(
-        CardDefinition::new(name, chars).with_triggered_ability(TriggeredAbilityDef {
-            id: 1,
-            trigger_condition: TriggerCondition::SelfEntersBattlefield,
-            intervening_if: None,
-            effect: install_flying_anthem,
-            trigger_zones: vec![Zone::Battlefield],
-            frequency: TriggerFrequency::EachTime,
-            target_requirements: Vec::new(),
-        }),
-    )
-}
-
-fn install_flying_anthem(
-    _state: &GameState,
-    trig: &PendingTrigger,
-    _reg: &CardRegistry,
-) -> Vec<Effect> {
     let filter = ObjectFilter::creature()
+        .excluding_source()
         .controlled_by(ControllerConstraint::You)
         .with_keyword(KeywordAbility::Flying);
-    vec![Effect::InstallContinuousEffect {
-        effect: ContinuousEffect::filtered_pump(
-            trig.source,
-            filter,
-            1,
-            1,
-            Duration::WhileSourceOnBattlefield,
-        ),
-    }]
+    reg.register(
+        CardDefinition::new(name, chars).with_static(vec![
+            ContinuousEffect::filtered_pump(
+                NULL_OBJECT_ID,
+                filter,
+                1,
+                1,
+                Duration::WhileSourceOnBattlefield,
+            ),
+        ]),
+    )
 }

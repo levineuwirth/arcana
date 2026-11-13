@@ -610,7 +610,7 @@ fn player_order(num_players: u8, perspective: Option<PlayerId>) -> Vec<PlayerId>
 /// and saturates beyond.
 #[inline]
 fn sat_tanh(value: f32, scale: f32) -> f32 {
-    (value / scale).tanh()
+    crate::portable::tanh(value / scale)
 }
 
 /// Log-scale size normalization: `log(size + 1) / log(MAX + 1)`,
@@ -621,7 +621,7 @@ fn sat_tanh(value: f32, scale: f32) -> f32 {
 #[inline]
 fn log_size(size: usize) -> f32 {
     const MAX_LOG: f32 = 4.110874; // ln(60 + 1)
-    let v = ((size as f32) + 1.0).ln() / MAX_LOG;
+    let v = crate::portable::ln((size as f32) + 1.0) / MAX_LOG;
     v.clamp(0.0, 1.0)
 }
 

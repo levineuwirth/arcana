@@ -66,7 +66,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 is_mana_ability: false,
                 is_loyalty_ability: false,
                 activation_zone: ActivationZone::Battlefield,
-                is_instant_speed: false,
+                is_instant_speed: true,
                 face_gate: None,
                 // GAP: "cast an artifact spell from hand without paying its mana cost, mv <= counter
                 // count" — free-cast-from-hand with a dynamic mv gate is not an expressible Effect.

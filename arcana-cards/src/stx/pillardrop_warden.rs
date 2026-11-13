@@ -44,7 +44,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     reg.register(
         CardDefinition::new(name, chars)
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{2}, {T}, Sacrifice this creature: Return target instant or sorcery card from your graveyard to your hand.".into(),
+                text: "{2}, {T}, Sacrifice this creature: Return target instant or sorcery card from your graveyard to your hand. Activate only as a sorcery.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{2}").expect("valid cost"),
                     tap: true,

@@ -42,7 +42,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             })
             .with_activated_ability(ActivatedAbilityDef {
                 text: "{4}{R}, {T}, Sacrifice this land: Create three Junk \
-                       tokens."
+                       tokens. Activate only as a sorcery."
                     .into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{4}{R}").expect("valid cost"),

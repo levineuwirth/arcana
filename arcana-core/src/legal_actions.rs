@@ -85,6 +85,14 @@ fn cast_restricted(
     })
 }
 
+/// The timing check every cast path shares: a spell may be cast at sorcery
+/// timing, or at instant speed when it has instant speed (an instant,
+/// flash, or a flash permission) and its caster isn't restricted to
+/// sorcery timing.
+fn cast_timing_ok(instant_speed: bool, sorcery_speed_ok: bool, sorcery_only: bool) -> bool {
+    sorcery_speed_ok || (instant_speed && !sorcery_only)
+}
+
 pub fn legal_actions(state: &GameState, registry: &CardRegistry) -> Vec<Action> {
     if state.is_game_over() {
         return Vec::new();
@@ -93,7 +101,7 @@ pub fn legal_actions(state: &GameState, registry: &CardRegistry) -> Vec<Action> 
     // Only `SubmitResolutionChoice` (with the matching id) and
     // `Concede` are legal.
     if state.pending_choice.is_some() {
-        return legal_resolution_choice_actions(state);
+        return legal_resolution_choice_actions(state, registry);
     }
     let player = state.priority_player();
 
@@ -254,12 +262,131 @@ fn enumerate_pick_subsets(
     Some(out)
 }
 
+/// The casts of `object` its owner `player` may make "without paying its
+/// mana cost" (CR 118.9) during the resolution that grants it (Spell
+/// Queller, D18), as any face the card has as a spell (CR 709.3): its main
+/// face, a split card's right half, an Adventure, a modal double-faced
+/// card's back. For each face: every mode combination with a legal target
+/// selection, X fixed at 0 (CR 107.3b), unkicked and kicked (kicker is an
+/// additional cost, still paid), each with a payment plan for what is owed.
+/// What is owed follows CR 601.2f: nothing for the mana cost, plus the
+/// kicker, plus cost increases, less cost reductions, so a reduction
+/// applies to the kicker. Card-type timing doesn't apply (CR 608.2g); the
+/// casting restrictions the engine models do. No cost-reduction track:
+/// delve and convoke reduce a mana cost, and none is paid. Empty when
+/// `object` isn't an exiled card `player` owns, or has no legal cast.
+/// Mandatory additional casting costs aren't modeled for any cast.
+pub fn casts_without_paying(
+    state: &GameState,
+    registry: &CardRegistry,
+    player: PlayerId,
+    object: ObjectId,
+) -> Vec<Action> {
+    use crate::actions::CastFace;
+    let Some(obj) = state.objects.get(object) else { return Vec::new() };
+    if !obj.zone.is_exile() || obj.owner != player { return Vec::new(); }
+    if state.spell_cast_limit_reached(obj, player) { return Vec::new(); }
+    // A player restricted to sorcery timing (Teferi, Time Raveler) can't
+    // cast during a resolution: the resolving object is still on the
+    // stack, so it is never a time they could cast a sorcery (CR 307.5,
+    // 608.2g).
+    // The card stays where it is (A1.5aa).
+    if state.casts_restricted_to_sorcery_timing(player) { return Vec::new(); }
+    let def = registry.get(obj.card_id);
+    let alt = def.and_then(|d| d.alternate_face.as_ref());
+    // The card's spell faces, each with its characteristics and spell
+    // ability. CR 711.4 — a split card's main face is its left half.
+    let mut faces: Vec<(CastFace, &crate::objects::Characteristics,
+                        Option<&crate::registry::SpellAbilityDef>)> = Vec::new();
+    let main_chars = match (def, alt.and_then(|af| af.as_split())) {
+        (Some(d), Some(_)) => &d.base_characteristics,
+        _ => &obj.characteristics,
+    };
+    if !main_chars.types.is_land() {
+        faces.push((CastFace::Main, main_chars, def.and_then(|d| d.spell_ability.as_ref())));
+    }
+    if let Some(f) = alt.and_then(|af| af.as_split()) {
+        faces.push((CastFace::SplitRight, &f.characteristics, f.spell_ability.as_ref()));
+    }
+    if let Some(f) = alt.and_then(|af| af.as_adventure()) {
+        faces.push((CastFace::Adventure, &f.characteristics, f.spell_ability.as_ref()));
+    }
+    if let Some(f) = alt.and_then(|af| af.as_mdfc()) {
+        if !f.characteristics.types.is_land() {
+            faces.push((CastFace::MdfcBack, &f.characteristics, f.spell_ability.as_ref()));
+        }
+    }
+    let mut out = Vec::new();
+    for (face, chars, spell_ability) in faces {
+        out.extend(free_casts_for_face(state, registry, player, object,
+            face, chars, spell_ability));
+    }
+    out
+}
+
+/// Expand a free cast after the caller has checked its zone, permission,
+/// timing and per-turn limit. Both windows pay the same supported costs.
+fn free_casts_for_face(
+    state: &GameState,
+    registry: &CardRegistry,
+    player: PlayerId,
+    object: ObjectId,
+    face: crate::actions::CastFace,
+    chars: &crate::objects::Characteristics,
+    spell_ability: Option<&crate::registry::SpellAbilityDef>,
+) -> Vec<Action> {
+    let kicker = crate::engine::kicker_cost_for(state, object);
+    let mut out = Vec::new();
+    if cast_restricted(state, player, registry, chars.types) { return Vec::new(); }
+    let delta = state.spell_cost_delta(chars, player);
+    let ctx = SpendContext::for_spell(chars.types, chars.colors);
+    let x_value = chars.mana_cost.as_ref().filter(|c| c.x_count() > 0).map(|_| 0);
+    let mut variants = vec![(crate::mana::ManaCost::default().with_generic_delta(delta), Vec::new())];
+    if let Some(kicker) = &kicker {
+        variants.push((kicker.with_generic_delta(delta),
+            vec![crate::actions::AdditionalCostPayment::Kicker]));
+    }
+    let mode_combos: Vec<Vec<crate::stack::ModeChoice>> =
+        match spell_ability.and_then(|sa| sa.modal.as_ref()) {
+            None => vec![Vec::new()],
+            Some(modal) => enumerate_mode_combinations(modal)
+                .into_iter().map(|c| vec![c]).collect(),
+        };
+    for modes in &mode_combos {
+        let reqs: Vec<TargetRequirement> = match spell_ability {
+            Some(sa) => crate::registry::effective_target_requirements(sa, modes),
+            None => Vec::new(),
+        };
+        let selections = enumerate_target_selections(&reqs, state, object, player);
+        if selections.is_empty() { continue; }
+        for (cost, additional_costs) in &variants {
+            let plans = enumerate_payment_plans(
+                cost, &state.player(player).mana_pool, None, &ctx);
+            for plan in &plans {
+                for targets in &selections {
+                    out.push(Action::CastSpell {
+                        object_id: object,
+                        targets: targets.clone(),
+                        modes: modes.clone(),
+                        mana_payment: plan.clone(),
+                        additional_costs: additional_costs.clone(),
+                        x_value,
+                        cast_modifier: crate::actions::CastModifier::WithoutPayingManaCost { face },
+                        cost_reductions: crate::actions::CostReductions::default(),
+                    });
+                }
+            }
+        }
+    }
+    out
+}
+
 /// Enumerate legal responses to `state.pending_choice`. Most kinds are fully
 /// enumerated so a HUMAN sees the real options (and [`crate::session`] no longer
 /// auto-resolves them); genuinely combinatorial fan-outs (large `OrderCards`,
 /// multi-target divides) are pruned to the obvious canonical default beyond a
 /// small cap. Always includes `Concede`.
-fn legal_resolution_choice_actions(state: &GameState) -> Vec<Action> {
+fn legal_resolution_choice_actions(state: &GameState, registry: &CardRegistry) -> Vec<Action> {
     use crate::actions::{ChoiceResponse, ChoiceKind, CardDestination};
     let pending = state.pending_choice.as_ref().unwrap();
     let id = pending.id;
@@ -470,10 +597,13 @@ fn legal_resolution_choice_actions(state: &GameState) -> Vec<Action> {
             // the ChoiceKind variant because TargetRequirement carries
             // fn-pointer filters and isn't Hash/Eq/Serialize).
             if let Some(reqs) = state.pending_target_requirements.as_ref() {
-                let source_controller = state.objects.get(*source)
-                    .map(|o| o.controller).unwrap_or(0);
+                // The prompt names a stack entry, not an arena object.
+                // Abilities have no arena object at that id; their source
+                // may also have left or changed controller since triggering.
+                let entry = state.find_stack_entry(*source)
+                    .expect("ChooseTargets requires its stack entry");
                 for selection in
-                    enumerate_target_selections(reqs, state, *source, source_controller)
+                    enumerate_target_selections(reqs, state, entry.source, entry.controller)
                 {
                     out.push(Action::SubmitResolutionChoice {
                         id,
@@ -482,11 +612,31 @@ fn legal_resolution_choice_actions(state: &GameState) -> Vec<Action> {
                 }
             }
         }
+        ChoiceKind::ChooseTriggerMode { modes, .. } => {
+            for (mode, _) in modes {
+                out.push(Action::SubmitResolutionChoice {
+                    id,
+                    response: ChoiceResponse::ChooseTriggerMode { mode: *mode },
+                });
+            }
+        }
         ChoiceKind::ChooseColor => {
             for color in crate::types::Color::all() {
                 out.push(Action::SubmitResolutionChoice {
                     id,
                     response: ChoiceResponse::ChooseColor { color },
+                });
+            }
+        }
+        ChoiceKind::CastWithoutPaying { object } => {
+            out.push(Action::SubmitResolutionChoice {
+                id,
+                response: ChoiceResponse::CastWithoutPaying { cast: None },
+            });
+            for cast in casts_without_paying(state, registry, pending.choosing_player, *object) {
+                out.push(Action::SubmitResolutionChoice {
+                    id,
+                    response: ChoiceResponse::CastWithoutPaying { cast: Some(Box::new(cast)) },
                 });
             }
         }
@@ -1099,7 +1249,7 @@ fn can_block_attacker(state: &GameState, blocker: ObjectId, attacker: ObjectId) 
 /// was rejected (e.g. a must-attack creature that's able but omitted).
 pub fn can_attack(state: &GameState, obj: &crate::objects::GameObject) -> bool {
     use crate::effects::KeywordAbility;
-    if !obj.is_creature() || !obj.zone.is_battlefield() || obj.is_tapped() {
+    if !state.is_creature_now(obj.id) || !obj.zone.is_battlefield() || obj.is_tapped() {
         return false;
     }
     // CR 702.3b — Defender: can't attack.
@@ -1119,7 +1269,7 @@ pub fn can_attack(state: &GameState, obj: &crate::objects::GameObject) -> bool {
     true
 }
 
-fn can_block(_state: &GameState, obj: &crate::objects::GameObject) -> bool {
+fn can_block(state: &GameState, obj: &crate::objects::GameObject) -> bool {
     // Per-PAIRING evasion (Flying/Reach, Protection, Fear, Intimidate,
     // Shadow, Horsemanship, Skulk) is enforced in `can_block_attacker` /
     // `blocker_eligible`, and count constraints (Menace, unblockable) by the
@@ -1129,7 +1279,7 @@ fn can_block(_state: &GameState, obj: &crate::objects::GameObject) -> bool {
     // TODO(keywords): Landwalk (CR 702.14) is genuinely not enforced yet —
     // it needs a defending-player land-type check in `blocker_eligible`.
     // CR 702.176 — suspected creatures can't block.
-    obj.is_creature()
+    state.is_creature_now(obj.id)
         && obj.zone.is_battlefield()
         && !obj.is_tapped()
         && !obj.status.suspected
@@ -1199,6 +1349,9 @@ fn legal_priority_actions(
     let sorcery_speed_ok = player == state.active_player()
         && state.turn.is_main_phase()
         && state.stack_is_empty();
+    // Teferi, Time Raveler: an opponent's instant speed is gone, for this
+    // loop and every alternative-zone loop below (A1.5aa).
+    let sorcery_only = state.casts_restricted_to_sorcery_timing(player);
 
     let mut cast_ids = sorted_ids_in_zone(state, Zone::Hand(player));
     cast_ids.extend(top_lib_cast);
@@ -1214,7 +1367,7 @@ fn legal_priority_actions(
         let is_instant_speed = obj.is_instant()
             || state.has_keyword(id, &crate::effects::KeywordAbility::Flash)
             || state.can_cast_as_though_flash(obj, player);
-        if !is_instant_speed && !sorcery_speed_ok { continue; }
+        if !cast_timing_ok(is_instant_speed, sorcery_speed_ok, sorcery_only) { continue; }
 
         // CR 711.4 — for a Split card the object's off-stack chars are
         // the combined view; a Normal cast dispatches the left half,
@@ -1227,15 +1380,28 @@ fn legal_priority_actions(
             .map(|def| &def.base_characteristics)
             .unwrap_or(&obj.characteristics);
 
+        // The card's own alternative cost keeps this loop's normal timing
+        // and cast-limit checks. It never grants another zone or face, and
+        // does not require a payable printed mana cost.
+        if crate::engine::hand_free_cast_permitted(state, registry, player, id,
+            crate::actions::CastFace::Main)
+        {
+            actions.extend(free_casts_for_face(state, registry, player, id,
+                crate::actions::CastFace::Main, cast_chars,
+                registry.get(obj.card_id).and_then(|def| def.spell_ability.as_ref())));
+        }
+
         let Some(printed_cost) = cast_chars.mana_cost.clone() else { continue; };
         // CR 601.3e — static casting restrictions a permanent imposes on its
         // controller (e.g. Codie, Vociferous Codex: "You can't cast permanent
         // spells"). The spell simply isn't enumerated as castable.
         if cast_restricted(state, player, registry, cast_chars.types) { continue; }
         // CR 601.2f — cost modifiers (Chill / Sphere of Resistance /
-        // Arcane Melee class) adjust the generic component.
-        let printed_cost = printed_cost.with_generic_delta(
-            state.spell_cost_delta(cast_chars, player));
+        // Arcane Melee class) adjust the generic component of the total
+        // cost: the mana cost with X's value, plus additional costs
+        // (kicker). Applied below, after X and kicker, so a reduction
+        // reaches their generic too.
+        let cost_delta = state.spell_cost_delta(cast_chars, player);
 
         let ctx = SpendContext::for_spell(
             cast_chars.types, cast_chars.colors);
@@ -1334,12 +1500,12 @@ fn legal_priority_actions(
             let mut kicker_variants: Vec<(
                 crate::mana::ManaCost,
                 Vec<crate::actions::AdditionalCostPayment>,
-            )> = vec![(base_cost.clone(), Vec::new())];
+            )> = vec![(base_cost.with_generic_delta(cost_delta), Vec::new())];
             if let Some(ref kc) = kicker_cost_opt {
                 let mut kicked_cost = base_cost.clone();
                 kicked_cost.components.extend(kc.components.iter().copied());
                 kicker_variants.push((
-                    kicked_cost,
+                    kicked_cost.with_generic_delta(cost_delta),
                     vec![crate::actions::AdditionalCostPayment::Kicker],
                 ));
             }
@@ -1493,7 +1659,7 @@ fn legal_priority_actions(
         let is_instant_speed = obj.is_instant()
             || state.has_keyword(id, &crate::effects::KeywordAbility::Flash)
             || state.can_cast_as_though_flash(obj, player);
-        if !is_instant_speed && !sorcery_speed_ok { continue; }
+        if !cast_timing_ok(is_instant_speed, sorcery_speed_ok, sorcery_only) { continue; }
 
         // Layer-aware lookup: honors Snapcaster-style granted flashback.
         // If a card ever has multiple flashback keywords (grants stack,
@@ -1573,7 +1739,7 @@ fn legal_priority_actions(
         // time, a sorcery's madness is still sorcery-speed.
         let is_instant_speed = obj.is_instant()
             || state.has_keyword(id, &crate::effects::KeywordAbility::Flash);
-        if !is_instant_speed && !sorcery_speed_ok { continue; }
+        if !cast_timing_ok(is_instant_speed, sorcery_speed_ok, sorcery_only) { continue; }
 
         let Some(madness_cost) = crate::engine::madness_cost_for(state, id)
             else { continue; };
@@ -1645,7 +1811,7 @@ fn legal_priority_actions(
             state.spell_cost_delta(&back.characteristics, player));
 
         let back_is_instant_speed = back.characteristics.types.is_instant();
-        if !back_is_instant_speed && !sorcery_speed_ok { continue; }
+        if !cast_timing_ok(back_is_instant_speed, sorcery_speed_ok, sorcery_only) { continue; }
 
         let reqs: Vec<TargetRequirement> = back.spell_ability.as_ref()
             .map(|sa| sa.target_requirements.clone())
@@ -1708,7 +1874,7 @@ fn legal_priority_actions(
             state.spell_cost_delta(&right.characteristics, player));
 
         let right_is_instant_speed = right.characteristics.types.is_instant();
-        if !right_is_instant_speed && !sorcery_speed_ok { continue; }
+        if !cast_timing_ok(right_is_instant_speed, sorcery_speed_ok, sorcery_only) { continue; }
 
         let reqs: Vec<TargetRequirement> = right.spell_ability.as_ref()
             .map(|sa| sa.target_requirements.clone())
@@ -1777,7 +1943,7 @@ fn legal_priority_actions(
         let face_cost = face_cost.with_generic_delta(
             state.spell_cost_delta(&face.characteristics, player));
         let face_is_instant_speed = face.characteristics.types.is_instant();
-        if !face_is_instant_speed && !sorcery_speed_ok { continue; }
+        if !cast_timing_ok(face_is_instant_speed, sorcery_speed_ok, sorcery_only) { continue; }
 
         let reqs: Vec<TargetRequirement> = face.spell_ability.as_ref()
             .map(|sa| sa.target_requirements.clone())
@@ -1836,7 +2002,7 @@ fn legal_priority_actions(
 
         let is_instant_speed = obj.is_instant()
             || state.has_keyword(id, &crate::effects::KeywordAbility::Flash);
-        if !is_instant_speed && !sorcery_speed_ok { continue; }
+        if !cast_timing_ok(is_instant_speed, sorcery_speed_ok, sorcery_only) { continue; }
 
         let Some(printed_cost) = obj.characteristics.mana_cost.clone()
             else { continue; };
@@ -1902,7 +2068,7 @@ fn legal_priority_actions(
 
         let is_instant_speed = obj.is_instant()
             || state.has_keyword(id, &crate::effects::KeywordAbility::Flash);
-        if !is_instant_speed && !sorcery_speed_ok { continue; }
+        if !cast_timing_ok(is_instant_speed, sorcery_speed_ok, sorcery_only) { continue; }
 
         let Some(printed_cost) = obj.characteristics.mana_cost.clone()
             else { continue; };
@@ -1980,8 +2146,40 @@ pub(crate) fn enumerate_target_selections(
     source: crate::objects::ObjectId,
     source_controller: PlayerId,
 ) -> Vec<TargetSelection> {
+    enumerate_target_selections_x(requirements, state, source, source_controller, None)
+}
+
+/// [`enumerate_target_selections`] with the spell's X, for clauses of X
+/// targets (A1.5aw). Every clause of exactly zero or one target keeps the
+/// older enumeration below unchanged, its order included, so existing
+/// action lists and recorded games are unaffected. Otherwise each clause's
+/// options are the subsets of its legal choices at its allowed sizes: up
+/// to N includes the empty choice, any number includes every size, and a
+/// clause of exactly N with fewer than N choices makes the whole spell or
+/// ability unavailable rather than offering it untargeted. Within a clause,
+/// sizes are interleaved so each is represented early; across clauses,
+/// selections run by increasing index sum, a deterministic coverage of
+/// every clause, up to [`MAX_TARGET_SELECTIONS`] in all. Each selection
+/// records its clause lengths. A clause of X targets with X unknown keeps
+/// the older single empty selection.
+pub(crate) fn enumerate_target_selections_x(
+    requirements: &[TargetRequirement],
+    state: &GameState,
+    source: crate::objects::ObjectId,
+    source_controller: PlayerId,
+    x_value: Option<u32>,
+) -> Vec<TargetSelection> {
+    use crate::targets::TargetCount;
     if requirements.is_empty() {
         return vec![TargetSelection::new()];
+    }
+    let single = requirements.iter()
+        .all(|r| matches!(r.count, TargetCount::Exactly(0) | TargetCount::Exactly(1)));
+    if !single {
+        if requirements.iter().any(|r| matches!(r.count, TargetCount::X)) && x_value.is_none() {
+            return vec![TargetSelection::new()];
+        }
+        return enumerate_multi_target_selections(requirements, state, source, source_controller, x_value);
     }
 
     let mut partials: Vec<Vec<crate::targets::TargetChoice>> = vec![Vec::new()];
@@ -2028,8 +2226,107 @@ pub(crate) fn enumerate_target_selections(
     }
 
     partials.into_iter()
-        .map(|targets| TargetSelection { targets })
+        .map(|targets| TargetSelection { targets, clause_lengths: Vec::new() })
         .collect()
+}
+
+/// The multi-target enumeration of [`enumerate_target_selections_x`].
+fn enumerate_multi_target_selections(
+    requirements: &[TargetRequirement],
+    state: &GameState,
+    source: crate::objects::ObjectId,
+    source_controller: PlayerId,
+    x_value: Option<u32>,
+) -> Vec<TargetSelection> {
+    use crate::targets::{TargetChoice, TargetCount};
+    let mut per_clause: Vec<Vec<Vec<TargetChoice>>> = Vec::with_capacity(requirements.len());
+    for req in requirements {
+        let choices: Vec<TargetChoice> = req.filter.enumerate_legal(state, source, source_controller)
+            .into_iter()
+            .filter(|c| req.matches_choice(c, state, source, source_controller))
+            .collect();
+        let n = choices.len();
+        let sizes: Vec<usize> = match req.count {
+            TargetCount::Exactly(k) => vec![k as usize],
+            TargetCount::UpTo(k) => (0..=k as usize).collect(),
+            TargetCount::Any => (0..=n).collect(),
+            TargetCount::X => vec![x_value.unwrap_or(0) as usize],
+        };
+        let sizes: Vec<usize> = sizes.into_iter().filter(|&k| k <= n).collect();
+        // A mandatory count the board can't meet: not available at all.
+        if sizes.is_empty() { return Vec::new(); }
+        per_clause.push(clause_options(&choices, &sizes, MAX_TARGET_SELECTIONS));
+    }
+    let counts: Vec<usize> = per_clause.iter().map(|o| o.len()).collect();
+    let mut out = Vec::new();
+    let max_sum: usize = counts.iter().map(|c| c - 1).sum();
+    let mut index = vec![0usize; counts.len()];
+    'sums: for total in 0..=max_sum {
+        tuples_with_sum(&counts, 0, total, &mut index, &mut |idx| {
+            let mut targets = Vec::new();
+            let mut clause_lengths = Vec::with_capacity(idx.len());
+            for (k, &i) in idx.iter().enumerate() {
+                targets.extend(per_clause[k][i].iter().cloned());
+                clause_lengths.push(per_clause[k][i].len() as u32);
+            }
+            out.push(TargetSelection { targets, clause_lengths });
+            out.len() < MAX_TARGET_SELECTIONS
+        });
+        if out.len() >= MAX_TARGET_SELECTIONS { break 'sums; }
+    }
+    out
+}
+
+/// One clause's options: the combinations of `choices` at each of
+/// `sizes`, in increasing index order within a size, the sizes taken in
+/// turn so each is represented early. At most `max`.
+fn clause_options<T: Clone>(choices: &[T], sizes: &[usize], max: usize) -> Vec<Vec<T>> {
+    let mut iters: Vec<Option<Vec<usize>>> = sizes.iter().map(|&k| Some((0..k).collect())).collect();
+    let n = choices.len();
+    let mut out = Vec::new();
+    while out.len() < max && iters.iter().any(|i| i.is_some()) {
+        for slot in iters.iter_mut() {
+            let Some(comb) = slot.as_mut() else { continue };
+            out.push(comb.iter().map(|&i| choices[i].clone()).collect());
+            // Advance to the next combination of the same size.
+            let k = comb.len();
+            let mut i = k;
+            let mut advanced = false;
+            while i > 0 {
+                i -= 1;
+                if comb[i] < n - k + i {
+                    comb[i] += 1;
+                    for j in i + 1..k { comb[j] = comb[j - 1] + 1; }
+                    advanced = true;
+                    break;
+                }
+            }
+            if !advanced { *slot = None; }
+            if out.len() >= max { break; }
+        }
+    }
+    out
+}
+
+/// Call `f` with every index tuple below `counts` whose indices sum to
+/// `total`, in lexicographic order, until `f` returns false.
+fn tuples_with_sum(
+    counts: &[usize],
+    k: usize,
+    total: usize,
+    index: &mut Vec<usize>,
+    f: &mut dyn FnMut(&[usize]) -> bool,
+) -> bool {
+    if k == counts.len() {
+        return if total == 0 { f(index) } else { true };
+    }
+    let rest_max: usize = counts[k + 1..].iter().map(|c| c - 1).sum();
+    for i in 0..counts[k].min(total + 1) {
+        if total - i > rest_max { continue; }
+        index[k] = i;
+        if !tuples_with_sum(counts, k + 1, total - i, index, f) { return false; }
+    }
+    true
 }
 
 /// Enumerate every sorted mode subset for a modal spell whose size
@@ -2484,9 +2781,11 @@ fn enumerate_activation_actions(
         // `intrinsic_activated_abilities`. The resolver inverts the
         // same way via `lookup_activated_ability_with_kind`.
         // Flat index space: 0..R registry, R..R+I intrinsic,
-        // R+I.. granted-by-attachment (Aura/Equipment "enchanted
-        // creature has '[cost]: …'"). `lookup_activated_ability`
-        // inverts in the same order.
+        // R+I.. granted by continuous effects (an Aura or Equipment's
+        // "enchanted creature has '[cost]: …'", a static's "each
+        // creature you control with a counter on it has …").
+        // `lookup_activated_ability` inverts in the same order, from
+        // the same `granted_activated_for` list.
         let reg_count = registry.get(obj.card_id)
             .map_or(0, |d| d.activated_abilities.len());
         let granted = state.granted_activated_for(obj.id);
@@ -2945,11 +3244,13 @@ pub fn playable_cards(
     set.into_iter().collect()
 }
 
-/// Number of mana abilities on `obj` (registry-declared + intrinsic). A
-/// permanent with ≥2 is "flexible" — a dual land that can tap for more than
-/// one color, which `available_mana`'s deterministic first-ability coloring
-/// can't represent.
+/// Number of mana abilities on `obj` (registry-declared, intrinsic and
+/// granted). A permanent with ≥2 is "flexible" — a dual land that can tap
+/// for more than one color, or a creature with a mana ability of its own
+/// and a granted one — which `available_mana`'s deterministic
+/// first-ability coloring can't represent.
 fn count_mana_abilities(
+    state: &GameState,
     obj: &crate::objects::GameObject,
     registry: &CardRegistry,
 ) -> usize {
@@ -2957,7 +3258,9 @@ fn count_mana_abilities(
         d.activated_abilities.iter().filter(|a| a.is_mana_ability).count());
     let intr_n = obj.intrinsic_activated_abilities.iter()
         .filter(|a| a.is_mana_ability).count();
-    reg_n + intr_n
+    let granted_n = state.granted_activated_for(obj.id).iter()
+        .filter(|a| a.is_mana_ability).count();
+    reg_n + intr_n + granted_n
 }
 
 /// Does `player` control an UNTAPPED flexible mana source (≥2 mana
@@ -2970,7 +3273,7 @@ fn player_has_flexible_mana_source(
 ) -> bool {
     state.objects.objects_in_zone(Zone::Battlefield)
         .filter(|o| o.controller == player && !o.is_tapped())
-        .any(|o| count_mana_abilities(o, registry) >= 2)
+        .any(|o| count_mana_abilities(state, o, registry) >= 2)
 }
 
 /// Does `obj` have any NON-mana activated ability (registry / intrinsic /
@@ -3234,9 +3537,10 @@ fn auto_tap_for(
 }
 
 /// Look up an activated ability by flat index — registry abilities
-/// first, then [`crate::objects::GameObject::intrinsic_activated_abilities`].
-/// Returns the ability and a tag identifying which list it came from
-/// (debug / dispatch hint; the engine treats them uniformly).
+/// first, then [`crate::objects::GameObject::intrinsic_activated_abilities`],
+/// then the abilities continuous effects grant
+/// ([`GameState::granted_activated_for`]). The engine treats the three
+/// uniformly.
 pub(crate) fn lookup_activated_ability<'a>(
     obj: &'a crate::objects::GameObject,
     registry: &'a crate::registry::CardRegistry,
@@ -3252,8 +3556,9 @@ pub(crate) fn lookup_activated_ability<'a>(
     } else if index < reg_count + intrinsic_count {
         obj.intrinsic_activated_abilities.get(index - reg_count)
     } else {
-        // Granted-by-attachment tier — same `continuous_effects` order
-        // as the enumerator (`granted_activated_for`).
+        // Granted tier, attachment and filtered grants alike — the same
+        // `granted_activated_for` list, in the same order, as the
+        // enumerator.
         state.granted_activated_for(obj.id)
             .get(index - reg_count - intrinsic_count)
             .copied()
@@ -3298,8 +3603,13 @@ fn ability_is_activatable(
         // creatures are still blocked by summoning sickness — the
         // rule only exempts mana abilities from the stack, not from
         // sickness. But basic lands ignore summoning sickness for
-        // mana purposes (CR 305.4, they have no creature type).
-        if obj.is_creature() && obj.status.summoning_sick {
+        // mana purposes (CR 305.4, they have no creature type) — unless
+        // an effect has made one a creature (CR 302.6).
+        // Haste lifts it for `{T}` abilities too (CR 302.6, 702.10b;
+        // A1.5bi).
+        if state.is_creature_now(obj.id) && obj.status.summoning_sick
+            && !state.has_keyword(obj.id, &crate::effects::KeywordAbility::Haste)
+        {
             return false;
         }
     }
@@ -3336,26 +3646,25 @@ fn ability_is_activatable(
     {
         return false;
     }
-    // Mana abilities can be activated at any time a player has
-    // priority. Non-mana activated abilities default to sorcery
-    // speed; `is_instant_speed` lifts that gate (CR 702.29a
-    // Cycling). Loyalty abilities ignore `is_instant_speed` — the
-    // CR 606.3 sorcery-speed rule for loyalty takes precedence and
-    // is checked below.
+    // CR 602.2: an activated ability can be activated whenever its
+    // controller has priority, unless it says otherwise. An ability
+    // restricted to sorcery timing ("Activate only as a sorcery", and
+    // keywords such as equip) carries `is_instant_speed: false`; mana
+    // abilities are never restricted.
     if !ability.is_mana_ability
         && !ability.is_instant_speed
         && !sorcery_speed_ok
     {
         return false;
     }
-    // CR 606 — loyalty abilities: only the PW's controller may
-    // activate, only at sorcery speed (already enforced above via
-    // !is_mana_ability && sorcery_speed_ok), only with stack empty,
-    // and only once per turn per PW. Summoning-sickness does NOT
-    // block loyalty activations (CR 114.3 — PW sickness only
-    // restricts attacking).
+    // CR 606.3 — loyalty abilities: only the PW's controller may
+    // activate, only at sorcery speed (checked here whatever the
+    // ability's `is_instant_speed` says), and only once per turn per
+    // PW. Summoning-sickness does NOT block loyalty activations
+    // (CR 114.3 — PW sickness only restricts attacking).
     if ability.is_loyalty_ability {
         if obj.controller != activator { return false; }
+        if !sorcery_speed_ok { return false; }
         if !state.stack_is_empty() { return false; }
         if state.loyalty_activated_this_turn.contains(&obj.id) {
             return false;
@@ -3789,6 +4098,64 @@ mod tests {
         assert_eq!(perms[0], items, "identity ordering must be emitted first");
         // Small inputs stay fully exhaustive (3! = 6).
         assert_eq!(permutations(&[1, 2, 3]).len(), 6);
+    }
+
+    /// A1.5aw: clauses of several targets are enumerated as subsets of
+    /// their legal choices, with clause lengths recorded.
+    #[test]
+    fn up_to_and_exact_multi_target_clauses_enumerate_subsets() {
+        use crate::targets::{TargetCount, TargetChoice};
+        let mut s = GameState::new(2, 0);
+        let ids: Vec<ObjectId> = (0..3).map(|_| put(&mut s, 0, Zone::Battlefield, creature_chars(1, 1))).collect();
+        let req = |count| TargetRequirement { count, ..TargetRequirement::target_creature() };
+        // Up to two of three: the empty choice, three singles, three pairs.
+        let sels = enumerate_target_selections(&[req(TargetCount::UpTo(2))], &s, crate::objects::NULL_OBJECT_ID, 0);
+        assert_eq!(sels.len(), 7);
+        assert!(sels.iter().any(|x| x.targets.is_empty() && x.clause_lengths == vec![0]), "the empty choice");
+        assert_eq!(sels.iter().filter(|x| x.clause_lengths == vec![2]).count(), 3);
+        // Sizes interleave: the empty choice, then a single, then a pair.
+        assert_eq!(sels.iter().take(3).map(|x| x.targets.len()).collect::<Vec<_>>(), vec![0, 1, 2]);
+        // Exactly two of three: three pairs; of one creature: none at all.
+        assert_eq!(enumerate_target_selections(&[req(TargetCount::Exactly(2))], &s, crate::objects::NULL_OBJECT_ID, 0).len(), 3);
+        let mut lone = GameState::new(2, 0);
+        put(&mut lone, 0, Zone::Battlefield, creature_chars(1, 1));
+        assert!(enumerate_target_selections(&[req(TargetCount::Exactly(2))], &lone, crate::objects::NULL_OBJECT_ID, 0).is_empty(),
+            "a mandatory clause the board can't meet is not offered untargeted");
+        // A single clause before an optional one: lengths keep them apart.
+        let sels = enumerate_target_selections(&[req(TargetCount::Exactly(1)), req(TargetCount::UpTo(1))],
+            &s, crate::objects::NULL_OBJECT_ID, 0);
+        assert_eq!(sels.len(), 3 * 4);
+        assert!(sels.iter().all(|x| x.clause_lengths[0] == 1 && x.targets.len() == 1 + x.clause_lengths[1] as usize));
+        assert!(sels.iter().any(|x| x.targets == vec![TargetChoice::Object(ids[0])] && x.clause_lengths == vec![1, 0]));
+    }
+
+    /// A1.5aw: "any number" over a large board is bounded, every size
+    /// still represented, and the order is deterministic.
+    #[test]
+    fn any_number_of_targets_is_bounded_with_every_size_represented() {
+        use crate::targets::TargetCount;
+        let mut s = GameState::new(2, 0);
+        for _ in 0..12 { put(&mut s, 0, Zone::Battlefield, creature_chars(1, 1)); }
+        let req = TargetRequirement { count: TargetCount::Any, ..TargetRequirement::target_creature() };
+        let a = enumerate_target_selections(std::slice::from_ref(&req), &s, crate::objects::NULL_OBJECT_ID, 0);
+        let b = enumerate_target_selections(&[req], &s, crate::objects::NULL_OBJECT_ID, 0);
+        assert_eq!(a.len(), MAX_TARGET_SELECTIONS, "2^12 subsets are bounded");
+        assert_eq!(a, b, "deterministic");
+        for size in 0..=12 {
+            assert!(a.iter().any(|x| x.targets.len() == size), "size {size} represented");
+        }
+    }
+
+    /// Clauses of one target each keep the older enumeration exactly,
+    /// with no clause lengths, so existing action lists don't change.
+    #[test]
+    fn single_target_clauses_keep_the_older_shape() {
+        let mut s = GameState::new(2, 0);
+        for _ in 0..3 { put(&mut s, 0, Zone::Battlefield, creature_chars(1, 1)); }
+        let tc = || TargetRequirement::target_creature();
+        let sels = enumerate_target_selections(&[tc(), tc()], &s, crate::objects::NULL_OBJECT_ID, 0);
+        assert_eq!(sels.len(), 9);
+        assert!(sels.iter().all(|x| x.clause_lengths.is_empty()));
     }
 
     #[test]

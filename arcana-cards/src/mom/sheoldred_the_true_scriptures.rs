@@ -102,7 +102,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
             // "only if an opponent has 8+ cards in their graveyard" modeled
             // via activation_condition.
             .with_activated_ability(ActivatedAbilityDef {
-                text: "{4}{B}: Exile Sheoldred, then return it to the battlefield transformed.".into(),
+                text: "{4}{B}: Exile Sheoldred, then return it to the battlefield transformed. Activate only as a sorcery and only if an opponent has eight or more cards in their graveyard.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{4}{B}").expect("valid cost"),
                     activation_condition: Some(precond_opp_gy_8),

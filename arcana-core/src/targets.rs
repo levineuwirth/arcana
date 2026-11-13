@@ -46,11 +46,29 @@ use crate::zones::Zone;
 // TargetSelection / TargetChoice — the chosen targets
 // =============================================================================
 
-/// A complete targeting selection for a spell or ability.
-/// One entry per targeting clause in the oracle text.
-#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, Serialize, Deserialize)]
+/// A complete targeting selection for a spell or ability, its chosen
+/// targets in clause order.
+#[derive(Clone, Default, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TargetSelection {
     pub targets: Vec<TargetChoice>,
+    /// How many of [`Self::targets`] belong to each targeting clause, in
+    /// order (A1.5aw), so a clause with several targets, or an optional
+    /// clause left empty, is rechecked against its own requirement.
+    /// Empty means one target per clause, the shape every selection had
+    /// before. Empty lengths are neither serialized nor printed, so saved
+    /// actions, transcripts and debug-formatted fingerprints of
+    /// single-target selections are unchanged.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub clause_lengths: Vec<u32>,
+}
+
+impl std::fmt::Debug for TargetSelection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut d = f.debug_struct("TargetSelection");
+        d.field("targets", &self.targets);
+        if !self.clause_lengths.is_empty() { d.field("clause_lengths", &self.clause_lengths); }
+        d.finish()
+    }
 }
 
 impl TargetSelection {
@@ -265,6 +283,9 @@ pub enum TargetFilter {
     /// CR 115.4 "any target" — creature, player, or planeswalker.
     AnyTarget,
     Permanent(ObjectFilter),
+    /// Constrain an object target's owner independently of its controller.
+    /// A wrapper keeps ownership-only targeting out of general layer filters.
+    OwnedBy { filter: Box<TargetFilter>, owner: ControllerConstraint },
     Spell(ObjectFilter),
     /// "Counter target activated ability" / "target activated or
     /// triggered ability [from a noncreature source]" (Cursecatcher's
@@ -313,6 +334,11 @@ fn blocking_pairing(
 }
 
 impl TargetFilter {
+    /// "A target ... you own"; relative players use the ability's controller.
+    pub fn owned_by(self, owner: ControllerConstraint) -> Self {
+        Self::OwnedBy { filter: Box::new(self), owner }
+    }
+
     /// Is `choice` a legal target under this filter, given current state?
     ///
     /// Pure filter check — does not consult any outer controller
@@ -329,6 +355,11 @@ impl TargetFilter {
         source_controller: PlayerId,
     ) -> bool {
         match (self, choice) {
+            (TargetFilter::OwnedBy { filter, owner }, _) => {
+                choice.object_id().and_then(|id| state.objects.get(id))
+                    .is_some_and(|o| owner.matches(o.owner, source_controller))
+                    && filter.matches(choice, state, source, source_controller)
+            }
             // --- Creature: battlefield, creature type ---
             (TargetFilter::Creature, TargetChoice::Object(id)) => {
                 state.objects.get(*id).is_some_and(|o|
@@ -380,14 +411,14 @@ impl TargetFilter {
             (TargetFilter::Permanent(f), TargetChoice::Object(id)) => {
                 state.objects.get(*id).is_some_and(|o|
                     o.is_permanent_on_battlefield()
-                        && f.matches(o, state, source_controller))
+                        && f.matches_with_source(o, state, source, source_controller))
             }
 
             // --- Spell: on the stack + inner filter ---
             (TargetFilter::Spell(f), TargetChoice::Object(id)) => {
                 state.objects.get(*id).is_some_and(|o|
                     o.zone == Zone::Stack
-                        && f.matches(o, state, source_controller))
+                        && f.matches_with_source(o, state, source, source_controller))
             }
 
             // --- Ability on the stack (entry id, not an object) ---
@@ -403,14 +434,14 @@ impl TargetFilter {
                     }
                     && source_filter.as_ref().is_none_or(|f|
                         state.objects.get(e.source).is_some_and(|o|
-                            f.matches(o, state, source_controller))))
+                            f.matches_with_source(o, state, source, source_controller))))
             }
 
             // --- Card in a specified zone kind ---
             (TargetFilter::Card { zone, filter }, TargetChoice::Object(id)) => {
                 state.objects.get(*id).is_some_and(|o|
                     o.zone.same_kind(*zone)
-                        && filter.matches(o, state, source_controller))
+                        && filter.matches_with_source(o, state, source, source_controller))
             }
 
             // --- Source-relative combat pairings ---
@@ -451,6 +482,10 @@ impl TargetFilter {
     ) -> Vec<TargetChoice> {
         let mut out = Vec::new();
         match self {
+            TargetFilter::OwnedBy { filter, .. } => {
+                out.extend(filter.enumerate_legal(state, source, source_controller)
+                    .into_iter().filter(|choice| self.matches(choice, state, source, source_controller)));
+            }
             TargetFilter::Creature => {
                 for o in state.objects.objects_in_zone(Zone::Battlefield) {
                     if o.is_creature() {
@@ -485,7 +520,7 @@ impl TargetFilter {
             TargetFilter::Permanent(f) => {
                 for o in state.objects.objects_in_zone(Zone::Battlefield) {
                     if o.is_permanent_on_battlefield()
-                        && f.matches(o, state, source_controller)
+                        && f.matches_with_source(o, state, source, source_controller)
                     {
                         out.push(TargetChoice::Object(o.id));
                     }
@@ -493,7 +528,7 @@ impl TargetFilter {
             }
             TargetFilter::Spell(f) => {
                 for o in state.objects.objects_in_zone(Zone::Stack) {
-                    if f.matches(o, state, source_controller) {
+                    if f.matches_with_source(o, state, source, source_controller) {
                         out.push(TargetChoice::Object(o.id));
                     }
                 }
@@ -509,7 +544,7 @@ impl TargetFilter {
                     };
                     let src_ok = source_filter.as_ref().is_none_or(|f|
                         state.objects.get(e.source).is_some_and(|o|
-                            f.matches(o, state, source_controller)));
+                            f.matches_with_source(o, state, source, source_controller)));
                     if kind_ok && src_ok {
                         out.push(TargetChoice::Object(e.id));
                     }
@@ -517,7 +552,7 @@ impl TargetFilter {
             }
             TargetFilter::Card { zone, filter } => {
                 for o in state.objects.objects_in_zone_kind(zone.kind()) {
-                    if filter.matches(o, state, source_controller) {
+                    if filter.matches_with_source(o, state, source, source_controller) {
                         out.push(TargetChoice::Object(o.id));
                     }
                 }
@@ -558,6 +593,9 @@ impl TargetFilter {
 // Migrate per Section 12 in Phase 3.
 #[derive(Clone, Debug, Default)]
 pub struct ObjectFilter {
+    /// "Other" / "another": exclude the effect or ability's own source.
+    /// Use a source-aware matching entry point when setting this flag.
+    pub exclude_source: bool,
     /// Every bit in this `TypeLine` must be set on the object (AND).
     pub types: Option<TypeLine>,
     /// At least one bit in this `TypeLine` must be set on the object (OR).
@@ -632,6 +670,10 @@ pub struct ObjectFilter {
     pub name: Option<SmallString>,
     pub is_token: Option<bool>,
     pub has_counter: Option<CounterKind>,
+    /// "With a counter on it": at least one counter of any kind
+    /// (Rishkar, Peema Renegade). Contrast [`Self::has_counter`], which
+    /// names one kind.
+    pub any_counter: bool,
     /// `Some(true)` = only commanders (CR 903.3 designation —
     /// Background statics); `Some(false)` = only non-commanders.
     pub is_commander: Option<bool>,
@@ -655,6 +697,18 @@ impl ObjectFilter {
 
     /// Shorthand: "a permanent of any type".
     pub fn permanent() -> Self { Self::default() }
+
+    /// Builder: exclude only the source object, not other copies of its card.
+    pub fn excluding_source(mut self) -> Self {
+        self.exclude_source = true;
+        self
+    }
+
+    /// Builder: "with a counter on it", whatever the counter's kind.
+    pub fn with_any_counter(mut self) -> Self {
+        self.any_counter = true;
+        self
+    }
 
     /// Builder: require type bits.
     pub fn with_types(mut self, tl: TypeLine) -> Self {
@@ -864,28 +918,57 @@ impl ObjectFilter {
     /// `source_controller` disambiguates [`ControllerConstraint::You`] and
     /// [`ControllerConstraint::Opponent`]: "you" means
     /// `obj.controller == source_controller`.
+    /// Source-relative filters require [`Self::matches_with_source`];
+    /// omitting the source debug-asserts (and fails closed in release).
     pub fn matches(
         &self,
         obj: &GameObject,
         state: &GameState,
         source_controller: PlayerId,
     ) -> bool {
-        self.matches_inner(obj, state, source_controller, false)
+        self.matches_inner(obj, state, source_controller, false, None, crate::objects::NULL_OBJECT_ID)
     }
 
     /// BASE-characteristics variant of [`Self::matches`]: subtype /
     /// color / keyword predicates read the object's printed
-    /// characteristics instead of the layer-computed ones. REQUIRED
-    /// for filters evaluated INSIDE the layer pipeline (the filtered
-    /// global statics' `applies_to`) — a layer-aware read there would
-    /// recurse into `compute_characteristics`.
+    /// characteristics instead of the layer-computed ones. Use this for
+    /// legacy base-only counts. Applicability inside the layer pipeline
+    /// uses `matches_in_layer` with the values already computed there.
+    /// Source-relative filters require [`Self::matches_base_with_source`].
     pub fn matches_base(
         &self,
         obj: &GameObject,
         state: &GameState,
         source_controller: PlayerId,
     ) -> bool {
-        self.matches_inner(obj, state, source_controller, true)
+        self.matches_inner(obj, state, source_controller, true, None, crate::objects::NULL_OBJECT_ID)
+    }
+
+    /// Match a target with its actual source, including after the source leaves.
+    pub fn matches_with_source(
+        &self, obj: &GameObject, state: &GameState,
+        source: ObjectId, source_controller: PlayerId,
+    ) -> bool {
+        self.matches_inner(obj, state, source_controller, false, None, source)
+    }
+
+    /// Source-aware BASE-characteristics match for legacy counts and
+    /// static consumers. Built-in predicates never re-enter the layers.
+    pub fn matches_base_with_source(
+        &self, obj: &GameObject, state: &GameState,
+        source: ObjectId, source_controller: PlayerId,
+    ) -> bool {
+        self.matches_inner(obj, state, source_controller, true, None, source)
+    }
+
+    /// Match the characteristics already computed at this point in a layer.
+    /// Built-in predicates never re-enter the layer pipeline. The legacy
+    /// `custom` callback retains its existing base/state-only contract.
+    pub fn matches_in_layer(
+        &self, obj: &GameObject, chars: &crate::objects::Characteristics,
+        state: &GameState, source: ObjectId, source_controller: PlayerId,
+    ) -> bool {
+        self.matches_inner(obj, state, source_controller, true, Some(chars), source)
     }
 
     fn matches_inner(
@@ -894,20 +977,28 @@ impl ObjectFilter {
         state: &GameState,
         source_controller: PlayerId,
         base_only: bool,
+        in_flight: Option<&crate::objects::Characteristics>,
+        source: ObjectId,
     ) -> bool {
+        debug_assert!(!self.exclude_source || source != crate::objects::NULL_OBJECT_ID,
+            "source-relative filter requires a source");
+        if self.exclude_source && (source == crate::objects::NULL_OBJECT_ID || obj.id == source) {
+            return false;
+        }
+        let chars = in_flight.unwrap_or(&obj.characteristics);
         // --- type bits: all required, at least one of any, none forbidden ---
         if let Some(required) = self.types {
-            if (obj.characteristics.types.0 & required.0) != required.0 {
+            if (chars.types.0 & required.0) != required.0 {
                 return false;
             }
         }
         if let Some(any) = self.types_any {
-            if obj.characteristics.types.0 & any.0 == 0 {
+            if chars.types.0 & any.0 == 0 {
                 return false;
             }
         }
         if let Some(forbidden) = self.not_types {
-            if obj.characteristics.types.0 & forbidden.0 != 0 {
+            if chars.types.0 & forbidden.0 != 0 {
                 return false;
             }
         }
@@ -920,7 +1011,7 @@ impl ObjectFilter {
                 state.objects.get(obj.id)
                     .and_then(|_| state.compute_characteristics(obj.id))
                     .map(|c| c.colors)
-            }.unwrap_or(obj.characteristics.colors);
+            }.unwrap_or(chars.colors);
             // All colors in the filter must be in the object.
             if let Some(required) = self.colors {
                 if (colors.0 & required.0) != required.0 {
@@ -966,10 +1057,10 @@ impl ObjectFilter {
             // flag's doc on Characteristics.)
             let every = computed.as_ref()
                 .map(|c| c.every_creature_type)
-                .unwrap_or(obj.characteristics.every_creature_type);
+                .unwrap_or(chars.every_creature_type);
             let computed_subs = computed.map(|c| c.subtypes);
             let subtypes = computed_subs.as_ref()
-                .unwrap_or(&obj.characteristics.subtypes);
+                .unwrap_or(&chars.subtypes);
             // All required subtypes must be present.
             if let Some(subs) = &self.subtypes {
                 if !every {
@@ -999,13 +1090,13 @@ impl ObjectFilter {
         }
         // --- supertypes: every required supertype bit must be set ---
         if let Some(required) = self.supertypes {
-            if (obj.characteristics.supertypes.0 & required.0) != required.0 {
+            if (chars.supertypes.0 & required.0) != required.0 {
                 return false;
             }
         }
         // --- supertype exclusion: none of these bits may be set ---
         if let Some(forbidden) = self.not_supertypes {
-            if obj.characteristics.supertypes.0 & forbidden.0 != 0 {
+            if chars.supertypes.0 & forbidden.0 != 0 {
                 return false;
             }
         }
@@ -1019,7 +1110,7 @@ impl ObjectFilter {
                 if !base_only && state.objects.get(obj.id).is_some() {
                     state.has_keyword(obj.id, kw)
                 } else {
-                    obj.characteristics.keywords.contains(kw)
+                    chars.keywords.contains(kw)
                 }
             };
             if let Some(kws) = &self.keywords {
@@ -1073,28 +1164,36 @@ impl ObjectFilter {
 
         // --- CMC ---
         if let Some(cond) = &self.cmc_condition {
-            if !cond.matches(obj.characteristics.mana_value()) {
+            // CR 202.3e: a spell's chosen X counts (A1.5q).
+            if !cond.matches(state.mana_value_of(obj)) {
                 return false;
             }
         }
 
-        // --- power / toughness (raw; layer system will replace later) ---
+        // In-flight P/T already includes exactly the layers applied so far.
+        // Do not add counters again here. Ordinary matches retain the legacy
+        // raw-with-counters behavior; only the layer pipeline passes a view.
+        let fixed = |pt| match pt {
+            Some(crate::types::PtValue::Fixed(n)) => Some(n),
+            _ => None,
+        };
+        let power = || in_flight.map_or_else(|| obj.raw_power_with_counters(None), |c| fixed(c.power));
+        let toughness = || in_flight.map_or_else(|| obj.raw_toughness_with_counters(None), |c| fixed(c.toughness));
         if let Some(cond) = &self.power_condition {
-            match obj.raw_power_with_counters(None) {
+            match power() {
                 Some(p) if cond.matches(p) => {}
                 _ => return false,
             }
         }
         if let Some(cond) = &self.toughness_condition {
-            match obj.raw_toughness_with_counters(None) {
+            match toughness() {
                 Some(t) if cond.matches(t) => {}
                 _ => return false,
             }
         }
         // --- power vs toughness (same-object compare; CR 208) ---
         if let Some(cmp) = &self.pt_compare {
-            match (obj.raw_power_with_counters(None),
-                   obj.raw_toughness_with_counters(None)) {
+            match (power(), toughness()) {
                 (Some(p), Some(t)) if cmp.matches(p, t) => {}
                 _ => return false,
             }
@@ -1102,7 +1201,7 @@ impl ObjectFilter {
 
         // --- name ---
         if let Some(name) = self.name {
-            if obj.characteristics.name != name {
+            if chars.name != name {
                 return false;
             }
         }
@@ -1129,6 +1228,9 @@ impl ObjectFilter {
             if !obj.has_counter(kind.clone()) {
                 return false;
             }
+        }
+        if self.any_counter && !obj.has_any_counter() {
+            return false;
         }
 
         // --- commodity token (Treasure / Clue / Food / …): minted
@@ -1372,6 +1474,21 @@ impl TargetChoice {
 
 #[cfg(test)]
 mod tests {
+    /// A1.5aw: a single-target selection prints and serializes exactly as
+    /// before clause lengths existed, so transcripts, saved actions and the
+    /// debug-formatted fingerprint of A2.2's recorded game are unchanged.
+    #[test]
+    fn single_target_selections_keep_their_printed_and_serialized_shape() {
+        let legacy = TargetSelection { targets: vec![TargetChoice::Object(7)], clause_lengths: Vec::new() };
+        assert_eq!(format!("{legacy:?}"), "TargetSelection { targets: [Object(7)] }");
+        assert_eq!(serde_json::to_string(&legacy).unwrap(), r#"{"targets":[{"Object":7}]}"#);
+        let back: TargetSelection = serde_json::from_str(r#"{"targets":[{"Object":7}]}"#).unwrap();
+        assert_eq!(back, legacy, "an older saved selection loads");
+        let multi = TargetSelection { targets: vec![TargetChoice::Object(7), TargetChoice::Object(8)], clause_lengths: vec![2] };
+        assert_eq!(format!("{multi:?}"), "TargetSelection { targets: [Object(7), Object(8)], clause_lengths: [2] }");
+        assert_eq!(serde_json::from_str::<TargetSelection>(&serde_json::to_string(&multi).unwrap()).unwrap(), multi);
+    }
+
     use super::*;
     use crate::mana::ManaCost;
     use crate::objects::{Characteristics, GameObject};
@@ -2266,9 +2383,9 @@ mod tests {
         let b = put_creature(&mut s, 0, 0, Zone::Battlefield, 2, 2);
 
         let req = TargetRequirement::target_creature();
-        let ok = TargetSelection { targets: vec![TargetChoice::Object(a)] };
+        let ok = TargetSelection { targets: vec![TargetChoice::Object(a)], clause_lengths: Vec::new() };
         let wrong_count = TargetSelection {
-            targets: vec![TargetChoice::Object(a), TargetChoice::Object(b)],
+            targets: vec![TargetChoice::Object(a), TargetChoice::Object(b)], clause_lengths: Vec::new(),
         };
 
         assert!(req.is_satisfied(&ok, &s, crate::objects::NULL_OBJECT_ID, 0, None));
@@ -2288,7 +2405,7 @@ mod tests {
             controller: None,
         };
         let sel = TargetSelection {
-            targets: vec![TargetChoice::Object(a), TargetChoice::Object(b)],
+            targets: vec![TargetChoice::Object(a), TargetChoice::Object(b)], clause_lengths: Vec::new(),
         };
         assert!(req.is_satisfied(&sel, &s, crate::objects::NULL_OBJECT_ID, 0, Some(2)));
         assert!(!req.is_satisfied(&sel, &s, crate::objects::NULL_OBJECT_ID, 0, Some(1)));
@@ -2301,7 +2418,7 @@ mod tests {
         let mut s = GameState::new(2, 0);
         let c = put_creature(&mut s, 0, 0, Zone::Battlefield, 2, 2);
         let req = TargetRequirement::target_creature();
-        let sel = TargetSelection { targets: vec![TargetChoice::Object(c)] };
+        let sel = TargetSelection { targets: vec![TargetChoice::Object(c)], clause_lengths: Vec::new() };
 
         let legals = validate_targets_on_resolution(&req, &sel, &s, crate::objects::NULL_OBJECT_ID, 0);
         assert_eq!(legals, vec![TargetLegality::Legal]);
@@ -2317,7 +2434,7 @@ mod tests {
         let mut s = GameState::new(2, 0);
         let c = put_creature(&mut s, 0, 0, Zone::Battlefield, 2, 2);
         let req = TargetRequirement::target_creature();
-        let sel = TargetSelection { targets: vec![TargetChoice::Object(c)] };
+        let sel = TargetSelection { targets: vec![TargetChoice::Object(c)], clause_lengths: Vec::new() };
 
         // Move it to exile mid-resolution.
         s.objects.get_mut(c).unwrap().zone = Zone::Exile;
@@ -2340,7 +2457,7 @@ mod tests {
             controller: None,
         };
         let sel = TargetSelection {
-            targets: vec![TargetChoice::Object(a), TargetChoice::Object(b)],
+            targets: vec![TargetChoice::Object(a), TargetChoice::Object(b)], clause_lengths: Vec::new(),
         };
 
         // Only `b` becomes illegal.
@@ -2396,7 +2513,7 @@ mod tests {
                 TargetChoice::Player(0),
                 TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Object(3)),
                 TargetChoice::ObjectOrPlayer(ObjectOrPlayer::Player(1)),
-            ],
+            ], clause_lengths: Vec::new(),
         };
         let json = serde_json::to_string(&sel).unwrap();
         let back: TargetSelection = serde_json::from_str(&json).unwrap();

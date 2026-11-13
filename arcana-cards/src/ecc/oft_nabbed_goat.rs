@@ -41,7 +41,7 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
                 // GAP: "Only your opponents may activate this ability and only
                 // as a sorcery" (activator restriction) is not expressible; the
                 // draw / gain-control / counter effect is implemented.
-                text: "{1}: Draw a card. Gain control of this creature and put a -1/-1 counter on it.".into(),
+                text: "{1}: Draw a card. Gain control of this creature and put a -1/-1 counter on it. Only your opponents may activate this ability and only as a sorcery.".into(),
                 cost: ActivationCost {
                     mana_cost: ManaCost::parse("{1}").expect("valid cost"),
                     ..ActivationCost::default()

@@ -116,6 +116,16 @@ pub struct GrantedTrigger {
 /// route a pending trigger to the object's granted list unambiguously).
 pub const GRANTED_TRIGGER_ID_BASE: TriggerId = 0xF000_0000;
 
+/// One clause of a registered "choose one" triggered ability (CR 700.2).
+/// Each clause owns its targeting requirements and resolution callback.
+/// Stored on CardDefinition so existing triggered-ability literals stay valid.
+#[derive(Clone, Debug)]
+pub struct TriggerMode {
+    pub description: String,
+    pub target_requirements: Vec<crate::targets::TargetRequirement>,
+    pub effect: EffectFn,
+}
+
 #[derive(Clone, Debug)]
 pub struct TriggeredAbilityDef {
     pub id: TriggerId,
@@ -143,6 +153,18 @@ pub struct TriggeredAbilityDef {
     /// per the combined requirements, the ability doesn't trigger
     /// and never lands on the stack.
     pub target_requirements: Vec<crate::targets::TargetRequirement>,
+}
+
+/// An attachment granted this ability to `source` when the indexed event
+/// matched. Keep the recipient and its controller, not the attachment:
+/// either may change or leave before the next SBA/trigger sweep (A1.5br).
+/// Event indices preserve the collector's order without copying the log.
+#[derive(Clone, Debug)]
+pub(crate) struct CapturedAttachmentTrigger {
+    pub event_index: usize,
+    pub source: ObjectId,
+    pub controller: PlayerId,
+    pub ability: TriggeredAbilityDef,
 }
 
 impl TriggeredAbilityDef {
@@ -187,20 +209,45 @@ impl TriggeredAbilityDef {
         state: &GameState,
         reg: &crate::registry::CardRegistry,
     ) -> Option<PendingTrigger> {
+        if !self.matches_event(event, source, source_controller, state) {
+            return None;
+        }
+        self.after_event_match(event, source, source_controller, state, reg)
+    }
+
+    /// The zone and event predicate, separated so attachment grants can
+    /// capture them at emission instead of re-reading a later host/state.
+    pub(crate) fn matches_event(
+        &self,
+        event: &GameEvent,
+        source: ObjectId,
+        source_controller: PlayerId,
+        state: &GameState,
+    ) -> bool {
         // Zone gate.
         if let Some(obj) = state.objects.get(source) {
             let in_valid_zone = self.trigger_zones.iter()
                 .any(|z| z.same_kind(obj.zone));
             if !in_valid_zone {
-                return None;
+                return false;
             }
         }
 
         // Condition predicate.
-        if !self.trigger_condition.matches(event, source, source_controller, state) {
-            return None;
-        }
+        self.trigger_condition.matches(event, source, source_controller, state)
+    }
 
+    /// Finish matching at collection, retaining the existing intervening-if
+    /// and frequency gates. The source's zone and event predicate have
+    /// already matched and must not be reconsidered after a later change.
+    pub(crate) fn after_event_match(
+        &self,
+        event: &GameEvent,
+        source: ObjectId,
+        source_controller: PlayerId,
+        state: &GameState,
+        reg: &crate::registry::CardRegistry,
+    ) -> Option<PendingTrigger> {
         // Intervening-if.
         if let Some(cond) = self.intervening_if {
             if !cond(state, source, source_controller, reg) { return None; }
@@ -218,6 +265,7 @@ impl TriggeredAbilityDef {
             trigger_event: event.clone(),
             targets: crate::targets::TargetSelection::new(),
             effect_override: None,
+            affected: None,
         })
     }
 }
@@ -394,6 +442,13 @@ pub enum TriggerCondition {
     Sacrificed { filter: ObjectFilter },
     /// Catch-all for complex triggers.
     Custom(fn(&GameEvent, &GameState, ObjectId) -> bool),
+    /// Not a trigger: the carrier of a token's printed STATIC ability
+    /// (A1.5br). `TokenDefinition` is written as a complete struct literal
+    /// in about 1,580 generated card files, so it cannot take a field; its
+    /// `abilities` list is the only place a static can ride. Built only by
+    /// `TokenDefinition::with_static`, read only where the token's
+    /// characteristics are made, and never matched by any event.
+    PrintedStatic(crate::layers::StaticAbilityDef),
 }
 
 impl TriggerCondition {
@@ -509,15 +564,22 @@ impl TriggerCondition {
             SelfAttacksUnblocked => matches!(event,
                 GameEvent::CreatureNotBlocked { attacker } if *attacker == source),
 
-            ZoneChange { filter, from, to } => {
-                let GameEvent::ZoneChange { object_id, from: evf, to: evt, .. } = event
-                    else { return false; };
-                if !evt.same_kind(*to) { return false; }
-                if let Some(f) = from {
-                    if !evf.same_kind(*f) { return false; }
+            ZoneChange { filter, from, to } => match event {
+                GameEvent::ZoneChange { object_id, from: evf, to: evt, .. } => {
+                    if !evt.same_kind(*to) { return false; }
+                    if let Some(f) = from {
+                        if !evf.same_kind(*f) { return false; }
+                    }
+                    match_filter_on(state, *object_id, filter, source_controller)
                 }
-                match_filter_on(state, *object_id, filter, source_controller)
-            }
+                // CR 603.6a — a created token enters the battlefield. It
+                // came from no zone, so only a condition that names none
+                // sees it; tokens emit no zone change (A1.5bf).
+                GameEvent::TokenCreated { object_id, .. }
+                    if from.is_none() && to.same_kind(Zone::Battlefield) =>
+                    match_filter_on(state, *object_id, filter, source_controller),
+                _ => false,
+            },
 
             SpellCast { filter, caster } => {
                 let GameEvent::SpellCast { object_id, controller, .. } = event
@@ -648,6 +710,8 @@ impl TriggerCondition {
             }
 
             Custom(f) => f(event, state, source),
+
+            PrintedStatic(_) => false,
         }
     }
 }
@@ -737,6 +801,12 @@ pub struct PendingTrigger {
     /// turn" / control-revert / next-cast rider no-op'd at
     /// resolution. `None` for registry-backed triggers.
     pub effect_override: Option<EffectFn>,
+    /// For a DELAYED trigger scheduled by an ability that found a moved
+    /// card (CR 400.7e): the object it acts on, carried apart from
+    /// [`Self::source`], which stays the creating ability's source
+    /// (CR 603.7e; A1.5bh, A1.5az). `None` otherwise: the delayed
+    /// action acts on its source.
+    pub affected: Option<crate::objects::ObjectId>,
 }
 
 impl PendingTrigger {
@@ -828,6 +898,8 @@ impl PendingTrigger {
             // counters, tap…) must use that, NOT the stale pre-move `object_id`.
             GameEvent::ZoneChange { new_id, to: Zone::Battlefield, .. } =>
                 Some(*new_id),
+            // A created token enters under its own id (A1.5bf).
+            GameEvent::TokenCreated { object_id, .. } => Some(*object_id),
             _ => None,
         }
     }
@@ -972,6 +1044,11 @@ pub struct DelayedTrigger {
     /// turn-start hook). Pair with `fire_once: false` for the
     /// repeating form (Don't Move, Tamiyo Meets the Story Circle).
     pub expires_at_turn_of: Option<PlayerId>,
+    /// The object the delayed action acts on when it is not its source:
+    /// a card the creating ability found after it moved (CR 400.7e),
+    /// while [`Self::source`] stays that ability's source (CR 603.7e;
+    /// A1.5bh, A1.5az). Copied to [`PendingTrigger::affected`] when it fires.
+    pub affected: Option<ObjectId>,
 }
 
 impl DelayedTrigger {
@@ -988,6 +1065,7 @@ impl DelayedTrigger {
             fire_once: true,
             expires_end_of_turn: false,
             expires_at_turn_of: None,
+            affected: None,
         }
     }
 
@@ -1092,6 +1170,7 @@ impl GameState {
                 // Delayed triggers have no registry def to dispatch
                 // from at resolution — the fn rides the trigger.
                 effect_override: Some(t.effect),
+                affected: t.affected,
             }
         }).collect();
         sort_by_apnap(&mut out, self.active_player(), self.num_players());
@@ -1403,6 +1482,7 @@ mod tests {
             },
             targets: crate::targets::TargetSelection::new(),
             effect_override: None,
+            affected: None,
         };
         assert_eq!(trig.other_combatant(), Some(7));
 
@@ -1414,6 +1494,7 @@ mod tests {
             },
             targets: crate::targets::TargetSelection::new(),
             effect_override: None,
+            affected: None,
         };
         assert_eq!(trig.other_combatant(), Some(8));
 
@@ -1423,6 +1504,7 @@ mod tests {
             trigger_event: GameEvent::Dies { object_id: 1 },
             targets: crate::targets::TargetSelection::new(),
             effect_override: None,
+            affected: None,
         };
         assert_eq!(trig.other_combatant(), None);
     }
@@ -1437,6 +1519,7 @@ mod tests {
             },
             targets: crate::targets::TargetSelection::new(),
             effect_override: None,
+            affected: None,
         };
         assert_eq!(trig.attacking_creature(), Some(7));
 
@@ -1446,6 +1529,7 @@ mod tests {
             trigger_event: GameEvent::Dies { object_id: 7 },
             targets: crate::targets::TargetSelection::new(),
             effect_override: None,
+            affected: None,
         };
         assert_eq!(trig.attacking_creature(), None);
     }
@@ -1495,6 +1579,7 @@ mod tests {
             source: 99, trigger_id: 0, controller: 0,
             trigger_event: ev, targets: crate::targets::TargetSelection::new(),
             effect_override: None,
+            affected: None,
         };
         assert_eq!(trig.lone_attacker(), Some(mine));
         // Opponent's creature attacking alone: filter rejects.
@@ -1618,6 +1703,44 @@ mod tests {
             to: Zone::Exile,
         };
         assert!(!cond.matches(&event, 999, 0, &s));
+    }
+
+    /// A created token enters the battlefield: a condition that names no
+    /// `from` zone sees it, one that names a zone doesn't, and the
+    /// trigger's entering object is the token (A1.5bf).
+    #[test]
+    fn zone_change_to_battlefield_sees_a_created_token() {
+        let mut s = GameState::new(2, 0);
+        let t = put_creature(&mut s, 0, Zone::Battlefield);
+        let event = GameEvent::TokenCreated { object_id: t, controller: 0 };
+        let enters = TriggerCondition::ZoneChange {
+            filter: ObjectFilter::creature(),
+            from: None,
+            to: Zone::Battlefield,
+        };
+        assert!(enters.matches(&event, 999, 0, &s));
+        let from_graveyard = TriggerCondition::ZoneChange {
+            filter: ObjectFilter::creature(),
+            from: Some(Zone::Graveyard(0)),
+            to: Zone::Battlefield,
+        };
+        assert!(!from_graveyard.matches(&event, 999, 0, &s));
+        let dies = TriggerCondition::ZoneChange {
+            filter: ObjectFilter::creature(),
+            from: None,
+            to: Zone::Graveyard(0),
+        };
+        assert!(!dies.matches(&event, 999, 0, &s));
+        let pending = PendingTrigger {
+            source: 999,
+            trigger_id: 1,
+            controller: 0,
+            trigger_event: event,
+            targets: Default::default(),
+            effect_override: None,
+            affected: None,
+        };
+        assert_eq!(pending.entering_object(), Some(t));
     }
 
     #[test]
@@ -1931,13 +2054,13 @@ mod tests {
         let mut triggers = vec![
             PendingTrigger { source: 1, trigger_id: 1, controller: 1,
                 trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone(),
-                effect_override: None },
+                effect_override: None, affected: None },
             PendingTrigger { source: 2, trigger_id: 2, controller: 0,
                 trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone(),
-                effect_override: None },
+                effect_override: None, affected: None },
             PendingTrigger { source: 3, trigger_id: 3, controller: 1,
                 trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone(),
-                effect_override: None },
+                effect_override: None, affected: None },
         ];
         sort_by_apnap(&mut triggers, /*active=*/ 0, /*N=*/ 2);
         let controllers: Vec<_> = triggers.iter().map(|t| t.controller).collect();
@@ -1953,13 +2076,13 @@ mod tests {
         let mut triggers = vec![
             PendingTrigger { source: 1, trigger_id: 1, controller: 0,
                 trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone(),
-                effect_override: None },
+                effect_override: None, affected: None },
             PendingTrigger { source: 2, trigger_id: 2, controller: 2,
                 trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone(),
-                effect_override: None },
+                effect_override: None, affected: None },
             PendingTrigger { source: 3, trigger_id: 3, controller: 1,
                 trigger_event: GameEvent::TurnEnds { player: 0 }, targets: empty.clone(),
-                effect_override: None },
+                effect_override: None, affected: None },
         ];
         // Active = 1, so APNAP order is 1, 2, 0.
         sort_by_apnap(&mut triggers, 1, 3);
@@ -2105,6 +2228,7 @@ mod tests {
             trigger_event: event,
             targets: crate::targets::TargetSelection::new(),
             effect_override: None,
+            affected: None,
         }
     }
 
@@ -2246,6 +2370,7 @@ mod tests {
             trigger_event: ev,
             targets: Default::default(),
             effect_override: None,
+            affected: None,
         };
         assert_eq!(t.entering_object(), Some(new_id),
             "entering_object must be the on-battlefield id, not the stale pre-move id");
