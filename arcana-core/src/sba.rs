@@ -217,10 +217,16 @@ fn check_creature_graveyard(state: &mut GameState) -> bool {
     }
     if to_kill.is_empty() { return false; }
     to_kill.sort_by_key(|&(id, _)| id);
-    for (id, kind) in to_kill {
-        // CR 614 — the death replacements apply before the move (A1.5bk).
-        state.put_into_graveyard_dying(id, kind, MoveCause::StateBasedAction);
-    }
+    // They die at once (CR 704.3): each one's last-known characteristics
+    // show the board before any of them moved (A1.5bp), so a lord's bonus
+    // is in the snapshot of a creature that dies beside it.
+    let dying: Vec<ObjectId> = to_kill.iter().map(|&(id, _)| id).collect();
+    state.departing_together(&dying, |state| {
+        for (id, kind) in to_kill {
+            // CR 614 — the death replacements apply before the move (A1.5bk).
+            state.put_into_graveyard_dying(id, kind, MoveCause::StateBasedAction);
+        }
+    });
     true
 }
 

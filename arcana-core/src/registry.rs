@@ -145,6 +145,14 @@ pub struct ActivationContext {
     /// moved the card (Scavenge exiles its source, then needs the
     /// card's printed power at resolution).
     pub card_id: CardId,
+    /// The permanents sacrificed to pay this activation's "sacrifice a
+    /// [permanent]" cost, by the ids they had on the battlefield, in the
+    /// order they were paid (A1.5bp). The source's own "sacrifice this"
+    /// is not listed: that permanent is `source`. Read what they were
+    /// with [`crate::script::last_known_power`] and
+    /// [`crate::script::last_known_toughness`] ("the sacrificed
+    /// creature's toughness").
+    pub sacrificed: Vec<ObjectId>,
 }
 
 // =============================================================================
