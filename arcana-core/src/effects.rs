@@ -1450,6 +1450,27 @@ impl Effect {
         e
     }
 
+    /// The permanent this effect takes off the battlefield, with the kind
+    /// of removal, for the per-object removals card code strings together
+    /// to say "all" (A1.5bp). A `ForEach` of one of these is a simultaneous
+    /// departure, in the resolver and out of it. `None` for every
+    /// other effect, including the removals that pick their objects through
+    /// a choice: those leave together in the choice's follow-up.
+    pub(crate) fn battlefield_removal(&self) -> Option<(std::mem::Discriminant<Effect>, ObjectId)> {
+        let id = match self {
+            Effect::DestroyPermanent { target }
+            | Effect::ExilePermanent { target }
+            | Effect::ExileAndSchedule { target, .. }
+            | Effect::ReturnToHand { target }
+            | Effect::PutOnTopOfLibrary { target }
+            | Effect::PutOnBottomOfLibrary { target }
+            | Effect::ExileUntilSourceLeaves { target, .. }
+            | Effect::SacrificePermanent { target } => *target,
+            _ => return None,
+        };
+        Some((std::mem::discriminant(self), id))
+    }
+
     /// Apply this effect to `state`.
     ///
     /// Defensive against missing objects: if a named target has left
@@ -2435,9 +2456,21 @@ impl Effect {
                 // NULL_OBJECT_ID target placeholder). Effects with no
                 // object target are run unchanged once per id — see
                 // `Effect::retargeted`.
+                //
+                // One instruction removing several permanents removes them
+                // at once: each is captured with the board before the first
+                // of them moved (A1.5bp). The resolver stages its own runs;
+                // this covers a ForEach it never flattened, such as one
+                // inside a Conditional.
+                let staged = if effect.battlefield_removal().is_some() {
+                    state.stage_departures(targets)
+                } else {
+                    Vec::new()
+                };
                 for id in targets {
                     effect.retargeted(*id).execute(state);
                 }
+                state.unstage_departures(&staged);
             }
             Effect::Conditional { condition, then, otherwise } => {
                 if condition.evaluate(state) {

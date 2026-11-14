@@ -305,6 +305,14 @@ pub fn build_choice_view(
     Some(ChoiceView { prompt, min: *min, max: *max, options, pool, decline })
 }
 
+/// "a" or "an" for a card type named in a prompt ("an Island").
+fn indefinite_article(word: &str) -> &'static str {
+    match word.chars().next().map(|c| c.to_ascii_lowercase()) {
+        Some('a' | 'e' | 'i' | 'o' | 'u') => "an",
+        _ => "a",
+    }
+}
+
 /// A one-line description of the pending decision for `perspective`, so the UI
 /// can show "what am I answering?" above the action buttons. Returns `None` for
 /// PickCards (the visual picker carries its own prompt) and when there's no
@@ -339,6 +347,23 @@ fn build_decision_prompt(
         if let ChoiceKind::OptionalCost { cost: crate::actions::OptionalPaymentKind::Life(life) } = &pc.kind {
             let name = name_of(object_id).unwrap_or_else(|| "This permanent".to_string());
             return Some(format!("Pay {life} life? If you decline, {name} enters tapped."));
+        }
+        // A reveal land: name what may be revealed and what declining costs.
+        if let (ChoiceKind::PickCards { .. }, Some(filter)) =
+            (&pc.kind, state.pending_entry_reveal_filter())
+        {
+            let name = name_of(object_id).unwrap_or_else(|| "This permanent".to_string());
+            let kinds: Vec<&str> = filter.subtypes_any.iter().flatten()
+                .filter_map(|s| registry.interner().resolve(*s))
+                .collect();
+            let what = match kinds.as_slice() {
+                [] => "a card".to_string(),
+                [one] => format!("{} {one} card", indefinite_article(one)),
+                [first, rest @ ..] => format!(
+                    "{} {first} or {} card", indefinite_article(first), rest.join(" or ")),
+            };
+            return Some(format!(
+                "Reveal {what} from your hand? If you don't, {name} enters tapped."));
         }
     }
     match &pc.kind {

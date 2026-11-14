@@ -530,7 +530,8 @@ pub enum ChoiceContext {
     /// so the dispatcher handles the OrderCards answer by advancing
     /// the mulligan phase rather than resuming a stack entry.
     MulliganScry { player: PlayerId },
-    /// An optional life payment made before a permanent enters (A1.5bj).
+    /// A decision made as a permanent enters, before it moves: an
+    /// optional life payment (A1.5bj) or the reveal of a card from hand.
     EnteringBattlefield { object_id: ObjectId },
     /// Some other engine-driven prompt that doesn't fit the above.
     Other,

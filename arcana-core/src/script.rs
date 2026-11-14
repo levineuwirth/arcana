@@ -212,6 +212,37 @@ pub fn toughness_of(state: &GameState, id: ObjectId) -> i32 {
     state.computed_toughness(id).unwrap_or(0)
 }
 
+/// `id`'s power as it last existed on the battlefield (CR 113.7a,
+/// 608.2h): its current power while it is still there, and after it has
+/// left, the power captured as it left, with counters, pumps and anthems
+/// as they stood. Use for "where X is this creature's power" on an
+/// ability that sacrifices its source, and for "the sacrificed creature's
+/// power". `None` when `id` names nothing with a power: an object that was
+/// never a creature on the battlefield, a snapshot already released, or an
+/// illegal target's placeholder. Unlike [`power_of`], the caller decides
+/// what nothing means.
+pub fn last_known_power(state: &GameState, id: ObjectId) -> Option<i32> {
+    if state.objects.get(id).is_some() {
+        return state.computed_power(id);
+    }
+    match state.last_known_characteristics(id)?.power? {
+        crate::types::PtValue::Fixed(n) => Some(n),
+        _ => None,
+    }
+}
+
+/// `id`'s toughness as it last existed on the battlefield. See
+/// [`last_known_power`].
+pub fn last_known_toughness(state: &GameState, id: ObjectId) -> Option<i32> {
+    if state.objects.get(id).is_some() {
+        return state.computed_toughness(id);
+    }
+    match state.last_known_characteristics(id)?.toughness? {
+        crate::types::PtValue::Fixed(n) => Some(n),
+        _ => None,
+    }
+}
+
 /// Number of cards in `player`'s hand (`0` for an invalid player).
 pub fn hand_size(state: &GameState, player: PlayerId) -> u32 {
     if !valid(state, player) {

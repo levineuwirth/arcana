@@ -565,19 +565,26 @@ impl TriggerCondition {
                 GameEvent::CreatureNotBlocked { attacker } if *attacker == source),
 
             ZoneChange { filter, from, to } => match event {
-                GameEvent::ZoneChange { object_id, from: evf, to: evt, .. } => {
+                GameEvent::ZoneChange { object_id, from: evf, to: evt, new_id, .. } => {
                     if !evt.same_kind(*to) { return false; }
                     if let Some(f) = from {
                         if !evf.same_kind(*f) { return false; }
                     }
-                    match_filter_on(state, *object_id, filter, source_controller)
+                    // "Whenever another ... enters": the filter is matched
+                    // against the object under the id it left with, while
+                    // an ability that watches arrivals has its source under
+                    // the id it arrived with. Compare both, or a permanent's
+                    // own entry counts as another's (A1.5bp, Mausoleum
+                    // Wanderer).
+                    if filter.exclude_source && *new_id == source { return false; }
+                    match_filter_from(state, *object_id, filter, source, source_controller)
                 }
                 // CR 603.6a — a created token enters the battlefield. It
                 // came from no zone, so only a condition that names none
                 // sees it; tokens emit no zone change (A1.5bf).
                 GameEvent::TokenCreated { object_id, .. }
                     if from.is_none() && to.same_kind(Zone::Battlefield) =>
-                    match_filter_on(state, *object_id, filter, source_controller),
+                    match_filter_from(state, *object_id, filter, source, source_controller),
                 _ => false,
             },
 
@@ -772,6 +779,22 @@ fn match_filter_on(
 ) -> bool {
     state.object_or_lki(id)
         .is_some_and(|o| filter.matches(o, state, source_controller))
+}
+
+/// [`match_filter_on`] for a condition that may say "another": the
+/// ability's source goes to the filter, which rejects the source itself
+/// when it was built with `excluding_source`. Only the zone-change
+/// condition passes its source so far; the other conditions still match
+/// without one.
+fn match_filter_from(
+    state: &GameState,
+    id: ObjectId,
+    filter: &ObjectFilter,
+    source: ObjectId,
+    source_controller: PlayerId,
+) -> bool {
+    state.object_or_lki(id)
+        .is_some_and(|o| filter.matches_with_source(o, state, source, source_controller))
 }
 
 // =============================================================================

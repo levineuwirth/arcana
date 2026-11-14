@@ -1,9 +1,10 @@
 //! Witch's Oven — {1} artifact (Throne of Eldraine, 2019).
 //! "{T}, Sacrifice a creature: Create a Food token. If the sacrificed
 //! creature's toughness was 4 or greater, create two Food tokens
-//! instead." Tap + sacrifice-a-creature cost minting a Food token;
-//! the toughness-4 upgrade is not expressible (the sacrificed
-//! creature's stats are not visible to the resolver).
+//! instead." Tap + sacrifice-a-creature cost minting a Food token, or
+//! two when the sacrificed creature's toughness, as it last existed on
+//! the battlefield, was 4 or greater (CR 608.2h): counters and anthems
+//! count, the printed number alone does not.
 
 use arcana_core::effects::{CommodityToken, Effect};
 use arcana_core::mana::ManaCost;
@@ -12,6 +13,7 @@ use arcana_core::registry::{
     ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone,
     CardDefinition, CardRegistry,
 };
+use arcana_core::script;
 use arcana_core::state::GameState;
 use arcana_core::targets::ObjectFilter;
 use arcana_core::types::{CardId, ColorSet, TypeLine};
@@ -53,17 +55,16 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 fn bake_food(
-    _state: &GameState,
+    state: &GameState,
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
-    // GAP: "If the sacrificed creature's toughness was 4 or greater,
-    // create two Food tokens instead" — the sacrificed cost-payment
-    // creature's toughness is not readable from the resolver; always
-    // creates one Food.
+    let big = ctx.sacrificed.first()
+        .and_then(|id| script::last_known_toughness(state, *id))
+        .is_some_and(|toughness| toughness >= 4);
     vec![Effect::CreateCommodityToken {
         controller: ctx.controller,
         kind: CommodityToken::Food,
-        count: 1,
+        count: if big { 2 } else { 1 },
     }]
 }

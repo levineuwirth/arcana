@@ -1,6 +1,8 @@
-//! Battlefield entry that can pause before the move for an optional life
-//! payment (A1.5bj). The request owns the entry modifiers; a continuation
-//! owns the rest of the instruction, including internal multi-entry loops.
+//! Battlefield entry that can pause before the move for a decision its
+//! controller makes as the permanent enters: an optional life payment
+//! (A1.5bj) or the reveal of a card from hand. The request owns the entry
+//! modifiers; a continuation owns the rest of the instruction, including
+//! internal multi-entry loops.
 
 use crate::actions::{ChoiceContext, ChoiceKind, OptionalPaymentKind};
 use crate::effects::{DigRest, Effect};
@@ -56,10 +58,45 @@ impl BattlefieldEntry {
     }
 }
 
+/// One decision an entering permanent's controller makes before it moves,
+/// in the order the card's clauses list them (CR 614.12).
+#[derive(Clone, Debug)]
+pub(crate) enum EntryDecision {
+    /// "You may pay N life. If you don't, it enters tapped."
+    PayLife(u32),
+    /// "You may reveal a [filter] card from your hand. If you don't, it
+    /// enters tapped." Boxed: a filter is far larger than a life amount.
+    Reveal(Box<crate::targets::ObjectFilter>),
+}
+
+impl EntryDecision {
+    /// Whether a declaration needs an answer before the move.
+    fn is_asked_by(spec: &EntersWithSpec) -> bool {
+        matches!(
+            spec,
+            EntersWithSpec::TappedUnlessPayLife { .. } | EntersWithSpec::TappedUnlessReveal { .. }
+        )
+    }
+
+    /// The decisions a clause list asks for, in the list's order.
+    fn asked_by(clauses: &[EntersWithSpec]) -> std::collections::VecDeque<EntryDecision> {
+        clauses
+            .iter()
+            .filter_map(|s| match s {
+                EntersWithSpec::TappedUnlessPayLife { life } => Some(EntryDecision::PayLife(*life)),
+                EntersWithSpec::TappedUnlessReveal { filter } => {
+                    Some(EntryDecision::Reveal(Box::new(filter.clone())))
+                }
+                _ => None,
+            })
+            .collect()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct PendingEntry {
     request: BattlefieldEntry,
-    payments: std::collections::VecDeque<u32>,
+    decisions: std::collections::VecDeque<EntryDecision>,
     remaining: std::collections::VecDeque<BattlefieldEntry>,
     ready: Vec<BattlefieldEntry>,
 }
@@ -89,8 +126,8 @@ pub(crate) enum EntryContinuation {
 impl GameState {
     /// The zone mover has no registry argument. Cache the declarations of
     /// cards present in this game at the engine boundary. Only declarations
-    /// containing the optional payment are needed by generic entry routes;
-    /// played lands and permanent spells supply their full lists directly.
+    /// that ask for a decision are needed by generic entry routes; played
+    /// lands and permanent spells supply their full lists directly.
     pub(crate) fn cache_entry_specs(&mut self, registry: &CardRegistry) {
         let cards: Vec<CardId> = self.objects.iter().map(|o| o.card_id).collect();
         for card in cards {
@@ -98,11 +135,7 @@ impl GameState {
                 registry
                     .get(card)
                     .map(|d| &d.enters_with)
-                    .filter(|specs| {
-                        specs
-                            .iter()
-                            .any(|s| matches!(s, EntersWithSpec::TappedUnlessPayLife { .. }))
-                    })
+                    .filter(|specs| specs.iter().any(EntryDecision::is_asked_by))
                     .cloned()
                     .unwrap_or_default()
             });
@@ -151,26 +184,17 @@ impl GameState {
         if request.face_down {
             request.clauses = Some(Vec::new());
         }
-        let payments = request
-            .clauses
-            .as_ref()
-            .unwrap()
-            .iter()
-            .filter_map(|s| match s {
-                EntersWithSpec::TappedUnlessPayLife { life } => Some(*life),
-                _ => None,
-            })
-            .collect::<std::collections::VecDeque<_>>();
-        if payments.is_empty() {
+        let decisions = EntryDecision::asked_by(request.clauses.as_ref().unwrap());
+        if decisions.is_empty() {
             return self.finish_battlefield_entry(request);
         }
         self.pending_entry = Some(PendingEntry {
             request,
-            payments,
+            decisions,
             remaining: Default::default(),
             ready: Vec::new(),
         });
-        self.prompt_entry_payment();
+        self.prompt_entry_decision();
         None
     }
 
@@ -214,24 +238,15 @@ impl GameState {
             if request.face_down {
                 request.clauses = Some(Vec::new());
             }
-            let payments = request
-                .clauses
-                .as_ref()
-                .unwrap()
-                .iter()
-                .filter_map(|s| match s {
-                    EntersWithSpec::TappedUnlessPayLife { life } => Some(*life),
-                    _ => None,
-                })
-                .collect::<std::collections::VecDeque<_>>();
-            if !payments.is_empty() {
+            let decisions = EntryDecision::asked_by(request.clauses.as_ref().unwrap());
+            if !decisions.is_empty() {
                 self.pending_entry = Some(PendingEntry {
                     request,
-                    payments,
+                    decisions,
                     remaining,
                     ready,
                 });
-                self.prompt_entry_payment();
+                self.prompt_entry_decision();
                 return;
             }
             ready.push(request);
@@ -257,30 +272,101 @@ impl GameState {
         }
     }
 
-    fn prompt_entry_payment(&mut self) {
+    /// Ask the entering permanent's controller the decision at the front
+    /// of its queue.
+    fn prompt_entry_decision(&mut self) {
         let entry = self.pending_entry.as_ref().expect("entry continuation");
         let player = entry.request.controller;
         let object_id = entry.request.object_id;
-        let life = *entry.payments.front().expect("unanswered entry payment");
+        let kind = match entry.decisions.front().expect("unanswered entry decision") {
+            EntryDecision::PayLife(life) => ChoiceKind::OptionalCost {
+                cost: OptionalPaymentKind::Life(*life),
+            },
+            // Up to one of the cards that can be revealed; picking none
+            // declines. With no such card the choice holds only the decline.
+            EntryDecision::Reveal(filter) => ChoiceKind::PickCards {
+                candidates: self.entry_reveal_candidates(player, object_id, filter),
+                min: 0,
+                max: 1,
+            },
+        };
         self.push_pending_choice(
             player,
             ChoiceContext::EnteringBattlefield { object_id },
-            ChoiceKind::OptionalCost {
-                cost: OptionalPaymentKind::Life(life),
-            },
+            kind,
         );
     }
 
-    pub(crate) fn answer_entry_payment(&mut self, object_id: ObjectId, pay: bool) {
-        let mut entry = self
+    /// The cards `player` may reveal for an entering permanent's reveal
+    /// clause: the cards in hand that match `filter` by their
+    /// characteristics there, never the entering card itself. One option
+    /// per distinct card, since revealing either of two Plains is the same
+    /// act, taking the lowest object id of each; in object-id order.
+    fn entry_reveal_candidates(
+        &self,
+        player: PlayerId,
+        entering: ObjectId,
+        filter: &crate::targets::ObjectFilter,
+    ) -> Vec<ObjectId> {
+        let mut matching: Vec<(ObjectId, CardId)> = self
+            .objects
+            .objects_in_zone(Zone::Hand(player))
+            .filter(|o| o.id != entering && filter.matches(o, self, player))
+            .map(|o| (o.id, o.card_id))
+            .collect();
+        matching.sort_unstable();
+        let mut seen: Vec<CardId> = Vec::new();
+        matching
+            .into_iter()
+            .filter(|(_, card)| {
+                let fresh = !seen.contains(card);
+                if fresh {
+                    seen.push(*card);
+                }
+                fresh
+            })
+            .map(|(id, _)| id)
+            .collect()
+    }
+
+    /// The reveal clause the pending entry is waiting on, for the view's
+    /// prompt. `None` when no entry waits on a reveal.
+    pub(crate) fn pending_entry_reveal_filter(&self) -> Option<&crate::targets::ObjectFilter> {
+        match self.pending_entry.as_ref()?.decisions.front()? {
+            EntryDecision::Reveal(filter) => Some(filter.as_ref()),
+            EntryDecision::PayLife(_) => None,
+        }
+    }
+
+    fn take_pending_entry(&mut self, object_id: ObjectId) -> PendingEntry {
+        let entry = self
             .pending_entry
             .take()
-            .expect("entry payment without entry");
+            .expect("entry decision without entry");
         assert_eq!(
             entry.request.object_id, object_id,
-            "entry payment for another object"
+            "entry decision for another object"
         );
-        let amount = entry.payments.pop_front().expect("entry payment amount");
+        entry
+    }
+
+    /// The decision at the front of the queue is answered: ask the next
+    /// one, or let the batch go on once this entry has none left.
+    fn continue_pending_entry(&mut self, mut entry: PendingEntry) {
+        if entry.decisions.is_empty() {
+            entry.ready.push(entry.request);
+            self.stage_entry_batch(entry.remaining, entry.ready);
+        } else {
+            self.pending_entry = Some(entry);
+            self.prompt_entry_decision();
+        }
+    }
+
+    pub(crate) fn answer_entry_payment(&mut self, object_id: ObjectId, pay: bool) {
+        let mut entry = self.take_pending_entry(object_id);
+        let Some(EntryDecision::PayLife(amount)) = entry.decisions.pop_front() else {
+            panic!("entry payment answered, but the entry asked for something else");
+        };
         if pay {
             let life = self.player(entry.request.controller).life;
             assert!(
@@ -293,13 +379,33 @@ impl GameState {
             // independent tapped requirement.
             entry.request.tapped = true;
         }
-        if entry.payments.is_empty() {
-            entry.ready.push(entry.request);
-            self.stage_entry_batch(entry.remaining, entry.ready);
-        } else {
-            self.pending_entry = Some(entry);
-            self.prompt_entry_payment();
+        self.continue_pending_entry(entry);
+    }
+
+    /// Answer an entry's reveal clause with the card picked, or with none.
+    /// A revealed card becomes known to every player and stays in hand;
+    /// declining taps the entering permanent, which no other clause's
+    /// answer undoes.
+    pub(crate) fn answer_entry_reveal(&mut self, object_id: ObjectId, picked: &[ObjectId]) {
+        let mut entry = self.take_pending_entry(object_id);
+        let Some(EntryDecision::Reveal(_)) = entry.decisions.pop_front() else {
+            panic!("entry reveal answered, but the entry asked for something else");
+        };
+        // The pick is one of the candidates the prompt listed; the
+        // dispatcher has checked that. The card is not matched against the
+        // filter again: in a world another player sampled while this prompt
+        // waited, the listed id can hold a different card, and the prompt's
+        // list is what the choice was made from.
+        match picked {
+            [] => entry.request.tapped = true,
+            [card] => {
+                for p in 0..self.num_players() {
+                    self.player_mut(p).known_cards.insert(*card);
+                }
+            }
+            _ => panic!("entry reveal of more than one card"),
         }
+        self.continue_pending_entry(entry);
     }
 
     fn finish_battlefield_entry(&mut self, request: BattlefieldEntry) -> Option<ObjectId> {
