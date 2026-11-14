@@ -1339,6 +1339,15 @@ pub(crate) fn apply_resolution_choice(
             ChoiceContext::EnteringBattlefield { object_id },
             ChoiceResponse::OptionalCost { pay },
         ) => state.answer_entry_payment(*object_id, *pay),
+        // The reveal clause of an entering permanent: one card or none.
+        (
+            ChoiceKind::PickCards { candidates, min, max },
+            ChoiceContext::EnteringBattlefield { object_id },
+            ChoiceResponse::PickCards { picked },
+        ) => {
+            assert_pick_cards_well_formed(candidates, picked, *min, *max);
+            state.answer_entry_reveal(*object_id, picked);
+        }
         // --- OrderCards (Scry, Surveil, Fateseal) --------------------
         (
             ChoiceKind::OrderCards { cards, allowed },

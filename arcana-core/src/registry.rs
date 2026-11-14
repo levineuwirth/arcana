@@ -939,6 +939,17 @@ pub enum EntersWithSpec {
     /// `life` life) or decline before the permanent moves. Paying only avoids
     /// this clause's tap; independent enters-tapped requirements still apply.
     TappedUnlessPayLife { life: u32 },
+    /// "As CARDNAME enters, you may reveal a [filter] card from your hand.
+    /// If you don't, it enters tapped." — the reveal lands (Port Town,
+    /// Game Trail). The entry continuation asks before the permanent moves:
+    /// its controller reveals one card in hand that matches `filter`, read
+    /// from the card's characteristics there (a Hallowed Fountain is a
+    /// Plains card), or declines. Revealing is offered only when a card
+    /// matches. The revealed card becomes known to every player. Revealing
+    /// only avoids this clause's tap; independent enters-tapped
+    /// requirements still apply. Build `filter` with the subtype symbols
+    /// interned at registration, as [`Self::TappedUnlessControl`] does.
+    TappedUnlessReveal { filter: crate::targets::ObjectFilter },
 }
 
 // =============================================================================

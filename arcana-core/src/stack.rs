@@ -942,7 +942,8 @@ pub(crate) fn apply_enters_with_clauses(
                 }
             }
             // Already answered by the entry continuation, before the move.
-            EntersWithSpec::TappedUnlessPayLife { .. } => {}
+            EntersWithSpec::TappedUnlessPayLife { .. }
+            | EntersWithSpec::TappedUnlessReveal { .. } => {}
         }
     }
 }
