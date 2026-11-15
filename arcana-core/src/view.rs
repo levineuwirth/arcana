@@ -383,9 +383,23 @@ fn build_decision_prompt(
             Some(who.map_or_else(|| "Choose one".to_string(), |n| format!("Choose one for {n}")))
         }
         ChoiceKind::ChooseColor => Some("Choose a color".to_string()),
+        // A mana payment asked mid-resolution: its payer may tap for mana
+        // first (A1.5cd), and "Pay" appears once the pool covers the cost.
+        ChoiceKind::PayOrDecline { cost, .. } if !cost.is_empty() => Some(format!(
+            "Pay {cost}? Tap your mana sources first; \"Pay\" appears when the mana is floating.")),
+        ChoiceKind::OptionalCost { cost: crate::actions::OptionalPaymentKind::Mana(cost) }
+            if !cost.is_empty() => Some(format!(
+                "Pay {cost}? Tap your mana sources first; \"Pay\" appears when the mana is floating.")),
         ChoiceKind::CastWithoutPaying { object } => Some(match name_of(*object) {
             Some(n) => format!("Cast {n} without paying its mana cost?"),
             None => "Cast it without paying its mana cost?".to_string(),
+        }),
+        // A cast at normal costs during a resolution (Chandra): the player
+        // may tap for it while the prompt is open (A1.5cd).
+        ChoiceKind::CastDuringResolution { object } => Some(match name_of(*object) {
+            Some(n) => format!(
+                "Cast {n}? Tap your mana sources first; a cast appears when you can pay for it."),
+            None => "Cast it? Tap your mana sources first.".to_string(),
         }),
         // Scry / surveil / fateseal — name the effect so the ordering buttons
         // ("Top: … | Bottom: …") read in context.
@@ -581,6 +595,57 @@ mod tests {
         }
         s.player_mut(0).library_top_to_bottom = ids.clone();
         ids
+    }
+
+    /// A1.5cd: a mana payment asked mid-resolution names its cost and says
+    /// the payer may tap for it; a life payment keeps its bare buttons.
+    #[test]
+    fn a_mana_payment_prompt_names_the_cost_and_the_taps() {
+        use crate::actions::{DeclineConsequence, OptionalPaymentKind};
+        let registry = CardRegistry::new();
+        let cost = crate::mana::ManaCost::parse("{2}").unwrap();
+        for kind in [
+            ChoiceKind::PayOrDecline {
+                cost: cost.clone(), on_decline: DeclineConsequence::SkipEffect },
+            ChoiceKind::OptionalCost { cost: OptionalPaymentKind::Mana(cost.clone()) },
+        ] {
+            let mut s = GameState::new(2, 0);
+            s.push_pending_choice(
+                1, ChoiceContext::ResolvingStack(crate::objects::NULL_OBJECT_ID), kind);
+            let legal = crate::legal_actions::legal_actions(&s, &registry);
+            let prompt = view_state(&s, &registry, 1, &legal).prompt.expect("a prompt");
+            assert!(prompt.starts_with("Pay {2}?") && prompt.contains("Tap your mana sources"),
+                "{prompt}");
+            assert_eq!(view_state(&s, &registry, 0, &[]).prompt, None, "not the other seat's");
+        }
+        let mut s = GameState::new(2, 0);
+        s.push_pending_choice(
+            1, ChoiceContext::ResolvingStack(crate::objects::NULL_OBJECT_ID),
+            ChoiceKind::OptionalCost { cost: OptionalPaymentKind::Life(2) });
+        let legal = crate::legal_actions::legal_actions(&s, &registry);
+        assert_eq!(view_state(&s, &registry, 1, &legal).prompt, None);
+    }
+
+    /// A cast offered during a resolution names its card and the taps.
+    #[test]
+    fn a_resolution_cast_prompt_names_the_card() {
+        let mut registry = CardRegistry::new();
+        let name = registry.interner_mut().intern("Test Bolt");
+        let mut s = GameState::new(2, 0);
+        let id = s.allocate_object_id();
+        s.objects.insert(GameObject::new(id, 1, Zone::Exile, 1,
+            Characteristics { name, ..Default::default() }));
+        s.pending_choice_follow_up = Some(crate::actions::ChoiceFollowUp::IfNotCast {
+            otherwise: crate::effects::Effect::Sequence(Vec::new()) });
+        s.push_pending_choice(
+            1, ChoiceContext::ResolvingStack(crate::objects::NULL_OBJECT_ID),
+            ChoiceKind::CastDuringResolution { object: id });
+        let legal = crate::legal_actions::legal_actions(&s, &registry);
+        let view = view_state(&s, &registry, 1, &legal);
+        let prompt = view.prompt.expect("a prompt");
+        assert!(prompt.starts_with("Cast Test Bolt?") && prompt.contains("Tap your mana sources"),
+            "{prompt}");
+        assert_eq!(view.legal[0].label, "Don't cast it");
     }
 
     #[test]

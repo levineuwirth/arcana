@@ -131,6 +131,19 @@ pub enum CastModifier {
         /// (CR 709.3, 711.3, 712.11, 715.3).
         face: CastFace,
     },
+    /// CR 608.2g — cast an exiled card at its normal costs during the
+    /// resolution of an effect that says "you may cast that card" (Chandra,
+    /// Torch of Defiance). Offered only through
+    /// [`ChoiceKind::CastDuringResolution`] for its named card, to the
+    /// player that effect names; nothing else permits it, so a card left
+    /// uncast is not castable later. The mana cost is paid, with X chosen
+    /// and kicker offered, from `mana_payment`. Card-type timing doesn't
+    /// apply; casting restrictions do. The spell leaves the stack to its
+    /// normal destination, by `face`.
+    DuringResolution {
+        /// Which face is cast (CR 709.3).
+        face: CastFace,
+    },
 }
 
 /// Which face of a card a cast casts (CR 709): the main face, the right
@@ -154,7 +167,8 @@ impl CastModifier {
             CastModifier::Adventure => CastFace::Adventure,
             CastModifier::MdfcBack => CastFace::MdfcBack,
             CastModifier::SplitRight => CastFace::SplitRight,
-            CastModifier::WithoutPayingManaCost { face } => face,
+            CastModifier::WithoutPayingManaCost { face }
+            | CastModifier::DuringResolution { face } => face,
             CastModifier::None | CastModifier::Flashback | CastModifier::Madness
             | CastModifier::AdventureCreature | CastModifier::ImpulsePlay
             | CastModifier::TopOfLibrary => CastFace::Main,
@@ -627,6 +641,18 @@ pub enum ChoiceKind {
     CastWithoutPaying {
         object: ObjectId,
     },
+    /// "You may cast `object`" (CR 608.2g), asked during the resolution of
+    /// the effect that exiled it, at the card's normal costs (Chandra,
+    /// Torch of Defiance). It asks for mana, so its chooser may activate
+    /// mana abilities first. Answer:
+    /// [`ChoiceResponse::CastDuringResolution`] — decline, or one fully
+    /// specified cast with [`CastModifier::DuringResolution`]. What
+    /// declining does lives on
+    /// [`crate::state::GameState::pending_choice_follow_up`] as
+    /// [`ChoiceFollowUp::IfNotCast`].
+    CastDuringResolution {
+        object: ObjectId,
+    },
 }
 
 /// Destinations a card can be placed during an `OrderCards` choice.
@@ -770,6 +796,10 @@ pub enum ChoiceResponse {
     /// carries the chosen [`Action::CastSpell`], with its targets, modes,
     /// X (0), additional costs and the payment for any of them.
     CastWithoutPaying { cast: Option<Box<Action>> },
+    /// Reply to [`ChoiceKind::CastDuringResolution`]: `None` declines;
+    /// `Some` is the [`Action::CastSpell`] of that card, a
+    /// [`CastModifier::DuringResolution`] cast with its payment.
+    CastDuringResolution { cast: Option<Box<Action>> },
 }
 
 /// A spell/ability resolution that yielded mid-way to push a
@@ -931,6 +961,12 @@ pub enum ChoiceFollowUp {
     ExploreMayMill {
         card: ObjectId,
         player: PlayerId,
+    },
+    /// Pair with a [`ChoiceKind::CastDuringResolution`] response: "If you
+    /// don't [cast that card], `otherwise`." Run when the answer declines;
+    /// dropped when the card is cast, whatever becomes of the spell.
+    IfNotCast {
+        otherwise: crate::effects::Effect,
     },
 }
 

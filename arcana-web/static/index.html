@@ -1728,9 +1728,13 @@ function renderActions(view) {
   const myHand = new Set(((view.players.find((p) => p.id === view.perspective) || {}).hand || []).map((c) => c.id));
   const groups = {}; let pass = null, concede = null, cardDriven = 0;
   for (const a of view.legal) {
-    const g = groupOf(a.label);
+    let g = groupOf(a.label);
     if (g === "pass") { pass = a; continue; }
     if (g === "concede") { concede = a; continue; }
+    // An answer to a prompt that casts a card ("Cast Shock" for Chandra's
+    // exiled card, Spell Queller's free cast) reads like a spell but acts
+    // from no card on the table: it carries no source, and it is a choice.
+    if (a.source == null && (g === "Lands" || g === "Spells" || g === "Abilities")) g = "Choices";
     if (g === "Lands" || g === "Spells" || g === "Abilities") { cardDriven++; continue; }
     // A TARGETED activated ability on a board permanent (e.g. Goblin Artillery's
     // "2 damage to any target") is reached by clicking that permanent → arrow

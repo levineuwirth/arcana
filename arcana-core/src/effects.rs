@@ -437,6 +437,21 @@ pub enum Effect {
     OfferCastWithoutPaying {
         object: ObjectId,
     },
+    /// "Exile the top card of your library. You may cast that card. If you
+    /// don't, `otherwise`." (Chandra, Torch of Defiance.) `player` exiles
+    /// the card face up and is asked, mid-resolution, through
+    /// [`crate::actions::ChoiceKind::CastDuringResolution`]: the cast is
+    /// made during this resolution at the card's normal costs (CR
+    /// 608.2g), with mana abilities available while the choice is open.
+    /// `otherwise` runs when the card is not cast: the player declines, or
+    /// the choice has no cast to offer (a land, no legal target, a casting
+    /// restriction, too little mana), where declining is its only answer.
+    /// With no card to exile `otherwise` runs at once: nothing was cast.
+    /// The card stays in exile uncast, with no later permission.
+    ExileTopMayCast {
+        player: PlayerId,
+        otherwise: Box<Effect>,
+    },
 
     // --- state flip --------------------------------------------------------
     ChangeControl { target: ObjectId, new_controller: PlayerId },
@@ -1249,6 +1264,7 @@ impl Effect {
             | Effect::ChooseAnyNumberFromZone { .. }
             | Effect::ChooseNFromZone { .. }
             | Effect::ImpulseExile { .. }
+            | Effect::ExileTopMayCast { .. }
             | Effect::Venture { .. }
             | Effect::NameCardAndExile { .. }
             | Effect::AddMana { .. }
@@ -1355,6 +1371,12 @@ impl Effect {
                 for inner in effects.iter_mut() {
                     *inner = inner.for_player(p);
                 }
+            }
+            // "That player exiles … may cast … if they don't": the rider is
+            // that player's too.
+            Effect::ExileTopMayCast { player, otherwise } => {
+                *player = p;
+                **otherwise = otherwise.for_player(p);
             }
             Effect::Conditional { then, otherwise, .. } => {
                 *then = Box::new(then.for_player(p));
@@ -1970,6 +1992,28 @@ impl Effect {
                     owner,
                     crate::actions::ChoiceContext::ResolvingStack(resolving),
                     crate::actions::ChoiceKind::CastWithoutPaying { object: *object },
+                );
+            }
+            Effect::ExileTopMayCast { player, otherwise } => {
+                if !valid_player(state, *player) { return; }
+                let resolving = state.currently_resolving
+                    .expect("Effect::ExileTopMayCast: must execute mid-resolution");
+                let top = state.player(*player).library_top_to_bottom.first().copied();
+                let exiled = top.and_then(|id| state.move_object_to_zone(
+                    id, Zone::Exile, crate::events::MoveCause::SpellResolution));
+                let Some(exiled) = exiled else {
+                    // No card was exiled, so none is cast.
+                    otherwise.execute(state);
+                    return;
+                };
+                state.pending_choice_follow_up = Some(
+                    crate::actions::ChoiceFollowUp::IfNotCast {
+                        otherwise: (**otherwise).clone(),
+                    });
+                state.push_pending_choice(
+                    *player,
+                    crate::actions::ChoiceContext::ResolvingStack(resolving),
+                    crate::actions::ChoiceKind::CastDuringResolution { object: exiled },
                 );
             }
             Effect::CastFromExileFree { player, target } => {
@@ -6238,6 +6282,13 @@ mod tests {
         let Effect::Conditional { then, otherwise, .. } = cond else { panic!() };
         assert!(matches!(*then, Effect::DrawCards { player: 1, .. }));
         assert!(matches!(otherwise.as_deref(), Some(Effect::LoseLife { player: 1, .. })));
+        // "That player exiles … may cast … if they don't": both halves.
+        let cast = Effect::ExileTopMayCast {
+            player: 99,
+            otherwise: Box::new(Effect::LoseLife { player: 99, amount: 2 }),
+        }.for_player(1);
+        let Effect::ExileTopMayCast { player: 1, otherwise } = cast else { panic!("{cast:?}") };
+        assert!(matches!(*otherwise, Effect::LoseLife { player: 1, .. }));
     }
 
     #[test]

@@ -1,8 +1,8 @@
 //! Chandra, Torch of Defiance — `{2}{R}{R}` Legendary Planeswalker — Chandra, starting loyalty 4.
 //!
 //! +1: Exile the top card of your library. You may cast that card. If you
-//!     don't, Chandra deals 2 damage to each opponent. (GAP — exile-top-and-
-//!     may-cast rider + "each opponent" damage branch not expressible.)
+//!     don't, Chandra deals 2 damage to each opponent. (The cast is made
+//!     during the resolution, at the card's costs: CR 608.2g.)
 //! +1: Add {R}{R}. (A loyalty ability: uses the stack.)
 //! −3: Chandra deals 4 damage to target creature.
 //! −7: You get an emblem with "Whenever you cast a spell, this emblem deals 5
@@ -109,9 +109,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
 }
 
 /// `+1: Exile top, may cast; if not, 2 to each opponent.`
-fn plus_one_impulse(_state: &GameState, _ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: exile-top + may-cast rider + "if you don't, damage each opponent" branch.
-    Vec::new()
+fn plus_one_impulse(state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    let damage = (0..state.num_players())
+        .filter(|p| *p != ctx.controller)
+        .map(|p| Effect::DealDamage {
+            source: ctx.source,
+            target: DamageTarget::Player(p),
+            amount: 2,
+        })
+        .collect();
+    vec![Effect::ExileTopMayCast {
+        player: ctx.controller,
+        otherwise: Box::new(Effect::Sequence(damage)),
+    }]
 }
 
 /// `+1: Add {R}{R}.`
