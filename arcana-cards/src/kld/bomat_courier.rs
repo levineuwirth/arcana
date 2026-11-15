@@ -65,15 +65,19 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     )
 }
 
-fn exile_top_face_down(_state: &GameState, _trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "exile the top card of your library face down [linked to this
-    // creature]" — no face-down exile-with-source effect available.
-    Vec::new()
+/// Exile the top card of the library face down, linked to this creature.
+fn exile_top_face_down(_state: &GameState, trig: &PendingTrigger, _reg: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::ExileTopFaceDownLinked { player: trig.controller, link_to: trig.source }]
 }
 
-fn return_exiled(_state: &GameState, _ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
-    // GAP: "put all cards exiled with this creature into their owners' hands"
-    // — no exiled-with-source retrieval effect available. (Cost is faithful:
-    // {R}, discard your hand, sacrifice this creature.)
-    Vec::new()
+/// Each card exiled with this creature goes to its owner's hand. The cards
+/// are those linked to the creature as it was on the battlefield, which
+/// the sacrifice paid as a cost does not change (CR 607.2a).
+fn return_exiled(state: &GameState, ctx: &ActivationContext, _reg: &CardRegistry) -> Vec<Effect> {
+    let mut linked: Vec<_> = state.objects.iter()
+        .filter(|o| o.zone.is_exile() && o.linked_exile_source == Some(ctx.source))
+        .map(|o| o.id)
+        .collect();
+    linked.sort_unstable();
+    linked.into_iter().map(|target| Effect::ReturnToHand { target }).collect()
 }

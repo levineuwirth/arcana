@@ -1273,6 +1273,13 @@ function showZoneViewer(title, cards, backCount, decor) {
   const grid = document.createElement("div"); grid.className = "modal-body zv-grid";
   if (cards.length) {
     for (const c of cards) {
+      // A card exiled face down (Bomat Courier) is hidden from both players.
+      if (c.face_down) {
+        const b = document.createElement("div"); b.className = "zv-back"; b.textContent = "Arcana";
+        b.title = "Exiled face down"; b.setAttribute("aria-label", "A card exiled face down");
+        grid.appendChild(b);
+        continue;
+      }
       const d = decor ? decor(c) : null;
       grid.appendChild(Arcana.renderCard(c, d ? { classes: d.classes, onClick: d.onClick } : {}));
     }

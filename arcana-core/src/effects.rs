@@ -441,6 +441,19 @@ pub enum Effect {
         target: ObjectId,
         link_to: Option<ObjectId>,
     },
+    /// "Exile the top card of your library face down", linked to the
+    /// ability's source (CR 607.2a; Bomat Courier): `player`'s top card is
+    /// exiled face down and its
+    /// [`crate::objects::GameObject::linked_exile_source`] is `link_to`,
+    /// the source's battlefield id, which a second ability of that source
+    /// reads back. No player may look at a card exiled face down unless an
+    /// instruction allows it (CR 406.3), and none does here: the view and
+    /// the information set hide it from both players, its owner included.
+    /// No-op on an empty library.
+    ExileTopFaceDownLinked {
+        player: PlayerId,
+        link_to: ObjectId,
+    },
     /// "The card's owner may cast `object` without paying its mana cost"
     /// (CR 118.9, 608.2g): asks the owner, mid-resolution, through
     /// [`crate::actions::ChoiceKind::CastWithoutPaying`]. The effect that
@@ -1300,6 +1313,7 @@ impl Effect {
             | Effect::ChooseAnyNumberFromZone { .. }
             | Effect::ChooseNFromZone { .. }
             | Effect::ImpulseExile { .. }
+            | Effect::ExileTopFaceDownLinked { .. }
             | Effect::ExileTopMayCast { .. }
             | Effect::Venture { .. }
             | Effect::NameCardAndExile { .. }
@@ -1386,6 +1400,7 @@ impl Effect {
             | Effect::Explore { player, .. }
             | Effect::Discover { player, .. }
             | Effect::ImpulseExile { player, .. }
+            | Effect::ExileTopFaceDownLinked { player, .. }
             | Effect::Venture { player, .. }
             | Effect::ExtraTurn { player, .. }
             | Effect::SkipNextPhase { player, .. }
@@ -2041,6 +2056,16 @@ impl Effect {
                     crate::actions::ChoiceContext::ResolvingStack(resolving),
                     crate::actions::ChoiceKind::CastWithoutPaying { object: *object },
                 );
+            }
+            Effect::ExileTopFaceDownLinked { player, link_to } => {
+                if !valid_player(state, *player) { return; }
+                let top = state.player(*player).library_top_to_bottom.first().copied();
+                let exiled = top.and_then(|id| state.move_object_to_zone(
+                    id, Zone::Exile, crate::events::MoveCause::SpellResolution));
+                if let Some(obj) = exiled.and_then(|id| state.objects.get_mut(id)) {
+                    obj.status.face_down = true;
+                    obj.linked_exile_source = Some(*link_to);
+                }
             }
             Effect::ExileTopMayCast { player, otherwise } => {
                 if !valid_player(state, *player) { return; }
@@ -6312,6 +6337,9 @@ mod tests {
         }.for_player(1);
         let Effect::ExileTopMayCast { player: 1, otherwise } = cast else { panic!("{cast:?}") };
         assert!(matches!(*otherwise, Effect::LoseLife { player: 1, .. }));
+        assert!(matches!(
+            Effect::ExileTopFaceDownLinked { player: 99, link_to: 7 }.for_player(1),
+            Effect::ExileTopFaceDownLinked { player: 1, link_to: 7 }));
     }
 
     #[test]

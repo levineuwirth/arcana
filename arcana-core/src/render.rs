@@ -52,9 +52,12 @@ pub fn describe_event(
     // LTB events (discard / mill / dies) carry the PRE-move id, which is re-ided
     // on the zone change (CR 400.7) — so fall back to a generic noun rather than
     // the "?" / "<hidden>" placeholders.
+    // A card exiled face down is named to nobody (CR 406.3).
     let name = |id: ObjectId| {
+        let face_down_in_exile = state.objects.get(id)
+            .is_some_and(|o| o.zone.is_exile() && o.status.face_down);
         let n = card_name(state, registry, id);
-        if n == "?" || n == "<hidden>" { "a card".to_string() } else { n }
+        if face_down_in_exile || n == "?" || n == "<hidden>" { "a card".to_string() } else { n }
     };
     Some(match event {
         LifeGained { player, amount } => format!("{} {amount} life", act(*player, "gain")),

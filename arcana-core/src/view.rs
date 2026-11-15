@@ -61,6 +61,11 @@ pub struct CardView {
     pub power: Option<i32>,
     pub toughness: Option<i32>,
     pub tapped: bool,
+    /// A card exiled face down (CR 406.3): no player may look at it, so
+    /// every other field is blank from every perspective, its owner's
+    /// included. A frontend draws a card back.
+    #[serde(default)]
+    pub face_down: bool,
 }
 
 /// A mana amount broken down by color — used for the "available mana" gauge.
@@ -429,8 +434,19 @@ fn card_view(state: &GameState, registry: &CardRegistry, id: ObjectId) -> CardVi
             id, name: String::new(), mana_cost: None, mana_value: 0,
             type_line: String::new(), is_land: false, playable: false, activatable: false,
             keywords: Vec::new(), power: None, toughness: None, tapped: false,
+            face_down: false,
         };
     };
+    // CR 406.3 — a card exiled face down is hidden from everyone, whatever
+    // state this view was built from.
+    if o.zone.is_exile() && o.status.face_down {
+        return CardView {
+            id, name: String::new(), mana_cost: None, mana_value: 0,
+            type_line: String::new(), is_land: false, playable: false, activatable: false,
+            keywords: Vec::new(), power: None, toughness: None, tapped: false,
+            face_down: true,
+        };
+    }
     let c = &o.characteristics;
     let mut name = registry.interner().resolve(c.name)
         .filter(|s| !s.is_empty())
@@ -461,6 +477,7 @@ fn card_view(state: &GameState, registry: &CardRegistry, id: ObjectId) -> CardVi
     CardView {
         id, name, mana_cost, mana_value, type_line, is_land,
         playable: false, activatable: false, keywords, power, toughness, tapped,
+        face_down: false,
     }
 }
 
