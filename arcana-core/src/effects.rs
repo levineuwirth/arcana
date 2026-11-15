@@ -249,6 +249,20 @@ pub enum Effect {
     /// applies while combat is active (the trigger guarantees it);
     /// outside combat the token just enters tapped.
     CreateTokenTappedAttacking { controller: PlayerId, token: TokenDefinition },
+    /// [`Self::CreateTokenTappedAttacking`], then "exile that token at end
+    /// of combat" (Kari Zev, Skyship Raider's Ragavan): a one-shot delayed
+    /// trigger at the beginning of the next end of combat step (CR 511.2,
+    /// 603.7b) exiles the created token, and only it; a token that has
+    /// left by then is not followed (CR 603.7c). `source` is the creating
+    /// ability's source, which stays the delayed trigger's (CR 603.7e).
+    /// `supertypes` are the token's own (a legendary token, CR 205.4d):
+    /// [`TokenDefinition`] carries none.
+    CreateTokenTappedAttackingExileEoc {
+        source: ObjectId,
+        controller: PlayerId,
+        token: TokenDefinition,
+        supertypes: crate::types::SupertypeSet,
+    },
     /// Move `target` (from hand / library / graveyard — wherever it
     /// is) onto the battlefield TAPPED AND ATTACKING under
     /// `controller` (Winota, Arni Metalbrow, Hans Eriksson, Yore-
@@ -1072,6 +1086,9 @@ pub enum DelayedWhen {
     /// upkeep, so this IS the next turn's upkeep when scheduled
     /// mid-turn.
     NextUpkeep,
+    /// "At end of combat": the beginning of the next end of combat step
+    /// (CR 511.2), whoever's turn it is.
+    NextEndOfCombat,
     /// "When that [object] dies."
     ThisDies,
     /// When the scheduled STACK object resolves into a battlefield
@@ -1081,6 +1098,24 @@ pub enum DelayedWhen {
     /// into later turns). The action fns read the post-move id from
     /// the firing event's `new_id`.
     SelfResolvesToPermanent,
+}
+
+impl DelayedWhen {
+    /// The event a delayed trigger with this timing waits for.
+    fn condition(self) -> crate::triggers::TriggerCondition {
+        use crate::triggers::TriggerCondition;
+        let step_begins = |step| TriggerCondition::StepBegins {
+            step, whose: crate::targets::ControllerConstraint::Any,
+        };
+        match self {
+            DelayedWhen::NextEndStep => step_begins(crate::turn::Step::End),
+            DelayedWhen::NextUpkeep => step_begins(crate::turn::Step::Upkeep),
+            DelayedWhen::NextEndOfCombat => step_begins(crate::turn::Step::EndCombat),
+            DelayedWhen::ThisDies => TriggerCondition::SelfDies,
+            DelayedWhen::SelfResolvesToPermanent =>
+                TriggerCondition::Custom(cond_self_zone_to_battlefield),
+        }
+    }
 }
 
 /// What a [`Effect::DelayedAction`] does to its `source` when it
@@ -1248,6 +1283,7 @@ impl Effect {
             | Effect::CreateToken { .. }
             | Effect::CreateTokenSacEot { .. }
             | Effect::CreateTokenTappedAttacking { .. }
+            | Effect::CreateTokenTappedAttackingExileEoc { .. }
             | Effect::CreateCommodityToken { .. }
             | Effect::Cascade { .. }
             | Effect::Proliferate
@@ -1406,6 +1442,7 @@ impl Effect {
             | Effect::CreateToken { .. }
             | Effect::CreateTokenSacEot { .. }
             | Effect::CreateTokenTappedAttacking { .. }
+            | Effect::CreateTokenTappedAttackingExileEoc { .. }
             | Effect::CreateCommodityToken { .. }
             | Effect::Cascade { .. }
             | Effect::CopySpell { .. }
@@ -1824,6 +1861,17 @@ impl Effect {
             Effect::CreateTokenTappedAttacking { controller, token } => {
                 if let Some(new_id) = create_token(state, *controller, token) {
                     enter_tapped_attacking(state, new_id, *controller);
+                }
+            }
+            Effect::CreateTokenTappedAttackingExileEoc { source, controller, token, supertypes } => {
+                if let Some(new_id) = create_token(state, *controller, token) {
+                    if let Some(obj) = state.objects.get_mut(new_id) {
+                        obj.characteristics.supertypes = *supertypes;
+                    }
+                    enter_tapped_attacking(state, new_id, *controller);
+                    install_delayed_action(
+                        state, *source, Some(new_id), *controller,
+                        DelayedWhen::NextEndOfCombat, DelayedAction::Exile);
                 }
             }
             Effect::PutOntoBattlefieldTappedAttacking { target, controller } => {
@@ -2376,22 +2424,9 @@ impl Effect {
             }
             Effect::ScheduleDelayedEffect { source, controller, when, effect } => {
                 if !valid_player(state, *controller) { return; }
-                use crate::triggers::{DelayedTrigger, TriggerCondition};
-                let condition = match when {
-                    DelayedWhen::NextEndStep => TriggerCondition::StepBegins {
-                        step: crate::turn::Step::End,
-                        whose: crate::targets::ControllerConstraint::Any,
-                    },
-                    DelayedWhen::NextUpkeep => TriggerCondition::StepBegins {
-                        step: crate::turn::Step::Upkeep,
-                        whose: crate::targets::ControllerConstraint::Any,
-                    },
-                    DelayedWhen::ThisDies => TriggerCondition::SelfDies,
-                    DelayedWhen::SelfResolvesToPermanent =>
-                        TriggerCondition::Custom(cond_self_zone_to_battlefield),
-                };
+                use crate::triggers::DelayedTrigger;
                 state.register_delayed_trigger(DelayedTrigger::one_shot(
-                    *source, *controller, condition, *effect));
+                    *source, *controller, when.condition(), *effect));
             }
             Effect::ChoosePlayerThen { chooser, opponents_only, then } => {
                 if !valid_player(state, *chooser) { return; }
@@ -2725,20 +2760,8 @@ fn install_delayed_action(
     action: DelayedAction,
 ) {
     if !valid_player(state, controller) { return; }
-    use crate::triggers::{DelayedTrigger, TriggerCondition};
-    let condition = match when {
-        DelayedWhen::NextEndStep => TriggerCondition::StepBegins {
-            step: crate::turn::Step::End,
-            whose: crate::targets::ControllerConstraint::Any,
-        },
-        DelayedWhen::NextUpkeep => TriggerCondition::StepBegins {
-            step: crate::turn::Step::Upkeep,
-            whose: crate::targets::ControllerConstraint::Any,
-        },
-        DelayedWhen::ThisDies => TriggerCondition::SelfDies,
-        DelayedWhen::SelfResolvesToPermanent =>
-            TriggerCondition::Custom(cond_self_zone_to_battlefield),
-    };
+    use crate::triggers::DelayedTrigger;
+    let condition = when.condition();
     let effect_fn: crate::triggers::EffectFn = match action {
         DelayedAction::Sacrifice => delayed_sacrifice,
         DelayedAction::Exile => delayed_exile,
