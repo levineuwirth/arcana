@@ -207,6 +207,11 @@ pub(crate) fn apply_action(state: &mut GameState, action: Action, registry: &Car
             // step for responses.
             let ap = state.active_player();
             state.priority.give_to(ap);
+            // CR 508.1g, 701.43d — "you may exert this creature as it
+            // attacks" is decided as the attack is declared, before any
+            // player receives priority and before anything triggers on
+            // the declaration (CR 508.1m): see `run_sba_and_triggers`.
+            offer_exerts(state, registry);
         }
 
         Action::DeclareBlockers { blockers } => {
@@ -273,6 +278,20 @@ fn apply_pass_priority(state: &mut GameState, registry: &CardRegistry) {
             }
         }
     }
+}
+
+/// Queue each attacking creature its controller may exert as it attacks,
+/// in declaration order, and ask about the first. A creature is asked
+/// about only while it has the ability.
+fn offer_exerts(state: &mut GameState, registry: &CardRegistry) {
+    let able: Vec<ObjectId> = state.combat.as_ref()
+        .map(|c| c.attackers.iter().map(|a| a.object_id).collect::<Vec<_>>())
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|id| state.has_exert_as_it_attacks(*id, registry))
+        .collect();
+    state.pending_exerts = able.into();
+    state.prompt_next_exert();
 }
 
 /// The card's own main-face alternative cost from hand. Shared by action
@@ -1517,6 +1536,18 @@ pub(crate) fn apply_resolution_choice(
             }
         }
 
+        // --- Exert as it attacks (CR 701.43d) -------------------------
+        (
+            ChoiceKind::Exert { attacker },
+            _,
+            ChoiceResponse::Exert { exert },
+        ) => {
+            if *exert {
+                state.exert(*attacker, pending.choosing_player);
+            }
+            state.prompt_next_exert();
+        }
+
         // --- CastDuringResolution (Chandra, Torch of Defiance) -------
         // CR 608.2g — the chooser casts the exiled card as part of the
         // resolution, at its normal costs, or doesn't; "if you don't"
@@ -2684,6 +2715,14 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
             continue;
         }
 
+        // CR 508.1g, 508.1m — what triggers on attackers being declared
+        // triggers after the exert decisions, and an exert's "when you
+        // do" with it. No event is scanned while an exert decision is
+        // outstanding: the declaration's events and each exert's are
+        // scanned together after the last answer, so their abilities are
+        // one APNAP batch (CR 603.3b).
+        if exert_decision_pending(state) { return; }
+
         // 2. Collect triggers from events since the last scan. We
         //    snapshot the cursor, advance it to the current tail, and
         //    operate on the snapshot. Triggers pushed during this
@@ -2724,6 +2763,15 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
     // (infinite trigger storm, cursor not advancing, etc.).
     panic!("run_sba_and_triggers: failed to settle in \
             {MAX_SETTLE_ITERATIONS} iterations");
+}
+
+/// Is a player being asked whether to exert an attacker? The questions
+/// follow one another with nothing between them
+/// ([`GameState::prompt_next_exert`]), so this holds from the declaration
+/// to the last answer.
+fn exert_decision_pending(state: &GameState) -> bool {
+    matches!(state.pending_choice.as_ref().map(|c| &c.kind),
+        Some(crate::actions::ChoiceKind::Exert { .. }))
 }
 
 fn triggered_ability_modes<'a>(
@@ -3597,6 +3645,20 @@ fn untap_step(state: &mut GameState) {
     // many matching permanents untap, in deterministic ascending-id
     // order (the player-choice ordering is a documented stand-in).
     // TODO(task-21): honor phasing (CR 502.1 step order).
+    // CR 701.43a — what the active player exerted doesn't untap during
+    // this, their next untap step. That player's effect ends here for
+    // every such permanent, whoever controls it now; another player's
+    // exert of the same permanent waits for that player's untap step.
+    let exerted: Vec<ObjectId> = state.objects
+        .objects_in_zone(Zone::Battlefield)
+        .filter(|o| o.is_exerted_by(ap))
+        .map(|o| o.id)
+        .collect();
+    for id in &exerted {
+        if let Some(obj) = state.objects.get_mut(*id) {
+            obj.end_exert_of(ap);
+        }
+    }
     let mut ids: Vec<ObjectId> = state.objects
         .objects_in_zone(Zone::Battlefield)
         .filter(|o| o.controller == ap)
@@ -3614,6 +3676,7 @@ fn untap_step(state: &mut GameState) {
         if state.objects.get(id).is_none_or(|o| !o.is_tapped()) {
             continue;
         }
+        if exerted.contains(&id) { continue; }
         if state.skips_untap(id) { continue; }
         // Cap check: untapping `id` must not exceed any cap whose
         // filter matches it.

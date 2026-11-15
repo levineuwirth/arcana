@@ -241,6 +241,11 @@ pub struct CardDefinition {
     /// caster's hand only. Normal timing and supported restrictions still
     /// apply. Defaulted so existing definitions grant no permission.
     pub free_cast_from_hand: Option<FreeCastCondition>,
+    /// "You may exert this creature as it attacks" (CR 701.43d): its
+    /// controller is asked as it is declared an attacker. What exerting
+    /// does beyond not untapping is an ordinary triggered ability of the
+    /// card on [`crate::triggers::self_exerted`].
+    pub exert_as_attacks: bool,
 }
 
 pub use crate::objects::CastTimingRestriction;
@@ -304,7 +309,15 @@ impl CardDefinition {
             trigger_face_gates: Vec::new(),
             cant_cast: None,
             free_cast_from_hand: None,
+            exert_as_attacks: false,
         }
+    }
+
+    /// "You may exert this creature as it attacks." See
+    /// [`Self::exert_as_attacks`].
+    pub fn with_exert_as_it_attacks(mut self) -> Self {
+        self.exert_as_attacks = true;
+        self
     }
 
     /// Give a printed trigger distinct modes. The ability's ordinary effect

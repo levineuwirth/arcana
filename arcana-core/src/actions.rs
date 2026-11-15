@@ -653,6 +653,12 @@ pub enum ChoiceKind {
     CastDuringResolution {
         object: ObjectId,
     },
+    /// "You may exert `attacker` as it attacks" (CR 701.43d, 508.1g):
+    /// asked of its controller once the attack is declared, before any
+    /// player receives priority. Answer: [`ChoiceResponse::Exert`].
+    Exert {
+        attacker: ObjectId,
+    },
 }
 
 /// Destinations a card can be placed during an `OrderCards` choice.
@@ -800,6 +806,8 @@ pub enum ChoiceResponse {
     /// `Some` is the [`Action::CastSpell`] of that card, a
     /// [`CastModifier::DuringResolution`] cast with its payment.
     CastDuringResolution { cast: Option<Box<Action>> },
+    /// Reply to [`ChoiceKind::Exert`]: `true` exerts the attacker.
+    Exert { exert: bool },
 }
 
 /// A spell/ability resolution that yielded mid-way to push a

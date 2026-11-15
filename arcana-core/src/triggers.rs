@@ -451,6 +451,14 @@ pub enum TriggerCondition {
     PrintedStatic(crate::layers::StaticAbilityDef),
 }
 
+/// "When you do" for "you may exert this creature as it attacks": matches
+/// the source's own exert (CR 701.43d, 603.12). For
+/// [`TriggerCondition::Custom`], beside a card's
+/// [`crate::registry::CardDefinition::with_exert_as_it_attacks`].
+pub fn self_exerted(event: &GameEvent, _state: &GameState, source: ObjectId) -> bool {
+    matches!(event, GameEvent::Exerted { object_id, .. } if *object_id == source)
+}
+
 impl TriggerCondition {
     /// Does `event` match this condition?
     ///

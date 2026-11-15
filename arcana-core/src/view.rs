@@ -383,6 +383,9 @@ fn build_decision_prompt(
             Some(who.map_or_else(|| "Choose one".to_string(), |n| format!("Choose one for {n}")))
         }
         ChoiceKind::ChooseColor => Some("Choose a color".to_string()),
+        ChoiceKind::Exert { attacker } => Some(format!(
+            "Exert {}? It won't untap during your next untap step.",
+            name_of(*attacker).unwrap_or_else(|| "this creature".to_string()))),
         // A mana payment asked mid-resolution: its payer may tap for mana
         // first (A1.5cd), and "Pay" appears once the pool covers the cost.
         ChoiceKind::PayOrDecline { cost, .. } if !cost.is_empty() => Some(format!(

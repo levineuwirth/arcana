@@ -67,6 +67,7 @@ pub fn describe_event(
             format!("{} deals {amount} to {tgt}", name(*source))
         }
         DrawCard { player, .. } => act(*player, "draw") + " a card",
+        Exerted { object_id, player } => format!("{} {}", act(*player, "exert"), name(*object_id)),
         Discarded { player, object_id } => format!("{} {}", act(*player, "discard"), name(*object_id)),
         Milled { player, object_id } => format!("{} {}", act(*player, "mill"), name(*object_id)),
         Dies { object_id } => format!("{} dies", name(*object_id)),
@@ -273,6 +274,14 @@ fn render_choice_response(r: &ChoiceResponse, state: &GameState, registry: &Card
                 _ => None,
             }).unwrap_or_else(|| format!("Choose mode {}", mode + 1)),
         ChoiceResponse::ChooseColor { color } => format!("Choose {color:?}"),
+        ChoiceResponse::Exert { exert } => {
+            let name = state.pending_choice.as_ref().and_then(|pc| match &pc.kind {
+                crate::actions::ChoiceKind::Exert { attacker } =>
+                    Some(card_name(state, registry, *attacker)),
+                _ => None,
+            }).unwrap_or_else(|| "it".to_string());
+            if *exert { format!("Exert {name}") } else { format!("Don't exert {name}") }
+        }
         ChoiceResponse::CastWithoutPaying { cast: None } => "Don't cast it".to_string(),
         ChoiceResponse::CastWithoutPaying { cast: Some(cast) } => {
             let mut s = render_action(cast, state, registry);

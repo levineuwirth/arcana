@@ -783,6 +783,14 @@ fn legal_resolution_choice_actions(state: &GameState, registry: &CardRegistry) -
                 });
             }
         }
+        ChoiceKind::Exert { .. } => {
+            for exert in [true, false] {
+                out.push(Action::SubmitResolutionChoice {
+                    id,
+                    response: ChoiceResponse::Exert { exert },
+                });
+            }
+        }
         ChoiceKind::CastDuringResolution { object } => {
             out.push(Action::SubmitResolutionChoice {
                 id,

@@ -2,10 +2,10 @@
 //! "You may exert this creature as it attacks. When you do, it deals 4
 //! damage to target non-Dragon creature an opponent controls."
 //!
-//! Flying/Haste are base keywords. The exert payload is modeled as a
-//! SelfAttacks trigger that deals 4 damage to a target non-Dragon
-//! creature an opponent controls. The optional "you may exert" gate and
-//! the don't-untap exert rider are not expressible — see GAP.
+//! Flying/Haste are base keywords. Exert is the engine's attack-time
+//! choice (CR 701.43d): exerted, Glorybringer stays tapped through its
+//! controller's next untap step, and the "when you do" ability triggers
+//! on that exert alone.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::events::DamageTarget;
@@ -41,12 +41,10 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
         ..Default::default()
     };
 
-    // GAP: the "you may exert ... won't untap" exert mechanic is not
-    // expressible; modeled as an unconditional attack trigger instead.
-    reg.register(CardDefinition::new(name, chars).with_triggered_ability(
+    reg.register(CardDefinition::new(name, chars).with_exert_as_it_attacks().with_triggered_ability(
         TriggeredAbilityDef {
             id: 1,
-            trigger_condition: TriggerCondition::SelfAttacks,
+            trigger_condition: TriggerCondition::Custom(arcana_core::triggers::self_exerted),
             intervening_if: None,
             effect: exert_burn,
             trigger_zones: vec![Zone::Battlefield],
