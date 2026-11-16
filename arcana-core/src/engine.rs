@@ -3749,8 +3749,10 @@ fn cleanup_step(state: &mut GameState) {
     // CR 603.3 — clear once-per-turn trigger ledger.
     state.clear_per_turn_trigger_ledger();
 
-    // CR 106.4 — empty each player's mana pool at the end of each
-    // phase; cleanup inherits that and it never hurts to empty again.
+    // CR 500.5 — the cleanup step ends and the turn with it: empty each
+    // player's mana pool. Every other step's end empties them in
+    // `begin_step`, which this transition, announcing no step, never
+    // reaches.
     for p in 0..state.num_players() {
         state.player_mut(p).mana_pool.clear();
     }
@@ -5368,11 +5370,32 @@ fn mulligan_like_context(special: &SpecialAction) -> DecisionContext {
 // =============================================================================
 
 fn emit_step_begins(state: &mut GameState) {
-    state.emit(GameEvent::StepBegins { step: state.turn.step });
+    begin_step(state, false);
 }
 
 fn emit_phase_and_step_begins(state: &mut GameState) {
-    state.emit(GameEvent::PhaseBegins { phase: state.turn.phase });
+    begin_step(state, true);
+}
+
+/// The one place a step begins, and so the one place the step before it
+/// ends. Every transition of the step machine announces its new step
+/// through here, the skipped first-strike step, an extra combat and a
+/// damage assignment's deferred transition included, after the turn-based
+/// actions of the step it is leaving (the untap, the draw, combat damage).
+///
+/// CR 500.5 — "As a step or phase ends ... any unspent mana left in a
+/// player's mana pool empties. This is a turn-based action that doesn't use
+/// the stack": each player's pool empties before the new step is announced
+/// and before anyone has priority in it (CR 106.4). The turn's last
+/// transition announces nothing, so `cleanup_step` empties the pools for the
+/// cleanup step's own end.
+fn begin_step(state: &mut GameState, new_phase: bool) {
+    for p in 0..state.num_players() {
+        state.player_mut(p).mana_pool.empty_as_step_ends();
+    }
+    if new_phase {
+        state.emit(GameEvent::PhaseBegins { phase: state.turn.phase });
+    }
     state.emit(GameEvent::StepBegins { step: state.turn.step });
 }
 

@@ -1563,8 +1563,9 @@ pub enum ContinuousEffectKind {
     /// [the source's controller] unless their controller pays
     /// {generic} for each attacking creature". Consumed by
     /// [`GameState::attack_tax_total`]; payment is taken from the
-    /// attacker's FLOATED mana pool at declaration (documented
-    /// strictness: no float, no attack).
+    /// attacker's FLOATED mana pool at declaration. No float, no
+    /// attack, and nothing floats there now that pools empty as each
+    /// step ends: see `apply_declared_attackers` (A1.5cf).
     AttackTax { generic: u32 },
     /// Marker — modifies the SOURCE controller's maximum hand size
     /// (CR 402.2 / 514.1): Reliquary Tower / Thought Vessel

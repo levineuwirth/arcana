@@ -350,7 +350,9 @@ pub struct ManaRestrictions {
     pub is_snow: bool,
 }
 
-/// A player's mana pool. Cleared at the end of each phase (CR 106.4).
+/// A player's mana pool. It empties as each step and phase ends (CR 106.4,
+/// 500.5): the step machine calls [`ManaPool::empty_as_step_ends`] at every
+/// transition, and the cleanup step, which ends the turn, clears it.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ManaPool {
     pub pool: Vec<ManaUnit>,
@@ -369,6 +371,11 @@ impl ManaPool {
     }
 
     pub fn clear(&mut self) { self.pool.clear(); }
+
+    /// CR 500.5 — "As a step or phase ends ... any unspent mana left in a
+    /// player's mana pool empties." A turn-based action: it uses no stack and
+    /// emits no event, and on an empty pool it does nothing at all.
+    pub fn empty_as_step_ends(&mut self) { self.pool.clear(); }
 
     pub fn len(&self) -> usize { self.pool.len() }
     pub fn is_empty(&self) -> bool { self.pool.is_empty() }
@@ -1166,6 +1173,24 @@ mod tests {
         p.add_mana(ManaColor::Red, 1, 0);
         assert_eq!(p.count_color(ManaColor::Colorless), 2);
         assert_eq!(p.count_color(ManaColor::Red), 1);
+    }
+
+    #[test]
+    fn manapool_empties_as_a_step_ends() {
+        let mut p = ManaPool::new();
+        p.add_mana(ManaColor::Red, 2, 0);
+        p.add(ManaUnit {
+            color: ManaColor::Green,
+            source: 7,
+            restrictions: ManaRestrictions {
+                spend_only_on: Some(SpendRestriction::OnlyCastCreatureSpells),
+                is_snow: true,
+            },
+        });
+        p.empty_as_step_ends();
+        assert!(p.is_empty(), "restricted and snow mana empty with the rest");
+        p.empty_as_step_ends();
+        assert_eq!(p, ManaPool::new(), "an empty pool stays as it was");
     }
 
     #[test]

@@ -1618,7 +1618,15 @@ mod tests {
     /// agree to decision 410, where player 1's rollouts, now offered
     /// instant-speed activations, score the same five legal actions
     /// differently. The fixture is re-recorded on the repaired engine, so
-    /// it now pins true-state play there. Two fingerprints (FNV-1a) hold it.
+    /// it now pins true-state play there. A1.5ce's repair, mana pools
+    /// emptying as each step ends, changed the game again: the two agree
+    /// to decision 108, in turn 5's declare attackers step, where player 1,
+    /// offered the same four actions, used to activate a mana ability
+    /// whose mana stayed in its pool to the end of the turn, and now
+    /// passes; the older game went on to pay for two spells with mana
+    /// floated in an earlier step (decisions 146 and 390 of its 477). The
+    /// fixture is re-recorded again, at 390 decisions. Two fingerprints
+    /// (FNV-1a) hold it.
     /// The portable one covers every scored candidate's index, every action and
     /// how far the deciding policy's stream has advanced after it, so a change
     /// in true-state mode's draws fails at the first decision it touches. The
@@ -1668,9 +1676,9 @@ mod tests {
             let (s, y) = step(state, a, &reg);
             state = s; yld = y; decisions += 1;
         };
-        assert_eq!((decisions, result), (477, GameResult::Win(1)));
-        assert_eq!(p, 0x6ea1_44f3_84f7_164f, "portable fingerprint {p:#018x}");
-        assert_eq!(h, 0xbacc_f072_61b3_aaf2, "fingerprint {h:#018x}");
+        assert_eq!((decisions, result), (390, GameResult::Win(1)));
+        assert_eq!(p, 0x14da_cc06_f2a3_4cce, "portable fingerprint {p:#018x}");
+        assert_eq!(h, 0xce13_8217_c500_cb09, "fingerprint {h:#018x}");
     }
 
     /// Give objects `a` and `b` each other's printed identity, keeping their
@@ -1765,9 +1773,11 @@ mod tests {
     /// sees all three, scores them differently. Fails if sampled mode rolls
     /// out from the true state, keeps the game's engine seed in its worlds,
     /// or lets the hidden ids' placement (hand or library, library order)
-    /// reach its worlds. Every state is checked at 150-step rollouts, so that
+    /// reach its worlds. Every state is checked at 400-step rollouts, so that
     /// from the mulligan decision they reach played cards and the reshuffle
-    /// (at 25 true-state mode cannot tell that twin apart there). The
+    /// (at 25 true-state mode cannot tell that twin apart there, and since
+    /// A1.5ce, with mana pools emptying as each step ends, not at 150
+    /// either, where the guard ran before). The
     /// registered depth is held by
     /// [`sampled_vmc_ignores_which_hidden_ids_sit_in_hand`].
     #[test]
@@ -1777,7 +1787,7 @@ mod tests {
         for (k, (state, decider, legal)) in guard_states(&reg, &decks).into_iter().enumerate() {
             let twin = visible_twin(&state, &reg, decider);
             let truth = |st: &GameState| {
-                ValueMcPolicy::with_budget(Box::new(MaterialValue), 31, 6, 150, 10)
+                ValueMcPolicy::with_budget(Box::new(MaterialValue), 31, 6, 400, 10)
                     .score_actions(st, &reg, decider, &legal)
             };
             assert_ne!(bits(&truth(&state)), bits(&truth(&twin)),
@@ -1796,7 +1806,7 @@ mod tests {
                 assert_eq!(world(&state, seed), world(&twin, seed), "state {k}: world {seed} differs");
             }
             let sampled = || ValueMcPolicy::sampled_with_budget(
-                Box::new(MaterialValue), 31, 6, 150, 10, decks.clone());
+                Box::new(MaterialValue), 31, 6, 400, 10, decks.clone());
             assert_eq!(bits(&sampled().score_actions(&state, &reg, decider, &legal)),
                        bits(&sampled().score_actions(&twin, &reg, decider, &legal)),
                        "state {k}: sampled mode scored the twin differently");
