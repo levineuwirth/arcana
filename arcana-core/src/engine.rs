@@ -3750,9 +3750,9 @@ fn cleanup_step(state: &mut GameState) {
     state.clear_per_turn_trigger_ledger();
 
     // CR 500.5 — the cleanup step ends and the turn with it: empty each
-    // player's mana pool. Every other step's end empties them in
-    // `begin_step`, which this transition, announcing no step, never
-    // reaches.
+    // player's mana pool, mana kept "until end of turn" included (CR
+    // 514.2). Every other step's end empties them in `begin_step`, which
+    // this transition, announcing no step, never reaches.
     for p in 0..state.num_players() {
         state.player_mut(p).mana_pool.clear();
     }

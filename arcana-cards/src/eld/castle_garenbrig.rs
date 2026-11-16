@@ -83,6 +83,7 @@ fn ramp_six_green(
                 spend_only_on: Some(SpendRestriction::OnlyCastCreatureSpells),
                 is_snow: false,
             },
+            kept_until_end_of_turn: false,
         })
         .collect();
     vec![Effect::AddMana { player: ctx.controller, mana }]

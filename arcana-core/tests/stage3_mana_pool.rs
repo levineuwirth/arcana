@@ -8,10 +8,13 @@ use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::engine::{advance_phase, step};
 use arcana_core::events::{GameEvent, MoveCause};
 use arcana_core::legal_actions::legal_actions;
-use arcana_core::mana::ManaCost;
+use arcana_core::mana::{ManaCost, ManaUnit};
 use arcana_core::objects::{Characteristics, GameObject, ObjectId};
 use arcana_core::priority::SpecialAction;
-use arcana_core::registry::{CardDefinition, CardRegistry, SpellAbilityDef};
+use arcana_core::registry::{
+    ActivatedAbilityDef, ActivationContext, ActivationCost, ActivationZone, CardDefinition,
+    CardRegistry, SpellAbilityDef,
+};
 use arcana_core::stack::StackEntry;
 use arcana_core::state::GameState;
 use arcana_core::turn::{Phase, Step};
@@ -19,14 +22,33 @@ use arcana_core::types::{ColorSet, ManaColor, PlayerId, PtValue, TypeLine};
 use arcana_core::zones::Zone;
 
 const TOLL: &str = "Ce Test Toll";
+const BATTERY: &str = "Ce Test Battery";
 const BOLT: &str = "Lightning Bolt";
 const BEARS: &str = "Grizzly Bears";
 
 /// The catalog plus Toll, a sorcery: "You may pay {2}. If you do, draw a
-/// card."
+/// card.", and Battery, an artifact: "{T}: Add {R}{R}. Until end of turn,
+/// you don't lose this mana as steps and phases end."
 fn registry() -> CardRegistry {
     let mut r = CardRegistry::new();
     arcana_cards::register_all::register_all(&mut r);
+    let battery = r.interner_mut().intern(BATTERY);
+    r.register(CardDefinition::new(battery, Characteristics {
+        name: battery,
+        mana_cost: Some(ManaCost::parse("{2}").unwrap()),
+        types: TypeLine::ARTIFACT.into(),
+        ..Default::default()
+    }).with_activated_ability(ActivatedAbilityDef {
+        text: "{T}: Add {R}{R}. Until end of turn, you don't lose this mana as steps and phases end.".into(),
+        cost: ActivationCost::tap_only(),
+        target_requirements: Vec::new(),
+        is_mana_ability: true,
+        is_loyalty_ability: false,
+        activation_zone: ActivationZone::Battlefield,
+        is_instant_speed: false,
+        face_gate: None,
+        effect: battery_mana,
+    }));
     let toll = r.interner_mut().intern(TOLL);
     r.register(CardDefinition::new(toll, Characteristics {
         name: toll,
@@ -41,6 +63,13 @@ fn registry() -> CardRegistry {
         effect: toll_resolve,
     }));
     r
+}
+
+fn battery_mana(_: &GameState, ctx: &ActivationContext, _: &CardRegistry) -> Vec<Effect> {
+    vec![Effect::AddMana {
+        player: ctx.controller,
+        mana: vec![ManaUnit::plain(ManaColor::Red, ctx.source).keep_until_end_of_turn(); 2],
+    }]
 }
 
 fn toll_resolve(_: &GameState, entry: &StackEntry, _: &CardRegistry) -> Vec<Effect> {
@@ -469,5 +498,84 @@ fn an_empty_pool_at_a_step_end_changes_nothing() {
         assert_eq!(pools(&floating), [0, 0]);
         assert_eq!(format!("{plain:?}"), format!("{floating:?}"),
             "active {active}: the emptied game is the game that never floated");
+    }
+}
+
+/// The marker, on a synthetic card. Battery's two mana, tapped for in the
+/// upkeep, are there in every later step of the turn while a Mountain's
+/// mana beside them goes with the upkeep; one pays for a spell in the
+/// second main phase; the other is still there during the cleanup step's
+/// discard and gone when the turn has ended.
+#[test]
+fn kept_mana_survives_step_ends_and_empties_at_cleanup() {
+    let r = registry();
+    for (keeper, active) in arrangements() {
+        let mut s = table(&r, active, keeper, Phase::Beginning, Step::Upkeep);
+        let battery = enter(&mut s, &r, keeper, BATTERY);
+        let mountain = enter(&mut s, &r, keeper, "Mountain");
+        let bolt = add(&mut s, &r, keeper, BOLT, Zone::Hand(keeper));
+        for _ in 0..8 { add(&mut s, &r, active, "Island", Zone::Hand(active)); }
+        let turn = s.turn.turn_number;
+        let mut s = tap(tap(s, &r, battery), &r, mountain);
+        let held = |s: &GameState| s.player(keeper).mana_pool.total();
+        assert_eq!(held(&s), 3, "two kept and one ordinary");
+        let mut entered = Vec::new();
+        while (s.turn.phase, s.turn.step) != (Phase::Ending, Step::End) {
+            s = next_step(s, &r);
+            entered.push((s.turn.phase, s.turn.step));
+            if (s.turn.phase, s.turn.step) == (Phase::PostCombatMain, Step::Main) {
+                assert_eq!(held(&s), 2);
+                // Kept mana is spent like any other: the keeper casts a Bolt
+                // with it, whoever's turn it is, and it resolves.
+                s = until(s, &r, |s| s.priority_player() == keeper
+                    && offered(s, &r, |a| matches!(a, Action::CastSpell { object_id, .. } if *object_id == bolt)));
+                s = act(s, &r, |a| matches!(a, Action::CastSpell { object_id, targets, .. }
+                    if *object_id == bolt && format!("{targets:?}").contains(&format!("Player({})", 1 - keeper))));
+                s = until(s, &r, |s| s.stack_is_empty());
+                assert_eq!(s.player(1 - keeper).life, 17);
+                assert_eq!((s.turn.phase, s.turn.step), (Phase::PostCombatMain, Step::Main));
+                assert_eq!(held(&s), 1);
+            } else if s.turn.step != Step::End {
+                assert_eq!(held(&s), 2, "keeper {keeper}, active {active}: entering {:?}", s.turn.step);
+            }
+            assert!(s.player(keeper).mana_pool.iter().all(|u| u.kept_until_end_of_turn),
+                "only kept mana is left, the Mountain's went with the upkeep");
+        }
+        assert_eq!(entered, [
+            (Phase::Beginning, Step::Draw),
+            (Phase::PreCombatMain, Step::Main),
+            (Phase::Combat, Step::BeginCombat),
+            (Phase::Combat, Step::DeclareAttackers),
+            (Phase::Combat, Step::DeclareBlockers),
+            (Phase::Combat, Step::CombatDamageRegular),
+            (Phase::Combat, Step::EndCombat),
+            (Phase::PostCombatMain, Step::Main),
+            (Phase::Ending, Step::End),
+        ]);
+        assert_eq!(held(&s), 1);
+        let s = until(s, &r, |s| s.priority.in_special_action());
+        assert_eq!(here(&s), (turn, Phase::Ending, Step::Cleanup));
+        assert_eq!(held(&s), 1, "kept until end of turn: still there while the cleanup step discards");
+        let s = until(s, &r, |s| s.turn.turn_number != turn);
+        assert_eq!((s.turn.phase, s.turn.step), (Phase::Beginning, Step::Upkeep));
+        assert_eq!(pools(&s), [0, 0], "keeper {keeper}, active {active}: and gone with the turn");
+    }
+}
+
+/// Kept mana in a pool makes the step's end no louder: the game with two
+/// kept mana is, apart from that pool, the game with none.
+#[test]
+fn kept_mana_at_a_step_end_changes_nothing_else() {
+    let r = registry();
+    for active in [0, 1] {
+        let plain = table(&r, active, active, Phase::PreCombatMain, Step::Main);
+        let mut kept = plain.clone();
+        for _ in 0..2 {
+            kept.player_mut(active).mana_pool.add(ManaUnit::plain(ManaColor::Red, 0).keep_until_end_of_turn());
+        }
+        let (plain, mut kept) = (next_step(plain, &r), next_step(kept, &r));
+        assert_eq!(kept.player(active).mana_pool.total(), 2);
+        kept.player_mut(active).mana_pool.clear();
+        assert_eq!(format!("{plain:?}"), format!("{kept:?}"));
     }
 }
