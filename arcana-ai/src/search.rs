@@ -23,7 +23,7 @@ use std::collections::HashMap;
 
 use arcana_core::actions::Action;
 use arcana_core::engine::{new_game, step, EngineYield};
-use arcana_core::legal_actions::{is_mana_activation, pending_choice_asks_mana};
+use arcana_core::legal_actions::{is_mana_activation, legal_actions, pending_choice_asks_mana};
 use arcana_core::registry::CardRegistry;
 use arcana_core::state::{GameResult, GameState};
 use arcana_core::objects::ObjectId;
@@ -34,6 +34,7 @@ use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
 use crate::information_set::{determinize, project, sample_world, DeckList};
+use crate::plays::{top_candidates, Candidate, KeptPlan};
 
 /// A policy that chooses an action given the live game state (so it can
 /// simulate). `decider` is the player to move — the policy maximizes that
@@ -370,6 +371,10 @@ pub struct ValueMcPolicy {
     pub rollout_step_cap: u32,
     pub max_candidates: usize,
     sampled: Option<SampledWorlds>,
+    /// The rest of a play this policy chose and is carrying out (A1.5ci).
+    plan: KeptPlan,
+    #[cfg(test)]
+    pub(crate) top: TopRule,
 }
 
 /// Sampled-state mode's own state: the seat-ordered decklists worlds are
@@ -383,13 +388,14 @@ struct SampledWorlds {
 
 impl ValueMcPolicy {
     pub fn new(value: Box<dyn ValueFn>, seed: u64) -> Self {
-        Self { value, rng: ChaCha8Rng::seed_from_u64(seed),
-               rollouts: 10, rollout_step_cap: 30, max_candidates: 16, sampled: None }
+        Self::with_budget(value, seed, 10, 30, 16)
     }
     pub fn with_budget(value: Box<dyn ValueFn>, seed: u64, rollouts: u32,
                        cap: u32, max_candidates: usize) -> Self {
         Self { value, rng: ChaCha8Rng::seed_from_u64(seed),
-               rollouts, rollout_step_cap: cap, max_candidates, sampled: None }
+               rollouts, rollout_step_cap: cap, max_candidates, sampled: None,
+               plan: KeptPlan::default(),
+               #[cfg(test)] top: TopRule::Plays }
     }
     /// As [`Self::with_budget`], but rolling out from worlds sampled from the
     /// decider's view (`decks` are the seats' starting decklists, as PIMC
@@ -406,16 +412,35 @@ impl ValueMcPolicy {
     pub fn is_sampled(&self) -> bool {
         self.sampled.is_some()
     }
-    fn candidate_indices(&mut self, legal: &[Action]) -> Vec<usize> {
-        select_candidates(legal, self.max_candidates, &mut self.rng)
+    /// The pool its candidates are selected from: [`top_candidates`].
+    fn pool(&self, state: &GameState, registry: &CardRegistry, decider: PlayerId,
+            legal: &[Action]) -> Vec<Candidate> {
+        #[cfg(test)]
+        if self.top != TopRule::Plays {
+            return self.top.pool(state, registry, decider, legal);
+        }
+        top_candidates(state, registry, decider, legal)
     }
-    /// Each evaluated candidate's index into `legal` and its mean rollout
-    /// value for `decider`, in evaluation order; [`StatePolicy::choose`] takes
-    /// the first strict maximum. Candidates are selected before any world is
-    /// sampled, from the first stream in both modes.
+    /// Each evaluated candidate's index ([`Candidate::index`]: into `legal`,
+    /// or past its end for a play) and its mean rollout value for `decider`,
+    /// in evaluation order; [`StatePolicy::choose`] takes the first strict
+    /// maximum. Candidates are selected before any world is sampled, from
+    /// the first stream in both modes.
     pub fn score_actions(&mut self, state: &GameState, registry: &CardRegistry,
                          decider: PlayerId, legal: &[Action]) -> Vec<(usize, f32)> {
-        let cands = self.candidate_indices(legal);
+        self.score_candidates(state, registry, decider, legal).into_iter()
+            .map(|(c, v)| (c.index, v)).collect()
+    }
+    /// [`Self::score_actions`] with each candidate whole: its index and the
+    /// actions it takes.
+    pub fn score_candidates(&mut self, state: &GameState, registry: &CardRegistry,
+                            decider: PlayerId, legal: &[Action]) -> Vec<(Candidate, f32)> {
+        let pool = self.pool(state, registry, decider, legal);
+        self.score_pool(state, registry, decider, legal, pool)
+    }
+    fn score_pool(&mut self, state: &GameState, registry: &CardRegistry,
+                  decider: PlayerId, legal: &[Action], pool: Vec<Candidate>) -> Vec<(Candidate, f32)> {
+        let picks = select_candidates(&pool, self.max_candidates, &mut self.rng);
         let worlds: Option<Vec<GameState>> = self.sampled.as_mut().map(|w| {
             let view = project(state, decider);
             (0..self.rollouts)
@@ -426,17 +451,24 @@ impl ValueMcPolicy {
                 })
                 .collect()
         });
-        cands
+        // Each world's own legal list, against which a play's first tap is
+        // checked; only when a play is among the candidates.
+        let any_play = picks.iter().any(|&k| pool[k].plan.len() > 1);
+        let world_legal: Option<Vec<Vec<Action>>> = worlds.as_ref().filter(|_| any_play)
+            .map(|ws| ws.iter().map(|w| legal_actions(w, registry)).collect());
+        picks
             .into_iter()
-            .map(|ci| {
+            .map(|k| {
+                let plan = &pool[k].plan;
                 let v = match &worlds {
-                    None => score_candidate(state, registry, decider, &legal[ci],
+                    None => score_candidate(state, registry, decider, plan, legal,
                         self.value.as_ref(), self.rollouts, self.rollout_step_cap, &mut self.rng),
-                    Some(ws) => score_candidate_from(|r| &ws[r as usize], registry, decider,
-                        &legal[ci], self.value.as_ref(), self.rollouts, self.rollout_step_cap,
-                        &mut self.rng),
+                    Some(ws) => score_candidate_from(|r| &ws[r as usize],
+                        |r| world_legal.as_ref().map_or(&[][..], |l| &l[r as usize][..]),
+                        registry, decider, plan, self.value.as_ref(), self.rollouts,
+                        self.rollout_step_cap, &mut self.rng),
                 };
-                (ci, v)
+                (pool[k].clone(), v)
             })
             .collect()
     }
@@ -452,10 +484,11 @@ impl ValueMcPolicy {
         if legal.is_empty() {
             return Vec::new();
         }
-        let mut scored: Vec<ScoredAction> = self.score_actions(state, registry, decider, legal)
+        let mut scored: Vec<ScoredAction> = self.score_candidates(state, registry, decider, legal)
             .into_iter()
-            .map(|(index, value)| ScoredAction {
-                index, value, win_pct: 100.0 * crate::calibrate::win_probability(value),
+            .map(|(c, value)| ScoredAction {
+                index: c.index, value, win_pct: 100.0 * crate::calibrate::win_probability(value),
+                plan: c.plan,
             })
             .collect();
         scored.sort_by(|a, b| b.value.partial_cmp(&a.value).unwrap_or(std::cmp::Ordering::Equal));
@@ -465,71 +498,151 @@ impl ValueMcPolicy {
 impl StatePolicy for ValueMcPolicy {
     fn choose(&mut self, state: &GameState, registry: &CardRegistry,
               decider: PlayerId, legal: &[Action]) -> Action {
+        if let Some(a) = self.plan.next(state, decider, legal) { return a; }
         if legal.len() <= 1 { return legal[0].clone(); }
-        let scored = self.score_actions(state, registry, decider, legal);
-        let mut best_idx = scored[0].0;
+        let pool = self.pool(state, registry, decider, legal);
+        if pool.len() <= 1 { return take(&mut self.plan, &pool[0], state, decider); }
+        let scored = self.score_pool(state, registry, decider, legal, pool);
+        let mut best = 0usize;
         let mut best_avg = f32::NEG_INFINITY;
-        for (ci, avg) in scored {
-            if avg > best_avg { best_avg = avg; best_idx = ci; }
+        for (k, (_, avg)) in scored.iter().enumerate() {
+            if *avg > best_avg { best_avg = *avg; best = k; }
         }
-        legal[best_idx].clone()
+        take(&mut self.plan, &scored[best].0, state, decider)
     }
 }
 
-/// Sub-sample candidate action indices for a value-MC decision: if `legal` fits
-/// in `max_candidates` take all of it, else a random subset that ALWAYS retains
-/// `PassPriority` (the do-nothing baseline every suggestion is measured against).
-/// [`ValueMcPolicy`]'s, so its [`ValueMcPolicy::rank_actions`], the analysis
-/// panel's backend, selects as its choice does. (PIMC/IS-MCTS use the seedless
-/// [`stable_candidate_subset`] instead — they need per-decision stability.)
-fn select_candidates(legal: &[Action], max_candidates: usize, rng: &mut ChaCha8Rng) -> Vec<usize> {
-    if legal.len() <= max_candidates {
-        return (0..legal.len()).collect();
+/// Which pool a search's candidates come from (A1.5ci). Only `Plays`,
+/// [`top_candidates`], ships; the other two exist in test builds alone, for
+/// the head-to-heads that measure the repair. `Every` is the selection
+/// before A1.5ci, every legal action; `Filter` is handoff 14's probe filter,
+/// the legal list with mana abilities left out outside the decider's own
+/// main phase and outside a choice that asks for mana, unless only conceding
+/// would be left (a measurement, never a design: it also removes every cast
+/// on the opponent's turn).
+#[cfg(test)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum TopRule {
+    Plays,
+    Every,
+    Filter,
+}
+
+#[cfg(test)]
+impl TopRule {
+    pub(crate) fn pool(self, state: &GameState, registry: &CardRegistry, decider: PlayerId,
+                       legal: &[Action]) -> Vec<Candidate> {
+        use crate::plays::every_action;
+        match self {
+            TopRule::Plays => top_candidates(state, registry, decider, legal),
+            TopRule::Every => every_action(legal),
+            TopRule::Filter => {
+                let set_aside = legal.iter().any(|a| matches!(a, Action::ActivateAbility { .. }))
+                    && !pending_choice_asks_mana(state, registry)
+                    && !(state.turn.active_player == decider && state.turn.phase.is_main());
+                let kept: Vec<Candidate> = every_action(legal).into_iter()
+                    .filter(|c| !(set_aside && is_mana_activation(state, &c.plan[0], registry)))
+                    .collect();
+                if kept.iter().all(|c| c.plan[0].is_concede()) { every_action(legal) } else { kept }
+            }
+        }
     }
-    let mut idxs: Vec<usize> = (0..legal.len()).collect();
+}
+
+/// The first action of the chosen candidate, keeping the rest of a play.
+fn take(plan: &mut KeptPlan, chosen: &Candidate, state: &GameState, decider: PlayerId) -> Action {
+    plan.keep(&chosen.plan, state, decider);
+    chosen.plan[0].clone()
+}
+
+/// Sub-sample candidates for a value-MC decision, as positions in `pool`: if
+/// `pool` fits in `max_candidates` take all of it, else a random subset that
+/// ALWAYS retains `PassPriority` (the do-nothing baseline every suggestion is
+/// measured against). [`ValueMcPolicy`]'s, so its
+/// [`ValueMcPolicy::rank_actions`], the analysis panel's backend, selects as
+/// its choice does. (PIMC/IS-MCTS use the seedless [`stable_candidate_subset`]
+/// instead — they need per-decision stability.)
+fn select_candidates(pool: &[Candidate], max_candidates: usize, rng: &mut ChaCha8Rng) -> Vec<usize> {
+    if pool.len() <= max_candidates {
+        return (0..pool.len()).collect();
+    }
+    let mut idxs: Vec<usize> = (0..pool.len()).collect();
     idxs.shuffle(rng);
     idxs.truncate(max_candidates);
-    if let Some(p) = legal.iter().position(|a| matches!(a, Action::PassPriority)) {
+    if let Some(p) = pool.iter().position(Candidate::is_pass) {
         if !idxs.contains(&p) { idxs[0] = p; }
     }
     idxs
 }
 
-/// Mean value (from `decider`'s perspective) of taking `action` then playing
-/// `rollouts` short [`play_out`]s of at most `cap` steps each. The single
-/// per-candidate scoring kernel behind [`ValueMcPolicy::choose`] and
-/// [`ValueMcPolicy::rank_actions`], so a policy's pick is its ranking's top line.
+/// Mean value (from `decider`'s perspective) of taking the actions of
+/// `plan` then playing `rollouts` short [`play_out`]s of at most `cap` steps
+/// each. The single per-candidate scoring kernel behind
+/// [`ValueMcPolicy::choose`] and [`ValueMcPolicy::rank_actions`], so a
+/// policy's pick is its ranking's top line. `legal` is the decision's.
+#[allow(clippy::too_many_arguments)]
 fn score_candidate(
-    state: &GameState, registry: &CardRegistry, decider: PlayerId, action: &Action,
-    value_fn: &dyn ValueFn, rollouts: u32, cap: u32, rng: &mut ChaCha8Rng,
+    state: &GameState, registry: &CardRegistry, decider: PlayerId, plan: &[Action],
+    legal: &[Action], value_fn: &dyn ValueFn, rollouts: u32, cap: u32, rng: &mut ChaCha8Rng,
 ) -> f32 {
-    score_candidate_from(|_| state, registry, decider, action, value_fn, rollouts, cap, rng)
+    score_candidate_from(|_| state, |_| legal, registry, decider, plan, value_fn, rollouts, cap, rng)
 }
 
-/// [`score_candidate`] with rollout `r` starting from `start(r)`: the true
-/// state for every rollout in true-state mode, world `r` in sampled-state mode.
+/// [`score_candidate`] with rollout `r` starting from `start(r)`, whose
+/// legal list is `legal(r)`: the true state for every rollout in true-state
+/// mode, world `r` in sampled-state mode.
 #[allow(clippy::too_many_arguments)]
-fn score_candidate_from<'s>(
-    start: impl Fn(u32) -> &'s GameState, registry: &CardRegistry, decider: PlayerId,
-    action: &Action, value_fn: &dyn ValueFn, rollouts: u32, cap: u32, rng: &mut ChaCha8Rng,
+fn score_candidate_from<'s, 'l>(
+    start: impl Fn(u32) -> &'s GameState, legal: impl Fn(u32) -> &'l [Action],
+    registry: &CardRegistry, decider: PlayerId, plan: &[Action], value_fn: &dyn ValueFn,
+    rollouts: u32, cap: u32, rng: &mut ChaCha8Rng,
 ) -> f32 {
     let mut sum = 0.0f32;
     for r in 0..rollouts {
-        let (s, y) = step(start(r).clone(), action.clone(), registry);
+        let (s, y) = apply_plan(start(r).clone(), plan, legal(r), registry, decider);
         let leaf = play_out(s, y, registry, cap, rng);
         sum += value_fn.value(&leaf, decider);
     }
     sum / rollouts.max(1) as f32
 }
 
-/// One ranked candidate action: its `index` into the `legal` slice (the same
-/// index the frontend sends back to apply it), its mean rollout `value` from the
-/// decider's perspective, and the calibrated `win_pct` of that value.
+/// Apply a candidate's actions in order. A play's are the decider's own
+/// mana abilities and then its cast, planned from its own permanents and
+/// hand, so each is legal in the true state and in every world sampled
+/// from the decider's view, and the decider keeps the decision between
+/// them: anything else is a bug, and panics. `legal` is the starting
+/// state's legal list. A game that ends part way (a pain land's damage)
+/// ends there.
+fn apply_plan(state: GameState, plan: &[Action], legal: &[Action], registry: &CardRegistry,
+              decider: PlayerId) -> (GameState, EngineYield) {
+    if plan.len() > 1 {
+        assert!(legal.contains(&plan[0]), "a play's first action is not legal here: {:?}", plan[0]);
+    }
+    let (mut s, mut y) = step(state, plan[0].clone(), registry);
+    for a in &plan[1..] {
+        match &y {
+            EngineYield::GameOver(_) => break,
+            EngineYield::PendingDecision { player, legal_actions, .. } => assert!(
+                *player == decider && legal_actions.contains(a),
+                "a play's next action is not legal here: {a:?}"),
+        }
+        (s, y) = step(s, a.clone(), registry);
+    }
+    (s, y)
+}
+
+/// One ranked candidate: its `index` into the `legal` slice (the same index
+/// the frontend sends back to apply it), or past its end for a play, its
+/// mean rollout `value` from the decider's perspective, the calibrated
+/// `win_pct` of that value, and the actions it takes.
 #[derive(Clone, Debug)]
 pub struct ScoredAction {
     pub index: usize,
     pub value: f32,
     pub win_pct: f32,
+    /// The actions it takes: `[legal[index]]`, or a play's taps and cast,
+    /// whose `index` is past the end of `legal` ([`Candidate::index`]).
+    pub plan: Vec<Action>,
 }
 
 /// Pick a "make progress" action index, mirroring the random-game harness /
@@ -679,15 +792,20 @@ pub struct FlatMonteCarloPolicy {
     /// are sub-sampled to stay tractable; `PassPriority` is always kept so
     /// "do nothing" is considered).
     pub max_candidates: usize,
+    /// The rest of a play this policy chose and is carrying out (A1.5ci).
+    plan: KeptPlan,
+    #[cfg(test)]
+    pub(crate) top: TopRule,
 }
 impl FlatMonteCarloPolicy {
     pub fn new(seed: u64) -> Self {
-        Self { rng: ChaCha8Rng::seed_from_u64(seed),
-               rollouts: 20, rollout_step_cap: 300, max_candidates: 16 }
+        Self::with_budget(seed, 20, 300, 16)
     }
     pub fn with_budget(seed: u64, rollouts: u32, cap: u32, max_candidates: usize) -> Self {
         Self { rng: ChaCha8Rng::seed_from_u64(seed),
-               rollouts, rollout_step_cap: cap, max_candidates }
+               rollouts, rollout_step_cap: cap, max_candidates,
+               plan: KeptPlan::default(),
+               #[cfg(test)] top: TopRule::Plays }
     }
 
     /// Play `state`/`yld` out with progress-biased random until decided or the
@@ -698,39 +816,39 @@ impl FlatMonteCarloPolicy {
         value(&final_state, decider)
     }
 
-    /// Candidate indices to evaluate: all of `legal` if small, else a random
-    /// sample of `max_candidates` (always including a PassPriority if present).
-    fn candidate_indices(&mut self, legal: &[Action]) -> Vec<usize> {
-        use arcana_core::actions::Action as A;
-        if legal.len() <= self.max_candidates {
-            return (0..legal.len()).collect();
+    /// The pool its candidates are selected from: [`top_candidates`].
+    fn pool(&self, state: &GameState, registry: &CardRegistry, decider: PlayerId,
+            legal: &[Action]) -> Vec<Candidate> {
+        #[cfg(test)]
+        if self.top != TopRule::Plays {
+            return self.top.pool(state, registry, decider, legal);
         }
-        let mut idxs: Vec<usize> = (0..legal.len()).collect();
-        idxs.shuffle(&mut self.rng);
-        idxs.truncate(self.max_candidates);
-        if let Some(p) = legal.iter().position(|a| matches!(a, A::PassPriority)) {
-            if !idxs.contains(&p) { idxs[0] = p; }
-        }
-        idxs
+        top_candidates(state, registry, decider, legal)
     }
 }
 impl StatePolicy for FlatMonteCarloPolicy {
+    /// Candidates to evaluate: all of the pool if small, else a random sample
+    /// of `max_candidates` (always including a PassPriority if present), as
+    /// [`select_candidates`] draws it.
     fn choose(&mut self, state: &GameState, registry: &CardRegistry,
               decider: PlayerId, legal: &[Action]) -> Action {
+        if let Some(a) = self.plan.next(state, decider, legal) { return a; }
         if legal.len() <= 1 { return legal[0].clone(); }
-        let candidates = self.candidate_indices(legal);
-        let mut best_idx = candidates[0];
+        let pool = self.pool(state, registry, decider, legal);
+        if pool.len() <= 1 { return take(&mut self.plan, &pool[0], state, decider); }
+        let candidates = select_candidates(&pool, self.max_candidates, &mut self.rng);
+        let mut best = candidates[0];
         let mut best_avg = f32::NEG_INFINITY;
-        for ci in candidates {
+        for k in candidates {
             let mut sum = 0.0f32;
             for _ in 0..self.rollouts {
-                let (s, y) = step(state.clone(), legal[ci].clone(), registry);
+                let (s, y) = apply_plan(state.clone(), &pool[k].plan, legal, registry, decider);
                 sum += self.rollout_value(s, y, registry, decider);
             }
             let avg = sum / self.rollouts.max(1) as f32;
-            if avg > best_avg { best_avg = avg; best_idx = ci; }
+            if avg > best_avg { best_avg = avg; best = k; }
         }
-        legal[best_idx].clone()
+        take(&mut self.plan, &pool[best], state, decider)
     }
 }
 
@@ -950,23 +1068,39 @@ pub struct PimcPolicy {
     pub rollout_step_cap: u32,
     /// Cap on candidate actions evaluated (`PassPriority` always kept).
     pub max_candidates: usize,
+    /// The rest of a play this policy chose and is carrying out (A1.5ci).
+    plan: KeptPlan,
+    #[cfg(test)]
+    pub(crate) top: TopRule,
 }
 
 impl PimcPolicy {
     pub fn new(seed: u64, decks: Vec<DeckList>) -> Self {
-        Self { rng: ChaCha8Rng::seed_from_u64(seed), decks,
-               samples: 60, rollout_step_cap: 250, max_candidates: 16 }
+        Self::with_budget(seed, decks, 60, 250, 16)
     }
     pub fn with_budget(seed: u64, decks: Vec<DeckList>, samples: u32,
                        cap: u32, max_candidates: usize) -> Self {
         Self { rng: ChaCha8Rng::seed_from_u64(seed), decks,
-               samples, rollout_step_cap: cap, max_candidates }
+               samples, rollout_step_cap: cap, max_candidates,
+               plan: KeptPlan::default(),
+               #[cfg(test)] top: TopRule::Plays }
     }
 
-    /// Stable candidate subset (always keeping a `PassPriority`); see
-    /// [`stable_candidate_subset`] for the A-2 bias story.
-    fn candidates(&self, legal: &[Action]) -> Vec<Action> {
-        stable_candidate_subset(legal, self.max_candidates)
+    /// The pool its candidates are selected from: [`top_candidates`].
+    fn pool(&self, state: &GameState, registry: &CardRegistry, decider: PlayerId,
+            legal: &[Action]) -> Vec<Candidate> {
+        #[cfg(test)]
+        if self.top != TopRule::Plays {
+            return self.top.pool(state, registry, decider, legal);
+        }
+        top_candidates(state, registry, decider, legal)
+    }
+
+    /// Stable candidate subset of the pool (always keeping a `PassPriority`);
+    /// see [`stable_candidate_subset`] for the A-2 bias story.
+    fn candidates(&self, pool: Vec<Candidate>) -> Vec<Candidate> {
+        let keep = stable_pool_subset(&pool, self.max_candidates);
+        keep.into_iter().map(|k| pool[k].clone()).collect()
     }
 }
 
@@ -1000,14 +1134,45 @@ fn stable_candidate_subset(legal: &[Action], cap: usize) -> Vec<Action> {
     out
 }
 
-/// One candidate action scored by PIMC — its mean rollout value for the player
-/// to move, in roughly `[-1, 1]` (higher = better). The reusable output of
+/// [`stable_candidate_subset`] over a candidate pool, as positions in it. A
+/// pool of single actions is seeded from the same hash of the same list, and
+/// so keeps the same subset; a pool with plays hashes its plans.
+fn stable_pool_subset(pool: &[Candidate], cap: usize) -> Vec<usize> {
+    if pool.len() <= cap {
+        return (0..pool.len()).collect();
+    }
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    if pool.iter().all(|c| c.plan.len() == 1) {
+        let actions: Vec<&Action> = pool.iter().map(|c| &c.plan[0]).collect();
+        format!("{actions:?}").hash(&mut h);
+    } else {
+        let plans: Vec<&Vec<Action>> = pool.iter().map(|c| &c.plan).collect();
+        format!("{plans:?}").hash(&mut h);
+    }
+    let mut rng = ChaCha8Rng::seed_from_u64(h.finish());
+    let mut out: Vec<usize> = (0..pool.len()).collect();
+    out.shuffle(&mut rng);
+    out.truncate(cap);
+    if !out.iter().any(|&k| pool[k].is_pass()) {
+        if let Some(p) = pool.iter().position(Candidate::is_pass) {
+            out[0] = p;
+        }
+    }
+    out
+}
+
+/// One candidate scored by PIMC — its mean rollout value for the player to
+/// move, in roughly `[-1, 1]` (higher = better). The reusable output of
 /// [`PimcPolicy::score_actions`]; also the dense teacher signal for value
-/// distillation (`crate::learn::learn_value_from_pimc_scores`).
+/// distillation (`crate::learn::learn_value_from_pimc_scores`). `action` is
+/// what [`StatePolicy::choose`] returns for it, the first of `plan`'s
+/// actions: the action itself, or a play's first tap.
 #[derive(Clone, Debug)]
 pub struct PimcScoredAction {
     pub action: Action,
     pub score: f32,
+    pub plan: Vec<Action>,
 }
 
 impl PimcPolicy {
@@ -1027,17 +1192,27 @@ impl PimcPolicy {
         if legal.len() <= 1 {
             return legal
                 .iter()
-                .map(|a| PimcScoredAction { action: a.clone(), score: 0.0 })
+                .map(|a| PimcScoredAction { action: a.clone(), score: 0.0, plan: vec![a.clone()] })
                 .collect();
         }
+        let pool = self.pool(state, registry, decider, legal);
+        self.score_pool(state, registry, decider, pool)
+    }
+
+    fn score_pool(&mut self, state: &GameState, registry: &CardRegistry, decider: PlayerId,
+                  pool: Vec<Candidate>) -> Vec<PimcScoredAction> {
         let view = project(state, decider);
-        let cands = self.candidates(legal);
+        let cands = self.candidates(pool);
+        let any_play = cands.iter().any(|c| c.plan.len() > 1);
         let mut sums = vec![0.0f32; cands.len()];
         for _ in 0..self.samples {
             let seed = self.rng.gen::<u64>();
             let world = determinize(&view, &self.decks, registry, seed);
-            for (i, a) in cands.iter().enumerate() {
-                let (w, y) = step(world.clone(), a.clone(), registry);
+            // The world's own legal list, against which a play's first tap
+            // is checked; only when a play is among the candidates.
+            let world_legal = if any_play { legal_actions(&world, registry) } else { Vec::new() };
+            for (i, c) in cands.iter().enumerate() {
+                let (w, y) = apply_plan(world.clone(), &c.plan, &world_legal, registry, decider);
                 let final_state = play_out(w, y, registry, self.rollout_step_cap, &mut self.rng);
                 sums[i] += value(&final_state, decider);
             }
@@ -1046,7 +1221,7 @@ impl PimcPolicy {
         cands
             .into_iter()
             .enumerate()
-            .map(|(i, a)| PimcScoredAction { action: a, score: sums[i] / n })
+            .map(|(i, c)| PimcScoredAction { action: c.plan[0].clone(), score: sums[i] / n, plan: c.plan })
             .collect()
     }
 }
@@ -1054,15 +1229,20 @@ impl PimcPolicy {
 impl StatePolicy for PimcPolicy {
     fn choose(&mut self, state: &GameState, registry: &CardRegistry,
               decider: PlayerId, legal: &[Action]) -> Action {
+        if let Some(a) = self.plan.next(state, decider, legal) { return a; }
         if legal.len() <= 1 { return legal[0].clone(); }
+        let pool = self.pool(state, registry, decider, legal);
+        if pool.len() <= 1 { return take(&mut self.plan, &pool[0], state, decider); }
         // argmax over the scored candidates — first-strict-max (ties → lowest
         // index), identical to the pre-refactor tie-break.
-        let scored = self.score_actions(state, registry, decider, legal);
+        let scored = self.score_pool(state, registry, decider, pool);
         let mut best = 0usize;
         for i in 1..scored.len() {
             if scored[i].score > scored[best].score { best = i; }
         }
-        scored[best].action.clone()
+        let chosen = &scored[best];
+        self.plan.keep(&chosen.plan, state, decider);
+        chosen.action.clone()
     }
 }
 
@@ -1281,6 +1461,7 @@ pub fn round_robin(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::plays::Candidate;
 
     /// The play-styles are genuinely distinct leaves — aggressive weights favor
     /// offense over defense/cards, every leaf stays finite/bounded, and all agree
@@ -1460,6 +1641,9 @@ mod tests {
     /// Mountain, Forest, Lightning Bolt, Grizzly Bears and Prodigal Sorcerer
     /// ("{T}: 1 damage to any target", not a mana ability) from the catalog,
     /// and Toll, an instant: "You may pay {2}. If you do, draw a card."
+    /// For A1.5ci also Tundra ("{T}: Add {W}." then "{T}: Add {U}."),
+    /// Disintegrate ({X}{R}: X damage to any target), Burst Lightning ({R},
+    /// kicker {4}), and Study, a {U} sorcery with no effect.
     struct RuleCards {
         reg: CardRegistry,
         mountain: CardId,
@@ -1468,6 +1652,10 @@ mod tests {
         bears: CardId,
         sorcerer: CardId,
         toll: CardId,
+        tundra: CardId,
+        disintegrate: CardId,
+        burst: CardId,
+        study: CardId,
     }
 
     fn rule_cards() -> RuleCards {
@@ -1505,7 +1693,24 @@ mod tests {
             modal: None,
             effect: toll_resolve,
         }));
-        RuleCards { reg, mountain, forest, bolt, bears, sorcerer, toll }
+        fn study_resolve(_: &GameState, _: &StackEntry, _: &CardRegistry) -> Vec<Effect> { Vec::new() }
+        let tundra = arcana_cards::lea::tundra::register(&mut reg);
+        let disintegrate = arcana_cards::lea::disintegrate::register(&mut reg);
+        let burst = arcana_cards::zen::burst_lightning::register(&mut reg);
+        let name = reg.interner_mut().intern("Rule Test Study");
+        let study = reg.register(CardDefinition::new(name, Characteristics {
+            name,
+            mana_cost: Some(ManaCost::parse("{U}").unwrap()),
+            colors: ColorSet::blue(),
+            types: TypeLine::SORCERY.into(),
+            ..Default::default()
+        }).with_spell_ability(SpellAbilityDef {
+            text: "Nothing happens.".into(),
+            target_requirements: Vec::new(),
+            modal: None,
+            effect: study_resolve,
+        }));
+        RuleCards { reg, mountain, forest, bolt, bears, sorcerer, toll, tundra, disintegrate, burst, study }
     }
 
     /// `active`'s turn at `phase` and `step`, `holder` with priority, and ten
@@ -1869,6 +2074,414 @@ mod tests {
             "the games hold each kind of decision: {plain} without a mana ability, {first} in the own main phase, {aside} elsewhere");
     }
 
+    // --- A1.5ci: plays as candidates at the top of the search ---------------
+
+    /// `decider` holding priority with an empty pool, `lands` untapped on its
+    /// battlefield and `hand` in its hand: in its own precombat main phase
+    /// (`own`), or in the opponent's upkeep. The state, its legal list and
+    /// the hand's ids.
+    fn plays_table(c: &RuleCards, decider: PlayerId, own: bool, lands: &[CardId], hand: &[CardId])
+        -> (GameState, Vec<Action>, Vec<ObjectId>)
+    {
+        use arcana_core::turn::{Phase, Step};
+        let mut s = if own {
+            rule_table(c, decider, Phase::PreCombatMain, Step::Main, decider)
+        } else {
+            rule_table(c, 1 - decider, Phase::Beginning, Step::Upkeep, decider)
+        };
+        for &l in lands { rule_enter(&mut s, c, decider, l); }
+        let ids = hand.iter().map(|&h| rule_add(&mut s, c, decider, h, Zone::Hand(decider))).collect();
+        let legal = arcana_core::legal_actions::legal_actions(&s, &c.reg);
+        assert!(s.player(decider).mana_pool.is_empty());
+        (s, legal, ids)
+    }
+
+    /// The decklists a sampler needs for a `plays_table` state: each seat's
+    /// every card, wherever it is.
+    fn table_decks(s: &GameState) -> Vec<DeckList> {
+        (0..s.num_players()).map(|p| s.objects.iter().filter(|o| o.owner == p)
+            .map(|o| o.card_id).collect()).collect()
+    }
+
+    fn lone_mana(s: &GameState, c: &RuleCards, cands: &[Candidate]) -> usize {
+        cands.iter().filter(|k| k.plan.len() == 1 && is_mana_activation(s, &k.plan[0], &c.reg)).count()
+    }
+
+    /// Apply a candidate's plan to a clone, each action from the legal list of
+    /// the moment, `decider` deciding throughout; the state after it.
+    fn run_plan(s: &GameState, c: &RuleCards, decider: PlayerId, plan: &[Action]) -> GameState {
+        let mut s = s.clone();
+        for a in plan {
+            let legal = arcana_core::legal_actions::legal_actions(&s, &c.reg);
+            assert!(legal.contains(a), "planned {a:?} is not legal");
+            assert_eq!(s.priority.player, decider);
+            s = step(s, a.clone(), &c.reg).0;
+        }
+        s
+    }
+
+    /// A1.5ci: in its own main phase with an empty pool, two Forests and
+    /// Grizzly Bears in hand, a search's candidates are the pass, conceding
+    /// and one play, the two taps then the cast, and no lone mana ability;
+    /// the play, applied, puts the Bears on the stack. In both seats. Before
+    /// the repair the candidates were the legal list: two lone taps.
+    #[test]
+    fn the_candidates_are_the_cast_with_its_taps_and_no_lone_mana_ability() {
+        let c = rule_cards();
+        for decider in [0, 1] {
+            let (s, legal, hand) = plays_table(&c, decider, true, &[c.forest, c.forest], &[c.bears]);
+            assert_eq!(legal.iter().filter(|a| is_mana_activation(&s, a, &c.reg)).count(), 2);
+            assert!(!legal.iter().any(|a| matches!(a, Action::CastSpell { .. })), "nothing is castable yet");
+            let cands = top_candidates(&s, &c.reg, decider, &legal);
+            assert_eq!(lone_mana(&s, &c, &cands), 0, "seat {decider}: a lone tap is a candidate");
+            let plays: Vec<&Candidate> = cands.iter().filter(|k| k.is_play(legal.len())).collect();
+            assert_eq!(plays.len(), 1, "seat {decider}: {cands:?}");
+            let p = &plays[0].plan;
+            assert_eq!(p.len(), 3);
+            assert!(p[..2].iter().all(|a| is_mana_activation(&s, a, &c.reg)));
+            assert!(matches!(p[2], Action::CastSpell { object_id, .. } if object_id == hand[0]));
+            assert_eq!(plays[0].index, legal.len());
+            for k in cands.iter().filter(|k| !k.is_play(legal.len())) {
+                assert_eq!(k.plan, vec![legal[k.index].clone()]);
+            }
+            assert!(cands.iter().any(Candidate::is_pass));
+            let after = run_plan(&s, &c, decider, p);
+            assert!(after.objects.objects_in_zone(Zone::Stack).any(|o| o.card_id == c.bears),
+                "the Bears are cast");
+        }
+    }
+
+    /// A1.5ci: on the opponent's turn, with a Mountain and Lightning Bolt in
+    /// hand, Bolt is a play for each target the legal list would enumerate
+    /// once the mana floats, and no lone tap is a candidate; handoff 14's
+    /// probe filter, beside it, offers no cast at all. In both seats.
+    #[test]
+    fn an_instant_on_the_opponents_turn_is_a_play() {
+        let c = rule_cards();
+        for decider in [0, 1] {
+            let (s, legal, hand) = plays_table(&c, decider, false, &[c.mountain], &[c.bolt]);
+            let bolts = arcana_core::legal_actions::potential_actions(&s, decider, &c.reg).into_iter()
+                .filter(|a| matches!(a, Action::CastSpell { .. })).count();
+            assert!(bolts >= 2, "Bolt has a target in each player");
+            let cands = top_candidates(&s, &c.reg, decider, &legal);
+            assert_eq!(lone_mana(&s, &c, &cands), 0);
+            let plays: Vec<&Candidate> = cands.iter().filter(|k| k.is_play(legal.len())).collect();
+            assert_eq!(plays.len(), bolts, "seat {decider}: a play for each Bolt target");
+            for k in &plays {
+                assert_eq!(k.plan.len(), 2);
+                assert!(matches!(k.plan[1], Action::CastSpell { object_id, .. } if object_id == hand[0]));
+                run_plan(&s, &c, decider, &k.plan);
+            }
+            let filtered = TopRule::Filter.pool(&s, &c.reg, decider, &legal);
+            assert!(!filtered.iter().any(|k| k.plan.iter().any(|a| matches!(a, Action::CastSpell { .. }))),
+                "the probe filter casts nothing here");
+        }
+    }
+
+    /// A1.5ci: in a choice that asks for mana (Toll's "you may pay {2}"), every
+    /// legal action is a candidate, the two untapped Mountains' abilities
+    /// among them, on the opponent's turn and in the decider's own main phase.
+    /// In both seats.
+    #[test]
+    fn a_choice_that_asks_for_mana_keeps_its_mana_abilities_as_candidates() {
+        let c = rule_cards();
+        for decider in [0, 1] {
+            for own_main in [false, true] {
+                let (s, legal) = toll_window(&c, decider, own_main);
+                let cands = top_candidates(&s, &c.reg, decider, &legal);
+                assert_eq!(cands, crate::plays::every_action(&legal));
+                assert_eq!(lone_mana(&s, &c, &cands), 2);
+            }
+        }
+    }
+
+    /// A1.5ci: with three Mountains and Disintegrate ({X}{R}) in hand, the
+    /// plays are each target at each X the Mountains can pay, 0 to 2, and
+    /// each taps X + 1 of them. The planner the web client's one-click cast
+    /// uses taps only until some Disintegrate is legal, which is X = 0. In
+    /// both seats.
+    #[test]
+    fn an_x_spell_gives_a_play_per_payable_x_each_tapped_for_its_x() {
+        let c = rule_cards();
+        for decider in [0, 1] {
+            let lands = [c.mountain, c.mountain, c.mountain];
+            let (s, legal, hand) = plays_table(&c, decider, true, &lands, &[c.disintegrate]);
+            let auto = arcana_core::legal_actions::auto_tap_sequence(&s, &c.reg, decider, hand[0]).unwrap();
+            assert_eq!(auto.len(), 1, "the one-click planner stops at the first tap: {auto:?}");
+            let cands = top_candidates(&s, &c.reg, decider, &legal);
+            let mut seen = Vec::new();
+            for k in cands.iter().filter(|k| k.is_play(legal.len())) {
+                let Some(Action::CastSpell { x_value: Some(x), targets, .. }) = k.plan.last() else {
+                    panic!("a play ends in the cast: {k:?}");
+                };
+                assert_eq!(k.plan.len() as u32, x + 2, "X = {x} taps {} Mountains", x + 1);
+                let after = run_plan(&s, &c, decider, &k.plan);
+                assert!(after.player(decider).mana_pool.is_empty(), "X = {x} spends all it taps");
+                seen.push((*x, format!("{targets:?}")));
+            }
+            for x in 0..=2u32 {
+                assert_eq!(seen.iter().filter(|(v, _)| *v == x).count(), 2,
+                    "seat {decider}: one play for each player as target at X = {x}: {seen:?}");
+            }
+            assert_eq!(seen.len(), 6);
+        }
+    }
+
+    /// A1.5ci: a variant that costs more than its card's cheapest, Burst
+    /// Lightning kicked, is a play of its own, tapped for its whole cost: on
+    /// the opponent's turn with five Mountains, each target unkicked taps one
+    /// Mountain and kicked taps all five. In both seats.
+    #[test]
+    fn a_kicked_variant_is_a_play_tapped_for_its_kicker() {
+        let c = rule_cards();
+        for decider in [0, 1] {
+            let (s, legal, _) = plays_table(&c, decider, false, &[c.mountain; 5], &[c.burst]);
+            let cands = top_candidates(&s, &c.reg, decider, &legal);
+            let mut taps: Vec<usize> = cands.iter().filter(|k| k.is_play(legal.len()))
+                .map(|k| k.plan.len() - 1).collect();
+            taps.sort_unstable();
+            assert_eq!(taps, vec![1, 1, 5, 5], "seat {decider}: {cands:?}");
+            for k in cands.iter().filter(|k| k.is_play(legal.len())) {
+                let after = run_plan(&s, &c, decider, &k.plan);
+                assert!(after.player(decider).mana_pool.is_empty());
+            }
+        }
+    }
+
+    /// A1.5ci: a card only a dual land's second color pays for is still a
+    /// play. `potential_actions` colors Tundra by its first ability, {W}, and
+    /// misses a {U} sorcery; the candidates hold the play that taps Tundra for
+    /// {U} and casts it. In both seats.
+    #[test]
+    fn a_dual_lands_second_color_still_makes_a_play() {
+        let c = rule_cards();
+        for decider in [0, 1] {
+            let (s, legal, hand) = plays_table(&c, decider, true, &[c.tundra], &[c.study]);
+            assert!(!arcana_core::legal_actions::potential_actions(&s, decider, &c.reg).iter()
+                .any(|a| matches!(a, Action::CastSpell { .. })), "the cheap list misses the {{U}} cast");
+            let cands = top_candidates(&s, &c.reg, decider, &legal);
+            let plays: Vec<&Candidate> = cands.iter().filter(|k| k.is_play(legal.len())).collect();
+            assert_eq!(plays.len(), 1, "seat {decider}: {cands:?}");
+            assert!(matches!(plays[0].plan[1], Action::CastSpell { object_id, .. } if object_id == hand[0]));
+            let after = run_plan(&s, &c, decider, &plays[0].plan);
+            assert!(after.objects.objects_in_zone(Zone::Stack).any(|o| o.card_id == c.study),
+                "Study is cast");
+            assert_eq!(lone_mana(&s, &c, &cands), 0);
+        }
+    }
+
+    /// The first `n` decisions of each seat, past the mulligans, where a
+    /// search would have a play among its candidates, reached by random play
+    /// of the catalog's sample decks 4 and 9.
+    fn decisions_with_plays(reg: &CardRegistry, decks: &[Vec<CardId>], n: usize)
+        -> Vec<(GameState, PlayerId, Vec<Action>, Vec<Candidate>)>
+    {
+        let mut out = Vec::new();
+        let mut per_seat = [0usize; 2];
+        for game in 0..8u64 {
+            let (mut state, mut yld) = new_game(decks.to_vec(), reg, 90 + game);
+            let mut rand = RandomStatePolicy::new(game);
+            for _ in 0..3000 {
+                let EngineYield::PendingDecision { player, legal_actions, .. } = yld else { break };
+                if per_seat[player as usize] < n && state.turn.turn_number >= 2 {
+                    let cands = top_candidates(&state, reg, player, &legal_actions);
+                    if cands.iter().any(|k| k.is_play(legal_actions.len())) {
+                        out.push((state.clone(), player, legal_actions.clone(), cands));
+                        per_seat[player as usize] += 1;
+                    }
+                }
+                let a = rand.choose(&state, reg, player, &legal_actions);
+                let (s, y) = step(state, a, reg);
+                state = s; yld = y;
+            }
+            if per_seat == [n, n] { break; }
+        }
+        assert_eq!(per_seat, [n, n], "each seat reaches {n} decisions with a play");
+        out
+    }
+
+    /// A1.5ci: plays come from the decider's own legal list and permanents,
+    /// so each play's every action is legal, with the decider deciding, in
+    /// every world sampled from its view, by A2.2's sampler and by PIMC's,
+    /// and both search modes score the decisions (`apply_plan` asserts it
+    /// there too). Six decisions with plays in each seat.
+    #[test]
+    fn a_plays_actions_are_legal_in_every_sampled_world() {
+        let reg = arcana_cards::build_catalog();
+        let decks = vec![arcana_cards::sample_deck(&reg, 4), arcana_cards::sample_deck(&reg, 9)];
+        let mut checked = 0;
+        for (state, decider, legal, cands) in decisions_with_plays(&reg, &decks, 6) {
+            let view = project(&state, decider);
+            for seed in 0..12u64 {
+                for world in [sample_world(&view, &decks, &reg, seed, seed ^ 7),
+                              determinize(&view, &decks, &reg, seed)] {
+                    for k in cands.iter().filter(|k| k.is_play(legal.len())) {
+                        let mut w = world.clone();
+                        for a in &k.plan {
+                            let wl = arcana_core::legal_actions::legal_actions(&w, &reg);
+                            assert!(wl.contains(a), "world {seed}: planned {a:?} is not legal");
+                            assert_eq!(w.priority.player, decider);
+                            w = step(w, a.clone(), &reg).0;
+                        }
+                        checked += 1;
+                    }
+                }
+            }
+            ValueMcPolicy::sampled_with_budget(Box::new(MaterialValue), 3, 3, 20, 32, decks.clone())
+                .score_actions(&state, &reg, decider, &legal);
+            PimcPolicy::with_budget(3, decks.clone(), 3, 20, 32).score_actions(&state, &reg, decider, &legal);
+        }
+        assert!(checked >= 12 * 2 * 12, "{checked} plays checked");
+    }
+
+    /// A1.5ci: a chosen play is carried out over the following decisions
+    /// without a search and ends in its cast; a plan whose next action is no
+    /// longer legal, a decision of another player and a new game each drop
+    /// the plan, and the policy searches again. With a Mountain and Lightning
+    /// Bolt on the opponent's turn the search bolts the opponent: the tap, then
+    /// the cast. `vmc-material` in both modes, PIMC and flat Monte Carlo, in
+    /// both seats; two policies at one seed choose alike.
+    #[test]
+    fn a_chosen_play_is_carried_out_and_a_stale_plan_dropped() {
+        let c = rule_cards();
+        for decider in [0, 1] {
+            let (s, legal, hand) = plays_table(&c, decider, false, &[c.mountain, c.mountain], &[c.bolt]);
+            let decks = table_decks(&s);
+            type Make<'a> = Box<dyn Fn() -> Box<dyn StatePolicy> + 'a>;
+            let makers: Vec<(&str, Make)> = vec![
+                ("vmc", Box::new(|| Box::new(ValueMcPolicy::with_budget(Box::new(MaterialValue), 5, 4, 20, 16)))),
+                ("vmc sampled", Box::new(|| Box::new(ValueMcPolicy::sampled_with_budget(
+                    Box::new(MaterialValue), 5, 4, 20, 16, decks.clone())))),
+                ("pimc", Box::new(|| Box::new(PimcPolicy::with_budget(5, decks.clone(), 4, 20, 16)))),
+                ("flat", Box::new(|| Box::new(FlatMonteCarloPolicy::with_budget(5, 4, 20, 16)))),
+            ];
+            for (name, make) in &makers {
+                // Carried out: the tap, then, without a search, the cast.
+                let mut pol = make();
+                let a1 = pol.choose(&s, &c.reg, decider, &legal);
+                assert!(is_mana_activation(&s, &a1, &c.reg), "{name}, seat {decider}: chose {a1:?}");
+                let (s1, y1) = step(s.clone(), a1.clone(), &c.reg);
+                let EngineYield::PendingDecision { player, legal_actions: l1, .. } = y1 else { panic!() };
+                assert_eq!(player, decider);
+                let a2 = pol.choose(&s1, &c.reg, decider, &l1);
+                let Action::CastSpell { object_id, targets, .. } = &a2 else { panic!("{name}: {a2:?}") };
+                assert_eq!(*object_id, hand[0]);
+                assert!(format!("{targets:?}").contains(&format!("Player({})", 1 - decider)),
+                    "{name}, seat {decider}: the Bolt goes at the opponent: {targets:?}");
+                // The same seed chooses alike.
+                let mut twin = make();
+                assert_eq!(twin.choose(&s, &c.reg, decider, &legal), a1);
+                assert_eq!(twin.choose(&s1, &c.reg, decider, &l1), a2);
+                // Stale: after the tap the decider passes, both pass, and the
+                // upkeep ends with the pool; the planned cast is gone.
+                let mut pol = make();
+                let a1 = pol.choose(&s, &c.reg, decider, &legal);
+                let s2 = rule_act(step(s.clone(), a1, &c.reg).0, &c, |_, a| a.is_pass());
+                let s2 = rule_act(s2, &c, |_, a| a.is_pass());
+                assert_ne!(s2.turn.step, arcana_core::turn::Step::Upkeep);
+                let l2 = arcana_core::legal_actions::legal_actions(&s2, &c.reg);
+                let who = s2.priority.player;
+                let a = pol.choose(&s2, &c.reg, who, &l2);
+                assert!(l2.contains(&a), "{name}: a stale plan's cast came back: {a:?}");
+                // Another decider, then the decider again: dropped.
+                let mut pol = make();
+                let a1 = pol.choose(&s, &c.reg, decider, &legal);
+                let (s1, y1) = step(s.clone(), a1, &c.reg);
+                let EngineYield::PendingDecision { legal_actions: l1, .. } = y1 else { panic!() };
+                let mut other = s1.clone();
+                other.priority.give_to(1 - decider);
+                let lo = arcana_core::legal_actions::legal_actions(&other, &c.reg);
+                let ao = pol.choose(&other, &c.reg, 1 - decider, &lo);
+                assert!(lo.contains(&ao));
+                let again = pol.choose(&s1, &c.reg, decider, &l1);
+                assert!(l1.contains(&again));
+                // A new game: dropped.
+                let mut pol = make();
+                pol.choose(&s, &c.reg, decider, &legal);
+                let (ng, ny) = new_game(decks.clone(), &c.reg, 3);
+                let EngineYield::PendingDecision { player, legal_actions, .. } = ny else { panic!() };
+                let a = pol.choose(&ng, &c.reg, player, &legal_actions);
+                assert!(legal_actions.contains(&a), "{name}: a plan crossed into a new game");
+            }
+        }
+    }
+
+    /// A1.5ci: `KeptPlan` itself. It returns the planned actions in order
+    /// while each is legal and the same player decides in the same step, and
+    /// drops the rest at the first that is not, at another decider, in
+    /// another step and at an empty plan.
+    #[test]
+    fn a_kept_plan_runs_in_order_and_drops_on_any_change() {
+        let c = rule_cards();
+        let (s, legal, _) = plays_table(&c, 0, true, &[c.forest, c.forest], &[c.bears]);
+        let play = top_candidates(&s, &c.reg, 0, &legal).into_iter()
+            .find(|k| k.is_play(legal.len())).unwrap().plan;
+        let mut plan = KeptPlan::default();
+        assert_eq!(plan.next(&s, 0, &legal), None, "an empty plan");
+        plan.keep(&play, &s, 0);
+        let s1 = step(s.clone(), play[0].clone(), &c.reg).0;
+        let l1 = arcana_core::legal_actions::legal_actions(&s1, &c.reg);
+        assert_eq!(plan.next(&s1, 1, &l1), None, "another decider drops it");
+        assert!(plan.rest().is_empty());
+        plan.keep(&play, &s, 0);
+        assert_eq!(plan.next(&s1, 0, &l1), Some(play[1].clone()));
+        let s2 = step(s1, play[1].clone(), &c.reg).0;
+        let l2 = arcana_core::legal_actions::legal_actions(&s2, &c.reg);
+        assert_eq!(plan.next(&s2, 0, &l2), Some(play[2].clone()), "the plan ends in its cast");
+        assert_eq!(plan.next(&s2, 0, &l2), None);
+        plan.keep(&play, &s, 0);
+        let mut later = s.clone();
+        later.turn.step = arcana_core::turn::Step::End;
+        later.turn.phase = arcana_core::turn::Phase::Ending;
+        assert_eq!(plan.next(&later, 0, &legal), None, "another step drops it");
+        plan.keep(&play, &s, 0);
+        assert_eq!(plan.next(&s, 0, &legal[..1]), None, "an action no longer legal drops it");
+        assert!(plan.rest().is_empty());
+    }
+
+    /// The test arm `TopRule::Every` is the selection before A1.5ci: on the
+    /// guard game's states, with or without mana abilities, `vmc-material`
+    /// and PIMC under it choose and score what the policy did at `e276894a`
+    /// would, which the recorded fixture checks over a whole game; here, that
+    /// the pool is the legal list itself, and that over it both selections
+    /// draw what they drew before: `select_candidates` the subset the
+    /// verbatim copy below draws at the same seed, and `stable_pool_subset`
+    /// the subset `stable_candidate_subset` keeps, whose text is unchanged.
+    #[test]
+    fn the_test_arm_every_is_the_legal_list() {
+        /// `select_candidates` as it stood at `e276894a`, verbatim.
+        fn select_candidates_before_a15ci(legal: &[Action], max_candidates: usize, rng: &mut ChaCha8Rng) -> Vec<usize> {
+            if legal.len() <= max_candidates {
+                return (0..legal.len()).collect();
+            }
+            let mut idxs: Vec<usize> = (0..legal.len()).collect();
+            idxs.shuffle(rng);
+            idxs.truncate(max_candidates);
+            if let Some(p) = legal.iter().position(|a| matches!(a, Action::PassPriority)) {
+                if !idxs.contains(&p) { idxs[0] = p; }
+            }
+            idxs
+        }
+        let reg = arcana_cards::build_catalog();
+        let decks = vec![arcana_cards::sample_deck(&reg, 4), arcana_cards::sample_deck(&reg, 9)];
+        let mut subsets = 0;
+        for (state, decider, legal) in guard_states(&reg, &decks) {
+            let pool = TopRule::Every.pool(&state, &reg, decider, &legal);
+            assert_eq!(pool, crate::plays::every_action(&legal));
+            for cap in 1..legal.len() {
+                for seed in 0..16 {
+                    assert_eq!(select_candidates(&pool, cap, &mut ChaCha8Rng::seed_from_u64(seed)),
+                               select_candidates_before_a15ci(&legal, cap, &mut ChaCha8Rng::seed_from_u64(seed)));
+                }
+                let kept: Vec<Action> = stable_pool_subset(&pool, cap).into_iter()
+                    .map(|k| pool[k].plan[0].clone()).collect();
+                assert_eq!(kept, stable_candidate_subset(&legal, cap));
+                subsets += 1;
+            }
+        }
+        assert!(subsets >= 2, "a subset is drawn only below the legal list's length");
+    }
+
     /// A recorded random match round-trips through JSON, replays to the same
     /// final state, and renders to a readable snapshot.
     #[test]
@@ -2077,7 +2690,15 @@ mod tests {
     /// actions, used to pass with a land in hand and now plays it; nothing
     /// in the engine moved, and the choice changed in its rollouts. The
     /// fixture is re-recorded at 1080 decisions. Two fingerprints
-    /// (FNV-1a) hold it.
+    /// (FNV-1a) hold it. A1.5ci's plays as candidates changed it again: the
+    /// two agree to decision 106 and part at decision 107, in turn 5's
+    /// declare attackers step, where the old selection activated a mana
+    /// ability whose mana the step's end would empty, and the new one passes.
+    /// With plays the game is 1006 decisions and player 1 wins; its 86 mana
+    /// abilities lose mana at one step end, where the old game's 216 lost it
+    /// at 76. The 1080-decision game is kept as the record of the test arm
+    /// `TopRule::Every`, the selection before the repair, which must still
+    /// play it exactly.
     /// The portable one covers every scored candidate's index, every action and
     /// how far the deciding policy's stream has advanced after it, so a change
     /// in true-state mode's draws fails at the first decision it touches. The
@@ -2093,16 +2714,43 @@ mod tests {
     /// first strict maximum of those scores.
     #[test]
     fn vmc_true_state_game_matches_the_recorded_fixture() {
+        let plays = fixture_game(TopRule::Plays);
+        assert_eq!((plays.0, plays.1), (PLAYS_FIXTURE.0, PLAYS_FIXTURE.1));
+        assert_eq!(plays.2, PLAYS_FIXTURE.2, "portable fingerprint {:#018x}", plays.2);
+        assert_eq!(plays.3, PLAYS_FIXTURE.3, "fingerprint {:#018x}", plays.3);
+        let every = fixture_game(TopRule::Every);
+        assert_eq!((every.0, every.1), (1080, GameResult::Win(0)));
+        assert_eq!(every.2, 0xd1fd_1860_41db_d8c7, "portable fingerprint {:#018x}", every.2);
+        assert_eq!(every.3, 0x39a5_ebea_8c4d_b895, "fingerprint {:#018x}", every.3);
+    }
+
+    /// The fixture game with plays as candidates: its decisions, result and
+    /// two fingerprints.
+    const PLAYS_FIXTURE: (u32, GameResult, u64, u64) =
+        (1006, GameResult::Win(1), 0x9248_41f1_03cd_2b9e, 0x3c61_904d_3b60_7a13);
+
+    /// The fixture game with `top` as the pool both seats search: decisions,
+    /// result, the portable fingerprint, the scores' fingerprint, and the
+    /// actions in order. A decision that carries out a kept play is not
+    /// scored (the policy does not search there); its action must be the
+    /// play's next one.
+    fn fixture_game(top: TopRule) -> (u32, GameResult, u64, u64, Vec<Action>) {
         fn eat(h: &mut u64, b: &[u8]) { for &x in b { *h ^= x as u64; *h = h.wrapping_mul(0x0100_0000_01b3); } }
         const FNV: u64 = 0xcbf2_9ce4_8422_2325;
         let reg = arcana_cards::build_catalog();
         let decks = vec![arcana_cards::sample_deck(&reg, 4), arcana_cards::sample_deck(&reg, 9)];
-        let pair = || [ValueMcPolicy::with_budget(Box::new(MaterialValue), 11, 6, 25, 10),
-                       ValueMcPolicy::with_budget(Box::new(MaterialValue), 12, 6, 25, 10)];
+        let pair = || {
+            let mut pair = [ValueMcPolicy::with_budget(Box::new(MaterialValue), 11, 6, 25, 10),
+                            ValueMcPolicy::with_budget(Box::new(MaterialValue), 12, 6, 25, 10)];
+            for p in &mut pair { p.top = top; }
+            pair
+        };
         let (mut players, mut scorers) = (pair(), pair());
+        let mut following: [Vec<Action>; 2] = [Vec::new(), Vec::new()];
         let (mut state, mut yld) = new_game(decks, &reg, 2026);
         let (mut h, mut p) = (FNV, FNV);
         let mut decisions = 0;
+        let mut actions = Vec::new();
         let result = loop {
             let (player, legal) = match yld {
                 EngineYield::PendingDecision { player, legal_actions, .. } => (player, legal_actions),
@@ -2112,24 +2760,27 @@ mod tests {
             // Production choice plays the game; the scorer, in lockstep on the
             // same stream, holds the scores it must be the first maximum of.
             let a = players[player as usize].choose(&state, &reg, player, &legal);
-            if legal.len() > 1 {
-                let sc = scorers[player as usize].score_actions(&state, &reg, player, &legal);
-                let (mut bi, mut bv) = (sc[0].0, f32::NEG_INFINITY);
-                for &(i, v) in &sc {
-                    eat(&mut h, format!("{i}:{};", v.to_bits()).as_bytes());
-                    eat(&mut p, format!("{i};").as_bytes());
-                    if v > bv { bv = v; bi = i; }
+            let next = &mut following[player as usize];
+            if !next.is_empty() {
+                assert_eq!(a, next.remove(0), "decision {decisions}: the kept play is carried out");
+            } else if legal.len() > 1 {
+                let sc = scorers[player as usize].score_candidates(&state, &reg, player, &legal);
+                let (mut bi, mut bv) = (0, f32::NEG_INFINITY);
+                for (k, (cand, v)) in sc.iter().enumerate() {
+                    eat(&mut h, format!("{}:{};", cand.index, v.to_bits()).as_bytes());
+                    eat(&mut p, format!("{};", cand.index).as_bytes());
+                    if *v > bv { bv = *v; bi = k; }
                 }
-                assert_eq!(a, legal[bi], "decision {decisions}: choose is not the scores' first maximum");
+                assert_eq!(a, sc[bi].0.plan[0], "decision {decisions}: choose is not the scores' first maximum");
+                *next = sc[bi].0.plan[1..].to_vec();
             }
             eat(&mut h, format!("{a:?};").as_bytes());
             eat(&mut p, format!("{a:?}@{};", players[player as usize].rng.get_word_pos()).as_bytes());
+            actions.push(a.clone());
             let (s, y) = step(state, a, &reg);
             state = s; yld = y; decisions += 1;
         };
-        assert_eq!((decisions, result), (1080, GameResult::Win(0)));
-        assert_eq!(p, 0xd1fd_1860_41db_d8c7, "portable fingerprint {p:#018x}");
-        assert_eq!(h, 0x39a5_ebea_8c4d_b895, "fingerprint {h:#018x}");
+        (decisions, result, p, h, actions)
     }
 
     /// Give objects `a` and `b` each other's printed identity, keeping their
@@ -2299,6 +2950,41 @@ mod tests {
                 assert_eq!(scores(&twin), base, "exchanging hand {h} with library {l} changed the scores");
             }
         }
+    }
+
+    /// A1.5ci beside A2.2's arm-I guard, whose three states offer no play:
+    /// on decisions where plays are among the candidates, a state and its
+    /// visible twin give bit-identical sampled scores and the same choice,
+    /// plays scored, where true-state mode scores them differently. Plays are
+    /// built from the true state's legal list; this holds that what they
+    /// carry into the worlds is the decider's own. Two decisions a seat.
+    #[test]
+    fn sampled_vmc_with_plays_depends_only_on_what_the_decider_sees() {
+        let reg = arcana_cards::build_catalog();
+        let decks = vec![arcana_cards::sample_deck(&reg, 4), arcana_cards::sample_deck(&reg, 9)];
+        let mut per_seat = [0usize; 2];
+        for (state, decider, legal, cands) in decisions_with_plays(&reg, &decks, 12) {
+            if per_seat[decider as usize] == 2 { continue; }
+            let Ok(twin) = std::panic::catch_unwind(|| visible_twin(&state, &reg, decider)) else { continue };
+            let n_plays = cands.iter().filter(|k| k.is_play(legal.len())).count();
+            let sampled = || ValueMcPolicy::sampled_with_budget(
+                Box::new(MaterialValue), 31, 6, 400, 32, decks.clone());
+            let scored = sampled().score_actions(&state, &reg, decider, &legal);
+            assert_eq!(scored.iter().filter(|&&(i, _)| i >= legal.len()).count(), n_plays,
+                "every play is scored");
+            let truth = |st: &GameState| {
+                ValueMcPolicy::with_budget(Box::new(MaterialValue), 31, 6, 400, 32)
+                    .score_actions(st, &reg, decider, &legal)
+            };
+            assert_ne!(bits(&truth(&state)), bits(&truth(&twin)),
+                "true-state mode must tell the twin apart, or the guard has no teeth");
+            assert_eq!(bits(&scored), bits(&sampled().score_actions(&twin, &reg, decider, &legal)),
+                "seat {decider}: sampled mode scored the twin differently");
+            assert_eq!(sampled().choose(&state, &reg, decider, &legal),
+                       sampled().choose(&twin, &reg, decider, &legal));
+            per_seat[decider as usize] += 1;
+        }
+        assert_eq!(per_seat, [2, 2], "two decisions with plays and a visible twin in each seat");
     }
 
     /// A2.2's arm-I guard: both modes select the same candidates at a first

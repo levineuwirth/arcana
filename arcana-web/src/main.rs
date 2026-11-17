@@ -21,6 +21,10 @@
 //! * `POST /autotap`→ body `{ "object_id": N }`, MTGA-style "click to play":
 //!   auto-tap mana for hand card N and cast/play it (or float mana and surface
 //!   the cast variants if a choice remains). Not playable → 400.
+//! * `POST /play`   → body `{ "plan": [Action, …] }`, a suggested play from
+//!   `/suggest` (its mana abilities, then its cast): each action is applied by
+//!   its index in the legal list of the moment. A stale plan → 400, and
+//!   nothing is applied.
 //! * `POST /bottom` → body `{ "ids": [N, …] }`, the London-mulligan bottoming:
 //!   put the chosen cards on the bottom of the library. Malformed → 400.
 //! * `POST /search` → body `CardQuery` (name/colors/types/keywords/cmc/limit), the
@@ -88,6 +92,7 @@ enum Command {
     Action { index: usize, reply: oneshot::Sender<Result<StateResponse, String>> },
     Combat { sub: CombatSubmission, reply: oneshot::Sender<Result<StateResponse, String>> },
     AutoTap { target: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
+    Play { plan: Vec<arcana_core::actions::Action>, reply: oneshot::Sender<Result<StateResponse, String>> },
     Activate { source: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
     SetAutoPass { level: AutoPass, reply: oneshot::Sender<StateResponse> },
     PassUntil { target: PassUntil, reply: oneshot::Sender<StateResponse> },
@@ -487,6 +492,12 @@ struct AutoTapRequest {
     object_id: ObjectId,
 }
 
+/// `POST /play` and `/m/play` body: a suggested play's actions, in order.
+#[derive(Debug, Deserialize)]
+struct PlayRequest {
+    plan: Vec<arcana_core::actions::Action>,
+}
+
 #[derive(Debug, Deserialize)]
 struct BottomRequest {
     ids: Vec<ObjectId>,
@@ -629,6 +640,11 @@ fn run_worker(mut rx: mpsc::UnboundedReceiver<Command>, reg: &'static CardRegist
             Command::AutoTap { target, reply } => {
                 let res = arcana_web::contain(WHAT,
                     || core.auto_tap_and_cast(target).map_err(|e| e.to_string()));
+                let _ = reply.send(res);
+            }
+            Command::Play { plan, reply } => {
+                let res = arcana_web::contain(WHAT,
+                    || core.apply_plan(&plan).map_err(|e| e.to_string()));
                 let _ = reply.send(res);
             }
             Command::Activate { source, reply } => {
@@ -969,6 +985,15 @@ async fn match_autotap(State(app): State<AppState>, Query(at): Query<MatchRef>, 
     match_play_response(&app, &at.code, sender.auto_tap(at.seat, req.object_id).await)
 }
 
+async fn match_play(State(app): State<AppState>, Query(at): Query<MatchRef>, body: String) -> Response {
+    let req: PlayRequest = match serde_json::from_str(&body) {
+        Ok(r) => r,
+        Err(e) => return (StatusCode::BAD_REQUEST, err(format!("invalid /m/play body: {e}"))).into_response(),
+    };
+    let sender = match route_match(&app, &at) { Ok(s) => s, Err(r) => return r };
+    match_play_response(&app, &at.code, sender.play(at.seat, req.plan).await)
+}
+
 async fn match_activate(State(app): State<AppState>, Query(at): Query<MatchRef>, body: String) -> Response {
     let req: AutoTapRequest = match serde_json::from_str(&body) {
         Ok(r) => r,
@@ -1168,6 +1193,24 @@ async fn post_autotap(State(app): State<AppState>, body: String) -> Response {
     };
     let (reply, rx) = oneshot::channel();
     if app.tx.send(Command::AutoTap { target: req.object_id, reply }).is_err() {
+        return worker_gone();
+    }
+    match rx.await {
+        Ok(Ok(resp)) => Json(resp).into_response(),
+        Ok(Err(msg)) => (StatusCode::BAD_REQUEST, err(msg)).into_response(),
+        Err(_) => worker_gone(),
+    }
+}
+
+async fn post_play(State(app): State<AppState>, body: String) -> Response {
+    let req: PlayRequest = match serde_json::from_str(&body) {
+        Ok(r) => r,
+        Err(e) => {
+            return (StatusCode::BAD_REQUEST, err(format!("invalid /play body: {e}"))).into_response()
+        }
+    };
+    let (reply, rx) = oneshot::channel();
+    if app.tx.send(Command::Play { plan: req.plan, reply }).is_err() {
         return worker_gone();
     }
     match rx.await {
@@ -1634,6 +1677,7 @@ fn router(state: AppState) -> Router {
         .route("/action", post(post_action))
         .route("/combat", post(post_combat))
         .route("/autotap", post(post_autotap))
+        .route("/play", post(post_play))
         .route("/activate", post(post_activate))
         .route("/autopass", post(post_autopass))
         .route("/pass-until", post(post_pass_until))
@@ -1671,6 +1715,7 @@ fn router(state: AppState) -> Router {
         .route("/m/action", post(match_action))
         .route("/m/combat", post(match_combat))
         .route("/m/autotap", post(match_autotap))
+        .route("/m/play", post(match_play))
         .route("/m/activate", post(match_activate))
         .route("/m/bottom", post(match_bottom))
         .route("/m/autopass", post(match_autopass))
@@ -1911,6 +1956,93 @@ mod http_tests {
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{body}");
         let (status, body) = send(&s, LAN_PEER, "PUT", at, envelope(1, 100)).await;
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{body}");
+    }
+
+    /// A1.5ci: a suggested play applies through `/play` in a solo duel and
+    /// `/m/play` in a networked one. Each game is walked (keep, play a land,
+    /// else pass) to the first decision whose suggestions hold a play; the
+    /// play's row is posted back and the reply is the new state, and the same
+    /// plan posted again is refused. The networked half also holds
+    /// `/m/suggest` (A1.5cj).
+    #[tokio::test]
+    async fn play_routes_apply_a_suggested_play_in_both_modes() {
+        use serde_json::Value;
+        fn pick(view: &Value) -> usize {
+            let legal = view["legal"].as_array().unwrap();
+            let label = |i: usize| legal[i]["label"].as_str().unwrap().to_string();
+            (0..legal.len()).find(|&i| label(i).starts_with("Play "))
+                .or_else(|| (0..legal.len()).find(|&i| label(i) == "Keep this hand" || label(i) == "Pass"))
+                .or_else(|| (0..legal.len()).find(|&i| label(i) != "Concede"
+                    && label(i) != "Mulligan (draw a new hand)"))
+                .unwrap_or(0)
+        }
+        let s = server("play", true);
+        // Solo.
+        let (_, body) = send(&s, LOOPBACK, "POST", "/new", r#"{"seed":5}"#).await;
+        let mut state: Value = serde_json::from_str(&body).unwrap();
+        let mut played = false;
+        for _ in 0..400 {
+            assert!(state["view"]["game_over"].is_null(), "the solo game ended before a play");
+            let (_, lines) = send(&s, LOOPBACK, "GET", "/suggest", "").await;
+            let lines: Value = serde_json::from_str(&lines).unwrap();
+            if let Some(line) = lines.as_array().unwrap().iter().find(|l| l["plan"].is_array()) {
+                let plan = serde_json::json!({ "plan": line["plan"] }).to_string();
+                let (status, body) = send(&s, LOOPBACK, "POST", "/play", plan.clone()).await;
+                assert_eq!(status, StatusCode::OK, "{body}");
+                let after: Value = serde_json::from_str(&body).unwrap();
+                assert!(after["view"].is_object());
+                let (status, body) = send(&s, LOOPBACK, "POST", "/play", plan).await;
+                assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+                assert!(body.contains("no longer applies"), "{body}");
+                played = true;
+                break;
+            }
+            let idx = pick(&state["view"]);
+            let (status, body) = send(&s, LOOPBACK, "POST", "/action", format!(r#"{{"index":{idx}}}"#)).await;
+            assert_eq!(status, StatusCode::OK, "{body}");
+            state = serde_json::from_str(&body).unwrap();
+        }
+        assert!(played, "the solo panel offered a play");
+
+        // Networked: the host on the loopback, the guest a LAN peer.
+        let (_, body) = send(&s, LOOPBACK, "POST", "/lobby/create", lobby_body(good_deck(), None)).await;
+        let host: Value = serde_json::from_str(&body).unwrap();
+        let code = host["code"].as_str().unwrap().to_string();
+        let (_, body) = send(&s, LAN_PEER, "POST", "/lobby/join", lobby_body(good_deck(), Some(&code))).await;
+        let guest: Value = serde_json::from_str(&body).unwrap();
+        let seats = [(LOOPBACK, host["token"].as_str().unwrap().to_string()),
+                     (LAN_PEER, guest["token"].as_str().unwrap().to_string())];
+        let at = |seat: usize| format!("code={code}&seat={seat}&token={}", seats[seat].1);
+        let mut played = false;
+        'game: for _ in 0..800 {
+            for (seat, &(peer, _)) in seats.iter().enumerate() {
+                let (_, body) = send(&s, peer, "GET", &format!("/m/state?{}", at(seat)), "").await;
+                let st: Value = serde_json::from_str(&body).unwrap();
+                assert!(st["view"]["game_over"].is_null(), "the networked game ended before a play");
+                if st["view"]["legal"].as_array().unwrap().is_empty() { continue; }
+                let (status, lines) = send(&s, peer, "GET", &format!("/m/suggest?{}", at(seat)), "").await;
+                assert_eq!(status, StatusCode::OK, "{lines}");
+                let lines: Value = serde_json::from_str(&lines).unwrap();
+                if let Some(line) = lines.as_array().unwrap().iter().find(|l| l["plan"].is_array()) {
+                    let plan = serde_json::json!({ "plan": line["plan"] }).to_string();
+                    let uri = format!("/m/play?{}", at(seat));
+                    let (status, body) = send(&s, peer, "POST", &uri, plan.clone()).await;
+                    assert_eq!(status, StatusCode::OK, "seat {seat}: {body}");
+                    // Refused as stale, or because the seat no longer decides
+                    // (its auto-pass may have passed after the cast).
+                    let (status, body) = send(&s, peer, "POST", &uri, plan).await;
+                    assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+                    assert!(body.contains("no longer applies") || body.contains("not your turn"), "{body}");
+                    played = true;
+                    break 'game;
+                }
+                let idx = pick(&st["view"]);
+                let (status, body) = send(&s, peer, "POST", &format!("/m/action?{}", at(seat)),
+                    format!(r#"{{"index":{idx}}}"#)).await;
+                assert_eq!(status, StatusCode::OK, "{body}");
+            }
+        }
+        assert!(played, "the networked panel offered a play");
     }
 
     /// A1.5cj: `/m/suggest` ranks a deciding seat's choice, at both budgets.

@@ -1,0 +1,65 @@
+#!/bin/bash
+# top.lsf — A1.5ci's head-to-heads, one game shard per task: one policy on
+# both seats, differing only in the pool its search takes candidates from
+# (plays, the repair; every, the selection before it; filter, handoff 14's
+# probe filter).
+#
+#   cd ~/arcana-runs && bsub -J "arcana-<tag>[1-K]%40" -env "all, ..." < ~/Repos/arcana/arcana-ai/scripts/dtu/top.lsf
+#
+# Runs deck_corpus::tests::top_of_search_shard from the binary build.lsf left
+# in ~/arcana-runs/<commit>/, with CORPUS_SHARD=k/K, k the task index - 1 and
+# K = TOP_K, and writes the shard's config, deck and game rows to
+# <tag>-shard<k>of<K>.csv there. LSF does not forward the submitting shell's
+# environment: every variable goes through bsub -env, and ARCANA_COMMIT pins
+# the commit. The test's variables (TOP_POLICY, TOP_BUDGET, TOP_ARMS,
+# TOP_SEEDS, TOP_FLIPS, TOP_GAME_SECONDS) are documented on it. The arms:
+#   PIMC 16/160/10, plays against every:
+#     -env "all, TOP_TAG=pimc-plays-every, TOP_K=..., TOP_POLICY=pimc,
+#           TOP_ARMS=plays,every, TOP_SEEDS=<first>,<count>, ARCANA_COMMIT=<commit>"
+#   vmc-material 10/30/16, plays against every: as above with TOP_POLICY=vmc
+#   either, plays against handoff 14's filter: TOP_ARMS=plays,filter
+# A seed is 40 games; a shard plays the games whose number is k modulo K.
+#
+# Before playing, a task checks the converted decklists in KAGGLE_DECKS
+# (default ~/arcana-runs/decks) against docs/a2-field/manifest-PI.csv, as
+# field.lsf does, and the test, given CORPUS_MANIFEST, refuses unless the
+# playable decks are exactly the manifest's, by index and name in order.
+#
+# What a run of A2.2's field.lsf taught: a one-slot task runs libtest on one
+# thread, which prints "test <name> ... " before the test's first line, so
+# RUST_TEST_THREADS=2 is set and the test prints an empty line first; grep
+# keeps every row kind the test prints, and --line-buffered keeps every row a
+# task killed at its run limit had finished; and each game is bounded
+# (20,000 actions, 200 permanents, TOP_GAME_SECONDS of wall time, default
+# 1,800), recorded as its ending, so one game cannot cost a shard.
+#BSUB -q hpc
+#BSUB -J arcana-top[1-40]%40
+#BSUB -n 1
+#BSUB -R "rusage[mem=2GB]"
+#BSUB -M 2GB
+#BSUB -W 2:00
+#BSUB -o top_%J_%I.out
+#BSUB -e top_%J_%I.err
+set -euo pipefail
+repo="${ARCANA_REPO:-$HOME/Repos/arcana}"
+commit="${ARCANA_COMMIT:-$(git -C "$repo" rev-parse HEAD)}"
+out="${ARCANA_RUNS:-$HOME/arcana-runs}/$commit"
+decks="${KAGGLE_DECKS:-$HOME/arcana-runs/decks}"
+if [ -n "${TOP_SHARD:-}" ]; then
+  shard="$TOP_SHARD"
+else
+  shard="$(( LSB_JOBINDEX - 1 ))/${TOP_K:?set TOP_K, the number of shards}"
+fi
+k="${shard%/*}"; K="${shard#*/}"
+
+tail -n +2 "$repo/docs/a2-field/manifest-PI.csv" | while IFS=, read -r _idx _name source sha; do
+  got="$(sha256sum "$decks/PI/$source.txt" | cut -c1-64)"
+  [ "$got" = "$sha" ] || { echo "decklist $source: sha256 $got, manifest $sha" >&2; exit 1; }
+done
+
+file="$out/${TOP_TAG:?set TOP_TAG}-shard${k}of${K}.csv"
+KAGGLE_DECKS="$decks" CORPUS_SHARD="$shard" CORPUS_MANIFEST="$repo/docs/a2-field/manifest-PI.csv" \
+  RUST_TEST_THREADS=2 RUST_MIN_STACK=67108864 \
+  "$out/arcana_ai_tests" --ignored --exact deck_corpus::tests::top_of_search_shard --nocapture \
+  | grep --line-buffered -E '^(config|deck|game),' > "$file"
+echo "shard $shard of $TOP_TAG on $(hostname): $(grep -c '^game,' "$file") games"

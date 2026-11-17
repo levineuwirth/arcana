@@ -249,18 +249,24 @@ fn library_stats(state: &GameState, reg: &CardRegistry, seat: PlayerId) -> Libra
     LibraryStats { total, by_type, by_cmc, by_name }
 }
 
-/// One ranked legal action for the cockpit's "suggested lines" panel: the human
+/// One ranked line for the cockpit's "suggested lines" panel: the human
 /// action `index` (the same index `/action` consumes), its readable `label`, the
 /// mean value-MC rollout `value` (~[-1, 1] from the human's seat) and its
 /// calibrated `win_pct`. Sorted by value descending. The search is the bot's,
 /// on sampled worlds (`arcana_ai::search::ValueMcPolicy::rank_actions`), at
-/// the panel's own budget and seed.
+/// the panel's own budget and seed, so its lines are the bot's candidates: a
+/// line can be a play (A1.5ci), the mana abilities that make a cast legal and
+/// the cast, labeled by the cast. A play's `index` is past the end of the
+/// legal list; it carries its `plan`, which `/play` applies
+/// ([`GameCore::apply_plan`]). Every other line has no plan.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Suggestion {
     pub index: usize,
     pub label: String,
     pub value: f32,
     pub win_pct: f32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plan: Option<Vec<Action>>,
 }
 
 /// Fixed RNG seed for [`GameCore::suggest`], so re-querying the SAME position
@@ -396,6 +402,10 @@ pub enum ApplyError {
     /// different seat (a networked client submitting out of turn). `awaiting` is
     /// the seat whose decision is actually pending, if any.
     NotYourTurn { seat: PlayerId, awaiting: Option<PlayerId> },
+    /// A suggested play's action `step` is not legal in the position as it
+    /// stands (the position moved on since the panel ranked it). Nothing was
+    /// applied.
+    StalePlan { step: usize },
 }
 
 impl fmt::Display for ApplyError {
@@ -421,6 +431,9 @@ impl fmt::Display for ApplyError {
                 Some(a) => write!(f, "it's not your turn (you are seat {seat}; seat {a} is to act)"),
                 None => write!(f, "no decision is pending for seat {seat}"),
             },
+            ApplyError::StalePlan { step } => {
+                write!(f, "that suggested play no longer applies (step {step}) — the position has moved on")
+            }
         }
     }
 }
@@ -1232,13 +1245,59 @@ impl GameCore {
         )
         .rank_actions(state, self.reg, seat, &self.legal)
         .into_iter()
-        .map(|s| Suggestion {
-            index: s.index,
-            label: arcana_core::render::render_action(&self.legal[s.index], state, self.reg),
-            value: s.value,
-            win_pct: s.win_pct,
+        .map(|s| {
+            let play = s.index >= self.legal.len();
+            Suggestion {
+                index: s.index,
+                // A play reads as the cast or activation it ends in.
+                label: arcana_core::render::render_action(
+                    s.plan.last().expect("a line takes an action"), state, self.reg),
+                value: s.value,
+                win_pct: s.win_pct,
+                plan: play.then_some(s.plan),
+            }
         })
         .collect()
+    }
+
+    /// Apply a suggested play (a [`Suggestion`]'s `plan`) for the human. See
+    /// [`apply_plan_for`](Self::apply_plan_for).
+    pub fn apply_plan(&mut self, plan: &[Action]) -> Result<StateResponse, ApplyError> {
+        self.apply_plan_for(HUMAN, plan)
+    }
+
+    /// Apply a suggested play for `seat`: each planned action is looked up in
+    /// the legal list of the moment and applied by its index, as `/action`
+    /// applies one. The whole plan is first checked on a clone, each action
+    /// in its moment's legal list with `seat` deciding, so a stale plan is
+    /// refused with [`ApplyError::StalePlan`] and changes nothing.
+    pub fn apply_plan_for(&mut self, seat: PlayerId, plan: &[Action]) -> Result<StateResponse, ApplyError> {
+        self.ensure_turn(seat)?;
+        if plan.is_empty() {
+            return Err(ApplyError::StalePlan { step: 0 });
+        }
+        let mut sim = self.session.state().clone();
+        let mut legal = self.legal.clone();
+        for (step, a) in plan.iter().enumerate() {
+            if !legal.contains(a) {
+                return Err(ApplyError::StalePlan { step });
+            }
+            let (s, y) = arcana_core::engine::step(sim, a.clone(), self.reg);
+            sim = s;
+            legal = match y {
+                arcana_core::engine::EngineYield::PendingDecision { player, legal_actions, .. }
+                    if player == seat => legal_actions,
+                _ if step + 1 == plan.len() => Vec::new(),
+                _ => return Err(ApplyError::StalePlan { step: step + 1 }),
+            };
+        }
+        let mut resp = None;
+        for (step, a) in plan.iter().enumerate() {
+            let index = self.legal.iter().position(|l| l == a)
+                .ok_or(ApplyError::StalePlan { step })?;
+            resp = Some(self.apply_index_for(seat, index)?);
+        }
+        Ok(resp.expect("the plan is not empty"))
     }
 
     /// Apply the human's chosen action by its `index` into the legal list from
@@ -2167,5 +2226,61 @@ mod tests {
                 .rank_actions(&state, reg, HUMAN, &legal));
             assert_ne!(panel, truth, "deep {deep}: the panel matches the true-state ranking");
         }
+    }
+
+    /// A1.5ci: a play row of the suggestion panel applies its whole plan. On
+    /// the first decision with a play among the panel's lines, the row reads
+    /// as its cast, its index is past the legal list, and `apply_plan` taps
+    /// and casts: the record gains exactly the plan's actions and the cast
+    /// leaves the hand. Applied again, the stale plan is refused and nothing
+    /// changes; an action from another position is refused at step 0.
+    #[test]
+    fn a_suggested_play_applies_its_whole_plan() {
+        let reg = leaked_catalog();
+        let (human, opponent) = (arcana_cards::sample_deck(reg, 3), arcana_cards::sample_deck(reg, 9));
+        let mut core = GameCore::new_with_decks(reg, 5, human, opponent);
+        let mut cur = core.snapshot();
+        let mut found = None;
+        for _ in 0..400 {
+            if cur.view.game_over.is_some() { break; }
+            let lines = core.suggest(false);
+            if let Some(l) = lines.into_iter().find(|l| l.plan.is_some()) {
+                found = Some(l);
+                break;
+            }
+            // Keep, play a land when one is offered, else pass.
+            let legal = &core.legal;
+            let idx = legal.iter().position(|a| matches!(a, Action::PlayLand { .. }))
+                .or_else(|| legal.iter().position(|a| matches!(a, Action::MulliganKeep | Action::PassPriority)))
+                .or_else(|| cur.view.legal.iter()
+                    .position(|a| a.label != "Concede" && a.label != "Mulligan (draw a new hand)"))
+                .unwrap_or(0);
+            cur = core.apply_index(idx).expect("a legal index always applies");
+        }
+        let line = found.expect("the panel offers a play");
+        let plan = line.plan.clone().unwrap();
+        assert!(line.index >= core.legal.len() && plan.len() >= 2);
+        let state = core.session.state().clone();
+        let cast = plan.last().unwrap();
+        assert_eq!(line.label, arcana_core::render::render_action(cast, &state, reg));
+        assert!(plan[..plan.len() - 1].iter()
+            .all(|a| arcana_core::legal_actions::is_mana_activation(&state, a, reg)));
+        let card = match cast {
+            Action::CastSpell { object_id, .. } => Some(*object_id),
+            _ => None,
+        };
+        let before = core.record().actions.len();
+        assert!(matches!(core.apply_index(line.index), Err(ApplyError::OutOfRange { .. })),
+            "a play's index is not an action index");
+        core.apply_plan(&plan).expect("the play applies");
+        assert_eq!(&core.record().actions[before..before + plan.len()], &plan[..],
+            "the record gains the plan's actions, in order");
+        let id = card.expect("the play is a cast");
+        assert!(core.session.state().objects.get(id)
+            .is_none_or(|o| o.zone != arcana_core::zones::Zone::Hand(HUMAN)), "the card was cast");
+        let after = core.record().actions.len();
+        assert_eq!(core.awaiting, Some(HUMAN), "the caster holds priority after the cast");
+        assert!(matches!(core.apply_plan(&plan), Err(ApplyError::StalePlan { step: 0 })));
+        assert_eq!(core.record().actions.len(), after, "a stale plan applies nothing");
     }
 }
