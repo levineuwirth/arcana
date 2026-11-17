@@ -563,11 +563,15 @@ struct LobbyQuery {
     code: String,
 }
 
-/// `GET /m/suggest` query — a [`MatchRef`] plus the `deep` flag.
+/// `GET /m/suggest` query — a [`MatchRef`]'s fields plus the `deep` flag.
+/// Named one by one: a `#[serde(flatten)]`ed `MatchRef` reached the query
+/// parser as strings, so `seat` never parsed and every request was a 400,
+/// which the client reads as no lines (A1.5cj).
 #[derive(Debug, Deserialize)]
 struct MatchSuggestQuery {
-    #[serde(flatten)]
-    at: MatchRef,
+    code: String,
+    seat: PlayerId,
+    token: String,
     #[serde(default)]
     deep: bool,
 }
@@ -1014,8 +1018,9 @@ async fn match_pass_until(State(app): State<AppState>, Query(at): Query<MatchRef
 }
 
 async fn match_suggest(State(app): State<AppState>, Query(q): Query<MatchSuggestQuery>) -> Response {
-    let sender = match route_match(&app, &q.at) { Ok(s) => s, Err(_) => return Json(Vec::<Suggestion>::new()).into_response() };
-    Json(sender.suggest(q.at.seat, q.deep).await).into_response()
+    let at = MatchRef { code: q.code, seat: q.seat, token: q.token };
+    let sender = match route_match(&app, &at) { Ok(s) => s, Err(_) => return Json(Vec::<Suggestion>::new()).into_response() };
+    Json(sender.suggest(at.seat, q.deep).await).into_response()
 }
 
 async fn match_leave(State(app): State<AppState>, Query(at): Query<MatchRef>) -> Response {
@@ -1906,6 +1911,39 @@ mod http_tests {
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{body}");
         let (status, body) = send(&s, LAN_PEER, "PUT", at, envelope(1, 100)).await;
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{body}");
+    }
+
+    /// A1.5cj: `/m/suggest` ranks a deciding seat's choice, at both budgets.
+    /// Its query flattened `MatchRef`, which reaches the query parser as
+    /// strings, so `seat` never parsed and every request since the route
+    /// landed was a 400, which the client reads as no lines.
+    #[tokio::test]
+    async fn match_suggest_ranks_a_deciding_seats_choice() {
+        use serde_json::Value;
+        let s = server("suggest", true);
+        let (_, body) = send(&s, LOOPBACK, "POST", "/lobby/create", lobby_body(good_deck(), None)).await;
+        let host: Value = serde_json::from_str(&body).unwrap();
+        let code = host["code"].as_str().unwrap().to_string();
+        let (_, body) = send(&s, LAN_PEER, "POST", "/lobby/join", lobby_body(good_deck(), Some(&code))).await;
+        let guest: Value = serde_json::from_str(&body).unwrap();
+        let seats = [(LOOPBACK, host["token"].as_str().unwrap().to_string()),
+                     (LAN_PEER, guest["token"].as_str().unwrap().to_string())];
+        let at = |seat: usize| format!("code={code}&seat={seat}&token={}", seats[seat].1);
+        let mut ranked = 0;
+        for (seat, &(peer, _)) in seats.iter().enumerate() {
+            let (_, body) = send(&s, peer, "GET", &format!("/m/state?{}", at(seat)), "").await;
+            let st: Value = serde_json::from_str(&body).unwrap();
+            if st["view"]["legal"].as_array().unwrap().len() < 2 { continue; }
+            for deep in ["", "&deep=true"] {
+                let (status, lines) =
+                    send(&s, peer, "GET", &format!("/m/suggest?{}{deep}", at(seat)), "").await;
+                assert_eq!(status, StatusCode::OK, "seat {seat}{deep}: {lines}");
+                let lines: Value = serde_json::from_str(&lines).unwrap();
+                assert!(!lines.as_array().unwrap().is_empty(), "seat {seat}{deep}: no lines");
+            }
+            ranked += 1;
+        }
+        assert!(ranked > 0, "a seat had a choice to rank");
     }
 
     #[tokio::test]
