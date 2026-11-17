@@ -15,9 +15,9 @@
 # TOP_SEEDS, TOP_FLIPS, TOP_GAME_SECONDS) are documented on it. The arms:
 #   PIMC 16/160/10, plays against every:
 #     -env "all, TOP_TAG=pimc-plays-every, TOP_K=..., TOP_POLICY=pimc,
-#           TOP_ARMS=plays,every, TOP_SEEDS=<first>,<count>, ARCANA_COMMIT=<commit>"
+#           TOP_ARMS='plays,every', TOP_SEEDS='<first>,<count>', ARCANA_COMMIT=<commit>"
 #   vmc-material 10/30/16, plays against every: as above with TOP_POLICY=vmc
-#   either, plays against handoff 14's filter: TOP_ARMS=plays,filter
+#   either, plays against handoff 14's filter: TOP_ARMS='plays,filter'
 # A seed is 40 games; a shard plays the games whose number is k modulo K.
 #
 # Before playing, a task checks the converted decklists in KAGGLE_DECKS
