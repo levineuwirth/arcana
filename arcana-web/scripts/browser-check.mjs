@@ -295,14 +295,28 @@ const HIDE_TEXT = `(() => {
 // Text against what is rendered behind it. Each box's pixels are sampled on
 // a 2 px grid from a screenshot with the text hidden; the box holds if its
 // tenth-percentile contrast does, so a stray border pixel does not fail it.
+// The boxes are measured again once the screenshot is taken: a page whose
+// data lands between the two (the Stage's deck identity and rivals) has
+// moved its text, and the old rectangles would sample whatever moved under
+// them. Such a screenshot is discarded and the pair taken again.
+const SETTLE_TRIES = 5;
+const sameBoxes = (a, b) => a.length === b.length && a.every((x, i) => x.el === b[i].el && x.text === b[i].text &&
+  x.rect.every((v, j) => Math.abs(v - b[i].rect[j]) <= 0.5));
 async function renderedContrast(cdp, fail) {
-  const { boxes, glowFaults } = await cdp.eval(TEXT_BOXES);
+  let boxes, glowFaults, data;
+  for (let attempt = 1; ; attempt++) {
+    ({ boxes, glowFaults } = await cdp.eval(TEXT_BOXES));
+    await cdp.eval(HIDE_TEXT);
+    ({ data } = await cdp.send("Page.captureScreenshot", { format: "png" }));
+    const settled = sameBoxes(boxes, (await cdp.eval(TEXT_BOXES)).boxes);
+    await cdp.eval(`document.getElementById("check-hide-text").remove()`);
+    if (settled) break;
+    if (attempt === SETTLE_TRIES) { fail(`the text was still moving after ${SETTLE_TRIES} screenshots`); return boxes.length; }
+    await sleep(500);
+  }
   for (const g of glowFaults) {
     fail(`text "${g.text}" (${g.el}) sits on a glow in ${g.color}, not --text, --text-on-glow or a link colour`);
   }
-  await cdp.eval(HIDE_TEXT);
-  const { data } = await cdp.send("Page.captureScreenshot", { format: "png" });
-  await cdp.eval(`document.getElementById("check-hide-text").remove()`);
   const img = decodePng(Buffer.from(data, "base64"));
   const reported = new Set();
   for (const b of boxes) {
