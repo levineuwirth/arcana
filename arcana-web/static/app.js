@@ -373,6 +373,8 @@
     combat: (body) => M.active() ? call("POST", "/m/combat" + M.qs(), body) : call("POST", "/combat", body),
     autotap: (objectId) => M.active() ? call("POST", "/m/autotap" + M.qs(), { object_id: objectId }) : call("POST", "/autotap", { object_id: objectId }),
     activate: (objectId) => M.active() ? call("POST", "/m/activate" + M.qs(), { object_id: objectId }) : call("POST", "/activate", { object_id: objectId }),
+    // a suggested play (its taps, then its cast), applied in one request
+    play: (plan) => M.active() ? call("POST", "/m/play" + M.qs(), { plan }) : call("POST", "/play", { plan }),
     autoPass: (level) => M.active()
       ? call("POST", "/m/autopass" + M.qs(), { level })
       : call("POST", "/autopass", { level }),

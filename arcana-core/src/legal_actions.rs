@@ -3718,7 +3718,11 @@ pub fn auto_tap_activate_sequence(
 /// `is_play`, then return the taps plus that action when it's unambiguous (else
 /// just the taps, for the caller to surface the remaining choice). `None` if mana
 /// can't be produced and no play ever becomes legal.
-fn auto_tap_for(
+///
+/// Public so a search can plan the taps for one exact variant of a play (a
+/// target, a mode, an X value: `is_play` matches that variant alone; A1.5ci).
+/// It plans on a clone and changes nothing.
+pub fn auto_tap_for(
     state: &GameState, registry: &CardRegistry, player: PlayerId,
     cost: Option<&crate::mana::ManaCost>, is_play: impl Fn(&Action) -> bool,
 ) -> Option<Vec<Action>> {

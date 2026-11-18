@@ -559,6 +559,218 @@ mod tests {
         }
     }
 
+    /// A1.5ci's head-to-heads as shards for a cluster array: one policy on
+    /// both seats, differing only in the pool its search takes its candidates
+    /// from ([`crate::search::TopRule`]: `plays`, the shipped repair; `every`,
+    /// the selection before it; `filter`, handoff 14's probe filter). The five
+    /// seed decks of A2.1 (playable indices 6, 9, 19, 41 and 43) against each
+    /// other, both seat orders, and each arm on each side of the same shuffle:
+    /// 40 games a seed, the design and seeds of handoff 14's probe
+    /// (`h2h` mode), so `TOP_ARMS=every,every TOP_FLIPS=0` replays its
+    /// `verify-mf-*` games, the shipped policies at `e276894a`, by trace.
+    /// The games are numbered in that order and shard `k/K` plays those whose
+    /// number is `k` modulo `K`. It prints, each on a line of its own:
+    ///
+    ///   `config,top,<policy>,<budget>,<arm A>,<arm B>,<first seed>,<seeds>,<flips>,<k>/<K>`
+    ///   `deck,<index>,<name>`
+    ///   `game,<seed>,<i>,<j>,<ab>,<flip>,<s0>,<s1>,<arm0>,<arm1>,<ending>,<actions>,<turns>,
+    ///    <casts0>,<casts1>,<opp_turn_casts0>,<opp_turn_casts1>,<taps0>,<taps1>,
+    ///    <taps_upkeep0>,<taps_upkeep1>,<taps_off_main0>,<taps_off_main1>,
+    ///    <lost_ends0>,<lost_ends1>,<lost_units0>,<lost_units1>,<scored>,<trace>,<seconds>`
+    ///
+    /// Seat 0 plays deck `s0` under `arm0`. `ending` is `win0`, `win1`,
+    /// `draw`, or a bound: `action_cap` (20,000 actions), `board_cap` (200
+    /// permanents) or `wall_cap` (`TOP_GAME_SECONDS`, default 1,800). A cast
+    /// on the opponent's turn is one made while the other seat is active; a
+    /// mana ability off main is one activated outside a main phase of the
+    /// seat's own turn and outside a choice that asks for mana; mana is lost
+    /// at a step end when an action ends the step and the seat's pool holds
+    /// fewer units after it. `trace` hashes every action as the probe did.
+    ///
+    /// `TOP_POLICY` `pimc` (default) or `vmc`; `TOP_BUDGET` samples or
+    /// rollouts, step cap, candidates (default 16,160,10 for PIMC, 10,30,16
+    /// for `vmc-material`); `TOP_ARMS` (default `plays,every`); `TOP_SEEDS`
+    /// first,count (default 20261111,1); `TOP_FLIPS` (default `0,1`).
+    /// `KAGGLE_DECKS=<dir> CORPUS_SHARD=0/40 TOP_POLICY=pimc cargo test -p arcana-ai --release top_of_search_shard -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn top_of_search_shard() {
+        use crate::search::{MaterialValue, PimcPolicy, StatePolicy, TopRule, ValueMcPolicy};
+        use arcana_core::actions::Action;
+        use arcana_core::engine::{new_game, step, EngineYield};
+        use arcana_core::legal_actions::{is_mana_activation, pending_choice_asks_mana};
+        use std::hash::{Hash, Hasher};
+        use std::time::Instant;
+        const SEED_DECKS: [usize; 5] = [6, 9, 19, 41, 43];
+        // Handoff 14's seed mix, verbatim.
+        fn mix4(a: u64, b: u64, c: u64, d: u64) -> u64 {
+            let mut x = a.wrapping_add(0x9E37_79B9_7F4A_7C15);
+            for v in [b, c, d] {
+                x ^= v.wrapping_add(0x9E37_79B9_7F4A_7C15);
+                x = x.wrapping_mul(0xBF58_476D_1CE4_E5B9);
+                x ^= x >> 27;
+            }
+            x = x.wrapping_mul(0x94D0_49BB_1331_11EB);
+            x ^= x >> 31;
+            x
+        }
+        let arm = |s: &str| match s {
+            "plays" => TopRule::Plays,
+            "every" => TopRule::Every,
+            "filter" => TopRule::Filter,
+            _ => panic!("an arm is plays, every or filter: {s}"),
+        };
+        let var = |k: &str, d: &str| std::env::var(k).unwrap_or_else(|_| d.to_string());
+        let pimc = match var("TOP_POLICY", "pimc").as_str() {
+            "pimc" => true,
+            "vmc" => false,
+            p => panic!("TOP_POLICY is pimc or vmc: {p}"),
+        };
+        let budget: Vec<u64> = var("TOP_BUDGET", if pimc { "16,160,10" } else { "10,30,16" })
+            .split(',').map(|x| x.parse().expect("TOP_BUDGET is three numbers")).collect();
+        assert_eq!(budget.len(), 3, "TOP_BUDGET is samples or rollouts, step cap, candidates");
+        let arms_text = var("TOP_ARMS", "plays,every");
+        let (a, b) = arms_text.split_once(',').expect("TOP_ARMS is two arms");
+        let (arm_a, arm_b) = (arm(a), arm(b));
+        let seeds: Vec<u64> = var("TOP_SEEDS", "20261111,1")
+            .split(',').map(|x| x.parse().expect("TOP_SEEDS is first,count")).collect();
+        let flips: Vec<u8> = var("TOP_FLIPS", "0,1")
+            .split(',').map(|x| x.parse().expect("TOP_FLIPS lists 0 and/or 1")).collect();
+        let wall: f64 = var("TOP_GAME_SECONDS", "1800").parse().expect("TOP_GAME_SECONDS");
+        let (k, shards) = std::env::var("CORPUS_SHARD")
+            .ok()
+            .map(|s| {
+                let (a, b) = s.split_once('/').expect("CORPUS_SHARD is k/K");
+                (a.parse::<usize>().expect("k"), b.parse::<usize>().expect("K"))
+            })
+            .unwrap_or((0, 1));
+        assert!(k < shards, "CORPUS_SHARD {k}/{shards}: k must be below K");
+
+        let base = std::env::var("KAGGLE_DECKS").expect("set KAGGLE_DECKS");
+        let reg = arcana_cards::build_catalog();
+        let loaded = decks_from_dir(std::path::Path::new(&base).join("PI"), "PI", &reg)
+            .expect("read corpus dir");
+        let decks = playable_decks(&loaded, 60, 60);
+        require_manifest(&decks);
+        // A line of its own first: a single-threaded libtest prints the
+        // test's name before its output, on the same line.
+        println!();
+        println!("config,top,{},{},{a},{b},{},{},{},{k}/{shards}",
+            if pimc { "pimc" } else { "vmc" },
+            budget.iter().map(|x| x.to_string()).collect::<Vec<_>>().join("/"),
+            seeds[0], seeds[1],
+            flips.iter().map(|x| x.to_string()).collect::<Vec<_>>().join("/"));
+        for &d in &SEED_DECKS {
+            println!("deck,{d},{}", decks[d].name);
+        }
+        let mut jobs = Vec::new();
+        for seed in seeds[0]..seeds[0] + seeds[1] {
+            for (x, &i) in SEED_DECKS.iter().enumerate() {
+                for &j in &SEED_DECKS[x + 1..] {
+                    for ab in ["A", "B"] {
+                        for &flip in &flips {
+                            jobs.push((seed, i, j, ab, flip));
+                        }
+                    }
+                }
+            }
+        }
+        let name = |t: TopRule| match t {
+            TopRule::Plays => "plays",
+            TopRule::Every => "every",
+            TopRule::Filter => "filter",
+        };
+        for (n, &(seed, i, j, ab, flip)) in jobs.iter().enumerate() {
+            if n % shards != k { continue; }
+            let t0 = Instant::now();
+            let engine_seed = mix4(seed, i as u64, j as u64, 0);
+            let (s0, s1, policy_seed) =
+                if ab == "A" { (i, j, engine_seed ^ 0xF00D) } else { (j, i, engine_seed ^ 0xBEEF) };
+            let seats = vec![decks[s0].cards.clone(), decks[s1].cards.clone()];
+            let tops = if flip == 0 { [arm_a, arm_b] } else { [arm_b, arm_a] };
+            let bot = |seat: usize| -> Box<dyn StatePolicy> {
+                let seed = policy_seed ^ if seat == 0 { 0xA } else { 0xB };
+                if pimc {
+                    let mut p = PimcPolicy::with_budget(seed, seats.clone(), budget[0] as u32,
+                        budget[1] as u32, budget[2] as usize);
+                    p.top = tops[seat];
+                    Box::new(p)
+                } else {
+                    let mut p = ValueMcPolicy::with_budget(Box::new(MaterialValue), seed,
+                        budget[0] as u32, budget[1] as u32, budget[2] as usize);
+                    p.top = tops[seat];
+                    Box::new(p)
+                }
+            };
+            let mut bots = [bot(0), bot(1)];
+            let (mut state, mut yld) = new_game(seats.clone(), &reg, engine_seed);
+            let mut hasher = std::collections::hash_map::DefaultHasher::new();
+            let (mut actions, mut scored) = (0u32, 0u32);
+            let mut casts = [0u32; 2];
+            let mut opp_casts = [0u32; 2];
+            let mut taps = [0u32; 2];
+            let mut taps_upkeep = [0u32; 2];
+            let mut taps_off = [0u32; 2];
+            let mut lost_ends = [0u32; 2];
+            let mut lost_units = [0u32; 2];
+            let ending = loop {
+                let (player, legal) = match &yld {
+                    EngineYield::GameOver(r) => break match r {
+                        arcana_core::state::GameResult::Win(0) => "win0",
+                        arcana_core::state::GameResult::Win(_) => "win1",
+                        _ => "draw",
+                    },
+                    EngineYield::PendingDecision { player, legal_actions, .. } =>
+                        (*player, legal_actions.clone()),
+                };
+                if actions >= 20_000 { break "action_cap"; }
+                if t0.elapsed().as_secs_f64() > wall { break "wall_cap"; }
+                if legal.len() > 1 { scored += 1; }
+                let action = bots[player as usize].choose(&state, &reg, player, &legal);
+                format!("{action:?}").hash(&mut hasher);
+                let p = player as usize;
+                match &action {
+                    Action::CastSpell { .. } => {
+                        casts[p] += 1;
+                        if state.turn.active_player != player { opp_casts[p] += 1; }
+                    }
+                    a @ Action::ActivateAbility { .. } if is_mana_activation(&state, a, &reg) => {
+                        taps[p] += 1;
+                        if state.turn.step == arcana_core::turn::Step::Upkeep { taps_upkeep[p] += 1; }
+                        if !pending_choice_asks_mana(&state, &reg)
+                            && !(state.turn.active_player == player && state.turn.phase.is_main())
+                        {
+                            taps_off[p] += 1;
+                        }
+                    }
+                    _ => {}
+                }
+                let at = (state.turn.turn_number, state.turn.phase, state.turn.step);
+                let before: Vec<usize> = (0..2u8).map(|q| state.player(q).mana_pool.iter().count()).collect();
+                let (s, y) = step(state, action, &reg);
+                state = s; yld = y; actions += 1;
+                if (state.turn.turn_number, state.turn.phase, state.turn.step) != at {
+                    for q in 0..2usize {
+                        let after = state.player(q as u8).mana_pool.iter().count();
+                        if after < before[q] {
+                            lost_ends[q] += 1;
+                            lost_units[q] += (before[q] - after) as u32;
+                        }
+                    }
+                }
+                let size = state.objects.objects_in_zone(arcana_core::zones::Zone::Battlefield).count();
+                if size > 200 { break "board_cap"; }
+            };
+            println!(
+                "game,{seed},{i},{j},{ab},{flip},{s0},{s1},{},{},{ending},{actions},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{scored},{:016x},{:.2}",
+                name(tops[0]), name(tops[1]), state.turn.turn_number,
+                casts[0], casts[1], opp_casts[0], opp_casts[1], taps[0], taps[1],
+                taps_upkeep[0], taps_upkeep[1], taps_off[0], taps_off[1],
+                lost_ends[0], lost_ends[1], lost_units[0], lost_units[1],
+                hasher.finish(), t0.elapsed().as_secs_f64());
+        }
+    }
+
     /// The field gate refuses a directory whose playable decks differ from the
     /// manifest's in membership or order, before any game; a review found
     /// that one extra playable deck kept every digest and shifted indices.

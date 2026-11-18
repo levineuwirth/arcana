@@ -926,7 +926,8 @@ function renderSuggest() {
     const row = document.createElement("div");
     row.className = "sg-row clickable" + (l.win_pct === best ? " sg-best" : "");
     row.title = "Apply: " + l.label;
-    row.onclick = () => sendAction(l.index, l.label);
+    // A play row (its mana abilities, then the cast) carries its plan.
+    row.onclick = () => (l.plan ? sendPlay(l.plan, l.label) : sendAction(l.index, l.label));
     const meter = document.createElement("div"); meter.className = "meter";
     const fill = document.createElement("div"); fill.className = "meter-fill" + (l.win_pct === best ? " strong" : "");
     fill.style.width = Math.max(2, Math.min(100, l.win_pct)) + "%";
@@ -2349,6 +2350,12 @@ async function guarded(fn) {
 async function sendAction(index, label) {
   if (label && label !== "Pass") logLine("you", "You: " + label);
   await guarded(() => Arcana.Api.action(index));
+}
+
+// A suggested play: the server taps and casts in one request (/play).
+async function sendPlay(plan, label) {
+  logLine("you", "You: " + label);
+  await guarded(() => Arcana.Api.play(plan));
 }
 
 // Click a hand card to play it. Auto-taps mana and casts/plays it when that's

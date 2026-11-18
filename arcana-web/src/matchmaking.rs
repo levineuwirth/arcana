@@ -181,6 +181,7 @@ enum MatchCmd {
     Action { seat: PlayerId, index: usize, reply: oneshot::Sender<Result<StateResponse, String>> },
     Combat { seat: PlayerId, sub: CombatSubmission, reply: oneshot::Sender<Result<StateResponse, String>> },
     AutoTap { seat: PlayerId, target: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
+    Play { seat: PlayerId, plan: Vec<Action>, reply: oneshot::Sender<Result<StateResponse, String>> },
     Activate { seat: PlayerId, source: ObjectId, reply: oneshot::Sender<Result<StateResponse, String>> },
     Bottom { seat: PlayerId, ids: Vec<ObjectId>, reply: oneshot::Sender<Result<StateResponse, String>> },
     SetAutoPass { seat: PlayerId, level: arcana_ai::session::AutoPass, reply: oneshot::Sender<Result<StateResponse, String>> },
@@ -204,7 +205,7 @@ fn run_match(
         // level → re-persist the transcript.
         let mutating = matches!(cmd,
             MatchCmd::Action { .. } | MatchCmd::Combat { .. } | MatchCmd::AutoTap { .. }
-            | MatchCmd::Activate { .. } | MatchCmd::Bottom { .. }
+            | MatchCmd::Play { .. } | MatchCmd::Activate { .. } | MatchCmd::Bottom { .. }
             | MatchCmd::SetAutoPass { .. } | MatchCmd::PassUntil { .. });
         match cmd {
             MatchCmd::State { seat, reply } => {
@@ -221,6 +222,10 @@ fn run_match(
             MatchCmd::AutoTap { seat, target, reply } => {
                 let _ = reply.send(contain(&what,
                     || core.auto_tap_and_cast_for(seat, target).map_err(|e| e.to_string())));
+            }
+            MatchCmd::Play { seat, plan, reply } => {
+                let _ = reply.send(contain(&what,
+                    || core.apply_plan_for(seat, &plan).map_err(|e| e.to_string())));
             }
             MatchCmd::Activate { seat, source, reply } => {
                 let _ = reply.send(contain(&what,
@@ -286,6 +291,9 @@ impl MatchSender {
     }
     pub async fn auto_tap(&self, seat: PlayerId, target: ObjectId) -> Result<StateResponse, String> {
         self.ask(|reply| MatchCmd::AutoTap { seat, target, reply }).await
+    }
+    pub async fn play(&self, seat: PlayerId, plan: Vec<Action>) -> Result<StateResponse, String> {
+        self.ask(|reply| MatchCmd::Play { seat, plan, reply }).await
     }
     pub async fn activate(&self, seat: PlayerId, source: ObjectId) -> Result<StateResponse, String> {
         self.ask(|reply| MatchCmd::Activate { seat, source, reply }).await
