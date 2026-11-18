@@ -123,6 +123,9 @@ pub enum GameEvent {
     // === Permanent state changes ===
     Tapped { object_id: ObjectId },
     Untapped { object_id: ObjectId },
+    /// CR 701.43 — `player` exerted the permanent: it won't untap during
+    /// that player's next untap step. "When you do" abilities watch this.
+    Exerted { object_id: ObjectId, player: PlayerId },
     Transformed { object_id: ObjectId },
     /// CR 711 — a permanent specialized (turned into one of its
     /// color-specialized faces). Emitted by
@@ -287,6 +290,7 @@ impl GameEvent {
 
             Tapped { .. }
             | Untapped { .. }
+            | Exerted { .. }
             | Transformed { .. }
             | Specialized { .. }
             | CounterAdded { .. }
@@ -343,6 +347,7 @@ impl GameEvent {
             | SpellCountered { object_id }
             | Tapped { object_id }
             | Untapped { object_id }
+            | Exerted { object_id, .. }
             | Transformed { object_id }
             | Specialized { object_id }
             | CounterAdded { object_id, .. }

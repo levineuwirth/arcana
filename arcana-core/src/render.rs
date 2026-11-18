@@ -52,9 +52,12 @@ pub fn describe_event(
     // LTB events (discard / mill / dies) carry the PRE-move id, which is re-ided
     // on the zone change (CR 400.7) — so fall back to a generic noun rather than
     // the "?" / "<hidden>" placeholders.
+    // A card exiled face down is named to nobody (CR 406.3).
     let name = |id: ObjectId| {
+        let face_down_in_exile = state.objects.get(id)
+            .is_some_and(|o| o.zone.is_exile() && o.status.face_down);
         let n = card_name(state, registry, id);
-        if n == "?" || n == "<hidden>" { "a card".to_string() } else { n }
+        if face_down_in_exile || n == "?" || n == "<hidden>" { "a card".to_string() } else { n }
     };
     Some(match event {
         LifeGained { player, amount } => format!("{} {amount} life", act(*player, "gain")),
@@ -67,6 +70,7 @@ pub fn describe_event(
             format!("{} deals {amount} to {tgt}", name(*source))
         }
         DrawCard { player, .. } => act(*player, "draw") + " a card",
+        Exerted { object_id, player } => format!("{} {}", act(*player, "exert"), name(*object_id)),
         Discarded { player, object_id } => format!("{} {}", act(*player, "discard"), name(*object_id)),
         Milled { player, object_id } => format!("{} {}", act(*player, "mill"), name(*object_id)),
         Dies { object_id } => format!("{} dies", name(*object_id)),
@@ -273,6 +277,14 @@ fn render_choice_response(r: &ChoiceResponse, state: &GameState, registry: &Card
                 _ => None,
             }).unwrap_or_else(|| format!("Choose mode {}", mode + 1)),
         ChoiceResponse::ChooseColor { color } => format!("Choose {color:?}"),
+        ChoiceResponse::Exert { exert } => {
+            let name = state.pending_choice.as_ref().and_then(|pc| match &pc.kind {
+                crate::actions::ChoiceKind::Exert { attacker } =>
+                    Some(card_name(state, registry, *attacker)),
+                _ => None,
+            }).unwrap_or_else(|| "it".to_string());
+            if *exert { format!("Exert {name}") } else { format!("Don't exert {name}") }
+        }
         ChoiceResponse::CastWithoutPaying { cast: None } => "Don't cast it".to_string(),
         ChoiceResponse::CastWithoutPaying { cast: Some(cast) } => {
             let mut s = render_action(cast, state, registry);
@@ -286,6 +298,20 @@ fn render_choice_response(r: &ChoiceResponse, state: &GameState, registry: &Card
                 }
             }
             s.push_str(" without paying its mana cost");
+            s
+        }
+        ChoiceResponse::CastDuringResolution { cast: None } => "Don't cast it".to_string(),
+        ChoiceResponse::CastDuringResolution { cast: Some(cast) } => {
+            let mut s = render_action(cast, state, registry);
+            if let Action::CastSpell { modes, additional_costs, .. } = cast.as_ref() {
+                let picked: Vec<String> = modes.iter()
+                    .flat_map(|m| m.mode_indices.iter().map(|i| (i + 1).to_string()))
+                    .collect();
+                if !picked.is_empty() { let _ = write!(s, " (mode {})", picked.join(", ")); }
+                if additional_costs.iter().any(|c| matches!(c, crate::actions::AdditionalCostPayment::Kicker)) {
+                    s.push_str(" (kicked)");
+                }
+            }
             s
         }
         ChoiceResponse::OrderCards { placements } if placements.is_empty() =>

@@ -178,6 +178,21 @@ pub struct GameObject {
     #[serde(default)]
     pub linked_exile_source: Option<ObjectId>,
     pub exiled_with: Option<ObjectId>,
+    /// CR 701.43a — the players who have exerted this permanent and whose
+    /// next untap step has not come, one bit per player id: it won't
+    /// untap during each of those steps. An exert is the exerting player's
+    /// own effect. It ends in that player's next untap step whoever
+    /// controls the permanent by then, one player's exert does not replace
+    /// another's, and none stops an untap in another player's untap step
+    /// or by an effect. A player exerting it again before then adds
+    /// nothing (CR 701.43b). Read and written through
+    /// [`Self::is_exerted_by`], [`Self::exerting_players`],
+    /// [`Self::mark_exerted_by`] and [`Self::end_exert_of`]. A bit set
+    /// and not a list, so that a game object stays as small and as cheap
+    /// to copy as it was. Zone-local: a permanent that leaves is a new
+    /// object.
+    #[serde(default)]
+    pub exerted_by: u16,
     /// CR 903.3 — the commander DESIGNATION. Never set by the 2-player
     /// engine paths today (commander games are future work); exists so
     /// Background statics ("Commander creatures you own have …") and
@@ -332,6 +347,7 @@ impl GameObject {
             madness_pending: false,
             exiled_with: None,
             linked_exile_source: None,
+            exerted_by: 0,
             is_commander: false,
             adventure_exile_pending: false,
             impulse_play_pending: false,
@@ -348,6 +364,36 @@ impl GameObject {
     }
 
     // --- Type-line queries (forwarded to characteristics for ergonomics) ---
+
+    /// Is `player`'s exert of this permanent still pending (CR 701.43a)?
+    pub fn is_exerted_by(&self, player: PlayerId) -> bool {
+        player < Self::MAX_EXERTING_PLAYERS && self.exerted_by & (1 << player) != 0
+    }
+
+    /// The players whose exert of this permanent is still pending, in
+    /// player order.
+    pub fn exerting_players(&self) -> Vec<PlayerId> {
+        (0..Self::MAX_EXERTING_PLAYERS).filter(|p| self.is_exerted_by(*p)).collect()
+    }
+
+    /// Record `player`'s exert. Player ids past the mark's width are a
+    /// programmer bug: the engine seats far fewer.
+    pub fn mark_exerted_by(&mut self, player: PlayerId) {
+        assert!(player < Self::MAX_EXERTING_PLAYERS,
+            "mark_exerted_by: player {player} is past the exert mark's {} players",
+            Self::MAX_EXERTING_PLAYERS);
+        self.exerted_by |= 1 << player;
+    }
+
+    /// End `player`'s exert, leaving every other player's in place.
+    pub fn end_exert_of(&mut self, player: PlayerId) {
+        if player < Self::MAX_EXERTING_PLAYERS {
+            self.exerted_by &= !(1 << player);
+        }
+    }
+
+    /// The player ids [`Self::exerted_by`] has a bit for.
+    pub const MAX_EXERTING_PLAYERS: PlayerId = 16;
 
     pub fn is_creature(&self)       -> bool { self.characteristics.types.is_creature() }
     pub fn is_land(&self)           -> bool { self.characteristics.types.is_land() }
@@ -523,6 +569,7 @@ impl GameObject {
         // zone change (return, recursion, cast-from-exile) sheds it.
         self.exiled_with = None;
         self.linked_exile_source = None;
+        self.exerted_by = 0;
         // Adventure-exile marker is similarly zone-local (CR 715):
         // set when an Adventure spell leaves the stack to exile,
         // cleared the moment the card moves anywhere (creature
@@ -1042,8 +1089,10 @@ mod tests {
         obj.mark_damage(2);
         obj.tap();
         obj.attach_to(99);
+        obj.mark_exerted_by(0);
         obj.reset_on_zone_change();
 
+        assert!(obj.exerting_players().is_empty(), "a permanent that leaves is no longer exerted");
         assert_eq!(obj.count_counters(CounterKind::PlusOnePlusOne), 0);
         assert_eq!(obj.damage_marked, 0);
         assert!(!obj.is_tapped());

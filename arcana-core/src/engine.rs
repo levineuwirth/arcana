@@ -185,7 +185,7 @@ pub(crate) fn apply_action(state: &mut GameState, action: Action, registry: &Car
         } => {
             let caster = state.priority_player();
             apply_cast_spell(
-                state, registry, caster, false, object_id, targets, modes,
+                state, registry, caster, CastPermission::Window, object_id, targets, modes,
                 mana_payment, additional_costs, x_value, cast_modifier,
                 cost_reductions,
             );
@@ -207,6 +207,11 @@ pub(crate) fn apply_action(state: &mut GameState, action: Action, registry: &Car
             // step for responses.
             let ap = state.active_player();
             state.priority.give_to(ap);
+            // CR 508.1g, 701.43d — "you may exert this creature as it
+            // attacks" is decided as the attack is declared, before any
+            // player receives priority and before anything triggers on
+            // the declaration (CR 508.1m): see `run_sba_and_triggers`.
+            offer_exerts(state, registry);
         }
 
         Action::DeclareBlockers { blockers } => {
@@ -275,6 +280,20 @@ fn apply_pass_priority(state: &mut GameState, registry: &CardRegistry) {
     }
 }
 
+/// Queue each attacking creature its controller may exert as it attacks,
+/// in declaration order, and ask about the first. A creature is asked
+/// about only while it has the ability.
+fn offer_exerts(state: &mut GameState, registry: &CardRegistry) {
+    let able: Vec<ObjectId> = state.combat.as_ref()
+        .map(|c| c.attackers.iter().map(|a| a.object_id).collect::<Vec<_>>())
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|id| state.has_exert_as_it_attacks(*id, registry))
+        .collect();
+    state.pending_exerts = able.into();
+    state.prompt_next_exert();
+}
+
 /// The card's own main-face alternative cost from hand. Shared by action
 /// enumeration and cast application; resolution-time grants stay separate.
 pub(crate) fn hand_free_cast_permitted(
@@ -296,17 +315,33 @@ pub(crate) fn hand_free_cast_permitted(
 // pushes the arg count past clippy's default 7. Refactor to a grouped
 // `CastInputs` struct is planned when a second cost-modifier (convoke
 // or improvise) lands — see the Shape B-full note on `CastSubStep`.
+/// What authorizes a cast: an ordinary priority window, or the one choice
+/// a resolving effect opened for its named card. One authorization never
+/// substitutes for another.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum CastPermission {
+    /// The priority holder casts under the usual rules.
+    Window,
+    /// The owner answers a [`crate::actions::ChoiceKind::CastWithoutPaying`]
+    /// (Spell Queller).
+    FreeInResolution,
+    /// The chooser answers a [`crate::actions::ChoiceKind::CastDuringResolution`]
+    /// (Chandra, Torch of Defiance).
+    PaidInResolution,
+}
+
 /// Cast `object_id` for `controller`: the priority holder in a priority
-/// window, or the owner answering a [`crate::actions::ChoiceKind::CastWithoutPaying`]
-/// mid-resolution. `without_paying_permitted` is true only on that choice's
-/// path. An ordinary free cast instead requires the card's explicit
-/// hand permission; normal timing is enforced by legal-action enumeration.
+/// window, or the player answering a mid-resolution cast choice.
+/// `permission` names which; a resolution-time permission is given only on
+/// its own choice's path. An ordinary free cast instead requires the
+/// card's explicit hand permission; normal timing is enforced by
+/// legal-action enumeration.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn apply_cast_spell(
     state: &mut GameState,
     registry: &CardRegistry,
     controller: PlayerId,
-    without_paying_permitted: bool,
+    permission: CastPermission,
     object_id: ObjectId,
     targets: crate::targets::TargetSelection,
     modes: Vec<crate::stack::ModeChoice>,
@@ -423,24 +458,20 @@ pub(crate) fn apply_cast_spell(
             let owned_in_exile = state.objects.get(object_id)
                 .is_some_and(|o| o.zone == crate::zones::Zone::Exile
                     && o.owner == controller);
-            let permitted = if without_paying_permitted {
-                owned_in_exile
-            } else {
-                hand_free_cast_permitted(state, registry, controller, object_id, face)
+            let permitted = match permission {
+                CastPermission::FreeInResolution => owned_in_exile,
+                CastPermission::Window =>
+                    hand_free_cast_permitted(state, registry, controller, object_id, face),
+                CastPermission::PaidInResolution => false,
             };
             if !permitted { return; }
-            let face_is_a_spell = match face {
-                crate::actions::CastFace::Main => state.objects.get(object_id)
-                    .is_some_and(|o| !o.is_land()),
-                crate::actions::CastFace::SplitRight =>
-                    split_right_face_of(state, registry, object_id).is_some(),
-                crate::actions::CastFace::Adventure =>
-                    adventure_face_of(state, registry, object_id).is_some(),
-                crate::actions::CastFace::MdfcBack =>
-                    mdfc_back_face_of(state, registry, object_id)
-                        .is_some_and(|f| !f.characteristics.types.is_land()),
-            };
-            if !face_is_a_spell { return; }
+            if !face_is_a_spell(state, registry, object_id, face) { return; }
+        }
+        crate::actions::CastModifier::DuringResolution { face } => {
+            // CR 608.2g — only the choice a resolving effect opened for
+            // this card permits it; that choice names the card.
+            if permission != CastPermission::PaidInResolution { return; }
+            if !face_is_a_spell(state, registry, object_id, face) { return; }
         }
     }
 
@@ -522,6 +553,8 @@ pub(crate) fn apply_cast_spell(
                     .and_then(|f| f.characteristics.mana_cost.clone()),
             // No mana cost is paid, so no generic to reduce.
             crate::actions::CastModifier::WithoutPayingManaCost { .. } => None,
+            // This cast has no cost-reduction track.
+            crate::actions::CastModifier::DuringResolution { .. } => None,
         };
         let cost_opt = cost_opt.map(|c| {
             let chars = state.objects.get(object_id)
@@ -646,6 +679,8 @@ pub(crate) fn apply_cast_spell(
                     .and_then(|f| f.characteristics.mana_cost.clone()),
             // No mana cost is paid, so no generic to reduce.
             crate::actions::CastModifier::WithoutPayingManaCost { .. } => None,
+            // This cast has no cost-reduction track.
+            crate::actions::CastModifier::DuringResolution { .. } => None,
         };
         let generic_total: u32 = cost_opt.as_ref()
             .map(|c| c.components.iter().filter_map(|comp|
@@ -742,7 +777,8 @@ pub(crate) fn apply_cast_spell(
     // restores the combined view on leave-stack (CR 711.4).
     let is_split_left_cast = matches!(cast_modifier,
             crate::actions::CastModifier::None
-            | crate::actions::CastModifier::WithoutPayingManaCost { face: CastFace::Main })
+            | crate::actions::CastModifier::WithoutPayingManaCost { face: CastFace::Main }
+            | crate::actions::CastModifier::DuringResolution { face: CastFace::Main })
         && card_def.and_then(|d| d.alternate_face.as_ref())
             .and_then(|af| af.as_split()).is_some();
     let adventure_face = if is_adventure_cast {
@@ -866,6 +902,24 @@ pub(crate) fn apply_cast_spell(
 
     // 5. Record the action (priority retained, pass counter reset).
     state.priority.record_action();
+}
+
+/// Does the card `object_id` have `face` as a spell (CR 709.3)? A land face
+/// is played, not cast.
+fn face_is_a_spell(
+    state: &GameState,
+    registry: &CardRegistry,
+    object_id: ObjectId,
+    face: crate::actions::CastFace,
+) -> bool {
+    use crate::actions::CastFace;
+    match face {
+        CastFace::Main => state.objects.get(object_id).is_some_and(|o| !o.is_land()),
+        CastFace::SplitRight => split_right_face_of(state, registry, object_id).is_some(),
+        CastFace::Adventure => adventure_face_of(state, registry, object_id).is_some(),
+        CastFace::MdfcBack => mdfc_back_face_of(state, registry, object_id)
+            .is_some_and(|f| !f.characteristics.types.is_land()),
+    }
 }
 
 /// Emit [`GameEvent::BecomesTarget`] for each `TargetChoice::Object`
@@ -1076,6 +1130,13 @@ pub(crate) fn convoke_eligible_payments(
     out
 }
 
+/// Apply an [`Action::ActivateAbility`] for the player entitled to it:
+/// the priority holder, or, while a choice asks a player for mana, that
+/// player, whoever holds priority (CR 605.3a; the payer of "counter it
+/// unless its controller pays" is the spell's controller). In that window
+/// only a mana ability is legal, and it resolves at once (CR 605.3b): the
+/// choice is set aside while it does, since effects and moves made under a
+/// pending choice wait for the answer, and is restored unchanged (A1.5cd).
 fn apply_activate_ability(
     state: &mut GameState,
     registry: &CardRegistry,
@@ -1085,8 +1146,44 @@ fn apply_activate_ability(
     mana_payment: crate::actions::ManaPaymentPlan,
     additional_costs: Vec<crate::actions::AdditionalCostPayment>,
 ) {
-    let controller = state.priority_player();
+    let Some(pending) = state.pending_choice.as_ref() else {
+        let controller = state.priority_player();
+        activate_ability_as(state, registry, controller, source, ability_index,
+            targets, mana_payment, additional_costs);
+        return;
+    };
+    assert!(crate::legal_actions::pending_choice_asks_mana(state, registry),
+        "apply_activate_ability: the pending choice {:?} asks for no mana",
+        pending.kind);
+    let is_mana_ability = state.objects.get(source)
+        .and_then(|obj| crate::legal_actions::lookup_activated_ability(
+            obj, registry, state, ability_index))
+        .is_some_and(|ability| ability.is_mana_ability);
+    assert!(is_mana_ability,
+        "apply_activate_ability: only a mana ability may be activated \
+         while a choice is pending");
+    let window = state.pending_choice.take().unwrap();
+    activate_ability_as(state, registry, window.choosing_player, source,
+        ability_index, targets, mana_payment, additional_costs);
+    assert!(state.pending_choice.is_none(),
+        "apply_activate_ability: a mana ability posted a choice inside \
+         the payment window of {:?}", window.kind);
+    state.pending_choice = Some(window);
+}
 
+/// Activate `source`'s ability for `controller`: pay its costs, then
+/// resolve it (a mana ability) or put it on the stack.
+#[allow(clippy::too_many_arguments)]
+fn activate_ability_as(
+    state: &mut GameState,
+    registry: &CardRegistry,
+    controller: PlayerId,
+    source: ObjectId,
+    ability_index: usize,
+    targets: crate::targets::TargetSelection,
+    mana_payment: crate::actions::ManaPaymentPlan,
+    additional_costs: Vec<crate::actions::AdditionalCostPayment>,
+) {
     // Look up the ability. Bail silently on unregistered / invalid —
     // legal_actions shouldn't have emitted such an action. Snapshot
     // `card_id` up front so resolution-time dispatch survives the
@@ -1431,10 +1528,67 @@ pub(crate) fn apply_resolution_choice(
                     crate::actions::CastModifier::WithoutPayingManaCost { .. }),
                     "apply_resolution_choice: CastWithoutPaying answer must cast without paying");
                 apply_cast_spell(
-                    state, registry, pending.choosing_player, true, object_id, targets,
+                    state, registry, pending.choosing_player,
+                    CastPermission::FreeInResolution, object_id, targets,
                     modes, mana_payment, additional_costs, x_value, cast_modifier,
                     cost_reductions,
                 );
+            }
+        }
+
+        // --- Exert as it attacks (CR 701.43d) -------------------------
+        (
+            ChoiceKind::Exert { attacker },
+            _,
+            ChoiceResponse::Exert { exert },
+        ) => {
+            if *exert {
+                state.exert(*attacker, pending.choosing_player);
+            }
+            state.prompt_next_exert();
+        }
+
+        // --- CastDuringResolution (Chandra, Torch of Defiance) -------
+        // CR 608.2g — the chooser casts the exiled card as part of the
+        // resolution, at its normal costs, or doesn't; "if you don't"
+        // then runs. A cast made suppresses it whatever becomes of the
+        // spell.
+        (
+            ChoiceKind::CastDuringResolution { object },
+            ChoiceContext::ResolvingStack(_),
+            ChoiceResponse::CastDuringResolution { cast },
+        ) => {
+            let follow_up = state.pending_choice_follow_up.take()
+                .expect("apply_resolution_choice: CastDuringResolution needs \
+                         a pending_choice_follow_up");
+            let crate::actions::ChoiceFollowUp::IfNotCast { otherwise } = follow_up else {
+                panic!("apply_resolution_choice: CastDuringResolution follow-up \
+                        must be IfNotCast");
+            };
+            match cast {
+                Some(cast) => {
+                    let Action::CastSpell {
+                        object_id, targets, modes, mana_payment, additional_costs,
+                        x_value, cast_modifier, cost_reductions,
+                    } = cast.as_ref().clone() else {
+                        panic!("apply_resolution_choice: CastDuringResolution answer must be a CastSpell");
+                    };
+                    assert_eq!(object_id, *object,
+                        "apply_resolution_choice: CastDuringResolution answer casts another card");
+                    assert!(matches!(cast_modifier,
+                        crate::actions::CastModifier::DuringResolution { .. }),
+                        "apply_resolution_choice: CastDuringResolution answer must cast during the resolution");
+                    let spells = state.stack.iter().filter(|e| e.is_spell()).count();
+                    apply_cast_spell(
+                        state, registry, pending.choosing_player,
+                        CastPermission::PaidInResolution, object_id, targets,
+                        modes, mana_payment, additional_costs, x_value, cast_modifier,
+                        cost_reductions,
+                    );
+                    assert_eq!(state.stack.iter().filter(|e| e.is_spell()).count(), spells + 1,
+                        "apply_resolution_choice: the CastDuringResolution answer was refused");
+                }
+                None => execute_optional_branch(state, otherwise),
             }
         }
 
@@ -2202,6 +2356,14 @@ fn apply_choice_follow_up_to(
                  consumed at the ChoiceKind::OptionalCost dispatch arm, \
                  not from PickCards");
         }
+        ChoiceFollowUp::IfNotCast { .. } => {
+            // Paired with ChoiceKind::CastDuringResolution; dispatch lives
+            // inline in apply_resolution_choice.
+            panic!(
+                "apply_choice_follow_up: IfNotCast should be consumed at \
+                 the ChoiceKind::CastDuringResolution dispatch arm, not \
+                 from PickCards");
+        }
         ChoiceFollowUp::ExploreMayMill { .. } => {
             // Paired with ChoiceKind::YesNo for Explore's mill
             // decision; dispatch lives inline in apply_resolution_choice.
@@ -2553,6 +2715,14 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
             continue;
         }
 
+        // CR 508.1g, 508.1m — what triggers on attackers being declared
+        // triggers after the exert decisions, and an exert's "when you
+        // do" with it. No event is scanned while an exert decision is
+        // outstanding: the declaration's events and each exert's are
+        // scanned together after the last answer, so their abilities are
+        // one APNAP batch (CR 603.3b).
+        if exert_decision_pending(state) { return; }
+
         // 2. Collect triggers from events since the last scan. We
         //    snapshot the cursor, advance it to the current tail, and
         //    operate on the snapshot. Triggers pushed during this
@@ -2593,6 +2763,15 @@ fn run_sba_and_triggers(state: &mut GameState, registry: &CardRegistry) {
     // (infinite trigger storm, cursor not advancing, etc.).
     panic!("run_sba_and_triggers: failed to settle in \
             {MAX_SETTLE_ITERATIONS} iterations");
+}
+
+/// Is a player being asked whether to exert an attacker? The questions
+/// follow one another with nothing between them
+/// ([`GameState::prompt_next_exert`]), so this holds from the declaration
+/// to the last answer.
+fn exert_decision_pending(state: &GameState) -> bool {
+    matches!(state.pending_choice.as_ref().map(|c| &c.kind),
+        Some(crate::actions::ChoiceKind::Exert { .. }))
 }
 
 fn triggered_ability_modes<'a>(
@@ -3466,6 +3645,20 @@ fn untap_step(state: &mut GameState) {
     // many matching permanents untap, in deterministic ascending-id
     // order (the player-choice ordering is a documented stand-in).
     // TODO(task-21): honor phasing (CR 502.1 step order).
+    // CR 701.43a — what the active player exerted doesn't untap during
+    // this, their next untap step. That player's effect ends here for
+    // every such permanent, whoever controls it now; another player's
+    // exert of the same permanent waits for that player's untap step.
+    let exerted: Vec<ObjectId> = state.objects
+        .objects_in_zone(Zone::Battlefield)
+        .filter(|o| o.is_exerted_by(ap))
+        .map(|o| o.id)
+        .collect();
+    for id in &exerted {
+        if let Some(obj) = state.objects.get_mut(*id) {
+            obj.end_exert_of(ap);
+        }
+    }
     let mut ids: Vec<ObjectId> = state.objects
         .objects_in_zone(Zone::Battlefield)
         .filter(|o| o.controller == ap)
@@ -3483,6 +3676,7 @@ fn untap_step(state: &mut GameState) {
         if state.objects.get(id).is_none_or(|o| !o.is_tapped()) {
             continue;
         }
+        if exerted.contains(&id) { continue; }
         if state.skips_untap(id) { continue; }
         // Cap check: untapping `id` must not exceed any cap whose
         // filter matches it.

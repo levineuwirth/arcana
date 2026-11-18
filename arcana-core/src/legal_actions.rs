@@ -282,7 +282,20 @@ pub fn casts_without_paying(
     player: PlayerId,
     object: ObjectId,
 ) -> Vec<Action> {
-    use crate::actions::CastFace;
+    let mut out = Vec::new();
+    for (face, chars, spell_ability) in resolution_cast_faces(state, registry, player, object) {
+        out.extend(free_casts_for_face(state, registry, player, object,
+            face, chars, spell_ability));
+    }
+    out
+}
+
+/// The faces `player` may cast the exiled card `object` as during the
+/// resolution that offers it for nothing. Empty when `object` isn't an
+/// exiled card `player` owns, or no cast is permitted.
+fn resolution_cast_faces<'a>(
+    state: &'a GameState, registry: &'a CardRegistry, player: PlayerId, object: ObjectId,
+) -> Vec<SpellFace<'a>> {
     let Some(obj) = state.objects.get(object) else { return Vec::new() };
     if !obj.zone.is_exile() || obj.owner != player { return Vec::new(); }
     if state.spell_cast_limit_reached(obj, player) { return Vec::new(); }
@@ -292,12 +305,27 @@ pub fn casts_without_paying(
     // 608.2g).
     // The card stays where it is (A1.5aa).
     if state.casts_restricted_to_sorcery_timing(player) { return Vec::new(); }
+    spell_faces(obj, registry).into_iter()
+        .filter(|(_, chars, _)| !cast_restricted(state, player, registry, chars.types))
+        .collect()
+}
+
+/// A spell face of a card: which face, its characteristics and its spell
+/// ability.
+type SpellFace<'a> = (crate::actions::CastFace, &'a crate::objects::Characteristics,
+                      Option<&'a crate::registry::SpellAbilityDef>);
+
+/// The faces `obj` has as a spell (CR 709.3): its main face, a split
+/// card's right half, an Adventure, a modal double-faced card's back. A
+/// land face is not a spell. CR 711.4 — a split card's main face is its
+/// left half.
+fn spell_faces<'a>(
+    obj: &'a crate::objects::GameObject, registry: &'a CardRegistry,
+) -> Vec<SpellFace<'a>> {
+    use crate::actions::CastFace;
     let def = registry.get(obj.card_id);
     let alt = def.and_then(|d| d.alternate_face.as_ref());
-    // The card's spell faces, each with its characteristics and spell
-    // ability. CR 711.4 — a split card's main face is its left half.
-    let mut faces: Vec<(CastFace, &crate::objects::Characteristics,
-                        Option<&crate::registry::SpellAbilityDef>)> = Vec::new();
+    let mut faces: Vec<SpellFace<'a>> = Vec::new();
     let main_chars = match (def, alt.and_then(|af| af.as_split())) {
         (Some(d), Some(_)) => &d.base_characteristics,
         _ => &obj.characteristics,
@@ -316,12 +344,127 @@ pub fn casts_without_paying(
             faces.push((CastFace::MdfcBack, &f.characteristics, f.spell_ability.as_ref()));
         }
     }
+    faces
+}
+
+/// Can a free cast of `object` by `player` ask for mana at all: a kicker,
+/// or a cost increase on a face it may be cast as (CR 601.2f)? A cast that
+/// owes nothing asks for no payment, so it opens no mana window, and
+/// neither does a card that can't be cast (A1.5cd).
+fn free_cast_can_owe_mana(
+    state: &GameState, registry: &CardRegistry, player: PlayerId, object: ObjectId,
+) -> bool {
+    let kicker = crate::engine::kicker_cost_for(state, object);
+    resolution_cast_faces(state, registry, player, object).into_iter().any(|(_, chars, _)| {
+        let delta = state.spell_cost_delta(chars, player);
+        !crate::mana::ManaCost::default().with_generic_delta(delta).is_empty()
+            || kicker.as_ref().is_some_and(|k| !k.with_generic_delta(delta).is_empty())
+    })
+}
+
+/// The casts of the exiled card `object` its owner `player` may make at
+/// its normal costs during the resolution that says "you may cast that
+/// card" (CR 608.2g; Chandra, Torch of Defiance), as any face the card has
+/// as a spell, under the gates of [`resolution_cast_faces`]: card-type
+/// timing doesn't apply, the casting restrictions the engine models do.
+/// For each face: every mode combination with a legal target selection,
+/// each X the pool could cover, unkicked and kicked, each with a payment
+/// plan from the pool for the face's mana cost and the kicker, after cost
+/// changes (CR 601.2f). No alternative cost and no cost-reduction track
+/// (delve, convoke, improvise); mandatory additional costs aren't modeled
+/// for any cast. Empty while nothing is affordable: the choice's mana
+/// window (A1.5cd) lets the player tap for it.
+pub fn casts_during_resolution(
+    state: &GameState,
+    registry: &CardRegistry,
+    player: PlayerId,
+    object: ObjectId,
+) -> Vec<Action> {
+    let kicker = crate::engine::kicker_cost_for(state, object);
+    let pool = &state.player(player).mana_pool;
     let mut out = Vec::new();
-    for (face, chars, spell_ability) in faces {
-        out.extend(free_casts_for_face(state, registry, player, object,
-            face, chars, spell_ability));
+    for (face, chars, spell_ability) in resolution_cast_faces(state, registry, player, object) {
+        // CR 118.6 — a face with no mana cost can't be paid for.
+        let Some(printed) = chars.mana_cost.clone() else { continue };
+        let delta = state.spell_cost_delta(chars, player);
+        let ctx = SpendContext::for_spell(chars.types, chars.colors);
+        let has_x = printed.x_count() > 0;
+        let x_values: Vec<u32> = if has_x { (0..=pool.total() as u32).collect() } else { vec![0] };
+        for (modes, selections) in castable_modes(state, object, player, spell_ability) {
+            for &x in &x_values {
+                let base = if has_x { printed.with_x_expanded(x) } else { printed.clone() };
+                let mut variants = vec![(base.with_generic_delta(delta), Vec::new())];
+                if let Some(kicker) = &kicker {
+                    let mut kicked = base.clone();
+                    kicked.components.extend(kicker.components.iter().copied());
+                    variants.push((kicked.with_generic_delta(delta),
+                        vec![crate::actions::AdditionalCostPayment::Kicker]));
+                }
+                for (cost, additional_costs) in &variants {
+                    for plan in enumerate_payment_plans(cost, pool, None, &ctx) {
+                        for targets in &selections {
+                            out.push(Action::CastSpell {
+                                object_id: object,
+                                targets: targets.clone(),
+                                modes: modes.clone(),
+                                mana_payment: plan.clone(),
+                                additional_costs: additional_costs.clone(),
+                                x_value: has_x.then_some(x),
+                                cast_modifier: crate::actions::CastModifier::DuringResolution { face },
+                                cost_reductions: crate::actions::CostReductions::default(),
+                            });
+                        }
+                    }
+                }
+            }
+        }
     }
     out
+}
+
+/// The mode combinations of a spell face that have a legal target
+/// selection, each with its selections; a non-modal face has the one
+/// empty combination.
+fn castable_modes(
+    state: &GameState,
+    object: ObjectId,
+    player: PlayerId,
+    spell_ability: Option<&crate::registry::SpellAbilityDef>,
+) -> Vec<(Vec<crate::stack::ModeChoice>, Vec<TargetSelection>)> {
+    let combos: Vec<Vec<crate::stack::ModeChoice>> =
+        match spell_ability.and_then(|sa| sa.modal.as_ref()) {
+            None => vec![Vec::new()],
+            Some(modal) => enumerate_mode_combinations(modal)
+                .into_iter().map(|c| vec![c]).collect(),
+        };
+    combos.into_iter().filter_map(|modes| {
+        let reqs: Vec<TargetRequirement> = match spell_ability {
+            Some(sa) => crate::registry::effective_target_requirements(sa, &modes),
+            None => Vec::new(),
+        };
+        let selections = enumerate_target_selections(&reqs, state, object, player);
+        (!selections.is_empty()).then_some((modes, selections))
+    }).collect()
+}
+
+/// Can a cast of `object` during a resolution ask `player` for mana: is
+/// there a face they may cast, with a legal target selection, whose cost
+/// can be more than nothing (a mana cost after cost changes, which an X
+/// always is, or a kicker)? A land, a spell with no legal target and a
+/// spell a restriction forbids ask for nothing, so they open no mana
+/// window, and declining is the only answer (A1.5cd).
+fn resolution_cast_can_owe_mana(
+    state: &GameState, registry: &CardRegistry, player: PlayerId, object: ObjectId,
+) -> bool {
+    let kicker = crate::engine::kicker_cost_for(state, object);
+    resolution_cast_faces(state, registry, player, object).into_iter()
+        .any(|(_, chars, spell_ability)| {
+            let Some(printed) = chars.mana_cost.as_ref() else { return false };
+            if castable_modes(state, object, player, spell_ability).is_empty() { return false; }
+            let delta = state.spell_cost_delta(chars, player);
+            !printed.with_generic_delta(delta).is_empty()
+                || kicker.as_ref().is_some_and(|k| !k.with_generic_delta(delta).is_empty())
+        })
 }
 
 /// Expand a free cast after the caller has checked its zone, permission,
@@ -640,11 +783,69 @@ fn legal_resolution_choice_actions(state: &GameState, registry: &CardRegistry) -
                 });
             }
         }
+        ChoiceKind::Exert { .. } => {
+            for exert in [true, false] {
+                out.push(Action::SubmitResolutionChoice {
+                    id,
+                    response: ChoiceResponse::Exert { exert },
+                });
+            }
+        }
+        ChoiceKind::CastDuringResolution { object } => {
+            out.push(Action::SubmitResolutionChoice {
+                id,
+                response: ChoiceResponse::CastDuringResolution { cast: None },
+            });
+            for cast in casts_during_resolution(state, registry, pending.choosing_player, *object) {
+                out.push(Action::SubmitResolutionChoice {
+                    id,
+                    response: ChoiceResponse::CastDuringResolution { cast: Some(Box::new(cast)) },
+                });
+            }
+        }
+    }
+
+    // CR 605.3a, 608.2g — a choice that asks for mana lets its chooser
+    // activate mana abilities; each leaves the choice pending (A1.5cd).
+    if pending_choice_asks_mana(state, registry) {
+        out.extend(mana_window_activations(state, registry, pending.choosing_player));
     }
 
     // Concede is always legal (spec §41.6 R3).
     out.push(Action::Concede);
     out
+}
+
+/// Does the pending choice ask its chooser for a mana payment (CR 605.3a,
+/// 608.2g)? Then the chooser may activate mana abilities before answering:
+/// a pay-or-decline or optional cost in mana, a free cast that can still
+/// owe mana (a kicker, a cost increase), and a cast at normal costs during
+/// a resolution. Every other choice, and no choice, is `false`.
+pub fn pending_choice_asks_mana(state: &GameState, registry: &CardRegistry) -> bool {
+    use crate::actions::{ChoiceKind, OptionalPaymentKind};
+    let Some(pending) = state.pending_choice.as_ref() else { return false };
+    match &pending.kind {
+        ChoiceKind::PayOrDecline { cost, .. } => !cost.is_empty(),
+        ChoiceKind::OptionalCost { cost: OptionalPaymentKind::Mana(cost) } => !cost.is_empty(),
+        ChoiceKind::CastWithoutPaying { object } =>
+            free_cast_can_owe_mana(state, registry, pending.choosing_player, *object),
+        ChoiceKind::CastDuringResolution { object } =>
+            resolution_cast_can_owe_mana(state, registry, pending.choosing_player, *object),
+        _ => false,
+    }
+}
+
+/// The mana abilities `chooser` can activate while a choice asks them for
+/// mana, in the order the priority window lists them. The chooser need not
+/// hold priority (the payer of "counter it unless its controller pays" is
+/// the spell's controller); [`crate::engine`] applies each for the chooser.
+fn mana_window_activations(
+    state: &GameState, registry: &CardRegistry, chooser: PlayerId,
+) -> Vec<Action> {
+    enumerate_activation_actions(state, chooser, registry)
+        .into_iter()
+        .filter(|a| is_mana_activation(state, a, registry))
+        .collect()
 }
 
 // =============================================================================
@@ -3149,6 +3350,10 @@ pub fn available_mana(
     registry: &CardRegistry,
 ) -> crate::mana::ManaPool {
     let mut sim = state.clone();
+    // The engine gives an activation made while a choice is pending to the
+    // choice's player (A1.5cd). This measures `player` whatever is pending,
+    // so the simulation carries no choice.
+    sim.pending_choice = None;
     // Each pass activates one distinct (source, ability) and a source either
     // taps or is consumed, so progress is bounded by the permanent count; `+ 8`
     // covers the rarer hand/graveyard mana activations.

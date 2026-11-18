@@ -181,6 +181,11 @@ pub struct GameState {
     /// Drained by
     /// [`crate::engine::run_sba_and_triggers`].
     pub pending_trigger_queue: std::collections::VecDeque<crate::triggers::PendingTrigger>,
+    /// CR 508.1g, 701.43d — the declared attackers whose controller may
+    /// still exert them, in declaration order. Each is asked in turn
+    /// through [`crate::actions::ChoiceKind::Exert`] before any player
+    /// receives priority in the declare attackers step.
+    pub pending_exerts: std::collections::VecDeque<ObjectId>,
     /// Last-known-information table (CR 603.10 / 400.7). When an
     /// object changes zones it becomes a new object with a new
     /// [`ObjectId`]; any ability that must "look back" at the
@@ -343,6 +348,7 @@ impl GameState {
             pending_target_requirements: None,
             pending_cascade: None,
             pending_trigger_queue: std::collections::VecDeque::new(),
+            pending_exerts: std::collections::VecDeque::new(),
             next_object_id: FIRST_OBJECT_ID,
             result: None,
             event_log: Vec::new(),
@@ -1131,6 +1137,48 @@ impl GameState {
             }
         }
         cost.mana_value()
+    }
+
+    /// CR 701.43a — `player` exerts `object`: it won't untap during that
+    /// player's next untap step. A permanent already exerted by that
+    /// player keeps the one effect (CR 701.43b), and another player's
+    /// exert stays in place beside it; it is exerted again all the same,
+    /// so "when you do" abilities trigger.
+    pub fn exert(&mut self, object: ObjectId, player: PlayerId) {
+        let Some(obj) = self.objects.get_mut(object) else { return };
+        obj.mark_exerted_by(player);
+        self.emit(GameEvent::Exerted { object_id: object, player });
+    }
+
+    /// Does the permanent `id` have "you may exert this creature as it
+    /// attacks" now? The ability is its card's
+    /// ([`crate::registry::CardDefinition::exert_as_attacks`]), and a
+    /// permanent has it only while it has its abilities: not while face
+    /// down (CR 708.2), and not under a "loses all abilities" effect
+    /// aimed at it (CR 613.1f). A filtered loss is not read here, as it
+    /// is not for printed statics; no registered card installs one.
+    pub fn has_exert_as_it_attacks(
+        &self, id: ObjectId, registry: &crate::registry::CardRegistry,
+    ) -> bool {
+        self.objects.get(id).is_some_and(|o| {
+            !o.status.face_down
+                && registry.get(o.card_id).is_some_and(|d| d.exert_as_attacks)
+        }) && !self.has_lost_all_abilities(id)
+    }
+
+    /// Ask about the next attacker that may be exerted, if one is left.
+    /// Nothing happens between the declaration and these questions, so
+    /// each queued attacker is still attacking.
+    pub(crate) fn prompt_next_exert(&mut self) {
+        while let Some(attacker) = self.pending_exerts.pop_front() {
+            let Some(controller) = self.objects.get(attacker)
+                .map(|o| o.controller) else { continue };
+            self.push_pending_choice(
+                controller,
+                crate::actions::ChoiceContext::Other,
+                crate::actions::ChoiceKind::Exert { attacker });
+            return;
+        }
     }
 
     pub fn push_pending_choice(

@@ -20,7 +20,7 @@
 //! | Battlefield                              | yes                                         |
 //! | Graveyard / Stack / Exile / Command      | yes                                         |
 //! | Face-down on battlefield (Morph/Manifest) | **deferred to v1**                         |
-//! | Face-down in exile                       | **deferred to v1**                          |
+//! | Face-down in exile (Bomat Courier)       | no, to either player (CR 406.3)             |
 //!
 //! `PlayerState` is left untouched: every field there is public
 //! information (life, mana pool, poison, energy, experience,
@@ -149,6 +149,11 @@ pub fn project(state: &GameState, perspective: PlayerId) -> ObservableState {
         if !is_visible(perspective, obj, &known) {
             if obj.zone == Zone::Battlefield && obj.status.face_down {
                 anonymize_face_down_in_place(obj);
+            } else if obj.zone == Zone::Exile && obj.status.face_down {
+                // Hidden, but publicly face down, and publicly with the
+                // source that exiled it.
+                anonymize_object_in_place(obj);
+                obj.status.face_down = true;
             } else {
                 anonymize_object_in_place(obj);
             }
@@ -174,8 +179,12 @@ fn is_visible(
         Zone::Hand(p) => p == perspective,
         // A face-down battlefield permanent (Manifest) is a vanilla 2/2 to
         // everyone but its controller (CR 708.2): its printed identity is
-        // hidden information (A-1). Face-down in EXILE remains out of scope.
+        // hidden information (A-1).
         Zone::Battlefield if obj.status.face_down => obj.controller == perspective,
+        // A card exiled face down may be looked at by no player unless an
+        // instruction allows it (CR 406.3), and no modeled card's does:
+        // hidden from its owner too.
+        Zone::Exile if obj.status.face_down => false,
         // Stack, Graveyard, Exile, Command, face-up Battlefield — public.
         _ => true,
     }
@@ -316,8 +325,12 @@ pub fn determinize(
                 None if !deck.is_empty() => deck[i % deck.len()],
                 None => continue,
             };
-            let (owner, zone, face_down) = {
+            let (owner, zone, face_down, exiled_face_down) = {
                 let o = state.objects.get(id).expect("anon id exists");
+                // A card exiled face down keeps what is public about it:
+                // that it is face down, and the source it is exiled with.
+                let exiled = (o.zone == Zone::Exile && o.status.face_down)
+                    .then_some(o.linked_exile_source);
                 let fd = (o.zone == Zone::Battlefield && o.status.face_down).then(|| (
                     o.status,
                     o.counters.clone(),
@@ -325,7 +338,7 @@ pub fn determinize(
                     o.attachments.clone(),
                     o.attached_to,
                 ));
-                (o.owner, o.zone, fd)
+                (o.owner, o.zone, fd, exiled)
             };
             state.objects.remove(id);
             let mut fresh = instantiate_card_object(registry, id, owner, zone, card_id);
@@ -340,6 +353,10 @@ pub fn determinize(
                 fresh.attached_to = attached_to;
                 fresh.characteristics = face_down_shell();
                 fresh.abilities.clear();
+            }
+            if let Some(linked_exile_source) = exiled_face_down {
+                fresh.status.face_down = true;
+                fresh.linked_exile_source = linked_exile_source;
             }
             state.objects.insert(fresh);
         }
