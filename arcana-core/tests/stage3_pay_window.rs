@@ -362,6 +362,7 @@ fn restricted_mana_does_not_pay_in_the_window() {
                     spend_only_on: Some(SpendRestriction::OnlyCastCreatureSpells),
                     ..Default::default()
                 },
+                kept_until_end_of_turn: false,
             });
         }
         assert!(!pay_offered(&s, &r), "creature-only mana is not spendable here");

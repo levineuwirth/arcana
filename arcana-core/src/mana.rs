@@ -333,12 +333,30 @@ pub struct ManaUnit {
     /// Object that produced this mana (for "spend only for" restrictions).
     pub source: ObjectId,
     pub restrictions: ManaRestrictions,
+    /// "Until end of turn, you don't lose this mana as steps and phases
+    /// end" (Savage Ventmaw, Birgi): the unit stays in its pool through
+    /// every step's end and empties with the turn, in the cleanup step.
+    /// Within the pool it is spent like any other unit. A permanent that
+    /// keeps all of a player's unspent mana (Omnath, Locus of Mana) is a
+    /// different mechanism, and no unit carries it.
+    #[serde(default)]
+    pub kept_until_end_of_turn: bool,
 }
 
 impl ManaUnit {
     /// Convenience: an unrestricted mana unit of a color from an object.
     pub fn plain(color: ManaColor, source: ObjectId) -> Self {
-        Self { color, source, restrictions: ManaRestrictions::default() }
+        Self {
+            color, source,
+            restrictions: ManaRestrictions::default(),
+            kept_until_end_of_turn: false,
+        }
+    }
+
+    /// This unit, kept until end of turn.
+    pub fn keep_until_end_of_turn(mut self) -> Self {
+        self.kept_until_end_of_turn = true;
+        self
     }
 }
 
@@ -350,7 +368,11 @@ pub struct ManaRestrictions {
     pub is_snow: bool,
 }
 
-/// A player's mana pool. Cleared at the end of each phase (CR 106.4).
+/// A player's mana pool. It empties as each step and phase ends (CR 106.4,
+/// 500.5): the step machine calls [`ManaPool::empty_as_step_ends`] at every
+/// transition, which leaves only mana kept until end of turn
+/// ([`ManaUnit::kept_until_end_of_turn`]), and the cleanup step, which ends
+/// the turn, clears it.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ManaPool {
     pub pool: Vec<ManaUnit>,
@@ -369,6 +391,14 @@ impl ManaPool {
     }
 
     pub fn clear(&mut self) { self.pool.clear(); }
+
+    /// CR 500.5 — "As a step or phase ends ... any unspent mana left in a
+    /// player's mana pool empties." A turn-based action: it uses no stack and
+    /// emits no event, and on an empty pool it does nothing at all. Mana
+    /// kept until end of turn stays, in its order.
+    pub fn empty_as_step_ends(&mut self) {
+        self.pool.retain(|u| u.kept_until_end_of_turn);
+    }
 
     pub fn len(&self) -> usize { self.pool.len() }
     pub fn is_empty(&self) -> bool { self.pool.is_empty() }
@@ -1169,6 +1199,50 @@ mod tests {
     }
 
     #[test]
+    fn manapool_empties_as_a_step_ends() {
+        let mut p = ManaPool::new();
+        p.add_mana(ManaColor::Red, 2, 0);
+        p.add(ManaUnit {
+            color: ManaColor::Green,
+            source: 7,
+            restrictions: ManaRestrictions {
+                spend_only_on: Some(SpendRestriction::OnlyCastCreatureSpells),
+                is_snow: true,
+            },
+            kept_until_end_of_turn: false,
+        });
+        p.empty_as_step_ends();
+        assert!(p.is_empty(), "restricted and snow mana empty with the rest");
+        p.empty_as_step_ends();
+        assert_eq!(p, ManaPool::new(), "an empty pool stays as it was");
+    }
+
+    #[test]
+    fn manapool_keeps_marked_mana_through_a_step_end() {
+        let mut p = ManaPool::new();
+        p.add(ManaUnit::plain(ManaColor::Red, 1));
+        p.add(ManaUnit::plain(ManaColor::Green, 2).keep_until_end_of_turn());
+        p.add(ManaUnit::plain(ManaColor::Blue, 3));
+        p.add(ManaUnit::plain(ManaColor::White, 4).keep_until_end_of_turn());
+        p.empty_as_step_ends();
+        let left: Vec<(ManaColor, ObjectId)> = p.iter().map(|u| (u.color, u.source)).collect();
+        assert_eq!(left, [(ManaColor::Green, 2), (ManaColor::White, 4)], "the kept units, in order");
+        p.empty_as_step_ends();
+        assert_eq!(p.len(), 2, "and through the next step's end");
+        p.clear();
+        assert!(p.is_empty(), "the turn's end takes them");
+    }
+
+    #[test]
+    fn a_unit_recorded_before_the_marker_reads_as_not_kept() {
+        let old = r#"{"color":"Red","source":7,"restrictions":{"spend_only_on":null,"is_snow":false}}"#;
+        let unit: ManaUnit = serde_json::from_str(old).expect("the older shape still reads");
+        assert_eq!(unit, ManaUnit::plain(ManaColor::Red, 7));
+        assert!(!ManaUnit::plain(ManaColor::Red, 7).kept_until_end_of_turn);
+        assert!(ManaUnit::plain(ManaColor::Red, 7).keep_until_end_of_turn().kept_until_end_of_turn);
+    }
+
+    #[test]
     fn manapool_restricted_vs_unrestricted_count() {
         let mut p = ManaPool::new();
         p.add(ManaUnit::plain(ManaColor::Red, 0));
@@ -1179,6 +1253,7 @@ mod tests {
                 spend_only_on: Some(SpendRestriction::OnlyCastCreatureSpells),
                 is_snow: false,
             },
+            kept_until_end_of_turn: false,
         });
         assert_eq!(p.count_color(ManaColor::Red), 2);
         assert_eq!(p.count_unrestricted_color(ManaColor::Red), 1);
@@ -1309,6 +1384,7 @@ mod tests {
             color: ManaColor::Red,
             source: 0,
             restrictions: ManaRestrictions { spend_only_on: None, is_snow: true },
+            kept_until_end_of_turn: false,
         });
         assert_eq!(solve("{S}", &snow, &nonspell_ctx()).len(), 1);
     }
@@ -1432,6 +1508,7 @@ mod tests {
                 spend_only_on: Some(SpendRestriction::OnlyCastCreatureSpells),
                 is_snow: false,
             },
+            kept_until_end_of_turn: false,
         });
         // Cast an instant — forbidden.
         assert!(solve("{R}", &pool, &instant_spell_ctx()).is_empty());
@@ -1450,6 +1527,7 @@ mod tests {
                 spend_only_on: Some(SpendRestriction::OnlyActivateAbilities),
                 is_snow: false,
             },
+            kept_until_end_of_turn: false,
         });
         assert!(solve("{R}", &pool, &creature_spell_ctx()).is_empty());
         assert_eq!(solve("{R}", &pool, &SpendContext::for_activated_ability()).len(), 1);

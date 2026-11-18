@@ -730,8 +730,11 @@ impl GameState {
             // Ghostly Prison / Propaganda (CR 508.1e): attacking a
             // taxed player costs {N} per attacker, paid HERE from the
             // attacker's FLOATED pool once every other gate has
-            // passed — no float, no attack (documented strictness;
-            // pools are usually empty at declare-attackers).
+            // passed — no float, no attack. Since pools empty as each
+            // step ends (CR 500.5) nothing is floating at the
+            // declaration, which offers no mana ability beside it
+            // (CR 508.1i), so a taxed player cannot be attacked until
+            // it does (A1.5cf).
             if let DefendingEntity::Player(p) = &d.defending {
                 let tax = self.attack_tax_total(*p) as usize;
                 if tax > 0

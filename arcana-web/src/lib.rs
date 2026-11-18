@@ -2130,6 +2130,9 @@ mod tests {
     /// budget, and not the true-state ranking, which sees the opponent's hand.
     /// With the decklists misordered, `determinize`'s consistency check fails
     /// at this decision (the visible cards are not in the wrong lists).
+    /// The decision is the first of turn 6 with three choices: since A1.5ce,
+    /// with mana pools emptying as each step ends, the two rankings agree at
+    /// the turn-3 decision this test used before.
     #[test]
     fn suggestions_rank_from_sampled_worlds() {
         let reg = leaked_catalog();
@@ -2137,7 +2140,7 @@ mod tests {
         let mut core = GameCore::new_with_decks(reg, 5, human.clone(), opponent.clone());
         let mut cur = core.snapshot();
         for _ in 0..200 {
-            if cur.view.game_over.is_some() || (cur.view.turn >= 3 && cur.view.legal.len() >= 3) {
+            if cur.view.game_over.is_some() || (cur.view.turn >= 6 && cur.view.legal.len() >= 3) {
                 break;
             }
             let idx = cur.view.legal.iter()
@@ -2145,7 +2148,7 @@ mod tests {
                 .unwrap_or(0);
             cur = core.apply_index(idx).expect("a legal index always applies");
         }
-        assert!(cur.view.game_over.is_none() && cur.view.turn >= 3 && core.legal.len() >= 3,
+        assert!(cur.view.game_over.is_none() && cur.view.turn >= 6 && core.legal.len() >= 3,
             "the game reaches a mid-game decision");
         let state = core.session.state().clone();
         let legal = core.legal.clone();
