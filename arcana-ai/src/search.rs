@@ -23,6 +23,7 @@ use std::collections::HashMap;
 
 use arcana_core::actions::Action;
 use arcana_core::engine::{new_game, step, EngineYield};
+use arcana_core::legal_actions::{is_mana_activation, pending_choice_asks_mana};
 use arcana_core::registry::CardRegistry;
 use arcana_core::state::{GameResult, GameState};
 use arcana_core::objects::ObjectId;
@@ -564,7 +565,18 @@ fn progress_pick(legal: &[Action], rng: &mut ChaCha8Rng) -> usize {
 /// real signal. Still randomized within each tier so rollouts stay varied. Used
 /// by [`play_out`]; [`RandomStatePolicy`] keeps [`progress_pick`] (it is the
 /// baseline opponent, which must stay un-tuned).
-fn heuristic_pick(legal: &[Action], rng: &mut ChaCha8Rng) -> usize {
+///
+/// A mana ability is taken only where its mana can be spent. Pools empty as
+/// each step and phase ends (CR 500.5) and a cast pays from the pool, so a
+/// land tapped in the upkeep is a land the main phase does not have (A1.5cg).
+/// In its own main phase the rule taps for mana before any other real action,
+/// as it once did in the upkeep, so what it casts is chosen from everything
+/// it can afford; in a choice that asks it for mana ([`rollout_pays_now`]) a
+/// mana ability is one of the real actions. Anywhere else the mana abilities
+/// are set aside, and the fallback takes one only when nothing else is
+/// legal, so a rollout cannot stall on them.
+fn heuristic_pick(state: &GameState, registry: &CardRegistry, decider: PlayerId,
+                  legal: &[Action], rng: &mut ChaCha8Rng) -> usize {
     use arcana_core::actions::Action as A;
     // Tier 1: keep a mulligan hand.
     if let Some(i) = legal.iter().position(|a| matches!(a, A::MulliganKeep)) {
@@ -584,18 +596,37 @@ fn heuristic_pick(legal: &[Action], rng: &mut ChaCha8Rng) -> usize {
         }
     }
     if let Some((i, _)) = best { return i; }
-    // Tier 4: any other real action (cast, activate, block, resolution choices).
+    // Tier 4: mana, in its own main phase — every mana ability before any
+    // other real action there. A choice that asks for mana comes first: in
+    // it a mana ability is one of tier 5's real actions.
+    let offered = legal.iter().any(|a| matches!(a, A::ActivateAbility { .. }));
+    let pays_now = offered && rollout_pays_now(state, registry);
+    if offered && !pays_now && state.turn.active_player == decider && state.turn.phase.is_main() {
+        let taps: Vec<usize> = legal.iter().enumerate()
+            .filter(|(_, a)| is_mana_activation(state, a, registry)).map(|(i, _)| i).collect();
+        if let Some(&i) = taps.choose(rng) { return i; }
+    }
+    // Tier 5: any other real action (cast, activate, block, resolution choices).
     let real: Vec<usize> = legal.iter().enumerate()
         .filter(|(_, a)| !matches!(a,
-            A::PassPriority | A::Concede | A::MulliganAgain | A::DeclareAttackers { .. }))
+            A::PassPriority | A::Concede | A::MulliganAgain | A::DeclareAttackers { .. })
+            && (pays_now || !is_mana_activation(state, a, registry)))
         .map(|(i, _)| i).collect();
     if let Some(&i) = real.choose(rng) { return i; }
-    // Tier 5: pass priority.
+    // Tier 6: pass priority.
     if let Some(i) = legal.iter().position(|a| matches!(a, A::PassPriority)) {
         return i;
     }
-    // Fallback: first non-concede (e.g. an empty attack declaration), else 0.
+    // Fallback: first non-concede (e.g. an empty attack declaration, or a
+    // mana ability set aside above when nothing else is legal), else 0.
     legal.iter().position(|a| !matches!(a, A::Concede)).unwrap_or(0)
+}
+
+/// Is the rollout being asked for mana now (CR 605.3a;
+/// [`pending_choice_asks_mana`], A1.5cd's window)? Then a mana ability pays
+/// for the answer, whoever's turn it is.
+fn rollout_pays_now(state: &GameState, registry: &CardRegistry) -> bool {
+    pending_choice_asks_mana(state, registry)
 }
 
 /// Play `state`/`yld` forward with the development-biased [`heuristic_pick`]
@@ -608,9 +639,9 @@ fn play_out(mut state: GameState, mut yld: EngineYield, registry: &CardRegistry,
     loop {
         match yld {
             EngineYield::GameOver(_) => break,
-            EngineYield::PendingDecision { legal_actions, .. } => {
+            EngineYield::PendingDecision { player, legal_actions, .. } => {
                 if steps >= step_cap || legal_actions.is_empty() { break; }
-                let i = heuristic_pick(&legal_actions, rng);
+                let i = heuristic_pick(&state, registry, player, &legal_actions, rng);
                 let (s, y) = step(state, legal_actions[i].clone(), registry);
                 state = s; yld = y; steps += 1;
             }
@@ -1424,6 +1455,420 @@ mod tests {
         }
     }
 
+    // --- A1.5cg: the rollout rule and mana abilities ------------------------
+
+    /// Mountain, Forest, Lightning Bolt, Grizzly Bears and Prodigal Sorcerer
+    /// ("{T}: 1 damage to any target", not a mana ability) from the catalog,
+    /// and Toll, an instant: "You may pay {2}. If you do, draw a card."
+    struct RuleCards {
+        reg: CardRegistry,
+        mountain: CardId,
+        forest: CardId,
+        bolt: CardId,
+        bears: CardId,
+        sorcerer: CardId,
+        toll: CardId,
+    }
+
+    fn rule_cards() -> RuleCards {
+        use arcana_core::actions::OptionalPaymentKind;
+        use arcana_core::effects::Effect;
+        use arcana_core::mana::ManaCost;
+        use arcana_core::objects::Characteristics;
+        use arcana_core::registry::{CardDefinition, SpellAbilityDef};
+        use arcana_core::stack::StackEntry;
+        use arcana_core::types::{ColorSet, TypeLine};
+        fn toll_resolve(_: &GameState, entry: &StackEntry, _: &CardRegistry) -> Vec<Effect> {
+            vec![Effect::OptionalPayment {
+                chooser: entry.controller,
+                cost: OptionalPaymentKind::Mana(ManaCost::parse("{2}").unwrap()),
+                then: Box::new(Effect::DrawCards { player: entry.controller, count: 1 }),
+                else_effect: None,
+            }]
+        }
+        let mut reg = CardRegistry::new();
+        let mountain = arcana_cards::lea::mountain::register(&mut reg);
+        let forest = arcana_cards::lea::forest::register(&mut reg);
+        let bolt = arcana_cards::lea::lightning_bolt::register(&mut reg);
+        let bears = arcana_cards::lea::grizzly_bears::register(&mut reg);
+        let sorcerer = arcana_cards::lea::prodigal_sorcerer::register(&mut reg);
+        let name = reg.interner_mut().intern("Rule Test Toll");
+        let toll = reg.register(CardDefinition::new(name, Characteristics {
+            name,
+            mana_cost: Some(ManaCost::parse("{R}").unwrap()),
+            colors: ColorSet::red(),
+            types: TypeLine::INSTANT.into(),
+            ..Default::default()
+        }).with_spell_ability(SpellAbilityDef {
+            text: "You may pay {2}. If you do, draw a card.".into(),
+            target_requirements: Vec::new(),
+            modal: None,
+            effect: toll_resolve,
+        }));
+        RuleCards { reg, mountain, forest, bolt, bears, sorcerer, toll }
+    }
+
+    /// `active`'s turn at `phase` and `step`, `holder` with priority, and ten
+    /// Forests in each library.
+    fn rule_table(c: &RuleCards, active: PlayerId, phase: arcana_core::turn::Phase,
+                  step: arcana_core::turn::Step, holder: PlayerId) -> GameState {
+        let mut s = GameState::new(2, 20261116);
+        s.turn.active_player = active;
+        s.turn.phase = phase;
+        s.turn.step = step;
+        s.priority.give_to(holder);
+        for p in [0, 1] {
+            for _ in 0..10 { rule_add(&mut s, c, p, c.forest, Zone::Library(p)); }
+        }
+        s
+    }
+
+    fn rule_add(s: &mut GameState, c: &RuleCards, owner: PlayerId, card: CardId, zone: Zone) -> ObjectId {
+        let id = s.allocate_object_id();
+        s.objects.insert(arcana_core::objects::GameObject::new(id, owner, zone, card,
+            c.reg.get(card).unwrap().initial_characteristics().clone()));
+        if let Zone::Library(p) = zone {
+            s.player_mut(p).library_top_to_bottom.push(id);
+        }
+        id
+    }
+
+    /// Onto the battlefield through the zone mover.
+    fn rule_enter(s: &mut GameState, c: &RuleCards, owner: PlayerId, card: CardId) -> ObjectId {
+        let id = rule_add(s, c, owner, card, Zone::Hand(owner));
+        s.move_object_to_zone(id, Zone::Battlefield, arcana_core::events::MoveCause::SpellResolution)
+            .expect("entered")
+    }
+
+    fn rule_act(s: GameState, c: &RuleCards, pick: impl Fn(&GameState, &Action) -> bool) -> GameState {
+        let chosen = arcana_core::legal_actions::legal_actions(&s, &c.reg).into_iter()
+            .find(|a| pick(&s, a)).expect("the action is offered");
+        step(s, chosen, &c.reg).0
+    }
+
+    /// `decider` at priority with {R} floating, an untapped Mountain, an
+    /// untapped Prodigal Sorcerer and a Lightning Bolt in hand: the list
+    /// holds a cast, a mana ability, an activation that is not one, and a
+    /// pass. Returns the state and that list.
+    fn bolt_in_hand(c: &RuleCards, decider: PlayerId, active: PlayerId,
+                    phase: arcana_core::turn::Phase, st: arcana_core::turn::Step)
+        -> (GameState, Vec<Action>)
+    {
+        let mut s = rule_table(c, active, phase, st, decider);
+        let first = rule_enter(&mut s, c, decider, c.mountain);
+        rule_enter(&mut s, c, decider, c.mountain);
+        let sorcerer = rule_enter(&mut s, c, decider, c.sorcerer);
+        s.objects.get_mut(sorcerer).unwrap().status.summoning_sick = false;
+        rule_add(&mut s, c, decider, c.bolt, Zone::Hand(decider));
+        let s = rule_act(s, c, |_, a| matches!(a, Action::ActivateAbility { source, .. } if *source == first));
+        let legal = arcana_core::legal_actions::legal_actions(&s, &c.reg);
+        assert_eq!(legal.iter().filter(|a| is_mana_activation(&s, a, &c.reg)).count(), 1,
+            "the second Mountain's ability is offered");
+        assert!(legal.iter().any(|a| matches!(a, Action::ActivateAbility { source, .. } if *source == sorcerer)),
+            "the Sorcerer's ability is offered");
+        assert!(legal.iter().any(|a| matches!(a, Action::CastSpell { .. })), "the Bolt is castable");
+        assert!(legal.iter().any(|a| matches!(a, Action::PassPriority)));
+        (s, legal)
+    }
+
+    /// `decider` answering Toll's "you may pay {2}" with two untapped
+    /// Mountains, a choice that asks for mana: in the opponent's upkeep,
+    /// outside the decider's own main phase, or (`own_main`) inside it.
+    fn toll_window(c: &RuleCards, decider: PlayerId, own_main: bool) -> (GameState, Vec<Action>) {
+        use arcana_core::turn::{Phase, Step};
+        let opp = 1 - decider;
+        let mut s = if own_main {
+            rule_table(c, decider, Phase::PreCombatMain, Step::Main, decider)
+        } else {
+            rule_table(c, opp, Phase::Beginning, Step::Upkeep, decider)
+        };
+        let first = rule_enter(&mut s, c, decider, c.mountain);
+        for _ in 0..2 { rule_enter(&mut s, c, decider, c.mountain); }
+        rule_add(&mut s, c, decider, c.toll, Zone::Hand(decider));
+        let s = rule_act(s, c, |_, a| matches!(a, Action::ActivateAbility { source, .. } if *source == first));
+        let s = rule_act(s, c, |_, a| matches!(a, Action::CastSpell { .. }));
+        // Both players pass and Toll resolves into its question.
+        let s = rule_act(s, c, |_, a| a.is_pass());
+        let s = rule_act(s, c, |_, a| a.is_pass());
+        assert!(pending_choice_asks_mana(&s, &c.reg), "Toll asks for mana");
+        assert_eq!(s.pending_choice.as_ref().map(|p| p.choosing_player), Some(decider));
+        assert!(if own_main { s.turn.active_player == decider && s.turn.phase.is_main() }
+                else { s.turn.active_player == opp && s.turn.step == Step::Upkeep });
+        let legal = arcana_core::legal_actions::legal_actions(&s, &c.reg);
+        assert_eq!(legal.iter().filter(|a| is_mana_activation(&s, a, &c.reg)).count(), 2,
+            "both untapped Mountains are offered in the window");
+        (s, legal)
+    }
+
+    /// The rule as it stood before A1.5cg, verbatim: the comparison the tests
+    /// below make, and the text the head-to-head probe carries.
+    #[allow(clippy::unnecessary_map_or)] // verbatim
+    fn heuristic_pick_before_a15cg(legal: &[Action], rng: &mut ChaCha8Rng) -> usize {
+        use arcana_core::actions::Action as A;
+        // Tier 1: keep a mulligan hand.
+        if let Some(i) = legal.iter().position(|a| matches!(a, A::MulliganKeep)) {
+            return i;
+        }
+        // Tier 2: develop mana — play a land (random among available land plays).
+        let lands: Vec<usize> = legal.iter().enumerate()
+            .filter(|(_, a)| matches!(a, A::PlayLand { .. })).map(|(i, _)| i).collect();
+        if let Some(&i) = lands.choose(rng) { return i; }
+        // Tier 3: attack — the declaration with the most attackers (aggression
+        // converts board presence into life pressure). Empty declarations skipped.
+        let mut best: Option<(usize, usize)> = None;
+        for (i, a) in legal.iter().enumerate() {
+            if let A::DeclareAttackers { attackers } = a {
+                let n = attackers.len();
+                if n > 0 && best.map_or(true, |(_, bn)| n > bn) { best = Some((i, n)); }
+            }
+        }
+        if let Some((i, _)) = best { return i; }
+        // Tier 4: any other real action (cast, activate, block, resolution choices).
+        let real: Vec<usize> = legal.iter().enumerate()
+            .filter(|(_, a)| !matches!(a,
+                A::PassPriority | A::Concede | A::MulliganAgain | A::DeclareAttackers { .. }))
+            .map(|(i, _)| i).collect();
+        if let Some(&i) = real.choose(rng) { return i; }
+        // Tier 5: pass priority.
+        if let Some(i) = legal.iter().position(|a| matches!(a, A::PassPriority)) {
+            return i;
+        }
+        // Fallback: first non-concede (e.g. an empty attack declaration), else 0.
+        legal.iter().position(|a| !matches!(a, A::Concede)).unwrap_or(0)
+    }
+
+    /// A1.5cg: where the mana would be lost, the rollout rule takes no mana
+    /// ability while anything else is legal. With a cast, a mana ability,
+    /// another activation and a pass on offer at priority, it casts or uses
+    /// the other ability, at every seed: in its own upkeep and beginning of
+    /// combat, and on the opponent's turn. Before the repair the Mountain
+    /// was one of its choices.
+    #[test]
+    fn the_rollout_rule_sets_mana_abilities_aside_where_their_mana_would_be_lost() {
+        use arcana_core::turn::{Phase, Step};
+        let c = rule_cards();
+        for decider in [0u8, 1] {
+            let opp = 1 - decider;
+            for (active, phase, st) in [
+                (decider, Phase::Beginning, Step::Upkeep),
+                (decider, Phase::Combat, Step::BeginCombat),
+                (opp, Phase::Beginning, Step::Upkeep),
+                (opp, Phase::PreCombatMain, Step::Main),
+            ] {
+                let (s, legal) = bolt_in_hand(&c, decider, active, phase, st);
+                let (mut casts, mut others) = (0, 0);
+                for seed in 0..200 {
+                    let mut rng = ChaCha8Rng::seed_from_u64(seed);
+                    let i = heuristic_pick(&s, &c.reg, decider, &legal, &mut rng);
+                    assert!(!is_mana_activation(&s, &legal[i], &c.reg),
+                        "seat {decider}, {st:?} of seat {active}'s turn, seed {seed}: picked {:?}", legal[i]);
+                    match &legal[i] {
+                        Action::CastSpell { .. } => casts += 1,
+                        Action::ActivateAbility { .. } => others += 1,
+                        other => panic!("seat {decider}, seed {seed}: picked {other:?}"),
+                    }
+                }
+                assert!(casts > 20 && others > 20,
+                    "only the mana ability is set aside: {casts} casts, {others} other activations");
+                // With nothing else to do it passes, and with no pass either
+                // it takes the mana ability sooner than concede or stall.
+                let no_cast: Vec<Action> = legal.iter()
+                    .filter(|a| !matches!(a, Action::CastSpell { .. })
+                        && (is_mana_activation(&s, a, &c.reg) || !matches!(a, Action::ActivateAbility { .. })))
+                    .cloned().collect();
+                let only_taps: Vec<Action> = no_cast.iter()
+                    .filter(|a| !matches!(a, Action::PassPriority)).cloned().collect();
+                for seed in 0..20 {
+                    let mut rng = ChaCha8Rng::seed_from_u64(seed);
+                    let i = heuristic_pick(&s, &c.reg, decider, &no_cast, &mut rng);
+                    assert!(matches!(no_cast[i], Action::PassPriority), "it passes: {:?}", no_cast[i]);
+                    let i = heuristic_pick(&s, &c.reg, decider, &only_taps, &mut rng);
+                    assert!(is_mana_activation(&s, &only_taps[i], &c.reg), "no stall: {:?}", only_taps[i]);
+                }
+            }
+        }
+    }
+
+    /// A1.5cg: from its upkeep, with two untapped Forests and Grizzly Bears in
+    /// hand, a rollout reaches its main phase with the Forests untapped and
+    /// casts the Bears there, at every seed and from either seat. Before the
+    /// repair it tapped both Forests in the upkeep and the mana was gone when
+    /// the upkeep ended.
+    #[test]
+    fn a_rollout_keeps_its_lands_for_the_main_phase_and_casts_there() {
+        use arcana_core::actions::DecisionContext;
+        use arcana_core::events::GameEvent;
+        use arcana_core::turn::{Phase, Step};
+        let c = rule_cards();
+        for seat in [0u8, 1] {
+            let mut s = rule_table(&c, seat, Phase::Beginning, Step::Upkeep, seat);
+            for _ in 0..2 { rule_enter(&mut s, &c, seat, c.forest); }
+            rule_add(&mut s, &c, seat, c.bears, Zone::Hand(seat));
+            let start = s.event_log.len();
+            let legal = arcana_core::legal_actions::legal_actions(&s, &c.reg);
+            assert_eq!(legal.iter().filter(|a| is_mana_activation(&s, a, &c.reg)).count(), 2,
+                "the upkeep offers both Forests");
+            assert!(!legal.iter().any(|a| matches!(a, Action::CastSpell { .. })),
+                "and no cast, with nothing in the pool");
+            let yld = EngineYield::PendingDecision {
+                player: seat, legal_actions: legal, context: DecisionContext::Priority };
+            for seed in 0..24 {
+                let mut rng = ChaCha8Rng::seed_from_u64(seed);
+                let leaf = play_out(s.clone(), yld.clone(), &c.reg, 40, &mut rng);
+                let log = &leaf.event_log[start..];
+                let at = |want: &dyn Fn(&GameEvent) -> bool| log.iter().position(want);
+                let main = at(&|e| matches!(e, GameEvent::StepBegins { step: Step::Main }))
+                    .expect("the rollout reaches the main phase");
+                let combat = at(&|e| matches!(e, GameEvent::StepBegins { step: Step::BeginCombat }))
+                    .expect("and the combat after it");
+                let mana = at(&|e| matches!(e, GameEvent::ManaAdded { .. }))
+                    .expect("the Forests are tapped at some point");
+                let cast = at(&|e| matches!(e, GameEvent::SpellCast { .. }));
+                assert!(mana > main, "seat {seat}, seed {seed}: a Forest was tapped before the main phase");
+                assert!(cast.is_some_and(|k| main < k && k < combat),
+                    "seat {seat}, seed {seed}: the Bears are cast in the first main phase");
+                assert!(leaf.objects.objects_in_zone(Zone::Battlefield)
+                    .any(|o| o.card_id == c.bears && o.controller == seat),
+                    "seat {seat}, seed {seed}: the Bears are on the battlefield");
+            }
+        }
+    }
+
+    /// A1.5cg: on the opponent's turn a rollout leaves its lands alone. From
+    /// the opponent's upkeep, with two untapped Forests and Grizzly Bears in
+    /// hand, this seat makes no mana until the opponent's turn has ended, and
+    /// then casts the Bears. (The rule asks about the player deciding, who
+    /// is not always the player whose turn it is.)
+    #[test]
+    fn a_rollout_does_not_tap_on_the_opponents_turn() {
+        use arcana_core::actions::DecisionContext;
+        use arcana_core::events::GameEvent;
+        use arcana_core::turn::{Phase, Step};
+        let c = rule_cards();
+        for seat in [0u8, 1] {
+            let opp = 1 - seat;
+            let mut s = rule_table(&c, opp, Phase::Beginning, Step::Upkeep, opp);
+            for _ in 0..2 { rule_enter(&mut s, &c, seat, c.forest); }
+            rule_add(&mut s, &c, seat, c.bears, Zone::Hand(seat));
+            let start = s.event_log.len();
+            let legal = arcana_core::legal_actions::legal_actions(&s, &c.reg);
+            let yld = EngineYield::PendingDecision {
+                player: opp, legal_actions: legal, context: DecisionContext::Priority };
+            for seed in 0..24 {
+                let mut rng = ChaCha8Rng::seed_from_u64(seed);
+                let leaf = play_out(s.clone(), yld.clone(), &c.reg, 80, &mut rng);
+                let log = &leaf.event_log[start..];
+                let turn_end = log.iter().position(|e| matches!(e, GameEvent::TurnEnds { .. }))
+                    .expect("the opponent's turn ends");
+                let mine = log.iter().position(|e| matches!(e, GameEvent::ManaAdded { player, .. } if *player == seat))
+                    .expect("this seat taps its Forests at some point");
+                assert!(mine > turn_end,
+                    "seat {seat}, seed {seed}: it tapped a Forest on the opponent's turn");
+                assert!(leaf.objects.objects_in_zone(Zone::Battlefield)
+                    .any(|o| o.card_id == c.bears && o.controller == seat),
+                    "seat {seat}, seed {seed}: the Bears are on the battlefield");
+            }
+        }
+    }
+
+    /// A1.5cg: in its own main phase the rollout rule taps for mana before
+    /// any other real action: with a cast, another activation and a mana
+    /// ability on offer it takes the mana ability at every seed, and once
+    /// none is left its choice is what it was before the repair. In a choice
+    /// that asks it for mana, on the opponent's turn, a mana ability is one
+    /// of its real actions as before: the same pick at every seed, the mana
+    /// ability among them.
+    #[test]
+    fn the_rollout_rule_taps_first_in_its_own_main_phase_and_pays_in_a_payment_window() {
+        use arcana_core::turn::{Phase, Step};
+        let c = rule_cards();
+        for decider in [0u8, 1] {
+            for phase in [Phase::PreCombatMain, Phase::PostCombatMain] {
+                let (s, legal) = bolt_in_hand(&c, decider, decider, phase, Step::Main);
+                assert!(!pending_choice_asks_mana(&s, &c.reg), "the main phase alone allows it");
+                let untapped: Vec<Action> = legal.iter()
+                    .filter(|a| !is_mana_activation(&s, a, &c.reg)).cloned().collect();
+                for seed in 0..200 {
+                    let i = heuristic_pick(&s, &c.reg, decider, &legal, &mut ChaCha8Rng::seed_from_u64(seed));
+                    assert!(is_mana_activation(&s, &legal[i], &c.reg),
+                        "seat {decider}, {phase:?}, seed {seed}: picked {:?} before the Mountain", legal[i]);
+                    let i = heuristic_pick(&s, &c.reg, decider, &untapped, &mut ChaCha8Rng::seed_from_u64(seed));
+                    let before = heuristic_pick_before_a15cg(&untapped, &mut ChaCha8Rng::seed_from_u64(seed));
+                    assert_eq!(i, before, "seat {decider}, {phase:?}, seed {seed}: with no mana ability left");
+                }
+            }
+            // The window, on the opponent's turn and in its own main phase:
+            // being asked comes before tapping first.
+            for own_main in [false, true] {
+                let (s, legal) = toll_window(&c, decider, own_main);
+                let mut tapped = 0;
+                for seed in 0..200 {
+                    let i = heuristic_pick(&s, &c.reg, decider, &legal, &mut ChaCha8Rng::seed_from_u64(seed));
+                    let before = heuristic_pick_before_a15cg(&legal, &mut ChaCha8Rng::seed_from_u64(seed));
+                    assert_eq!(i, before, "seat {decider}, the window (own main: {own_main}), seed {seed}");
+                    if is_mana_activation(&s, &legal[i], &c.reg) { tapped += 1; }
+                }
+                assert!(tapped > 20 && tapped < 180,
+                    "seat {decider}, own main {own_main}: in the window a mana ability was picked {tapped} times in 200");
+            }
+        }
+    }
+
+    /// A1.5cg: the repair changes the rule only around mana abilities. Over
+    /// three games the rule plays against itself, every decision is picked
+    /// at one seed by the rule and by its text before the repair. With no
+    /// mana ability on offer they agree. With one on offer in the decider's
+    /// own main phase, the rule plays a land if it can and otherwise takes a
+    /// mana ability; anywhere else its pick is the old rule's pick from the
+    /// list without the mana abilities.
+    #[test]
+    fn the_rollout_rule_changes_only_around_mana_abilities() {
+        let c = rule_cards();
+        let mut deck = Vec::new();
+        for (card, n) in [(c.mountain, 12), (c.forest, 12), (c.bolt, 18), (c.bears, 18)] {
+            deck.extend(std::iter::repeat_n(card, n));
+        }
+        let (mut plain, mut first, mut aside) = (0, 0, 0);
+        for game in 0..3u64 {
+            let (mut state, mut yld) = new_game(vec![deck.clone(), deck.clone()], &c.reg, 20261116 + game);
+            let mut game_rng = ChaCha8Rng::seed_from_u64(game);
+            for decision in 0..4000u64 {
+                let (player, legal) = match &yld {
+                    EngineYield::PendingDecision { player, legal_actions, .. } => (*player, legal_actions.clone()),
+                    EngineYield::GameOver(_) => break,
+                };
+                assert!(!pending_choice_asks_mana(&state, &c.reg), "these decks ask for no mana");
+                let new = heuristic_pick(&state, &c.reg, player, &legal, &mut ChaCha8Rng::seed_from_u64(decision));
+                let taps = legal.iter().filter(|a| is_mana_activation(&state, a, &c.reg)).count();
+                let own_main = state.turn.active_player == player && state.turn.phase.is_main();
+                if taps == 0 {
+                    let old = heuristic_pick_before_a15cg(&legal, &mut ChaCha8Rng::seed_from_u64(decision));
+                    assert_eq!(new, old, "game {game}, decision {decision}");
+                    plain += 1;
+                } else if own_main {
+                    let land = legal.iter().any(|a| matches!(a, Action::PlayLand { .. }));
+                    assert!(if land { matches!(legal[new], Action::PlayLand { .. }) }
+                            else { is_mana_activation(&state, &legal[new], &c.reg) },
+                        "game {game}, decision {decision}: picked {:?}", legal[new]);
+                    first += 1;
+                } else {
+                    let kept: Vec<usize> = (0..legal.len())
+                        .filter(|&i| !is_mana_activation(&state, &legal[i], &c.reg)).collect();
+                    let rest: Vec<Action> = kept.iter().map(|&i| legal[i].clone()).collect();
+                    let old = heuristic_pick_before_a15cg(&rest, &mut ChaCha8Rng::seed_from_u64(decision));
+                    assert_eq!(new, kept[old], "game {game}, decision {decision}");
+                    aside += 1;
+                }
+                let i = heuristic_pick(&state, &c.reg, player, &legal, &mut game_rng);
+                let (s, y) = step(state, legal[i].clone(), &c.reg);
+                state = s; yld = y;
+            }
+            assert!(state.result.is_some(), "game {game} ends");
+        }
+        assert!(plain > 300 && first > 60 && aside > 40,
+            "the games hold each kind of decision: {plain} without a mana ability, {first} in the own main phase, {aside} elsewhere");
+    }
+
     /// A recorded random match round-trips through JSON, replays to the same
     /// final state, and renders to a readable snapshot.
     #[test]
@@ -1625,7 +2070,13 @@ mod tests {
     /// whose mana stayed in its pool to the end of the turn, and now
     /// passes; the older game went on to pay for two spells with mana
     /// floated in an earlier step (decisions 146 and 390 of its 477). The
-    /// fixture is re-recorded again, at 390 decisions. Two fingerprints
+    /// fixture was re-recorded again, at 390 decisions. A1.5cg's rollout
+    /// rule, which keeps its lands for its own main phase, changed the game
+    /// once more: the two agree to decision 68 and part at decision 69, in
+    /// turn 3's second main phase, where player 0, offered the same five
+    /// actions, used to pass with a land in hand and now plays it; nothing
+    /// in the engine moved, and the choice changed in its rollouts. The
+    /// fixture is re-recorded at 1080 decisions. Two fingerprints
     /// (FNV-1a) hold it.
     /// The portable one covers every scored candidate's index, every action and
     /// how far the deciding policy's stream has advanced after it, so a change
@@ -1676,9 +2127,9 @@ mod tests {
             let (s, y) = step(state, a, &reg);
             state = s; yld = y; decisions += 1;
         };
-        assert_eq!((decisions, result), (390, GameResult::Win(1)));
-        assert_eq!(p, 0x14da_cc06_f2a3_4cce, "portable fingerprint {p:#018x}");
-        assert_eq!(h, 0xce13_8217_c500_cb09, "fingerprint {h:#018x}");
+        assert_eq!((decisions, result), (1080, GameResult::Win(0)));
+        assert_eq!(p, 0xd1fd_1860_41db_d8c7, "portable fingerprint {p:#018x}");
+        assert_eq!(h, 0x39a5_ebea_8c4d_b895, "fingerprint {h:#018x}");
     }
 
     /// Give objects `a` and `b` each other's printed identity, keeping their

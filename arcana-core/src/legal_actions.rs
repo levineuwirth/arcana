@@ -3604,7 +3604,15 @@ fn action_plays_card(action: &Action, target: ObjectId) -> bool {
             if *object_id == target)
 }
 
-fn is_mana_activation(state: &GameState, action: &Action, registry: &CardRegistry) -> bool {
+/// Does `action` activate a mana ability (CR 605.1a)? The ability is read
+/// through [`lookup_activated_ability`], so the action's flat index means
+/// here what it means to the enumerator and to the engine: a registry
+/// ability, one the object carries itself (a Treasure's) or one a
+/// continuous effect grants. `false` for every other action, and for an
+/// activation whose source or ability is not there. It reads the state and
+/// changes nothing; a rollout rule uses it to tell a tapped land from a
+/// play (A1.5cg).
+pub fn is_mana_activation(state: &GameState, action: &Action, registry: &CardRegistry) -> bool {
     matches!(action, Action::ActivateAbility { source, ability_index, .. }
         if state.objects.get(*source)
             .and_then(|o| lookup_activated_ability(o, registry, state, *ability_index))
