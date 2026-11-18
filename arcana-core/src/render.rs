@@ -246,6 +246,12 @@ fn render_choice_response(r: &ChoiceResponse, state: &GameState, registry: &Card
         ChoiceResponse::YesNo { answer } => if *answer { "Yes".into() } else { "No".into() },
         ChoiceResponse::PayOrDecline { pay } | ChoiceResponse::OptionalCost { pay } =>
             if *pay { "Pay".into() } else { "Decline".into() },
+        // An entering permanent's reveal clause: say what the pick does.
+        ChoiceResponse::PickCards { picked } if state.pending_entry_reveal_filter().is_some() =>
+            match picked.first() {
+                Some(id) => format!("Reveal {}", card_name(state, registry, *id)),
+                None => "Don't reveal".into(),
+            },
         ChoiceResponse::PickCards { picked } if picked.is_empty() => "Pick nothing".into(),
         ChoiceResponse::PickCards { picked } => format!("Pick {}",
             picked.iter().map(|id| card_name(state, registry, *id)).collect::<Vec<_>>().join(", ")),

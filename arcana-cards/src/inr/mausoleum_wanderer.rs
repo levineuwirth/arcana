@@ -3,14 +3,14 @@
 //! * Flying — base keyword.
 //! * "Whenever another Spirit you control enters, this creature gets +1/+1
 //!   until end of turn." — a Spirit-filtered `ZoneChange` to the battlefield
-//!   under your control; the pump targets this creature.
+//!   under your control; the pump targets this creature. The filter excludes
+//!   the source, so the Wanderer's own entry does not grow it.
 //! * "Sacrifice this creature: Counter target instant or sorcery spell unless
-//!   its controller pays {X}, where X is this creature's power." — a
-//!   sacrifice-cost activated ability that counters the spell. The "unless its
-//!   controller pays {X}" rider has a player-dynamic mana amount (X = this
-//!   creature's power) that `OptionalPaymentKind` (fixed Mana/Life only)
-//!   cannot express, so the soft-counter clause is GAP'd and the spell is
-//!   countered outright (best-effort).
+//!   its controller pays {X}, where X is this creature's power." — the
+//!   Wanderer is gone when the ability resolves, so X is its power as it last
+//!   existed on the battlefield (CR 113.7a, 608.2h): the pump above and any
+//!   anthem are in it. The spell's controller pays {X} or the spell is
+//!   countered.
 
 use arcana_core::effects::{Effect, KeywordAbility};
 use arcana_core::layers::Duration;
@@ -38,8 +38,9 @@ pub fn register(reg: &mut CardRegistry) -> CardId {
     let mut subtypes = SubtypeSet::default();
     subtypes.0.insert(spirit);
 
-    let spirit_filter =
-        script::subtype_filter(reg, "Spirit").controlled_by(ControllerConstraint::You);
+    let spirit_filter = script::subtype_filter(reg, "Spirit")
+        .controlled_by(ControllerConstraint::You)
+        .excluding_source();
 
     let chars = Characteristics {
         name,
@@ -108,7 +109,7 @@ fn spirit_pump(
 }
 
 fn sac_counter_spell(
-    _state: &GameState,
+    state: &GameState,
     ctx: &ActivationContext,
     _reg: &CardRegistry,
 ) -> Vec<Effect> {
@@ -118,8 +119,11 @@ fn sac_counter_spell(
     let TargetChoice::Object(id) = target else {
         return Vec::new();
     };
-    // GAP: "unless its controller pays {X}, where X is this creature's power" —
-    // a player-dynamic mana payment isn't expressible (OptionalPaymentKind is
-    // fixed Mana/Life only), so the spell is countered outright.
-    vec![Effect::Counter { target: *id }]
+    // X is the sacrificed Wanderer's last-known power; a power below zero
+    // asks for {0} (CR 107.1b).
+    let x = script::last_known_power(state, ctx.source).unwrap_or(0).max(0);
+    vec![Effect::CounterUnlessPays {
+        target: *id,
+        cost: ManaCost::empty().with_generic_delta(x),
+    }]
 }

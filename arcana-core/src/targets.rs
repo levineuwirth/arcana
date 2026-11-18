@@ -1055,7 +1055,15 @@ impl ObjectFilter {
             // fails any subtype exclusion. (Filters' type constraints
             // keep land/Equipment subtype reads honest — see the
             // flag's doc on Characteristics.)
-            let every = computed.as_ref()
+            //
+            // The flag grants creature types and nothing else (CR
+            // 205.3): a filter that asks for a land and not for a
+            // creature is asking for a land type, so a land creature
+            // that is every creature type answers it by the subtypes it
+            // has, as any other land does.
+            let asks_land_type = self.types
+                .is_some_and(|t| t.is_land() && !t.is_creature());
+            let every = !asks_land_type && computed.as_ref()
                 .map(|c| c.every_creature_type)
                 .unwrap_or(chars.every_creature_type);
             let computed_subs = computed.map(|c| c.subtypes);

@@ -1147,7 +1147,21 @@ fn apply_activate_ability(
     // life) — sacrifice-a-different-permanent, discard, exile from
     // graveyard, reveal, remove-counters — flow through the shared
     // helper that also powers `apply_cast_spell`.
-    apply_additional_costs(state, controller, &additional_costs);
+    //
+    // The other permanents sacrificed to pay, for "the sacrificed
+    // creature's toughness" (A1.5bp): the ability reads what they last
+    // were. The action also declares the source's own sacrifice; that
+    // permanent is the context's `source`. An activation's only chosen
+    // sacrifices are its `sacrifice_other` cost, "sacrifice N [filtered]":
+    // one cost, paid whole (CR 601.2h, 602.2b), so its permanents leave
+    // together.
+    let cost_sacrificed: Vec<ObjectId> = additional_costs.iter()
+        .filter_map(|c| match c {
+            crate::actions::AdditionalCostPayment::Sacrifice(id) if *id != source => Some(*id),
+            _ => None,
+        })
+        .collect();
+    apply_costs_sacrificing_together(state, controller, &additional_costs, &cost_sacrificed);
     // "Discard N at random" (CR 701.8d) — the engine, not the player,
     // picks the cards, so it's paid here rather than via an enumerated
     // AdditionalCostPayment. legal_actions already gated on hand size.
@@ -1170,6 +1184,7 @@ fn apply_activate_ability(
             targets,
             x_value: None,
             card_id,
+            sacrificed: cost_sacrificed,
         };
         // Mana-ability resolution dispatches via the snapshotted effect
         // fn pointer so commodity-token intrinsics (which aren't keyed
@@ -1214,7 +1229,7 @@ fn apply_activate_ability(
         // itself can still resolve: by the time the stack entry fires,
         // the source object may be gone, so a registry-keyed lookup
         // wouldn't find an intrinsic ability either.
-        let entry = crate::stack::StackEntry::new_activated_ability_with_effect(
+        let mut entry = crate::stack::StackEntry::new_activated_ability_with_effect(
             entry_id,
             source,
             controller,
@@ -1226,6 +1241,7 @@ fn apply_activate_ability(
             Vec::new(),
             x_value,
         );
+        entry.cost_sacrificed = cost_sacrificed;
         state.push_stack_entry(entry);
         // CR 115 — activated abilities that target emit BecomesTarget
         // after landing on the stack, same hook as cast spells. Ward
@@ -1323,6 +1339,15 @@ pub(crate) fn apply_resolution_choice(
             ChoiceContext::EnteringBattlefield { object_id },
             ChoiceResponse::OptionalCost { pay },
         ) => state.answer_entry_payment(*object_id, *pay),
+        // The reveal clause of an entering permanent: one card or none.
+        (
+            ChoiceKind::PickCards { candidates, min, max },
+            ChoiceContext::EnteringBattlefield { object_id },
+            ChoiceResponse::PickCards { picked },
+        ) => {
+            assert_pick_cards_well_formed(candidates, picked, *min, *max);
+            state.answer_entry_reveal(*object_id, picked);
+        }
         // --- OrderCards (Scry, Surveil, Fateseal) --------------------
         (
             ChoiceKind::OrderCards { cards, allowed },
@@ -1463,14 +1488,16 @@ pub(crate) fn apply_resolution_choice(
                 .copied()
                 .filter(|id| !picked.contains(id))
                 .collect();
-            for id in sacrificed {
-                // Put into the graveyard by the rule, not sacrificed or
-                // destroyed: a death, so an exile-instead applies and no
-                // regeneration does (A1.5bk).
-                state.put_into_graveyard_dying(id,
-                    crate::replacement::DeathKind::Other,
-                    crate::events::MoveCause::StateBasedAction);
-            }
+            state.departing_together(&sacrificed.clone(), |state| {
+                for id in sacrificed {
+                    // Put into the graveyard by the rule, not sacrificed or
+                    // destroyed: a death, so an exile-instead applies and no
+                    // regeneration does (A1.5bk).
+                    state.put_into_graveyard_dying(id,
+                        crate::replacement::DeathKind::Other,
+                        crate::events::MoveCause::StateBasedAction);
+                }
+            });
             // Re-enter the SBA loop: more legend groups may still be
             // conflicting, and the just-sacrificed moves may have
             // triggered other SBAs.
@@ -1967,6 +1994,19 @@ fn apply_decline_consequence(
 /// Apply a [`crate::actions::ChoiceFollowUp`] to a list of picked ids.
 /// Called by the dispatcher after resolving a `PickCards` answer.
 fn apply_choice_follow_up(
+    state: &mut GameState,
+    follow_up: crate::actions::ChoiceFollowUp,
+    chosen: &[ObjectId],
+) {
+    // The picked permanents of one instruction (sacrifice these, destroy
+    // these, return these) leave together, so their last-known
+    // characteristics are taken before the first moves (A1.5bp). Picks
+    // that are not on the battlefield stage nothing.
+    state.departing_together(chosen, |state|
+        apply_choice_follow_up_to(state, follow_up, chosen));
+}
+
+fn apply_choice_follow_up_to(
     state: &mut GameState,
     follow_up: crate::actions::ChoiceFollowUp,
     chosen: &[ObjectId],
@@ -3779,21 +3819,90 @@ fn relink_moved_card(
 /// must be unwrapped to one level. `ForEach` expands to its per-id
 /// specialized effects (identical to `ForEach::execute`, just hoisted so
 /// each can park). Recursive; ordering preserved.
-fn flatten_sequences(effects: Vec<crate::effects::Effect>) -> Vec<crate::effects::Effect> {
-    let mut out = Vec::with_capacity(effects.len());
-    for e in effects {
-        match e {
-            crate::effects::Effect::Sequence(steps) =>
-                out.extend(flatten_sequences(steps)),
-            crate::effects::Effect::ForEach { targets, effect } => {
-                for id in targets {
-                    out.extend(flatten_sequences(vec![effect.retargeted(id)]));
+///
+/// Flattening keeps the one boundary it would otherwise lose
+/// (A1.5bp): a [`crate::effects::Effect::ForEach`] of a removal is one
+/// instruction over all its permanents, so they leave together and each
+/// is captured with the board before the first of them moved. The run
+/// says where its per-permanent effects landed in the flattened list.
+///
+/// Nothing else is grouped. Two removals that merely follow one another
+/// are two instructions, and the second sees the board the first left
+/// (CR 608.2c): "destroy target creature. Destroy another target
+/// creature." looks the same in the list as a card that writes "destroy
+/// all creatures" as one effect per creature, so a card that means the
+/// latter has to say so with a `ForEach`.
+fn flatten_sequences(
+    effects: Vec<crate::effects::Effect>,
+) -> (Vec<crate::effects::Effect>, Vec<DepartureRun>) {
+    fn walk(
+        effects: Vec<crate::effects::Effect>,
+        out: &mut Vec<crate::effects::Effect>,
+        runs: &mut Vec<DepartureRun>,
+    ) {
+        for e in effects {
+            match e {
+                crate::effects::Effect::Sequence(steps) => walk(steps, out, runs),
+                crate::effects::Effect::ForEach { targets, effect } => {
+                    let start = out.len();
+                    let removal = effect.battlefield_removal().is_some();
+                    for id in &targets {
+                        walk(vec![effect.retargeted(*id)], out, runs);
+                    }
+                    if removal && out.len() > start + 1 {
+                        runs.push(DepartureRun { start, end: out.len() - 1, ids: targets, effect });
+                    }
                 }
+                other => out.push(other),
             }
-            other => out.push(other),
         }
     }
-    out
+    let mut out = Vec::with_capacity(effects.len());
+    let mut runs = Vec::new();
+    walk(effects, &mut out, &mut runs);
+    (out, runs)
+}
+
+/// One instruction that takes several permanents off the battlefield at
+/// once: `start..=end` index the flattened list.
+struct DepartureRun {
+    start: usize,
+    end: usize,
+    ids: Vec<ObjectId>,
+    // Keep the unexpanded instruction so an earlier choice can park it
+    // without losing its simultaneous boundary.
+    effect: Box<crate::effects::Effect>,
+}
+
+/// Reassemble untouched departure groups in the parked suffix. The
+/// resumed resolver captures each group when it actually begins, after
+/// any changes made by earlier choices. Already-started groups keep the
+/// existing interrupted-run behavior: their remainder is sequential.
+fn park_departure_groups(
+    mut effects: impl Iterator<Item = (usize, crate::effects::Effect)>,
+    runs: Vec<DepartureRun>,
+) -> Vec<crate::effects::Effect> {
+    let mut runs = runs.into_iter().peekable();
+    let mut remaining = Vec::new();
+    while let Some((index, effect)) = effects.next() {
+        // Discard completed or interrupted runs; only a group whose
+        // first effect is still pending can be reconstructed whole.
+        while runs.peek().is_some_and(|run| run.start < index) {
+            runs.next();
+        }
+        if runs.peek().is_some_and(|run| run.start == index) {
+            let run = runs.next().unwrap();
+            remaining.push(crate::effects::Effect::ForEach {
+                targets: run.ids, effect: run.effect,
+            });
+            for _ in index..run.end {
+                effects.next();
+            }
+        } else {
+            remaining.push(effect);
+        }
+    }
+    remaining
 }
 
 fn execute_effects_or_park(
@@ -3803,13 +3912,27 @@ fn execute_effects_or_park(
     is_spell: bool,
 ) {
     state.currently_resolving = Some(entry.id);
-    let mut iter = flatten_sequences(effects).into_iter();
-    while let Some(effect) = iter.next() {
+    // A1.5bp: a `ForEach` of a removal is one simultaneous departure, so
+    // its permanents' last-known characteristics are taken before its
+    // first move. Flattening hoists it for the park loop and hands back
+    // where it went.
+    let (effects, runs) = flatten_sequences(effects);
+    let mut staged: Vec<ObjectId> = Vec::new();
+    let mut iter = effects.into_iter().enumerate();
+    while let Some((index, effect)) = iter.next() {
+        if let Some(run) = runs.iter().find(|run| run.start == index) {
+            staged = state.stage_departures(&run.ids);
+        }
         effect.execute(state);
+        // A run that parks on a choice gives up its staging: what is left
+        // of it moves later, against the board as it then stands.
+        if state.pending_choice.is_some() || runs.iter().any(|run| run.end == index) {
+            state.unstage_departures(&std::mem::take(&mut staged));
+        }
         if state.pending_choice.is_some() {
             state.pending_resolution = Some(crate::actions::PendingResolution {
                 entry,
-                remaining_effects: iter.collect(),
+                remaining_effects: park_departure_groups(iter, runs),
                 is_spell,
             });
             // Leave `currently_resolving` as-is — the parked state
@@ -4000,6 +4123,7 @@ fn resolution_effects(
                 targets: entry.targets.clone(),
                 x_value: entry.x_value,
                 card_id: *card_id,
+                sacrificed: entry.cost_sacrificed.clone(),
             };
             if let Some(effect) = resolved_effect {
                 return (effect)(state, &ctx, registry);
@@ -4539,10 +4663,32 @@ fn apply_additional_costs(
     player: PlayerId,
     costs: &[crate::actions::AdditionalCostPayment],
 ) {
+    apply_costs_sacrificing_together(state, player, costs, &[]);
+}
+
+/// Pay `costs` in the order the action lists them. `one_sacrifice` names
+/// the permanents that a single cost sacrifices ("sacrifice two
+/// creatures"): they leave together, so each is captured with the board
+/// as it stood before the first of them was sacrificed (A1.5bp). The
+/// staging starts at that first sacrifice and not before, so a cost
+/// paid ahead of it has had its effect; separate costs are never
+/// grouped. Empty when no cost sacrifices more than its own permanent.
+fn apply_costs_sacrificing_together(
+    state: &mut GameState,
+    player: PlayerId,
+    costs: &[crate::actions::AdditionalCostPayment],
+    one_sacrifice: &[ObjectId],
+) {
     use crate::actions::AdditionalCostPayment as A;
+    let mut staged: Option<Vec<ObjectId>> = None;
     for cost in costs {
         match cost {
-            A::Sacrifice(id) => sacrifice_as_cost(state, player, *id),
+            A::Sacrifice(id) => {
+                if staged.is_none() && one_sacrifice.contains(id) {
+                    staged = Some(state.stage_departures(one_sacrifice));
+                }
+                sacrifice_as_cost(state, player, *id);
+            }
             A::Discard(id) => {
                 // Route through the Madness-aware helper (CR 702.34a):
                 // a card with Madness on its characteristics goes to
@@ -4610,6 +4756,9 @@ fn apply_additional_costs(
                 // the stack entry's x_value (see the x_value find_map).
             }
         }
+    }
+    if let Some(staged) = staged {
+        state.unstage_departures(&staged);
     }
 }
 
@@ -5056,7 +5205,7 @@ mod flatten_sequence_tests {
                 Effect::DrawCards { player: 1, count: 1 },
             ]),
         ];
-        let flat = flatten_sequences(effects);
+        let (flat, _) = flatten_sequences(effects);
         assert_eq!(flat.len(), 4, "all steps hoisted to the top level");
         assert!(matches!(flat[0], Effect::DrawCards { player: 0, .. }));
         assert!(matches!(flat[1], Effect::LoseLife { player: 0, amount: 1 }));

@@ -464,6 +464,7 @@ pub fn probe_activated(reg: &CardRegistry, card_id: CardId) -> Vec<ProbeResult> 
             targets,
             x_value: Some(3),
             card_id,
+            sacrificed: Vec::new(),
         };
         let before = Snapshot::capture(&state);
         let effects = (ability.effect)(&state, &ctx, reg);
@@ -597,6 +598,7 @@ pub fn noop_mechanisms(reg: &CardRegistry, card_id: CardId) -> Vec<(&'static str
         let ctx = crate::registry::ActivationContext {
             source: src, controller: 0, ability_index: i, targets,
             x_value: Some(3), card_id,
+            sacrificed: Vec::new(),
         };
         let before = Snapshot::capture(&state);
         let effects = (ability.effect)(&state, &ctx, reg);

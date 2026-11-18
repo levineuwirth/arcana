@@ -214,6 +214,11 @@ pub struct StackEntry {
     /// Carried to [`crate::triggers::PendingTrigger::affected`].
     #[serde(default)]
     pub affected: Option<ObjectId>,
+    /// For an activated ability: the other permanents sacrificed to pay
+    /// its cost, by their battlefield ids (A1.5bp). Carried to
+    /// [`crate::registry::ActivationContext::sacrificed`].
+    #[serde(default)]
+    pub cost_sacrificed: Vec<ObjectId>,
 }
 
 fn default_cast_from_zone() -> crate::zones::Zone { crate::zones::Zone::Stack }
@@ -258,6 +263,7 @@ impl StackEntry {
             mana_spent: 0,
             cast_from_zone: crate::zones::Zone::Stack,
             affected: None,
+            cost_sacrificed: Vec::new(),
         }
     }
 
@@ -299,6 +305,7 @@ impl StackEntry {
             mana_spent: 0,
             cast_from_zone: crate::zones::Zone::Stack,
             affected: None,
+            cost_sacrificed: Vec::new(),
         }
     }
 
@@ -369,6 +376,7 @@ impl StackEntry {
             mana_spent: 0,
             cast_from_zone: crate::zones::Zone::Stack,
             affected: None,
+            cost_sacrificed: Vec::new(),
         }
     }
 
@@ -934,7 +942,8 @@ pub(crate) fn apply_enters_with_clauses(
                 }
             }
             // Already answered by the entry continuation, before the move.
-            EntersWithSpec::TappedUnlessPayLife { .. } => {}
+            EntersWithSpec::TappedUnlessPayLife { .. }
+            | EntersWithSpec::TappedUnlessReveal { .. } => {}
         }
     }
 }

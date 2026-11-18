@@ -206,6 +206,21 @@ pub struct GameState {
     /// stack, the trigger queue and any parked resolution are all
     /// empty.
     pub lki_held: HashMap<ObjectId, GameObject>,
+    /// A1.5bp: each permanent's characteristics after the layer system
+    /// as it last existed on the battlefield, keyed by its battlefield
+    /// id (CR 113.7a, 608.2h). Captured by [`Self::move_object_to_zone`]
+    /// before the permanent's own source-bound effects expire, and kept
+    /// beside the raw snapshot, which stays the printed object: re-entry
+    /// and printed reads use that one, and its counters are never applied
+    /// a second time. Lives exactly as long as the raw snapshot does.
+    /// Read through [`Self::last_known_characteristics`].
+    pub(crate) departed_characteristics: HashMap<ObjectId, crate::objects::Characteristics>,
+    /// Characteristics computed ahead for permanents that leave together
+    /// (a state-based sweep, a board wipe), so each capture shows the
+    /// board as it stood before the first of them moved. Filled and
+    /// emptied by [`Self::departing_together`]; a staged entry whose
+    /// permanent stays (regenerated, replaced) is dropped unused.
+    pub(crate) staged_departures: HashMap<ObjectId, crate::objects::Characteristics>,
     /// CR 606.3 — the set of planeswalkers whose controller has
     /// activated a loyalty ability this turn. Each PW can have at most
     /// one loyalty ability activated by its controller per turn; this
@@ -341,6 +356,8 @@ impl GameState {
             pending_choice_follow_up: None,
             lki: HashMap::default(),
             lki_held: HashMap::default(),
+            departed_characteristics: HashMap::default(),
+            staged_departures: HashMap::default(),
             loyalty_activated_this_turn: crate::collections::HashSet::default(),
             abilities_activated_this_turn: crate::collections::HashSet::default(),
             turn_event_log_start: 0,
@@ -576,6 +593,12 @@ impl GameState {
             && self.pending_choice.is_none()
         {
             self.lki_held.clear();
+            // The effective snapshots go with the raw ones they sit
+            // beside; this sweep's moves are still being read.
+            if !self.departed_characteristics.is_empty() {
+                let lki = &self.lki;
+                self.departed_characteristics.retain(|id, _| lki.contains_key(id));
+            }
         }
     }
 
@@ -583,6 +606,81 @@ impl GameState {
     pub fn clear_lki(&mut self) {
         self.lki.clear();
         self.lki_held.clear();
+        self.departed_characteristics.clear();
+    }
+
+    // --- effective characteristics at departure (A1.5bp) --------------------
+
+    /// The characteristics `id` had, after the layer system, as it last
+    /// existed on the battlefield (CR 113.7a, 608.2h): its power with its
+    /// counters, an until-end-of-turn pump and every anthem in force at
+    /// that moment. `None` for an object that is still where it was, that
+    /// never left the battlefield, or whose snapshot has been released
+    /// with the raw one; an illegal target's placeholder id has none.
+    pub fn last_known_characteristics(
+        &self, id: ObjectId,
+    ) -> Option<&crate::objects::Characteristics> {
+        self.departed_characteristics.get(&id)
+    }
+
+    /// Record `id`'s effective characteristics as it leaves the
+    /// battlefield. Must run before anything about the departure changes
+    /// the board: the permanent's own source-bound effects expire next.
+    /// A capture staged by [`Self::departing_together`] is used as it is.
+    fn capture_departure(&mut self, id: ObjectId) {
+        let chars = match self.staged_departures.remove(&id) {
+            Some(staged) => Some(staged),
+            None => self.compute_characteristics(id),
+        };
+        if let Some(chars) = chars {
+            self.departed_characteristics.insert(id, chars);
+        }
+    }
+
+    /// Run `moves`, which takes the permanents in `ids` off the
+    /// battlefield one at a time, as the simultaneous departure it models.
+    /// Each one's effective characteristics are computed first, against
+    /// the board as it stands now, so a lord that happens to move first is
+    /// still counted in the capture of a creature that moves after it
+    /// (CR 704.3: state-based actions are performed simultaneously). A
+    /// single departure needs no staging and pays for none.
+    pub(crate) fn departing_together<R>(
+        &mut self,
+        ids: &[ObjectId],
+        moves: impl FnOnce(&mut Self) -> R,
+    ) -> R {
+        let staged = self.stage_departures(ids);
+        let out = moves(self);
+        self.unstage_departures(&staged);
+        out
+    }
+
+    /// The first half of [`Self::departing_together`], for a caller whose
+    /// moves span several steps: compute and hold the captures of the
+    /// permanents in `ids` that are on the battlefield. Returns the ids
+    /// it staged, to hand back to [`Self::unstage_departures`].
+    pub(crate) fn stage_departures(&mut self, ids: &[ObjectId]) -> Vec<ObjectId> {
+        let mut staged: Vec<ObjectId> = Vec::new();
+        if ids.len() < 2 { return staged; }
+        for &id in ids {
+            if self.staged_departures.contains_key(&id) { continue; }
+            if !self.objects.get(id).is_some_and(|o| o.zone.is_battlefield()) {
+                continue;
+            }
+            if let Some(chars) = self.compute_characteristics(id) {
+                self.staged_departures.insert(id, chars);
+                staged.push(id);
+            }
+        }
+        staged
+    }
+
+    /// Drop the staged captures the moves did not use: a permanent that
+    /// stayed keeps no capture of a departure that never happened.
+    pub(crate) fn unstage_departures(&mut self, staged: &[ObjectId]) {
+        for id in staged {
+            self.staged_departures.remove(id);
+        }
     }
 
     // --- ETB lifecycle hook -------------------------------------------------
@@ -738,6 +836,9 @@ impl GameState {
         let to_exile = destination.is_exile();
 
         if from_battlefield {
+            // A1.5bp: the effective characteristics are taken first, while
+            // every effect that shaped them is still in force.
+            self.capture_departure(id);
             self.emit(GameEvent::LeavesBattlefield {
                 object_id: id, destination,
             });
@@ -1757,5 +1858,48 @@ mod tests {
         assert_eq!(grave.visible_face, 0);
         assert!(grave.default_face_characteristics.is_none(),
             "no snapshot ever installed on a front-face cast");
+    }
+
+    // --- staged departures (A1.5bp) ------------------------------------------
+
+    #[test]
+    fn staging_holds_only_several_permanents_and_never_one_twice() {
+        use crate::objects::{Characteristics, GameObject};
+        use crate::types::{PtValue, TypeLine};
+        let mut s = GameState::new(2, 0);
+        let put = |s: &mut GameState, zone: Zone| {
+            let id = s.allocate_object_id();
+            s.objects.insert(GameObject::new(id, 0, zone, 1, Characteristics {
+                types: TypeLine::CREATURE.into(),
+                power: Some(PtValue::Fixed(2)),
+                toughness: Some(PtValue::Fixed(2)),
+                ..Default::default()
+            }));
+            id
+        };
+        let (a, b, c) = (
+            put(&mut s, Zone::Battlefield),
+            put(&mut s, Zone::Battlefield),
+            put(&mut s, Zone::Battlefield),
+        );
+        let in_hand = put(&mut s, Zone::Hand(0));
+
+        // One departure is captured as it leaves; nothing is computed ahead.
+        assert!(s.stage_departures(&[a]).is_empty());
+        assert!(s.staged_departures.is_empty());
+
+        // A card that is not on the battlefield has no departure to stage.
+        assert_eq!(s.stage_departures(&[a, in_hand, b]), vec![a, b]);
+        assert!(!s.staged_departures.contains_key(&in_hand));
+
+        // A wider batch around a narrower one stages only what is new, so
+        // handing its own list back leaves the narrower batch's captures.
+        let outer = s.stage_departures(&[b, c]);
+        assert_eq!(outer, vec![c]);
+        s.unstage_departures(&outer);
+        assert!(s.staged_departures.contains_key(&a) && s.staged_departures.contains_key(&b));
+        assert!(!s.staged_departures.contains_key(&c));
+        s.unstage_departures(&[a, b]);
+        assert!(s.staged_departures.is_empty());
     }
 }

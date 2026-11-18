@@ -145,6 +145,14 @@ pub struct ActivationContext {
     /// moved the card (Scavenge exiles its source, then needs the
     /// card's printed power at resolution).
     pub card_id: CardId,
+    /// The permanents sacrificed to pay this activation's "sacrifice a
+    /// [permanent]" cost, by the ids they had on the battlefield, in the
+    /// order they were paid (A1.5bp). The source's own "sacrifice this"
+    /// is not listed: that permanent is `source`. Read what they were
+    /// with [`crate::script::last_known_power`] and
+    /// [`crate::script::last_known_toughness`] ("the sacrificed
+    /// creature's toughness").
+    pub sacrificed: Vec<ObjectId>,
 }
 
 // =============================================================================
@@ -931,6 +939,17 @@ pub enum EntersWithSpec {
     /// `life` life) or decline before the permanent moves. Paying only avoids
     /// this clause's tap; independent enters-tapped requirements still apply.
     TappedUnlessPayLife { life: u32 },
+    /// "As CARDNAME enters, you may reveal a [filter] card from your hand.
+    /// If you don't, it enters tapped." — the reveal lands (Port Town,
+    /// Game Trail). The entry continuation asks before the permanent moves:
+    /// its controller reveals one card in hand that matches `filter`, read
+    /// from the card's characteristics there (a Hallowed Fountain is a
+    /// Plains card), or declines. Revealing is offered only when a card
+    /// matches. The revealed card becomes known to every player. Revealing
+    /// only avoids this clause's tap; independent enters-tapped
+    /// requirements still apply. Build `filter` with the subtype symbols
+    /// interned at registration, as [`Self::TappedUnlessControl`] does.
+    TappedUnlessReveal { filter: crate::targets::ObjectFilter },
 }
 
 // =============================================================================
