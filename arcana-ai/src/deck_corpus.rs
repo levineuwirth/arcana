@@ -1365,4 +1365,379 @@ mod tests {
             println!("game,{g},{i},{j},{},{:.2}", ctx.taken.get(), t.elapsed().as_secs_f64());
         }
     }
+
+    /// The second payment count ([[Arcana payment grouping rule]], released
+    /// for this local diagnostic): on the first probe's states, every minimal
+    /// payment within four bounds, completed and grouped by the exact rule.
+    /// Outcome-blind, at the first probe's unused seeds and sampling, which
+    /// reproduce its states (the trace records and changes nothing).
+    ///
+    /// For each variant A1.5ci's planner finds, sequences of mana activations
+    /// are built on the replayed state one activation at a time, the
+    /// candidates re-enumerated from the legal list after each. Bounds:
+    /// length (planner taps + 1, or 8 when unplanned), ascending (source id,
+    /// ability index) order among the legal activations, one use per source,
+    /// and a per-variant replay cap. A sequence is not extended once the
+    /// variant is legal, assuming more mana never removes a legal play. Each
+    /// legal final action matching the variant is a payment. It is minimal
+    /// if no sequence with one activation deleted (others fixed) makes the
+    /// variant legal; a deletion check the cap prevents leaves it unresolved.
+    /// Each minimal payment is completed on a clone with the trace enabled:
+    /// its spending read from its pool assignments against the live pool
+    /// before the final step; the next boundary's state printed with only
+    /// `ManaAdded`'s color masked; the trace of structural writes kept apart.
+    /// Groups are within the variant and the source-id set: exact by
+    /// (state, colors spent, amount); certified when the trace also agrees;
+    /// relaxed with the color sets reduced to their sizes; and, not exact,
+    /// source swaps by attribute classes. Rows:
+    ///
+    ///   `variant2,<game>,<n>,<kind>,<planner taps>,<payments>,<unresolved>,<exact>,<certified>,<relaxed>,<swap>,<replays>,<capped>`
+    ///   `state2,<game>,<seat>,<turn>,<battlefield>,<sources>,<legal>,<mana acts>,<plays>,<unplanned>,<variants>,<payments>,<unresolved>,<exact>,<certified>,<relaxed>,<swap>,<max certified>,<replays>,<capped>,<secs>`
+    ///
+    /// `KAGGLE_DECKS=<dir> CORPUS_MANIFEST=docs/a2-field/manifest-PI.csv cargo test -p arcana-ai --release --features diag payment_grouping_probe -- --ignored --nocapture`
+    #[cfg(feature = "diag")]
+    #[test]
+    #[ignore]
+    fn payment_grouping_probe() {
+        use crate::plays::{plays, variant_key};
+        use crate::search::{pair_game, MaterialValue, StatePolicy, ValueMcPolicy};
+        use arcana_core::actions::Action;
+        use arcana_core::engine::{step, EngineYield};
+        use arcana_core::legal_actions::{is_mana_activation, legal_actions};
+        use arcana_core::objects::{ObjectId, OpTrace};
+        use arcana_core::registry::CardRegistry;
+        use arcana_core::state::GameState;
+        use arcana_core::types::PlayerId;
+        use arcana_core::zones::Zone;
+        use std::cell::Cell;
+        use std::collections::{BTreeSet, HashMap, HashSet};
+        use std::hash::{Hash, Hasher};
+        use std::rc::Rc;
+        use std::time::Instant;
+
+        let env = |k: &str, d: u64| -> u64 {
+            std::env::var(k).ok().and_then(|s| s.parse().ok()).unwrap_or(d)
+        };
+        let first = env("PROBE_FIRST", 9301);
+        let games = env("PROBE_GAMES", 32);
+        let every = env("PROBE_EVERY", 4).max(1);
+        let per_game = env("PROBE_PER_GAME", 150);
+        let cap = env("PROBE_REPLAY_CAP", 20000);
+        assert!(![1000u64, 2000, 3000, 4000].contains(&first), "a registered seed");
+
+        let reg = arcana_cards::build_catalog();
+        let format = std::env::var("CORPUS_FORMAT").unwrap_or_else(|_| "PI".into());
+        let dir = std::path::Path::new(&std::env::var("KAGGLE_DECKS").expect("set KAGGLE_DECKS")).join(&format);
+        let loaded = decks_from_dir(&dir, &format, &reg).expect("read corpus dir");
+        let decks = playable_decks(&loaded, 60, 60);
+        require_manifest(&decks);
+        println!("config,payment-grouping,{first},{games},{every},{per_game},{cap},{}", decks.len());
+
+        fn hash_of<T: Hash + ?Sized>(t: &T) -> u64 {
+            let mut h = std::collections::hash_map::DefaultHasher::new();
+            t.hash(&mut h);
+            h.finish()
+        }
+        /// Replace the value after `field` inside every `marker` record by
+        /// `with(value)`, the value ending at `,` or `}`.
+        fn mask(s: &str, marker: &str, field: &str, with: &dyn Fn(&str) -> String) -> String {
+            let mut out = String::with_capacity(s.len());
+            let mut rest = s;
+            while let Some(i) = rest.find(marker) {
+                let (head, tail) = rest.split_at(i);
+                out.push_str(head);
+                let Some(j) = tail.find(field) else { out.push_str(tail); return out; };
+                let (pre, after) = tail.split_at(j + field.len());
+                out.push_str(pre);
+                let end = after.find(|c| c == ',' || c == '}').unwrap_or(after.len());
+                out.push_str(&with(after[..end].trim()));
+                rest = &after[end..];
+            }
+            out.push_str(rest);
+            out
+        }
+        fn colorset_size(v: &str) -> String {
+            // `ColorSet(n)`: keep the number of colors, drop which.
+            let n: u8 = v.trim_start_matches("ColorSet(").trim_end_matches(')').parse().unwrap_or(255);
+            format!("size{}", n.count_ones())
+        }
+        /// Replay `seq` from `state` (trace enabled, empty), each action from
+        /// the legal list of the moment with `decider` deciding again.
+        fn replay(state: &GameState, reg: &CardRegistry, decider: PlayerId, seq: &[Action])
+            -> Option<(GameState, Vec<Action>)> {
+            let mut sim = state.clone();
+            sim.objects.trace = OpTrace { enabled: true, ops: Vec::new() };
+            let mut now = legal_actions(&sim, reg);
+            for a in seq {
+                if !now.contains(a) { return None; }
+                let (s, y) = step(sim, a.clone(), reg);
+                sim = s;
+                match y {
+                    EngineYield::PendingDecision { player, legal_actions, .. } if player == decider =>
+                        now = legal_actions,
+                    _ => return None,
+                }
+            }
+            Some((sim, now))
+        }
+        fn key_of(state: &GameState, id: ObjectId, shape: &str) -> u64 {
+            let o = state.objects.get(id);
+            hash_of(&format!("{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{shape}",
+                o.map(|o| o.card_id), o.map(|o| o.controller), o.map(|o| &o.status),
+                o.map(|o| &o.counters), o.map(|o| &o.attachments), o.map(|o| o.attached_to),
+                o.map(|o| o.damage_marked), o.map(|o| o.is_token), o.map(|o| o.exerted_by),
+                state.compute_characteristics(id)))
+        }
+        fn act_key(a: &Action) -> Option<(ObjectId, usize)> {
+            match a { Action::ActivateAbility { source, ability_index, .. } => Some((*source, *ability_index)), _ => None }
+        }
+
+        struct Ctx { game: u64, every: u64, per_game: u64, cap: u64, seen: Rc<Cell<u64>>, taken: Rc<Cell<u64>> }
+
+        fn measure(c: &Ctx, state: &GameState, reg: &CardRegistry, decider: PlayerId, legal: &[Action]) {
+            let t = Instant::now();
+            let mana_n = legal.iter().filter(|a| is_mana_activation(state, a, reg)).count();
+            let sources: BTreeSet<ObjectId> = legal.iter()
+                .filter(|a| is_mana_activation(state, a, reg)).filter_map(act_key).map(|k| k.0).collect();
+            let ps = plays(state, reg, decider, legal);
+            let mut variants: Vec<(Action, Option<usize>)> = ps.plays.iter()
+                .filter_map(|p| p.last().map(|a| (variant_key(a), Some(p.len() - 1))))
+                .collect();
+            variants.extend(ps.unplanned.iter().map(|a| (variant_key(a), None)));
+            let mut tot = [0u64; 8]; // payments, unresolved, exact, certified, relaxed, swap, source sets, land sets
+            let (mut max_cert, mut replays_all, mut capped_n) = (0u64, 0u64, 0u64);
+            for (vn, (v, planner)) in variants.iter().enumerate() {
+                let kmax = planner.map_or(8, |k| k + 1);
+                let mut replays = 0u64;
+                let mut capped = false;
+                // Enumerate sequences, depth first, in ascending (source, ability).
+                let mut found: Vec<(Vec<Action>, Action)> = Vec::new();
+                fn dfs(reg: &CardRegistry, decider: PlayerId, v: &Action, kmax: usize, cap: u64,
+                       sim: &GameState, now: &[Action], seq: &mut Vec<Action>, used: &mut Vec<ObjectId>,
+                       last: Option<(ObjectId, usize)>, replays: &mut u64, capped: &mut bool,
+                       found: &mut Vec<(Vec<Action>, Action)>) {
+                    // Every payable point is recorded, and the sequence still
+                    // extends: a later filter can spend that mana and enable
+                    // another source, and only the deletion test decides.
+                    if !seq.is_empty() {
+                        for f in now.iter().filter(|a| variant_key(a) == *v) { found.push((seq.clone(), f.clone())); }
+                    }
+                    if seq.len() >= kmax { return; }
+                    let mut cands: Vec<(ObjectId, usize, &Action)> = now.iter()
+                        .filter(|a| is_mana_activation(sim, a, reg))
+                        .filter_map(|a| act_key(a).map(|(s, i)| (s, i, a)))
+                        .filter(|(s, i, _)| last.map_or(true, |l| (*s, *i) > l) && !used.contains(s))
+                        .collect();
+                    cands.sort_by_key(|(s, i, _)| (*s, *i));
+                    for (s, i, a) in cands {
+                        if *replays >= cap { *capped = true; return; }
+                        *replays += 1;
+                        let (s2, y) = step(sim.clone(), a.clone(), reg);
+                        let EngineYield::PendingDecision { player, legal_actions: now2, .. } = y else { continue };
+                        if player != decider { continue; }
+                        seq.push(a.clone());
+                        used.push(s);
+                        dfs(reg, decider, v, kmax, cap, &s2, &now2, seq, used, Some((s, i)), replays, capped, found);
+                        seq.pop();
+                        used.pop();
+                        if *capped { return; }
+                    }
+                }
+                /// Is `v` legal after `seq`, each activation kept but its pool
+                /// assignments free to be any the shortened replay offers?
+                /// `None` if the budget runs out first.
+                fn payable_after(reg: &CardRegistry, decider: PlayerId, v: &Action, sim: &GameState,
+                                 now: &[Action], seq: &[Action], replays: &mut u64, cap: u64) -> Option<bool> {
+                    let Some((head, rest)) = seq.split_first() else {
+                        return Some(now.iter().any(|a| variant_key(a) == *v));
+                    };
+                    let want = variant_key(head);
+                    let mut alts: Vec<&Action> = now.iter().filter(|a| *a == head).collect();
+                    alts.extend(now.iter().filter(|a| *a != head && variant_key(a) == want));
+                    let mut open = false;
+                    for a in alts {
+                        if *replays >= cap { return None; }
+                        *replays += 1;
+                        let (s2, y) = step(sim.clone(), a.clone(), reg);
+                        let EngineYield::PendingDecision { player, legal_actions: now2, .. } = y else { continue };
+                        if player != decider { continue; }
+                        match payable_after(reg, decider, v, &s2, &now2, rest, replays, cap) {
+                            Some(true) => return Some(true),
+                            Some(false) => {}
+                            None => open = true,
+                        }
+                    }
+                    if open { None } else { Some(false) }
+                }
+                let mut sim0 = state.clone();
+                sim0.objects.trace = OpTrace { enabled: false, ops: Vec::new() };
+                let now0 = legal_actions(&sim0, reg);
+                dfs(reg, decider, v, kmax, c.cap, &sim0, &now0, &mut Vec::new(), &mut Vec::new(),
+                    None, &mut replays, &mut capped, &mut found);
+                // Minimality by deletion, then completion.
+                // Groups hold their representative's full normalized state and
+                // each distinct full trace; a digest only finds candidates.
+                struct Group { srcs: Vec<ObjectId>, colors: u32, amount: usize, state: String, traces: Vec<Vec<arcana_core::objects::TraceOp>> }
+                let mut exact: Vec<Group> = Vec::new();
+                let mut exact_ix: HashMap<u64, Vec<usize>> = HashMap::new();
+                let mut relaxed: Vec<Group> = Vec::new();
+                let mut relaxed_ix: HashMap<u64, Vec<usize>> = HashMap::new();
+                fn place(groups: &mut Vec<Group>, ix: &mut HashMap<u64, Vec<usize>>, digest: u64,
+                         srcs: &[ObjectId], colors: u32, amount: usize, state: &str,
+                         trace: &[arcana_core::objects::TraceOp]) -> usize {
+                    let slot = ix.entry(digest).or_default();
+                    for &g in slot.iter() {
+                        let gr = &mut groups[g];
+                        if gr.srcs == srcs && gr.colors == colors && gr.amount == amount && gr.state == state {
+                            if !gr.traces.iter().any(|t| t.as_slice() == trace) { gr.traces.push(trace.to_vec()); }
+                            return g;
+                        }
+                    }
+                    groups.push(Group { srcs: srcs.to_vec(), colors, amount, state: state.to_string(), traces: vec![trace.to_vec()] });
+                    slot.push(groups.len() - 1);
+                    groups.len() - 1
+                }
+                let mut source_sets: HashSet<Vec<ObjectId>> = HashSet::new();
+                let mut land_sets: HashSet<Vec<ObjectId>> = HashSet::new();
+                // Not exact: exact merges united with attribute-class swaps.
+                let mut swap_items: Vec<(u64, u64)> = Vec::new();
+                let (mut payments, mut unresolved) = (0u64, 0u64);
+                let mut minimal_cache: HashMap<Vec<Action>, Option<bool>> = HashMap::new();
+                for (seq, fin) in &found {
+                    let minimal = if let Some(m) = minimal_cache.get(seq) { *m } else {
+                        let mut m = Some(true);
+                        for i in 0..seq.len() {
+                            let shorter: Vec<Action> = seq.iter().enumerate().filter(|(j, _)| *j != i).map(|(_, a)| a.clone()).collect();
+                            if shorter.is_empty() { continue; } // the variant is not legal now, by plays()
+                            match payable_after(reg, decider, v, &sim0, &now0, &shorter, &mut replays, c.cap) {
+                                Some(true) => { m = Some(false); break; }
+                                Some(false) => {}
+                                None => { m = None; break; }
+                            }
+                        }
+                        minimal_cache.insert(seq.clone(), m);
+                        m
+                    };
+                    match minimal {
+                        // A deletion check the budget prevented: unresolved, and the variant capped.
+                        None => { unresolved += 1; capped = true; continue; }
+                        Some(false) => continue,
+                        Some(true) => {}
+                    }
+                    if replays + seq.len() as u64 + 1 > c.cap { unresolved += 1; capped = true; continue; }
+                    replays += seq.len() as u64 + 1;
+                    let Some((sim, now)) = replay(state, reg, decider, seq) else { unresolved += 1; continue };
+                    if !now.contains(fin) { unresolved += 1; continue; }
+                    // Spending, from the payment's own assignments against the live pool.
+                    let pool = &sim.player(decider).mana_pool.pool;
+                    let assigned: Vec<usize> = match fin {
+                        Action::CastSpell { mana_payment, .. } | Action::ActivateAbility { mana_payment, .. } =>
+                            mana_payment.assignments.iter().map(|a| a.pool_index).collect(),
+                        _ => Vec::new(),
+                    };
+                    let mut colors = 0u8;
+                    for i in &assigned {
+                        if let Some(u) = pool.get(*i) {
+                            if let Some(col) = u.color.as_color() {
+                                colors |= arcana_core::types::ColorSet::new().with(col).0;
+                            }
+                        }
+                    }
+                    let amount = assigned.len();
+                    let (done, _y) = step(sim, fin.clone(), reg);
+                    let printed = format!("{done:?}");
+                    let masked = mask(&printed, "ManaAdded {", "color: ", &|_| "_".into());
+                    let state_h = hash_of(&masked);
+                    let _ = &state_h;
+                    let relaxed_s = mask(&mask(&masked, "colors_spent: ", "ColorSet(", &|v| colorset_size(&format!("ColorSet({v}"))),
+                        "colors_paid: ", "ColorSet(", &|v| colorset_size(&format!("ColorSet({v}")));
+                    let relaxed_h = hash_of(&relaxed_s);
+                    let trace = &done.objects.trace.ops;
+                    let mut srcs: Vec<ObjectId> = seq.iter().filter_map(act_key).map(|k| k.0).collect();
+                    srcs.sort_unstable();
+                    payments += 1;
+                    let eg = place(&mut exact, &mut exact_ix, hash_of(&(&srcs, colors, amount, state_h)),
+                        &srcs, colors as u32, amount, &masked, trace);
+                    place(&mut relaxed, &mut relaxed_ix, hash_of(&(&srcs, colors.count_ones(), amount, relaxed_h)),
+                        &srcs, colors.count_ones(), amount, &relaxed_s, trace);
+                    source_sets.insert(srcs.clone());
+                    land_sets.insert(srcs.iter().copied().filter(|id| state.compute_characteristics(*id).is_some_and(|ch| ch.is_land())).collect());
+                    let mut classes: Vec<u64> = seq.iter().filter_map(|a| {
+                        let (s, i) = act_key(a)?;
+                        Some(key_of(state, s, &i.to_string()))
+                    }).collect();
+                    classes.sort_unstable();
+                    swap_items.push((eg as u64, hash_of(&(classes, colors, amount))));
+                }
+                let swap_n = {
+                    let n = swap_items.len();
+                    let mut parent: Vec<usize> = (0..n).collect();
+                    fn find(p: &mut Vec<usize>, x: usize) -> usize {
+                        let mut r = x;
+                        while p[r] != r { r = p[r]; }
+                        let mut y = x;
+                        while p[y] != r { let z = p[y]; p[y] = r; y = z; }
+                        r
+                    }
+                    let mut by_exact: HashMap<u64, usize> = HashMap::new();
+                    let mut by_swap: HashMap<u64, usize> = HashMap::new();
+                    for (k, (e, w)) in swap_items.iter().enumerate() {
+                        for first in [*by_exact.entry(*e).or_insert(k), *by_swap.entry(*w).or_insert(k)] {
+                            let (a, b) = (find(&mut parent, first), find(&mut parent, k));
+                            if a != b { parent[a] = b; }
+                        }
+                    }
+                    (0..n).filter(|&k| find(&mut parent, k) == k).count() as u64
+                };
+                let certified: u64 = exact.iter().map(|g| g.traces.len() as u64).sum();
+                let row = [payments, unresolved, exact.len() as u64, certified, relaxed.len() as u64, swap_n,
+                           source_sets.len() as u64, land_sets.len() as u64];
+                for k in 0..8 { tot[k] += row[k]; }
+                max_cert = max_cert.max(row[3]);
+                replays_all += replays;
+                if capped { capped_n += 1; }
+                let kind = match v { Action::CastSpell { .. } => "cast", Action::ActivateAbility { .. } => "activate", _ => "other" };
+                println!("variant2,{},{vn},{kind},{},{},{},{},{},{},{},{replays},{},{},{}",
+                    c.game, planner.map_or(-1, |k| k as i64), row[0], row[1], row[2], row[3], row[4], row[5], capped as u8, row[6], row[7]);
+            }
+            let bf = state.objects.objects_in_zone(Zone::Battlefield).count();
+            println!("state2,{},{decider},{},{bf},{},{},{mana_n},{},{},{},{},{},{},{},{},{},{max_cert},{replays_all},{capped_n},{:.3},{},{}",
+                c.game, state.turn.turn_number, sources.len(), legal.len(), ps.plays.len(), ps.unplanned.len(), variants.len(),
+                tot[0], tot[1], tot[2], tot[3], tot[4], tot[5], t.elapsed().as_secs_f64(), tot[6], tot[7]);
+        }
+
+        struct Probe { inner: Box<dyn StatePolicy>, ctx: Rc<Ctx> }
+        impl StatePolicy for Probe {
+            fn choose(&mut self, state: &GameState, registry: &CardRegistry,
+                      decider: PlayerId, legal: &[Action]) -> Action {
+                let c = &self.ctx;
+                let at_priority = state.pending_choice.is_none() && legal.contains(&Action::PassPriority);
+                if at_priority {
+                    let n = c.seen.get();
+                    c.seen.set(n + 1);
+                    if n % c.every == 0 && c.taken.get() < c.per_game {
+                        c.taken.set(c.taken.get() + 1);
+                        measure(c, state, registry, decider, legal);
+                    }
+                }
+                self.inner.choose(state, registry, decider, legal)
+            }
+        }
+
+        for p in 0..games {
+            let (i, j) = ((2 * p as usize) % decks.len(), (2 * p as usize + 1) % decks.len());
+            let g = first + p;
+            let ctx = Rc::new(Ctx { game: g, every, per_game, cap,
+                seen: Rc::new(Cell::new(0)), taken: Rc::new(Cell::new(0)) });
+            let mk = |s: u64| -> Box<dyn StatePolicy> {
+                Box::new(Probe {
+                    inner: Box::new(ValueMcPolicy::with_budget(Box::new(MaterialValue), s, 6, 25, 10)),
+                    ctx: Rc::clone(&ctx),
+                })
+            };
+            let t = Instant::now();
+            let _ = pair_game(&decks[i].cards, &decks[j].cards, &reg, g, 4000, &mk, &mk);
+            println!("game,{g},{i},{j},{},{:.2}", ctx.taken.get(), t.elapsed().as_secs_f64());
+        }
+    }
 }

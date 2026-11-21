@@ -560,6 +560,8 @@ impl GameState {
     /// by [`Self::move_object_to_zone`] right before the object is
     /// removed from the arena and re-inserted under a fresh id.
     pub fn store_lki(&mut self, obj: GameObject) {
+        #[cfg(feature = "diag")]
+        self.objects.trace.record(crate::objects::TraceOp::LkiInsert(obj.id));
         self.lki.insert(obj.id, obj);
     }
 
@@ -586,6 +588,16 @@ impl GameState {
     /// retention window CR requires for leaves-the-battlefield
     /// triggers, but the abilities it found still read the snapshots.
     pub fn retire_lki(&mut self) {
+        #[cfg(feature = "diag")]
+        if self.objects.trace.enabled {
+            // The same drain, its order recorded: the extend sees the
+            // entries in the order the drain yields them.
+            let drained: Vec<(ObjectId, GameObject)> = self.lki.drain().collect();
+            self.objects.trace.record(crate::objects::TraceOp::LkiRetire(
+                drained.iter().map(|(id, _)| *id).collect()));
+            self.lki_held.extend(drained);
+            return;
+        }
         self.lki_held.extend(self.lki.drain());
     }
 
@@ -598,6 +610,8 @@ impl GameState {
             && self.pending_resolution.is_none()
             && self.pending_choice.is_none()
         {
+            #[cfg(feature = "diag")]
+            self.objects.trace.record(crate::objects::TraceOp::LkiHeldClear);
             self.lki_held.clear();
             // The effective snapshots go with the raw ones they sit
             // beside; this sweep's moves are still being read.
@@ -610,6 +624,8 @@ impl GameState {
 
     /// Clear both LKI tables. Called when the game ends.
     pub fn clear_lki(&mut self) {
+        #[cfg(feature = "diag")]
+        self.objects.trace.record(crate::objects::TraceOp::LkiClearAll);
         self.lki.clear();
         self.lki_held.clear();
         self.departed_characteristics.clear();
@@ -1949,5 +1965,33 @@ mod tests {
         assert!(!s.staged_departures.contains_key(&c));
         s.unstage_departures(&[a, b]);
         assert!(s.staged_departures.is_empty());
+    }
+
+    /// The payment grouping probe's trace records every structural write to
+    /// the arena and the LKI maps while enabled, in order, travels with a
+    /// clone, records nothing while disabled, and prints as `_`.
+    #[cfg(feature = "diag")]
+    #[test]
+    fn diag_trace_records_structural_writes_in_order() {
+        use crate::objects::TraceOp;
+        let mut s = GameState::new(2, 0);
+        let a = s.allocate_object_id();
+        s.objects.insert(GameObject::new(a, 0, Zone::Battlefield, 1, crate::objects::Characteristics::default()));
+        assert!(s.objects.trace.ops.is_empty(), "disabled by default");
+        s.objects.trace.enabled = true;
+        let moved = s.move_object_to_zone(a, Zone::Graveyard(0),
+            crate::events::MoveCause::StateBasedAction).expect("moved");
+        let after_move = s.objects.trace.ops.clone();
+        assert!(after_move.contains(&TraceOp::LkiInsert(a)), "{after_move:?}");
+        assert!(after_move.contains(&TraceOp::ArenaRemove(a)), "{after_move:?}");
+        assert!(after_move.contains(&TraceOp::ArenaInsert(moved)), "{after_move:?}");
+        let branch = s.clone();
+        s.retire_lki();
+        assert_eq!(s.objects.trace.ops.last(), Some(&TraceOp::LkiRetire(vec![a])));
+        assert_eq!(branch.objects.trace.ops, after_move, "a clone keeps its own copy");
+        s.clear_lki();
+        assert_eq!(s.objects.trace.ops.last(), Some(&TraceOp::LkiClearAll));
+        assert_eq!(format!("{:?}", s.objects.trace), "_");
+        assert_eq!(s.lki(a).map(|o| o.id), None);
     }
 }

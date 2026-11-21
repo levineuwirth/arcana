@@ -51,6 +51,48 @@ pub const ILLEGAL_TARGET_PLAYER: crate::types::PlayerId = crate::types::PlayerId
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ObjectArena {
     objects: HashMap<ObjectId, GameObject>,
+    /// With the `diag` feature only: this state's record of structural
+    /// writes to the arena and the last-known-information maps, kept while
+    /// `enabled`. It travels with the state (a clone copies it, so a
+    /// disposable simulation clone writes only into its own copy), prints as
+    /// `_` so it never splits a `Debug` comparison, and is never serialized.
+    #[cfg(feature = "diag")]
+    #[serde(skip)]
+    pub trace: OpTrace,
+}
+
+/// A structural write to a hash-ordered collection whose iteration order a
+/// reader consumes: the payment grouping probe compares two paths' records.
+#[cfg(feature = "diag")]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum TraceOp {
+    ArenaInsert(ObjectId),
+    ArenaRemove(ObjectId),
+    LkiInsert(ObjectId),
+    /// `lki` drained into `lki_held`, with the keys in drain order.
+    LkiRetire(Vec<ObjectId>),
+    LkiHeldClear,
+    LkiClearAll,
+}
+
+/// See [`ObjectArena::trace`].
+#[cfg(feature = "diag")]
+#[derive(Clone, Default)]
+pub struct OpTrace {
+    pub enabled: bool,
+    pub ops: Vec<TraceOp>,
+}
+
+#[cfg(feature = "diag")]
+impl OpTrace {
+    pub fn record(&mut self, op: TraceOp) {
+        if self.enabled { self.ops.push(op); }
+    }
+}
+
+#[cfg(feature = "diag")]
+impl std::fmt::Debug for OpTrace {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { f.write_str("_") }
 }
 
 impl ObjectArena {
@@ -74,11 +116,16 @@ impl ObjectArena {
         if self.objects.insert(id, obj).is_some() {
             panic!("ObjectArena: duplicate ObjectId {id} inserted");
         }
+        #[cfg(feature = "diag")]
+        self.trace.record(TraceOp::ArenaInsert(id));
         id
     }
 
     pub fn remove(&mut self, id: ObjectId) -> Option<GameObject> {
-        self.objects.remove(&id)
+        let removed = self.objects.remove(&id);
+        #[cfg(feature = "diag")]
+        if removed.is_some() { self.trace.record(TraceOp::ArenaRemove(id)); }
+        removed
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &GameObject> + '_ {
