@@ -1052,4 +1052,317 @@ mod tests {
         }
         println!("total control decks: {total} (target {})", per_bucket * buckets.len());
     }
+
+    /// Payment list-size probe for the play-with-payment design: how long the
+    /// legal list would be if every cast or activation carried the mana
+    /// abilities that pay for it. Outcome-blind, at `pair_game` seeds no arm
+    /// uses (default 9301 on). `vmc-material` 6/25/10 plays both seats of
+    /// field pairs (2p, 2p + 1); at every `PROBE_EVERY`-th priority decision a
+    /// wrapper measures the decider's state before delegating, and changes
+    /// nothing. The game's result is discarded unread.
+    ///
+    /// For each variant A1.5ci's planner finds (planned or unplanned), the
+    /// decider's legal mana activations are grouped by source, and sources
+    /// into classes: same card, controller, status, counters, attachment,
+    /// damage, computed characteristics and offered mana abilities, and no
+    /// mention of the source's id anywhere in the stack, continuous,
+    /// replacement or delayed effects, pending triggers or the variant
+    /// itself (any number equal to the id counts as a mention, which only
+    /// splits classes further). Candidate plans are count vectors over
+    /// (class, ability); each is checked by the engine: activate a
+    /// representative on a clone through `step`, as `replay` does, and look
+    /// for the variant in the resulting legal list. A plan counts if it is
+    /// legal and no plan one unit smaller is (local minimality). Its flat
+    /// count is the multinomial over class members; a second, different
+    /// representative is checked once per state to test the merge. Rows:
+    ///
+    ///   `state,<game>,<seat>,<turn>,<battlefield>,<sources>,<classes>,<legal>,<mana acts>,<plays>,<unplanned>,<variants>,<flat>,<collapsed>,<max flat>,<max collapsed>,<checks>,<capped>,<pool mult max>,<merge checks>,<merge fails>,<secs>`
+    ///   `variant,<game>,<n>,<kind>,<planner taps>,<classes>,<flat>,<collapsed>,<checks>,<capped>`
+    ///
+    /// `KAGGLE_DECKS=<dir> CORPUS_MANIFEST=docs/a2-field/manifest-PI.csv cargo test -p arcana-ai --release payment_list_probe -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn payment_list_probe() {
+        use crate::plays::{plays, variant_key};
+        use crate::search::{pair_game, MaterialValue, StatePolicy, ValueMcPolicy};
+        use arcana_core::actions::Action;
+        use arcana_core::engine::{step, EngineYield};
+        use arcana_core::legal_actions::is_mana_activation;
+        use arcana_core::objects::ObjectId;
+        use arcana_core::registry::CardRegistry;
+        use arcana_core::state::GameState;
+        use arcana_core::types::PlayerId;
+        use arcana_core::zones::Zone;
+        use std::cell::Cell;
+        use std::collections::{BTreeMap, HashSet};
+        use std::hash::{Hash, Hasher};
+        use std::rc::Rc;
+        use std::time::Instant;
+
+        let env = |k: &str, d: u64| -> u64 {
+            std::env::var(k).ok().and_then(|s| s.parse().ok()).unwrap_or(d)
+        };
+        let first = env("PROBE_FIRST", 9301);
+        let games = env("PROBE_GAMES", 32);
+        let every = env("PROBE_EVERY", 3).max(1);
+        let per_game = env("PROBE_PER_GAME", 40);
+        let cap = env("PROBE_CAP", 3000);
+        assert!(![1000u64, 2000, 3000, 4000].contains(&first), "a registered seed");
+
+        let reg = arcana_cards::build_catalog();
+        let format = std::env::var("CORPUS_FORMAT").unwrap_or_else(|_| "PI".into());
+        let dir = std::path::Path::new(&std::env::var("KAGGLE_DECKS").expect("set KAGGLE_DECKS")).join(&format);
+        let loaded = decks_from_dir(&dir, &format, &reg).expect("read corpus dir");
+        let decks = playable_decks(&loaded, 60, 60);
+        require_manifest(&decks);
+        println!("config,payment-probe,{first},{games},{every},{per_game},{cap},{}", decks.len());
+
+        fn hash_of<T: Hash>(t: &T) -> u64 {
+            let mut h = std::collections::hash_map::DefaultHasher::new();
+            t.hash(&mut h);
+            h.finish()
+        }
+        /// Every run of digits in `s`, as numbers: a conservative mention test.
+        fn numbers(s: &str, out: &mut HashSet<u64>) {
+            let mut cur: Option<u64> = None;
+            for ch in s.chars() {
+                if let Some(d) = ch.to_digit(10) {
+                    cur = Some(cur.unwrap_or(0).saturating_mul(10).saturating_add(d as u64));
+                } else if let Some(n) = cur.take() {
+                    out.insert(n);
+                }
+            }
+            if let Some(n) = cur { out.insert(n); }
+        }
+        fn multinomial(size: u64, counts: &[u64]) -> f64 {
+            // size! / (c1! … ck! (size − Σc)!)
+            let mut r = 1.0f64;
+            let mut left = size;
+            for &c in counts {
+                for t in 0..c { r *= (left - t) as f64 / (t + 1) as f64; }
+                left -= c;
+            }
+            r
+        }
+        /// The decider's state after activating `acts` in order, each from the
+        /// legal list of the moment with the decider deciding again; `None` if
+        /// any step fails that.
+        fn activate(state: &GameState, reg: &CardRegistry, decider: PlayerId, acts: &[Action])
+            -> Option<Vec<Action>> {
+            let mut sim = state.clone();
+            let mut now = arcana_core::legal_actions::legal_actions(&sim, reg);
+            for a in acts {
+                if !now.contains(a) { return None; }
+                let (s, y) = step(sim, a.clone(), reg);
+                sim = s;
+                match y {
+                    EngineYield::PendingDecision { player, legal_actions, .. } if player == decider =>
+                        now = legal_actions,
+                    _ => return None,
+                }
+            }
+            Some(now)
+        }
+
+        struct Class { members: Vec<ObjectId>, options: Vec<(String, Vec<Action>)> }
+        struct Ctx {
+            game: u64,
+            every: u64,
+            per_game: u64,
+            cap: u64,
+            seen: Rc<Cell<u64>>,
+            taken: Rc<Cell<u64>>,
+        }
+
+        fn measure(c: &Ctx, state: &GameState, reg: &CardRegistry, decider: PlayerId, legal: &[Action]) {
+            let t = Instant::now();
+            let mana: Vec<&Action> = legal.iter().filter(|a| is_mana_activation(state, a, reg)).collect();
+            let ps = plays(state, reg, decider, legal);
+            // Variants and the planner's tap counts (unplanned: none known).
+            let mut variants: Vec<(Action, Option<usize>)> = ps.plays.iter()
+                .filter_map(|p| p.last().map(|a| (variant_key(a), Some(p.len() - 1))))
+                .collect();
+            variants.extend(ps.unplanned.iter().map(|a| (variant_key(a), None)));
+            // Sources and the mana activations each offers, keyed by shape.
+            let mut by_source: BTreeMap<ObjectId, Vec<(String, Action)>> = BTreeMap::new();
+            for a in &mana {
+                if let Action::ActivateAbility { source, ability_index, targets, mana_payment, additional_costs } = a {
+                    let shape = format!("{ability_index}|{targets:?}|{mana_payment:?}|{additional_costs:?}");
+                    by_source.entry(*source).or_default().push((shape, (*a).clone()));
+                }
+            }
+            let mut global = HashSet::new();
+            numbers(&format!("{:?}{:?}{:?}{:?}{:?}", state.stack, state.continuous_effects,
+                state.replacement_effects, state.delayed_triggers, state.pending_trigger_queue), &mut global);
+            let key_of = |id: ObjectId, opts: &[(String, Action)]| -> u64 {
+                let o = state.objects.get(id);
+                let chars = state.compute_characteristics(id);
+                let shapes: Vec<&String> = opts.iter().map(|(s, _)| s).collect();
+                hash_of(&format!("{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{shapes:?}",
+                    o.map(|o| o.card_id), o.map(|o| o.controller), o.map(|o| &o.status),
+                    o.map(|o| &o.counters), o.map(|o| &o.attachments), o.map(|o| o.attached_to),
+                    o.map(|o| o.damage_marked), o.map(|o| o.is_token), chars))
+            };
+
+            let (mut flat_total, mut coll_total, mut max_flat, mut max_coll) = (0f64, 0f64, 0f64, 0f64);
+            let (mut checks_total, mut capped, mut pool_mult, mut merge_checks, mut merge_fails) = (0u64, 0u64, 0usize, 0u64, 0u64);
+            let mut classes_seen = 0usize;
+            for (vn, (v, planner)) in variants.iter().enumerate() {
+                let mut mentions = global.clone();
+                numbers(&format!("{v:?}"), &mut mentions);
+                // Classes for this variant.
+                let mut classes: Vec<Class> = Vec::new();
+                let mut index: BTreeMap<u64, usize> = BTreeMap::new();
+                for (id, opts) in &by_source {
+                    let k = if mentions.contains(&(*id as u64)) { hash_of(&("solo", *id)) } else { key_of(*id, opts) };
+                    let ci = *index.entry(k).or_insert_with(|| {
+                        classes.push(Class { members: Vec::new(), options: opts.iter().map(|(s, _)| (s.clone(), Vec::new())).collect() });
+                        classes.len() - 1
+                    });
+                    classes[ci].members.push(*id);
+                    for (s, a) in opts {
+                        if let Some(slot) = classes[ci].options.iter_mut().find(|(t, _)| t == s) { slot.1.push(a.clone()); }
+                    }
+                }
+                classes_seen = classes_seen.max(classes.len());
+                let sources = by_source.len();
+                let kmax = planner.map_or(sources.min(8), |k| (k + 1).min(sources));
+                // Count vectors over (class, option), by total size.
+                let units: Vec<(usize, usize)> = classes.iter().enumerate()
+                    .flat_map(|(ci, cl)| (0..cl.options.len()).map(move |oi| (ci, oi))).collect();
+                let mut legal_plans: HashSet<Vec<u64>> = HashSet::new();
+                let (mut flat, mut coll, mut checks, mut hit) = (0f64, 0f64, 0u64, false);
+                let mut frontier: Vec<Vec<u64>> = vec![vec![0; units.len()]];
+                for size in 1..=kmax {
+                    // Extend only plans that are not legal: a superset of a
+                    // legal plan is never minimal (more mana, by assumption,
+                    // never makes a play illegal).
+                    let mut next: HashSet<Vec<u64>> = HashSet::new();
+                    for base in frontier.iter().filter(|b| !legal_plans.contains(*b)) {
+                        if next.len() as u64 > 8 * c.cap { hit = true; break; }
+                        let start = base.iter().rposition(|&x| x > 0).unwrap_or(0);
+                        for u in start..units.len() {
+                            let (ci, _) = units[u];
+                            let used: u64 = units.iter().enumerate().filter(|(_, (cj, _))| *cj == ci).map(|(w, _)| base[w]).sum();
+                            if used as usize >= classes[ci].members.len() { continue; }
+                            let mut p = base.clone();
+                            p[u] += 1;
+                            next.insert(p);
+                        }
+                    }
+                    let mut next: Vec<Vec<u64>> = next.into_iter().collect();
+                    next.sort();
+                    for p in &next {
+                        // Skip plans whose one-smaller sub-plan is already legal.
+                        let dominated = (0..units.len()).any(|w| p[w] > 0 && {
+                            let mut q = p.clone(); q[w] -= 1; legal_plans.contains(&q)
+                        });
+                        if dominated { legal_plans.insert(p.clone()); continue; }
+                        if checks >= c.cap { hit = true; break; }
+                        // Representative: each class's members in order, options in order.
+                        let mut acts = Vec::new();
+                        for (ci, cl) in classes.iter().enumerate() {
+                            let mut m = 0usize;
+                            for (oi, (_, by_member)) in cl.options.iter().enumerate() {
+                                let w = units.iter().position(|&x| x == (ci, oi)).unwrap();
+                                for _ in 0..p[w] {
+                                    let id = cl.members[m];
+                                    m += 1;
+                                    if let Some(a) = by_member.iter().find(|a| matches!(a, Action::ActivateAbility { source, .. } if *source == id)) {
+                                        acts.push(a.clone());
+                                    }
+                                }
+                            }
+                        }
+                        checks += 1;
+                        let after = activate(state, reg, decider, &acts);
+                        let hits = after.as_ref().map_or(0, |l| l.iter().filter(|a| variant_key(a) == *v).count());
+                        if hits == 0 { continue; }
+                        legal_plans.insert(p.clone());
+                        pool_mult = pool_mult.max(hits);
+                        coll += 1.0;
+                        let mut f = 1.0;
+                        for (ci, cl) in classes.iter().enumerate() {
+                            let counts: Vec<u64> = (0..cl.options.len())
+                                .map(|oi| p[units.iter().position(|&x| x == (ci, oi)).unwrap()]).collect();
+                            f *= multinomial(cl.members.len() as u64, &counts);
+                        }
+                        flat += f;
+                        // Once per state: the same plan through the last members.
+                        if merge_checks == 0 && classes.iter().any(|cl| cl.members.len() > 1) {
+                            let mut alt = Vec::new();
+                            for (ci, cl) in classes.iter().enumerate() {
+                                let mut m = cl.members.len();
+                                for (oi, (_, by_member)) in cl.options.iter().enumerate() {
+                                    let w = units.iter().position(|&x| x == (ci, oi)).unwrap();
+                                    for _ in 0..p[w] {
+                                        m -= 1;
+                                        let id = cl.members[m];
+                                        if let Some(a) = by_member.iter().find(|a| matches!(a, Action::ActivateAbility { source, .. } if *source == id)) {
+                                            alt.push(a.clone());
+                                        }
+                                    }
+                                }
+                            }
+                            if alt != acts {
+                                merge_checks += 1;
+                                let ok = activate(state, reg, decider, &alt)
+                                    .is_some_and(|l| l.iter().filter(|a| variant_key(a) == *v).count() == hits);
+                                if !ok { merge_fails += 1; }
+                            }
+                        }
+                    }
+                    if hit { break; }
+                    frontier = next;
+                }
+                checks_total += checks;
+                if hit { capped += 1; }
+                flat_total += flat;
+                coll_total += coll;
+                max_flat = max_flat.max(flat);
+                max_coll = max_coll.max(coll);
+                let kind = match v { Action::CastSpell { .. } => "cast", Action::ActivateAbility { .. } => "activate", _ => "other" };
+                println!("variant,{},{vn},{kind},{},{},{flat},{coll},{checks},{}",
+                    c.game, planner.map_or(-1, |k| k as i64), classes.len(), hit as u8);
+            }
+            let bf = state.objects.objects_in_zone(Zone::Battlefield).count();
+            println!("state,{},{decider},{},{bf},{},{classes_seen},{},{},{},{},{},{flat_total},{coll_total},{max_flat},{max_coll},{checks_total},{capped},{pool_mult},{merge_checks},{merge_fails},{:.3}",
+                c.game, state.turn.turn_number, by_source.len(), legal.len(), mana.len(),
+                ps.plays.len(), ps.unplanned.len(), variants.len(), t.elapsed().as_secs_f64());
+        }
+
+        struct Probe { inner: Box<dyn StatePolicy>, ctx: Rc<Ctx> }
+        impl StatePolicy for Probe {
+            fn choose(&mut self, state: &GameState, registry: &CardRegistry,
+                      decider: PlayerId, legal: &[Action]) -> Action {
+                let c = &self.ctx;
+                let at_priority = state.pending_choice.is_none() && legal.contains(&Action::PassPriority);
+                if at_priority {
+                    let n = c.seen.get();
+                    c.seen.set(n + 1);
+                    if n % c.every == 0 && c.taken.get() < c.per_game {
+                        c.taken.set(c.taken.get() + 1);
+                        measure(c, state, registry, decider, legal);
+                    }
+                }
+                self.inner.choose(state, registry, decider, legal)
+            }
+        }
+
+        for p in 0..games {
+            let (i, j) = ((2 * p as usize) % decks.len(), (2 * p as usize + 1) % decks.len());
+            let g = first + p;
+            let ctx = Rc::new(Ctx { game: g, every, per_game, cap,
+                seen: Rc::new(Cell::new(0)), taken: Rc::new(Cell::new(0)) });
+            let mk = |s: u64| -> Box<dyn StatePolicy> {
+                Box::new(Probe {
+                    inner: Box::new(ValueMcPolicy::with_budget(Box::new(MaterialValue), s, 6, 25, 10)),
+                    ctx: Rc::clone(&ctx),
+                })
+            };
+            let t = Instant::now();
+            let _ = pair_game(&decks[i].cards, &decks[j].cards, &reg, g, 4000, &mk, &mk);
+            println!("game,{g},{i},{j},{},{:.2}", ctx.taken.get(), t.elapsed().as_secs_f64());
+        }
+    }
 }
